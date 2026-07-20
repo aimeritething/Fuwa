@@ -659,6 +659,7 @@
   "editor.htmlBlock.sourceLabel": "Krynica HTML",
   "editor.htmlBlock.previewTitle": "Papiaredni prahlad HTML-bloka ŭ piasočnicy",
   "editor.htmlBlock.blockedFallback": "Hety HTML byŭ zablakavany pravilami piasočnicy.",
+  "editor.callout.defaultHeading": "Zaŭvaha",
   "editor.empty.selectNote": "Abiarycie natatku dlia redahavannia",
   "editor.empty.shortcuts": "{quickOpen} dlia pošuku · {newNote} kab stvaryć",
   "editor.raw.label": "Redaktar zychodnaha koda",

@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML 源代码",
   "editor.htmlBlock.previewTitle": "沙盒 HTML 块预览",
   "editor.htmlBlock.blockedFallback": "此 HTML 被沙盒规则阻止。",
+  "editor.callout.defaultHeading": "备注",
   "tableOfContents.title": "目录",
   "tableOfContents.close": "关闭目录",
   "tableOfContents.empty": "本笔记中没有标题",

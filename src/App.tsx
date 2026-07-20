@@ -1649,7 +1649,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
 
   if (aiWorkspaceWindow) {
     return (
-      <AppPreferencesProvider dateDisplayFormat={dateDisplayFormat}>
+      <AppPreferencesProvider appLocale={appLocale} dateDisplayFormat={dateDisplayFormat}>
         {aiWorkspaceSurface}
       </AppPreferencesProvider>
     )
@@ -1659,7 +1659,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const noteListModifiedFilesError = isChangesSelection ? gitSurfaces.changesModifiedFilesError : null
 
   return (
-    <AppPreferencesProvider dateDisplayFormat={dateDisplayFormat}>
+    <AppPreferencesProvider appLocale={appLocale} dateDisplayFormat={dateDisplayFormat}>
       <div className="app-shell">
         <div className="app">
           {sidebarVisible && (

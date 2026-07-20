@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Nguồn HTML",
   "editor.htmlBlock.previewTitle": "Xem trước khối HTML trong chế độ hộp cát",
   "editor.htmlBlock.blockedFallback": "HTML này đã bị chặn theo quy tắc hộp cát.",
+  "editor.callout.defaultHeading": "Ghi chú",
   "tableOfContents.title": "Mục lục",
   "tableOfContents.close": "Đóng mục lục",
   "tableOfContents.empty": "Không có tiêu đề trong ghi chú này",

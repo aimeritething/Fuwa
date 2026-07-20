@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Исходный HTML-код",
   "editor.htmlBlock.previewTitle": "Предварительный просмотр блока HTML в песочнице",
   "editor.htmlBlock.blockedFallback": "Этот HTML был заблокирован правилами песочницы.",
+  "editor.callout.defaultHeading": "Примечание",
   "tableOfContents.title": "Содержание",
   "tableOfContents.close": "Закрыть оглавление",
   "tableOfContents.empty": "В этой заметке нет заголовков",

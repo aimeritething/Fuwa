@@ -10,6 +10,8 @@ import {
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
 import { useState } from 'react'
+import { useAppLocale } from '../hooks/useAppPreferences'
+import { translate } from '../lib/i18n'
 import {
   CALLOUT_BLOCK_TYPE,
   calloutHeading,
@@ -84,11 +86,12 @@ function CalloutHeading({
 }
 
 function CalloutBlockView({ block, contentRef }: CalloutBlockViewProps) {
+  const locale = useAppLocale()
   const { calloutType, fold: foldProp, title } = block.props
   const fold = normalizedCalloutFold(foldProp)
   const [expanded, setExpanded] = useState(calloutStartsExpanded(fold))
   const family = calloutVisualFamily(calloutType)
-  const heading = calloutHeading(calloutType, title)
+  const heading = calloutHeading(calloutType, title, translate(locale, 'editor.callout.defaultHeading'))
 
   return (
     <aside

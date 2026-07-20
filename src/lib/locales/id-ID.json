@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Sumber HTML",
   "editor.htmlBlock.previewTitle": "Pratinjau blok HTML sandbox",
   "editor.htmlBlock.blockedFallback": "HTML ini diblokir oleh aturan sandbox.",
+  "editor.callout.defaultHeading": "Catatan",
   "tableOfContents.title": "Daftar Isi",
   "tableOfContents.close": "Tutup daftar isi",
   "tableOfContents.empty": "Tidak ada judul di catatan ini",

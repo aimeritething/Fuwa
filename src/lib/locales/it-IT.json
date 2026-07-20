@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Sorgente HTML",
   "editor.htmlBlock.previewTitle": "Anteprima blocco HTML in sandbox",
   "editor.htmlBlock.blockedFallback": "Questo HTML è stato bloccato dalle regole del sandbox.",
+  "editor.callout.defaultHeading": "Nota",
   "tableOfContents.title": "Indice",
   "tableOfContents.close": "Chiudi l'indice",
   "tableOfContents.empty": "Nessun titolo in questa nota",

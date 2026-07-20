@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML-källa",
   "editor.htmlBlock.previewTitle": "Förhandsgranskning av HTML-block i sandlåda",
   "editor.htmlBlock.blockedFallback": "Denna HTML blockerades av sandbox-reglerna.",
+  "editor.callout.defaultHeading": "Obs",
   "tableOfContents.title": "Innehållsförteckning",
   "tableOfContents.close": "Stäng innehållsförteckning",
   "tableOfContents.empty": "Inga rubriker i den här anteckningen",

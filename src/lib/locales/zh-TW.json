@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML 來源",
   "editor.htmlBlock.previewTitle": "沙盒 HTML 區塊預覽",
   "editor.htmlBlock.blockedFallback": "此 HTML 被沙盒規則封鎖。",
+  "editor.callout.defaultHeading": "備註",
   "tableOfContents.title": "目錄",
   "tableOfContents.close": "關閉目錄",
   "tableOfContents.empty": "此筆記中沒有標題",

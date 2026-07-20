@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Крыніца HTML",
   "editor.htmlBlock.previewTitle": "Перадпрагляд HTML-блока ў пясочніцы",
   "editor.htmlBlock.blockedFallback": "Гэты HTML быў заблакаваны правіламі пясочніцы.",
+  "editor.callout.defaultHeading": "Заўвага",
   "tableOfContents.title": "Змест",
   "tableOfContents.close": "Закрыць змест",
   "tableOfContents.empty": "Няма загалоўкаў",

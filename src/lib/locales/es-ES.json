@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Código fuente HTML",
   "editor.htmlBlock.previewTitle": "Vista previa del bloque HTML en modo sandbox",
   "editor.htmlBlock.blockedFallback": "Este HTML ha sido bloqueado por las reglas del entorno aislado.",
+  "editor.callout.defaultHeading": "Nota",
   "tableOfContents.title": "Índice",
   "tableOfContents.close": "Cerrar el índice",
   "tableOfContents.empty": "No hay encabezados en esta nota",

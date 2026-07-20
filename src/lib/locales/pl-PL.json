@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Źródło HTML",
   "editor.htmlBlock.previewTitle": "Podgląd bloków HTML w trybie piaskownicy",
   "editor.htmlBlock.blockedFallback": "Ten kod HTML został zablokowany przez reguły sandbox.",
+  "editor.callout.defaultHeading": "Uwaga",
   "tableOfContents.title": "Spis treści",
   "tableOfContents.close": "Zamknij spis treści",
   "tableOfContents.empty": "Brak nagłówków w tej notatce",

@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML-Quelle",
   "editor.htmlBlock.previewTitle": "Vorschau des Sandbox-HTML-Blocks",
   "editor.htmlBlock.blockedFallback": "Dieses HTML wurde durch die Sandbox-Regeln blockiert.",
+  "editor.callout.defaultHeading": "Hinweis",
   "tableOfContents.title": "Inhaltsverzeichnis",
   "tableOfContents.close": "Inhaltsverzeichnis schließen",
   "tableOfContents.empty": "Keine Überschriften in dieser Notiz",

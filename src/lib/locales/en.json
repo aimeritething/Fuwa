@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML source",
   "editor.htmlBlock.previewTitle": "Sandboxed HTML block preview",
   "editor.htmlBlock.blockedFallback": "This HTML was blocked by the sandbox rules.",
+  "editor.callout.defaultHeading": "Note",
   "tableOfContents.title": "Table of Contents",
   "tableOfContents.close": "Close table of contents",
   "tableOfContents.empty": "No headings in this note",

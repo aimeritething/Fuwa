@@ -2,11 +2,13 @@ import { createContext, createElement, useCallback, useContext, useEffect, useMe
 import type { Settings } from '../types'
 import type { ThemeMode } from '../lib/themeMode'
 import {
+  DEFAULT_APP_LOCALE,
   SYSTEM_UI_LANGUAGE,
   getBrowserLanguagePreferences,
   resolveEffectiveLocale,
   serializeUiLanguagePreference,
   type UiLanguagePreference,
+  type AppLocale,
 } from '../lib/i18n'
 import { DEFAULT_DATE_DISPLAY_FORMAT, normalizeDateDisplayFormat, type DateDisplayFormat } from '../utils/dateDisplay'
 import { resolveAllNotesFileVisibility } from '../utils/allNotesFileVisibility'
@@ -25,24 +27,32 @@ interface AppPreferencesConfig {
 }
 
 interface AppPreferenceValues {
+  appLocale: AppLocale
   dateDisplayFormat: DateDisplayFormat
 }
 
 const DEFAULT_APP_PREFERENCES: AppPreferenceValues = {
+  appLocale: DEFAULT_APP_LOCALE,
   dateDisplayFormat: DEFAULT_DATE_DISPLAY_FORMAT,
 }
 
 const AppPreferencesContext = createContext<AppPreferenceValues>(DEFAULT_APP_PREFERENCES)
 
 export function AppPreferencesProvider({
+  appLocale = DEFAULT_APP_LOCALE,
   children,
   dateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
 }: {
   children: ReactNode
+  appLocale?: AppLocale
   dateDisplayFormat?: DateDisplayFormat
 }) {
-  const value = useMemo(() => ({ dateDisplayFormat }), [dateDisplayFormat])
+  const value = useMemo(() => ({ appLocale, dateDisplayFormat }), [appLocale, dateDisplayFormat])
   return createElement(AppPreferencesContext.Provider, { value }, children)
+}
+
+export function useAppLocale(): AppLocale {
+  return useContext(AppPreferencesContext).appLocale
 }
 
 export function useDateDisplayFormat(): DateDisplayFormat {

@@ -78,6 +78,26 @@ describe('preProcessRichEditorMarkdown', () => {
     )
   })
 
+  it('resolves untitled note callouts into schema blocks', async () => {
+    const editor = BlockNoteEditor.create({ schema })
+    const resolved = await resolveBlocksForTarget({
+      cache: new Map(),
+      content: [
+        '# Callout localization QA',
+        '',
+        '> [!note]+',
+        '> This untitled callout uses localized copy.',
+      ].join('\n'),
+      editor,
+      targetPath: 'callout-localization-qa.md',
+    })
+
+    expect(resolved.blocks).toContainEqual(expect.objectContaining({
+      type: 'calloutBlock',
+      props: expect.objectContaining({ calloutType: 'note', title: '' }),
+    }))
+  })
+
   it('preserves fenced code literals through resolve and save after reload', async () => {
     const editor = BlockNoteEditor.create({ schema })
     installRichEditorMarkdownSerializer(editor)

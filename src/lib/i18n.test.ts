@@ -66,6 +66,11 @@ describe('i18n', () => {
     expect(localeCatalogLocales()).toEqual(APP_LOCALES)
   })
 
+  it('localizes the untitled callout heading', () => {
+    expect(translate('en', 'editor.callout.defaultHeading')).toBe('Note')
+    expect(translate('it-IT', 'editor.callout.defaultHeading')).toBe('Nota')
+  })
+
   it('drops English-only plural suffix values for non-English locales', () => {
     expect(translate('en', 'status.conflict.count', { count: 2, plural: 's' })).toBe('2 conflicts')
     expect(translate('zh-CN', 'status.conflict.count', { count: 2, plural: 's' })).toBe('2 个冲突')

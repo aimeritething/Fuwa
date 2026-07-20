@@ -59,12 +59,13 @@ export function calloutStartsExpanded(fold: CalloutFold): boolean {
   return fold !== '-'
 }
 
-export function calloutHeading(type: string, title: string): string {
+export function calloutHeading(type: string, title: string, defaultHeading = 'Note'): string {
   if (title) return title
   const normalized = normalizedCalloutType(type)
+  if (!normalized || normalized === 'note') return defaultHeading
   return normalized.split(/[-_]+/u).filter(Boolean).map((part) => (
     `${part.charAt(0).toUpperCase()}${part.slice(1)}`
-  )).join(' ') || 'Note'
+  )).join(' ')
 }
 
 function inlineItemText(item: InlineItem): string {

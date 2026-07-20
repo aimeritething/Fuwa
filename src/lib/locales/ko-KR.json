@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML 소스",
   "editor.htmlBlock.previewTitle": "샌드박스 HTML 블록 미리 보기",
   "editor.htmlBlock.blockedFallback": "이 HTML은 샌드박스 규칙에 의해 차단되었습니다.",
+  "editor.callout.defaultHeading": "참고",
   "tableOfContents.title": "목차",
   "tableOfContents.close": "목차 닫기",
   "tableOfContents.empty": "이 노트에는 제목이 없습니다",

@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Zdrojový kód HTML",
   "editor.htmlBlock.previewTitle": "Náhľad blokovaného HTML kódu v sandboxe",
   "editor.htmlBlock.blockedFallback": "Tento HTML kód bol zablokovaný pravidlami sandboxu.",
+  "editor.callout.defaultHeading": "Poznámka",
   "tableOfContents.title": "Obsah",
   "tableOfContents.close": "Zatvoriť obsah",
   "tableOfContents.empty": "V tejto poznámke nie sú žiadne nadpisy",

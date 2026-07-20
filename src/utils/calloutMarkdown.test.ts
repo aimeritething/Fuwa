@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { BlockLike, InlineItem } from './durableMarkdownBlocks'
 import {
   buildCalloutBlock,
+  calloutHeading,
   calloutStartsExpanded,
   calloutVisualFamily,
   parseCalloutMarker,
@@ -13,6 +14,10 @@ function quote(content: InlineItem[]): BlockLike {
 }
 
 describe('callout markers', () => {
+  it('uses localized copy for an untitled note callout', () => {
+    expect(calloutHeading('note', '', 'Nota')).toBe('Nota')
+  })
+
   it('recognizes Obsidian and GFM alert markers case-insensitively', () => {
     expect(parseCalloutMarker('[!TIP] A useful tip')).toEqual({
       fold: '',

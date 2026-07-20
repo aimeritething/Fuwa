@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Source HTML",
   "editor.htmlBlock.previewTitle": "Aperçu du bloc HTML en mode sandbox",
   "editor.htmlBlock.blockedFallback": "Ce code HTML a été bloqué par les règles du sandbox.",
+  "editor.callout.defaultHeading": "Remarque",
   "tableOfContents.title": "Table des matières",
   "tableOfContents.close": "Fermer la table des matières",
   "tableOfContents.empty": "Aucun titre dans cette note",

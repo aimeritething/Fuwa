@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "HTML ソース",
   "editor.htmlBlock.previewTitle": "サンドボックス化されたHTMLブロックのプレビュー",
   "editor.htmlBlock.blockedFallback": "このHTMLはサンドボックスのルールによってブロックされました。",
+  "editor.callout.defaultHeading": "注",
   "tableOfContents.title": "目次",
   "tableOfContents.close": "目次を閉じる",
   "tableOfContents.empty": "このノートには見出しがありません",

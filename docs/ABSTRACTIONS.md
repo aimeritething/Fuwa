@@ -680,7 +680,7 @@ Defined in `src/utils/calloutMarkdown.ts`, `src/utils/richEditorMarkdown.ts`, `s
 - Marker metadata lives in block props, but the body remains editable BlockNote inline content. Conversion slices only the marker prefix, preserving body text styles, links, wikilinks, and other supported inline nodes.
 - Known Obsidian aliases and GitHub alert types map to semantic Tolaria color/icon families; unknown type tokens retain neutral note styling and still serialize unchanged.
 - The mixed durable serializer serializes the live body through BlockNote, restores `> [!type]` syntax, and keeps the callout in the same autosave/raw-mode/tab-swap pipeline as other Markdown.
-- `-` begins collapsed and `+` begins expanded. The shadcn disclosure control changes only local presentation state, so opening or closing a callout never dirties the note.
+- `-` begins collapsed and `+` begins expanded. The shadcn disclosure control changes only local presentation state, so opening or closing a callout never dirties the note. Untitled note callouts resolve their visible and accessible fallback heading through the app locale published by `AppPreferencesProvider`.
 
 ### Markdown Math
 

@@ -835,6 +835,7 @@
   "editor.htmlBlock.sourceLabel": "Вихідний HTML-код",
   "editor.htmlBlock.previewTitle": "Попередній перегляд HTML-блоку в ізольованому середовищі",
   "editor.htmlBlock.blockedFallback": "Цей HTML-код заблоковано правилами пісочниці.",
+  "editor.callout.defaultHeading": "Примітка",
   "tableOfContents.title": "Зміст",
   "tableOfContents.close": "Закрити зміст",
   "tableOfContents.empty": "У цій нотатці немає заголовків",

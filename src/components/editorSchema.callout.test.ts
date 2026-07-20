@@ -34,6 +34,20 @@ describe('editor callout schema', () => {
     expect(JSON.stringify(callout)).toContain('https://example.com')
   })
 
+  it('hydrates an untitled note callout for the localized fallback heading', async () => {
+    const editor = BlockNoteEditor.create({ schema })
+    const parsed = await editor.tryParseMarkdownToBlocks([
+      '> [!note]',
+      '> This untitled callout uses localized copy.',
+    ].join('\n'))
+    const [callout] = injectCalloutBlocks(parsed)
+
+    expect(callout).toMatchObject({
+      type: 'calloutBlock',
+      props: { calloutType: 'note', title: '' },
+    })
+  })
+
   it('round-trips rich callout bodies and fold markers', async () => {
     const markdown = [
       '> [!example]- Resources',
