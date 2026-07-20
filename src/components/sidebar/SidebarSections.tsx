@@ -30,12 +30,15 @@ import { getContextMenuPositionStyle } from '../contextMenuPosition'
 import { countByFilter } from '../../utils/noteListHelpers'
 import { viewIdentityKey, viewSelectionForView } from '../../utils/viewIdentity'
 import { translate, type AppLocale } from '../../lib/i18n'
+import { MACOS_TRAFFIC_LIGHT_SAFE_PADDING } from '../../utils/platform'
 
 export { SidebarTopNav } from './SidebarTopNav'
 export { FavoritesSection } from './FavoritesSection'
 
 const SIDEBAR_TITLE_BAR_ACTION_CLASSNAME =
   '!h-auto !w-auto !min-w-0 !rounded-none !p-0 text-muted-foreground hover:!bg-transparent hover:text-foreground [&_svg]:!size-4'
+const SIDEBAR_TITLE_BAR_LEFT_PADDING =
+  `var(--tolaria-macos-traffic-light-padding, ${MACOS_TRAFFIC_LIGHT_SAFE_PADDING}px)`
 
 const SIDEBAR_COLLAPSE_SHORTCUT = getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewEditorList)
 const HISTORY_BACK_SHORTCUT = getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewGoBack)
@@ -403,7 +406,7 @@ export function SidebarTitleBar({
     <div
       ref={dragRegionRef}
       className="shrink-0 flex items-center border-b border-border"
-      style={{ height: 52, padding: '0 8px', paddingLeft: 90, cursor: 'default', justifyContent: 'flex-start' }}
+      style={{ height: 52, padding: '0 8px', paddingLeft: SIDEBAR_TITLE_BAR_LEFT_PADDING, cursor: 'default', justifyContent: 'flex-start' }}
     >
       <div className="flex items-center gap-5" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
         {onCollapse && (

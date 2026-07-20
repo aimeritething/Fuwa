@@ -92,6 +92,7 @@ import {
   trackTelemetryConsentChange,
 } from './settingsPreferenceTracking'
 import { useSettingsPanelAutofocus, useSettingsPanelFocusTrap } from './useSettingsPanelFocus'
+import { registerMacosDismissableEscapeSurface } from '../utils/macosDismissableEscapeSurface'
 
 interface SettingsPanelProps {
   open: boolean
@@ -402,6 +403,8 @@ function SettingsPanelInner({
   const panelRef = useRef<HTMLDivElement>(null)
   const draftLocale = resolveEffectiveLocale(draft.uiLanguage, [systemLocale])
   const t = createTranslator(draftLocale)
+
+  useEffect(registerMacosDismissableEscapeSurface, [])
 
   useEffect(() => {
     setDraft(createSettingsDraft(settings, explicitOrganizationEnabled))

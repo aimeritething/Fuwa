@@ -2,6 +2,7 @@ import * as React from "react"
 import { Popover as PopoverPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { useMacosDismissableEscapeSurfaceRef } from "@/utils/macosDismissableEscapeSurface"
 
 function Popover({
   ...props
@@ -20,11 +21,15 @@ function PopoverContent({
   align = "center",
   sideOffset = 4,
   collisionPadding = 8,
+  ref,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+  const surfaceRef = useMacosDismissableEscapeSurfaceRef<HTMLDivElement>(ref)
+
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
+        ref={surfaceRef}
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}

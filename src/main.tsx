@@ -39,27 +39,16 @@ function isTauriRuntime(): boolean {
 }
 
 function hasDismissableEscapeSurface(): boolean {
-  return document.querySelector(DISMISSABLE_ESCAPE_SURFACE_SELECTOR) !== null
+  return typeof document !== 'undefined'
+    && document.querySelector(DISMISSABLE_ESCAPE_SURFACE_SELECTOR) !== null
 }
 
 function installDismissableEscapeDefaultGuard(): void {
-  let escapeStartedWithDismissableSurface = false
-
   window.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return
-
-    escapeStartedWithDismissableSurface = hasDismissableEscapeSurface()
-    window.setTimeout(() => {
-      escapeStartedWithDismissableSurface = false
-    }, 0)
-  }, true)
-
-  window.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || !escapeStartedWithDismissableSurface) return
+    if (event.key !== 'Escape' || !hasDismissableEscapeSurface()) return
 
     event.preventDefault()
-    escapeStartedWithDismissableSurface = false
-  })
+  }, true)
 }
 
 async function installMacosFullscreenChromeTracking(): Promise<void> {

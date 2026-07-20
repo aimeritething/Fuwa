@@ -23,6 +23,7 @@ pub mod kiro_cli;
 mod kiro_discovery;
 #[cfg(any(test, all(desktop, target_os = "linux")))]
 mod linux_appimage;
+mod macos_fullscreen_escape;
 pub mod mcp;
 #[cfg(desktop)]
 pub mod menu;
@@ -322,6 +323,7 @@ fn setup_deep_link_runtime_registration(
 #[cfg(desktop)]
 fn setup_desktop_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     setup_macos_webview_shortcut_prevention(app)?;
+    macos_fullscreen_escape::setup(app)?;
     setup_deep_link_runtime_registration(app)?;
     app.handle()
         .plugin(tauri_plugin_updater::Builder::new().build())?;
@@ -556,6 +558,7 @@ macro_rules! app_invoke_handler {
             commands::delete_vault_folder,
             commands::batch_archive_notes,
             commands::get_settings,
+            macos_fullscreen_escape::set_macos_dismissable_escape_surface_open,
             commands::get_ai_workspace_sessions,
             commands::check_for_app_update,
             commands::update_menu_state,

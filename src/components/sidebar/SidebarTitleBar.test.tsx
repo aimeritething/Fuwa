@@ -47,4 +47,12 @@ describe('SidebarTitleBar', () => {
     expect(screen.queryByRole('button', { name: 'Go Back' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Go Forward' })).not.toBeInTheDocument()
   })
+
+  it('uses the fullscreen-aware macOS traffic-light inset', () => {
+    const { container } = renderTitleBar()
+
+    expect(container.firstElementChild).toHaveStyle({
+      paddingLeft: 'var(--tolaria-macos-traffic-light-padding, 90px)',
+    })
+  })
 })
