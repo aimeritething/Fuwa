@@ -104,7 +104,7 @@ Every full App window registers its active vault roots through `start_vault_watc
 
 #### Progressive Vault Loading
 
-Vault opening is allowed to render the main app shell while the entry index is still in flight. Initial startup hydration uses the cached/incremental `list_vault` path; the main window falls back to `reload_vault` only when that cached startup result is empty, while explicit refresh paths still force a fresh reload. Clean same-commit cache hits reuse stored entry timestamps without running a full `git log` date scan, so warm startup does not scale with the vault's complete history. `useVaultLoader` keeps `isLoading` true until entries are ready, but folders and saved views load independently so the sidebar can become useful before the note index completes. The status bar uses the vault activity badge during this initial indexing state, while command-palette and editor-shell interactions remain mounted instead of being hidden behind the full app skeleton. The full skeleton is reserved for app-level capability checks such as the initial Git-state probe.
+Vault opening renders the main app shell before freshness work completes. On a warm start, `read_vault_snapshot` deserializes a version- and path-valid active-vault cache without Git, per-entry filesystem checks, sorting, or cache replacement. React installs that provisional graph and clears `isLoading`, then `list_vault` reconciles Git changes and missing files in the background. Invalid/missing snapshots, forced reloads, and Gitignored-hidden mode use the authoritative scan path. Clean same-commit reconciliation avoids both the full Git-date scan and an identical cache rewrite. Folders and saved views load independently; secondary workspaces start only after the active graph is usable and hydrate one at a time. Nested mounts derive their entries from a loaded ancestor instead of scanning the same subtree again. BlockNote and editor-only styles are a separate lazy chunk whose load starts after the app shell commits. Native launch, React shell, active snapshot, active-vault usable, and background-reconciled timestamps feed path-free startup analytics against 300 ms shell and 800 ms warm-vault targets. See [ADR-0166](./adr/0166-snapshot-first-progressive-vault-startup.md).
 
 Large-vault reproduction and keyboard QA steps live in [LARGE-VAULT-LOADING-QA.md](./LARGE-VAULT-LOADING-QA.md).
 
@@ -511,14 +511,20 @@ Each cached scan resolves its `GitWorkspace` once, then reuses that context for 
 
 ```mermaid
 flowchart TD
-    A([scan_vault_cached]) --> B{Cache exists\nand valid?}
+    S([read_vault_snapshot]) --> T{Version and path valid?}
+    T -->|Yes| U[Return provisional entries\nwithout Git or file stats]
+    T -->|No| A
+    U --> A([background scan_vault_cached])
+    A --> B{Cache exists\nand valid?}
     B -->|No / Corrupt| C["🔴 Full Scan\nwalkdir all .md files\n→ full parse"]
     B -->|Yes| D{Git HEAD\nmatches cache?}
     D -->|Same commit| E["🟢 Cache Hit\ngit status --porcelain\n→ re-parse only uncommitted changes"]
     D -->|Different commit| F["🟡 Incremental Update\ngit diff old..new --name-only\n→ selective re-parse of changed files"]
 
     C --> G[Replace cache if unchanged\nwriter lock + temp file → rename]
-    E --> G
+    E --> I{Entries changed or pruned?}
+    I -->|No| H
+    I -->|Yes| G
     F --> G
     G --> H([VaultEntry list ready])
 ```
@@ -786,6 +792,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | Command | Description |
 |---------|-------------|
 | `list_vault` | Scan vault (cached), then apply Gitignored-content visibility → `Vec<VaultEntry>` |
+| `read_vault_snapshot` | Return a valid provisional cache without Git/file reconciliation; returns no snapshot when Gitignored hiding requires authoritative filtering |
 | `get_note_content` | Read note file content |
 | `save_note_content` | Write note content to disk |
 | `delete_note` | Permanently delete note from disk (with confirm dialog) |

@@ -29,6 +29,8 @@ const CACHE_WRITE_LOCK_STALE_SECS: u64 = 30;
 static PANIC_ON_GIT_DATE_LOOKUP: AtomicBool = AtomicBool::new(false);
 #[cfg(test)]
 static GIT_WORKSPACE_RESOLUTION_COUNT: AtomicUsize = AtomicUsize::new(0);
+#[cfg(test)]
+static CACHE_WRITE_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[cfg(test)]
 struct GitDateLookupPanicGuard;
@@ -472,6 +474,9 @@ fn write_cache(
     cache: &VaultCache,
     expected_previous: Option<CacheFileFingerprint>,
 ) -> Result<CacheWriteOutcome, String> {
+    #[cfg(test)]
+    CACHE_WRITE_COUNT.fetch_add(1, Ordering::SeqCst);
+
     let final_path = cache_path(vault);
     let lock_path = cache_lock_path(vault);
     let Some(_lock) = acquire_cache_write_lock(&lock_path)? else {
@@ -682,8 +687,10 @@ fn update_same_commit(
         entries.retain(|e| !changed_set.contains(&to_relative_path_key(&e.path, vault)));
         entries.extend(parse_files_at(vault, &changed, &git_dates));
     }
-    // Always finalize: prune_stale_entries inside finalize_and_cache removes
-    // entries for files deleted outside git (e.g., via Finder or another app).
+    let pruned = prune_stale_entries(vault, &mut entries);
+    if changed.is_empty() && !pruned {
+        return entries;
+    }
     finalize_and_cache(vault, entries, cache.commit_hash, Some(fingerprint))
 }
 
@@ -740,6 +747,24 @@ fn scan_and_cache_full(
 pub fn invalidate_cache(vault_path: &Path) {
     let path = cache_path(vault_path);
     remove_cache_file(&path, "cache file");
+}
+
+/// Read a structurally valid cache without consulting Git or touching vault files.
+/// The caller must reconcile this potentially stale snapshot in the background.
+pub fn read_vault_snapshot(vault_path: &Path) -> Result<Option<Vec<VaultEntry>>, String> {
+    match load_cache(vault_path) {
+        CacheLoadState::Loaded(loaded) => {
+            if cache_requires_full_rescan(&loaded.cache, vault_path) {
+                return Ok(None);
+            }
+            Ok(Some(loaded.cache.entries))
+        }
+        CacheLoadState::Missing => Ok(None),
+        CacheLoadState::Invalid(error) | CacheLoadState::Unreadable(error) => {
+            log::warn!("{error}");
+            Ok(None)
+        }
+    }
 }
 
 /// Scan vault with incremental caching via git.
@@ -1044,10 +1069,40 @@ mod tests {
         assert_eq!(entries.len(), 1);
 
         let _dates_guard = panic_on_git_date_lookup();
+        CACHE_WRITE_COUNT.store(0, Ordering::SeqCst);
         let entries2 = scan_vault_cached(vault).unwrap();
 
         assert_eq!(entries2.len(), 1);
         assert_eq!(entries2[0].title, "Note");
+        assert_eq!(CACHE_WRITE_COUNT.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn test_snapshot_returns_cached_entries_without_reconciling_deleted_files() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let vault = dir.path();
+
+        create_test_file(vault, "note.md", "# Note\n\nCached content.");
+        git_add_commit(vault, "init");
+        scan_vault_cached(vault).unwrap();
+        fs::remove_file(vault.join("note.md")).unwrap();
+
+        let snapshot = read_vault_snapshot(vault).unwrap().unwrap();
+
+        assert_eq!(snapshot.len(), 1);
+        assert_eq!(snapshot[0].title, "Note");
+        assert!(scan_vault_cached(vault).unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_snapshot_returns_none_when_cache_is_missing_or_invalid() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let vault = dir.path();
+
+        assert!(read_vault_snapshot(vault).unwrap().is_none());
+
+        fs::write(cache_path(vault), "not-json").unwrap();
+        assert!(read_vault_snapshot(vault).unwrap().is_none());
     }
 
     #[test]

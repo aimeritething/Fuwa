@@ -1,3 +1,28 @@
+use std::time::Instant;
+
+pub struct StartupTimingState {
+    started_at: Instant,
+}
+
+impl Default for StartupTimingState {
+    fn default() -> Self {
+        Self {
+            started_at: Instant::now(),
+        }
+    }
+}
+
+impl StartupTimingState {
+    fn elapsed_ms(&self) -> u64 {
+        self.started_at.elapsed().as_millis() as u64
+    }
+}
+
+#[tauri::command]
+pub fn get_startup_elapsed_ms(state: tauri::State<'_, StartupTimingState>) -> u64 {
+    state.elapsed_ms()
+}
+
 fn should_use_external_media_preview_for_appimage(is_linux_appimage: bool) -> bool {
     is_linux_appimage
 }
@@ -28,7 +53,9 @@ pub fn print_current_webview(window: tauri::WebviewWindow) -> Result<(), String>
 
 #[cfg(test)]
 mod tests {
-    use super::{map_print_result, should_use_external_media_preview_for_appimage};
+    use super::{
+        map_print_result, should_use_external_media_preview_for_appimage, StartupTimingState,
+    };
 
     #[test]
     fn external_media_preview_is_limited_to_linux_appimage() {
@@ -44,5 +71,10 @@ mod tests {
             result,
             Err("Failed to open the system print dialog: printer unavailable".to_string())
         );
+    }
+
+    #[test]
+    fn startup_clock_reports_elapsed_milliseconds() {
+        assert!(StartupTimingState::default().elapsed_ms() < 100);
     }
 }

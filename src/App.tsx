@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { NoteList } from './components/NoteList'
-import { Editor } from './components/Editor'
+import { LazyEditor } from './components/LazyEditor'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CreateTypeDialog } from './components/CreateTypeDialog'
 import { CreateViewDialog } from './components/CreateViewDialog'
@@ -1742,7 +1742,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
             </>
           )}
           <div className={`app__editor${aiActivity.highlightElement === 'editor' || aiActivity.highlightElement === 'tab' ? ' ai-highlight' : ''}`}>
-            <Editor
+            <LazyEditor
               tabs={notes.tabs}
               activeTabPath={notes.activeTabPath}
               isVaultLoading={isVaultContentLoading}

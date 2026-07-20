@@ -54,6 +54,16 @@ function makeEntry(): VaultEntry {
   }
 }
 
+function makeReconciledEntry(): VaultEntry {
+  return { ...makeEntry(), title: 'Reconciled' }
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((next) => { resolve = next })
+  return { promise, resolve }
+}
+
 function commandPath(args?: Record<string, unknown>): string {
   return typeof args?.path === 'string' ? args.path : ''
 }
@@ -110,5 +120,25 @@ describe('useVaultLoader startup recovery', () => {
     })
     expect(startupMock.activeListCount()).toBeGreaterThanOrEqual(2)
     expect(startupMock.activeReloadCount()).toBeGreaterThanOrEqual(2)
+  })
+
+  it('makes the active vault usable from a snapshot before reconciliation finishes', async () => {
+    const reconciliation = createDeferred<VaultEntry[]>()
+    backendInvokeFn.mockImplementation((command: string) => {
+      if (command === 'read_vault_snapshot') return Promise.resolve([makeEntry()])
+      if (command === 'list_vault') return reconciliation.promise
+      if (EMPTY_ARRAY_COMMANDS.has(command)) return Promise.resolve([])
+      return Promise.resolve(null)
+    })
+
+    const { result } = renderHook(() => useVaultLoader(ACTIVE_VAULT_PATH))
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.entries.map((entry) => entry.title)).toEqual(['Recovered'])
+
+    reconciliation.resolve([makeReconciledEntry()])
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Reconciled'])
+    })
   })
 })

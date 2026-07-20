@@ -12,17 +12,21 @@ import {
   commitWithPush,
   hasVaultPath,
   loadVaultChrome,
-  loadVaultData,
+  loadStartupVaultData,
   loadMountedVaultFolders,
   loadMountedVaultViews,
   loadVaultFolders,
   loadVaultViews,
-  loadWorkspaceEntries,
   reloadVaultEntries,
   tauriCall,
 } from './vaultLoaderCommands'
 import { normalizeVaultEntry } from '../utils/vaultMetadataNormalization'
 import { isNoteWindow } from '../utils/windowMode'
+import {
+  recordActiveVaultSnapshot,
+  recordActiveVaultUsable,
+  recordBackgroundReconciled,
+} from '../lib/startupPerformance'
 import { useUnavailableVaultState } from './useUnavailableVaultState'
 import { resetVaultState } from './vaultStateReset'
 import {
@@ -30,11 +34,11 @@ import {
   loadedWorkspacePathsFromEntries,
   pruneEntriesOutsideWorkspaceSet,
   replaceLoadedWorkspaceEntries,
-  replaceWorkspaceEntries,
   retagEntriesForWorkspaceMetadata,
   uniqueWorkspacePathsFromVaults,
   workspacePathSetKey,
 } from './vaultWorkspaceEntries'
+import { startProgressiveWorkspaceLoads } from './workspaceProgressiveLoader'
 
 interface InitialVaultLoadStateOptions {
   defaultWorkspacePath?: string | null
@@ -56,6 +60,12 @@ interface InitialVaultChromeOptions extends Pick<
   'defaultWorkspacePath' | 'folderVaults' | 'handleVaultUnavailable' | 'isCurrentVaultPath' | 'path' | 'setFolders' | 'setViews'
 > {
   shouldApplyChrome: () => boolean
+}
+
+interface InitialVaultEntriesResult {
+  entryCount: number
+  source: 'scan' | 'snapshot'
+  unavailable: boolean
 }
 
 async function loadInitialVaultChromeState(options: InitialVaultChromeOptions): Promise<boolean> {
@@ -90,11 +100,11 @@ async function loadInitialVaultChromeState(options: InitialVaultChromeOptions): 
 async function loadInitialVaultEntriesState(options: Pick<
   InitialVaultLoadStateOptions,
   'defaultWorkspacePath' | 'forceReload' | 'handleVaultAvailable' | 'handleVaultUnavailable' | 'isCurrentVaultPath' | 'path' | 'reloadIfEmpty' | 'setEntries' | 'vaults'
->): Promise<boolean> {
+>): Promise<InitialVaultEntriesResult> {
   const { handleVaultAvailable, handleVaultUnavailable, isCurrentVaultPath, path, setEntries } = options
 
   try {
-    const { entries } = await loadVaultData({
+    const { entries, reconciliation, source } = await loadStartupVaultData({
       vaultPath: path,
       vaults: initialVaultsForPath(path, options.vaults),
       defaultWorkspacePath: options.defaultWorkspacePath,
@@ -102,6 +112,7 @@ async function loadInitialVaultEntriesState(options: Pick<
       reloadIfEmpty: options.reloadIfEmpty,
     })
     if (isCurrentVaultPath(path)) {
+      if (source === 'snapshot') recordActiveVaultSnapshot()
       handleVaultAvailable(path)
       setEntries((currentEntries) => replaceLoadedWorkspaceEntries({
         defaultWorkspacePath: options.defaultWorkspacePath,
@@ -111,12 +122,26 @@ async function loadInitialVaultEntriesState(options: Pick<
         vaults: options.vaults,
       }))
     }
+    void reconciliation?.then((reconciledEntries) => {
+      if (!isCurrentVaultPath(path)) return
+      recordBackgroundReconciled(reconciledEntries.length)
+      setEntries((currentEntries) => replaceLoadedWorkspaceEntries({
+        defaultWorkspacePath: options.defaultWorkspacePath,
+        entries: currentEntries,
+        fallbackVaultPath: path,
+        loadedEntries: reconciledEntries,
+        vaults: options.vaults,
+      }))
+    }).catch((error: unknown) => {
+      console.warn('Vault background reconciliation failed:', error)
+    })
+    return { entryCount: entries.length, source, unavailable: false }
   } catch (err) {
     const unavailable = await handleUnavailableVaultPath({ handleVaultUnavailable, isCurrentVaultPath, path })
-    if (unavailable) return true
+    if (unavailable) return { entryCount: 0, source: 'scan', unavailable: true }
     console.warn('Vault scan failed:', err)
   }
-  return false
+  return { entryCount: 0, source: 'scan', unavailable: false }
 }
 
 async function loadInitialVaultState(options: InitialVaultLoadStateOptions) {
@@ -128,8 +153,12 @@ async function loadInitialVaultState(options: InitialVaultLoadStateOptions) {
   })
 
   setIsLoading(true)
-  vaultUnavailable = await loadInitialVaultEntriesState(options)
-  if (isCurrentVaultPath(path)) setIsLoading(false)
+  const entriesResult = await loadInitialVaultEntriesState(options)
+  vaultUnavailable = entriesResult.unavailable
+  if (isCurrentVaultPath(path)) {
+    setIsLoading(false)
+    recordActiveVaultUsable(entriesResult.source, entriesResult.entryCount)
+  }
   await chromeLoad
 }
 
@@ -1030,68 +1059,6 @@ function useWorkspaceMetadataRetagEffect({
   }, [defaultWorkspacePath, desiredWorkspaceKey, desiredWorkspacePaths, setEntries, vaultPath, vaults])
 }
 
-function missingWorkspaceVaults({
-  desiredWorkspacePaths,
-  loadedPaths,
-  loadingPaths,
-  vaults,
-}: {
-  desiredWorkspacePaths: readonly string[]
-  loadedPaths: Set<string>
-  loadingPaths: Set<string>
-  vaults?: VaultOption[]
-}): VaultOption[] {
-  if (!vaults?.length) return []
-  return vaults.filter((vault) => (
-    desiredWorkspacePaths.includes(vault.path)
-    && !loadedPaths.has(vault.path)
-    && !loadingPaths.has(vault.path)
-  ))
-}
-
-function loadMissingWorkspaceEntries({
-  defaultWorkspacePath,
-  isCurrentVaultPath,
-  loadedPaths,
-  loadingPaths,
-  setEntries,
-  vault,
-  vaultPath,
-  vaults,
-}: {
-  defaultWorkspacePath?: string | null
-  isCurrentVaultPath: (path: string) => boolean
-  loadedPaths: Set<string>
-  loadingPaths: Set<string>
-  setEntries: Dispatch<SetStateAction<VaultEntry[]>>
-  vault: VaultOption
-  vaultPath: string
-  vaults?: VaultOption[]
-}) {
-  void loadWorkspaceEntries(vault, defaultWorkspacePath, {
-    forceReload: vault.path === vaultPath,
-    reloadIfEmpty: true,
-  })
-    .then((loadedEntries) => {
-      if (!isCurrentVaultPath(vaultPath)) return
-      loadedPaths.add(vault.path)
-      setEntries((currentEntries) => replaceWorkspaceEntries({
-        defaultWorkspacePath,
-        entries: currentEntries,
-        fallbackVaultPath: vaultPath,
-        loadedEntries,
-        loadedWorkspacePath: vault.path,
-        vaults,
-      }))
-    })
-    .catch((error: unknown) => {
-      console.warn(`Failed to load workspace entries for ${vault.path}:`, error)
-    })
-    .finally(() => {
-      loadingPaths.delete(vault.path)
-    })
-}
-
 function useMissingWorkspaceLoads({
   defaultWorkspacePath,
   desiredWorkspaceKey,
@@ -1119,24 +1086,16 @@ function useMissingWorkspaceLoads({
     void desiredWorkspaceKey
     if (!hasVaultPath({ vaultPath }) || !vaults?.length || isLoading) return
 
-    const loadedPaths = loadedWorkspacePathsRef.current
-    const loadingPaths = loadingWorkspacePathsRef.current
-    const missingVaults = missingWorkspaceVaults({ desiredWorkspacePaths, loadedPaths, loadingPaths, vaults })
-    if (missingVaults.length === 0) return
-
-    for (const vault of missingVaults) loadingPaths.add(vault.path)
-    for (const vault of missingVaults) {
-      loadMissingWorkspaceEntries({
-        defaultWorkspacePath,
-        isCurrentVaultPath,
-        loadedPaths,
-        loadingPaths,
-        setEntries,
-        vault,
-        vaultPath,
-        vaults,
-      })
-    }
+    startProgressiveWorkspaceLoads({
+      defaultWorkspacePath,
+      desiredWorkspacePaths,
+      isCurrentVaultPath,
+      loadedPaths: loadedWorkspacePathsRef.current,
+      loadingPaths: loadingWorkspacePathsRef.current,
+      setEntries,
+      vaultPath,
+      vaults,
+    })
   }, [
     defaultWorkspacePath,
     desiredWorkspaceKey,

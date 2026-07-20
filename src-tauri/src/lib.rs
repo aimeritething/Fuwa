@@ -484,6 +484,8 @@ macro_rules! app_invoke_handler {
     () => {
         tauri::generate_handler![
             commands::list_vault,
+            commands::read_vault_snapshot,
+            commands::get_startup_elapsed_ms,
             commands::list_vault_folders,
             commands::get_note_content,
             commands::validate_note_content,
@@ -618,7 +620,7 @@ pub fn run() {
     #[cfg(all(desktop, target_os = "linux"))]
     linux_appimage::apply_startup_env_overrides();
 
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().manage(commands::StartupTimingState::default());
 
     #[cfg(desktop)]
     let builder = with_desktop_entry_plugins(builder);

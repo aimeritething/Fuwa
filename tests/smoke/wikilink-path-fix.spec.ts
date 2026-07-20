@@ -15,6 +15,23 @@ const MARKDOWN_LINK_NOTE_TITLE = 'Markdown Link Jump'
 
 let tempVaultDir: string | null = null
 
+function writeWikilinkFixtureNotes(vaultPath: string): void {
+  fs.writeFileSync(path.join(vaultPath, 'grow-newsletter.md'), `---
+type: Responsibility
+---
+
+# ${SOURCE_NOTE_TITLE}
+
+Build a sustainable audience through high-quality weekly essays.
+`, 'utf8')
+  fs.writeFileSync(path.join(vaultPath, `${INSERTED_WIKILINK_TARGET}.md`), `---
+type: Responsibility
+---
+
+# ${INSERTED_WIKILINK_TITLE}
+`, 'utf8')
+}
+
 async function insertWikilink(page: Page, query = INSERTED_WIKILINK_QUERY) {
   const editor = page.locator('.bn-editor')
   await expect(editor).toBeVisible({ timeout: 5000 })
@@ -97,12 +114,15 @@ test.describe('Wikilink insertion and navigation', () => {
   test.describe.configure({ timeout: 60_000 })
 
   test.beforeEach(async ({ page }) => {
-    await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    tempVaultDir = createFixtureVaultCopy()
+    writeWikilinkFixtureNotes(tempVaultDir)
+    await openFixtureVault(page, tempVaultDir, { expectedReadyTitle: SOURCE_NOTE_TITLE })
+    await openNote(page, SOURCE_NOTE_TITLE)
+  })
 
-    const noteItem = page.locator('.app__note-list .cursor-pointer').filter({ hasText: SOURCE_NOTE_TITLE }).first()
-    await expect(noteItem).toBeVisible({ timeout: 10_000 })
-    await noteItem.click()
+  test.afterEach(() => {
+    if (tempVaultDir) removeFixtureVaultCopy(tempVaultDir)
+    tempVaultDir = null
   })
 
   test('[[ autocomplete inserts wikilink that is not broken', async ({ page }) => {

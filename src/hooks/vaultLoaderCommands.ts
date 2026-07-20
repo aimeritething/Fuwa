@@ -41,6 +41,11 @@ interface LoadedVaultData {
   entries: VaultEntry[]
 }
 
+export interface LoadedStartupVaultData extends LoadedVaultData {
+  reconciliation: Promise<VaultEntry[]> | null
+  source: 'scan' | 'snapshot'
+}
+
 interface LoadedVaultChrome {
   folders: FolderNode[]
   views: ViewFile[]
@@ -255,6 +260,32 @@ export async function loadVaultData({
     : await loadVaultEntries({ vaultPath, forceReload, reloadIfEmpty })
   console.log(`Vault scan complete: ${entries.length} entries found`)
   return { entries }
+}
+
+export async function loadStartupVaultData(options: MountedVaultEntriesOptions): Promise<LoadedStartupVaultData> {
+  if (!isTauri() || options.forceReload) {
+    const { entries } = await loadVaultData(options)
+    return { entries, reconciliation: null, source: 'scan' }
+  }
+
+  const snapshot = await tauriCall<unknown | null>({
+    command: 'read_vault_snapshot',
+    tauriArgs: { path: options.vaultPath },
+  })
+  if (snapshot === null || snapshot === undefined) {
+    const { entries } = await loadVaultData(options)
+    return { entries, reconciliation: null, source: 'scan' }
+  }
+
+  const activeVault = options.vaults?.find((vault) => vault.path === options.vaultPath)
+  const workspace = activeVault
+    ? workspaceIdentityFromVault(activeVault, { defaultWorkspacePath: options.defaultWorkspacePath })
+    : undefined
+  const entries = normalizeVaultEntries(snapshot, options.vaultPath, workspace)
+  const reconciliation = activeVault
+    ? loadWorkspaceEntries(activeVault, options.defaultWorkspacePath)
+    : loadVaultEntries({ vaultPath: options.vaultPath, forceReload: false })
+  return { entries, reconciliation, source: 'snapshot' }
 }
 
 export async function loadVaultChrome({

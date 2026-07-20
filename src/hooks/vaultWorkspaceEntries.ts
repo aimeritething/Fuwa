@@ -18,6 +18,57 @@ function entryWorkspacePath(entry: VaultEntry, fallbackVaultPath: string): strin
   return workspacePathOrEmpty(entry.workspace?.path) || workspacePathOrEmpty(fallbackVaultPath)
 }
 
+function normalizedBoundaryPath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/\/+$/, '')
+}
+
+function isPathInside(path: string, root: string): boolean {
+  const normalizedPath = normalizedBoundaryPath(path)
+  const normalizedRoot = normalizedBoundaryPath(root)
+  return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`)
+}
+
+export function nearestLoadedWorkspaceAncestor(path: string, loadedPaths: Set<string>): string | null {
+  return [...loadedPaths]
+    .filter((candidate) => candidate !== path && isPathInside(path, candidate))
+    .sort((left, right) => right.length - left.length)[0] ?? null
+}
+
+export function retagNestedWorkspaceEntries({
+  defaultWorkspacePath,
+  entries,
+  nestedVault,
+  ancestorPath,
+}: {
+  defaultWorkspacePath?: string | null
+  entries: VaultEntry[]
+  nestedVault: VaultOption
+  ancestorPath: string
+}): VaultEntry[] {
+  const identity = workspaceIdentityFromVault(nestedVault, { defaultWorkspacePath })
+  return entries.map((entry) => (
+    entryWorkspacePath(entry, ancestorPath) === ancestorPath && isPathInside(entry.path, nestedVault.path)
+      ? { ...entry, workspace: identity }
+      : entry
+  ))
+}
+
+function preferMostSpecificWorkspace(entries: VaultEntry[]): VaultEntry[] {
+  const preferred = new Map<string, VaultEntry>()
+  for (const entry of entries) {
+    const current = preferred.get(entry.path)
+    const currentSpecificity = current ? workspaceSpecificity(current) : -1
+    const nextSpecificity = workspaceSpecificity(entry)
+    if (!current || nextSpecificity > currentSpecificity) preferred.set(entry.path, entry)
+  }
+  return [...preferred.values()]
+}
+
+function workspaceSpecificity(entry: VaultEntry): number {
+  const workspacePath = entry.workspace?.path ?? ''
+  return isPathInside(entry.path, workspacePath) ? workspacePath.length : -1
+}
+
 export function initialVaultsForPath(path: string, vaults?: VaultOption[]): VaultOption[] | undefined {
   if (!vaults?.length) return undefined
   const matchingVaults = vaults.filter((vault) => vault.path === path)
@@ -146,10 +197,10 @@ export function replaceWorkspaceEntries({
 }): VaultEntry[] {
   return retagEntriesForWorkspaceMetadata({
     defaultWorkspacePath,
-    entries: [
+    entries: preferMostSpecificWorkspace([
       ...entries.filter((entry) => entryWorkspacePath(entry, fallbackVaultPath) !== loadedWorkspacePath),
       ...loadedEntries,
-    ],
+    ]),
     fallbackVaultPath,
     vaults,
   })
@@ -171,10 +222,10 @@ export function replaceLoadedWorkspaceEntries({
   const loadedPathSet = new Set(loadedWorkspacePathsFromEntries(loadedEntries, fallbackVaultPath))
   return retagEntriesForWorkspaceMetadata({
     defaultWorkspacePath,
-    entries: [
+    entries: preferMostSpecificWorkspace([
       ...entries.filter((entry) => !loadedPathSet.has(entryWorkspacePath(entry, fallbackVaultPath))),
       ...loadedEntries,
-    ],
+    ]),
     fallbackVaultPath,
     vaults,
   })

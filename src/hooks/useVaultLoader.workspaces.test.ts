@@ -298,7 +298,7 @@ describe('useVaultLoader workspaces', () => {
     })
   })
 
-  it('adds each mounted workspace as soon as that workspace finishes loading', async () => {
+  it('loads secondary workspaces progressively without an I/O stampede', async () => {
     const laputaLoad = createDeferred<VaultEntry[]>()
     const brian = { label: 'Brian', path: '/brian', alias: 'brian', available: true, mounted: true }
     const laputa = { label: 'Laputa', path: '/laputa', alias: 'laputa', available: true, mounted: true }
@@ -311,9 +311,10 @@ describe('useVaultLoader workspaces', () => {
 
     const { result } = renderHook(() => useVaultLoader('/brian', vaults, '/brian', vaults))
 
-    await waitFor(() => {
-      expect(result.current.entries.map((entry) => entry.workspace?.path).sort()).toEqual(['/brian', '/team'])
-    })
+    await waitFor(() => expect(result.current.entries.map((entry) => entry.workspace?.path)).toEqual(['/brian']))
+    expect(backendInvokeFn.mock.calls.some(([command, args]) => (
+      isVaultLoadCommand(command) && args?.path === '/team'
+    ))).toBe(false)
 
     await act(async () => {
       laputaLoad.resolve([{ ...mockEntries[0], path: '/laputa/note/hello.md' }])
@@ -322,6 +323,30 @@ describe('useVaultLoader workspaces', () => {
     await waitFor(() => {
       expect(result.current.entries.map((entry) => entry.workspace?.path).sort()).toEqual(['/brian', '/laputa', '/team'])
     })
+  })
+
+  it('derives a nested workspace from its loaded ancestor instead of scanning twice', async () => {
+    const parent = { label: 'Parent', path: '/vault', alias: 'parent', available: true, mounted: true }
+    const nested = { label: 'Nested', path: '/vault/nested', alias: 'nested', available: true, mounted: true }
+    mockWorkspaceBackend({
+      entriesByPath: {
+        '/vault': [
+          { ...entryForPath('/vault'), path: '/vault/root.md' },
+          { ...entryForPath('/vault'), path: '/vault/nested/inside.md' },
+        ],
+      },
+    })
+
+    const { result } = renderHook(() => useVaultLoader('/vault', [parent, nested], '/vault'))
+
+    await waitForEntries(result, 2)
+    await waitFor(() => {
+      expect(result.current.entries.find((entry) => entry.path.endsWith('inside.md'))?.workspace?.path)
+        .toBe('/vault/nested')
+    })
+    expect(backendInvokeFn.mock.calls.filter(([command, args]) => (
+      isVaultLoadCommand(command) && args?.path === '/vault/nested'
+    ))).toHaveLength(0)
   })
 
   it('preserves mounted workspace entries that arrive while the active vault scan is pending', async () => {

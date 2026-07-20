@@ -383,6 +383,18 @@ pub async fn list_vault(path: PathBuf) -> Result<Vec<VaultEntry>, String> {
 }
 
 #[tauri::command]
+pub async fn read_vault_snapshot(path: PathBuf) -> Result<Option<Vec<VaultEntry>>, String> {
+    if crate::settings::hide_gitignored_files_enabled() {
+        return Ok(None);
+    }
+    tokio::task::spawn_blocking(move || {
+        with_expanded_vault_root(path.as_path(), vault::read_vault_snapshot)
+    })
+    .await
+    .map_err(|e| format!("Task panicked: {e}"))?
+}
+
+#[tauri::command]
 pub async fn list_vault_folders(path: PathBuf) -> Result<Vec<FolderNode>, String> {
     tokio::task::spawn_blocking(move || {
         with_expanded_vault_root(path.as_path(), scan_visible_vault_folders)

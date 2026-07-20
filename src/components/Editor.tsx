@@ -71,7 +71,7 @@ interface Tab {
   content: string
 }
 
-interface EditorProps {
+export interface EditorProps {
   tabs: Tab[]
   activeTabPath: string | null
   isVaultLoading?: boolean
