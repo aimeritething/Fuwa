@@ -45,6 +45,7 @@ export interface EditorContentState {
   isArchived: boolean
   hasH1: boolean
   isDeletedPreview: boolean
+  isHtmlPreview: boolean
   isNonMarkdownText: boolean
   isSheet: boolean
   effectiveRawMode: boolean
