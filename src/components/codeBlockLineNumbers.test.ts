@@ -49,4 +49,37 @@ describe('code block line numbers', () => {
     controller.abort()
     expect(host.querySelector('[data-code-line-numbers]')).toBeNull()
   })
+
+  it('positions every number from the rendered line start without accumulating wrap errors', () => {
+    const root = document.createElement('div')
+    const layer = document.createElement('div')
+    const fixture = codeBlock('one\ntwo\nthree')
+    root.appendChild(fixture.block)
+    vi.spyOn(fixture.pre, 'getBoundingClientRect').mockReturnValue({
+      bottom: 180,
+      height: 80,
+      left: 0,
+      right: 100,
+      top: 100,
+      width: 100,
+      x: 0,
+      y: 100,
+      toJSON: () => ({}),
+    })
+    vi.spyOn(document, 'createRange').mockImplementation(() => {
+      let startOffset = 0
+      return {
+        collapse: vi.fn(),
+        getClientRects: () => [{ top: new Map([[0, 100], [4, 140], [8, 160]]).get(startOffset) ?? 100 }],
+        setEnd: vi.fn(),
+        setStart: vi.fn((_node: Node, offset: number) => { startOffset = offset }),
+      } as unknown as Range
+    })
+
+    syncCodeBlockLineNumbers(root, layer)
+
+    const numbers = layer.querySelectorAll<HTMLElement>('[data-code-line-numbers] > span')
+    expect(Array.from(numbers, (number) => number.style.top)).toEqual(['0px', '40px', '60px'])
+    expect(layer.querySelector<HTMLElement>('[data-code-line-numbers]')?.style.height).toBe('80px')
+  })
 })

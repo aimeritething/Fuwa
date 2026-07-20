@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
 import {
@@ -12,6 +12,7 @@ const CODE_NOTE_TITLE = 'Code Block Theme'
 
 function writeCodeThemeFixtureNote(tempVaultDir: string) {
   const notePath = path.join(tempVaultDir, CODE_NOTE_RELATIVE_PATH)
+  const longSourceLine = 'This deliberately long source line must wrap inside the narrow editor. '.repeat(8)
   fs.mkdirSync(path.dirname(notePath), { recursive: true })
   fs.writeFileSync(notePath, `---
 Is A: Note
@@ -28,7 +29,12 @@ function paint(answer: number) {
 }
 
 console.log(paint(1))
-const wrapped = "This deliberately long source line should wrap inside a narrow editor without adding horizontal scrolling to the code block."
+const wrapped = "${longSourceLine}"
+console.log(wrapped)
+
+
+
+
 \`\`\`
 
 Convert this paragraph with the shortcut.
@@ -47,6 +53,33 @@ async function tokenColors(locator: Locator) {
   return locator.evaluateAll((elements) => (
     Array.from(new Set(elements.map((element) => getComputedStyle(element).color)))
   ))
+}
+
+async function codeBlockGutterGeometry(page: Page, codeBlock: Locator) {
+  const gutter = page.locator('[data-code-line-numbers]').first()
+  return codeBlock.evaluate((block, gutterElement) => {
+    const code = block.querySelector('pre code')
+    const lastNumber = gutterElement?.lastElementChild
+    if (!code || !gutterElement || !lastNumber) return null
+
+    const blockRect = block.getBoundingClientRect()
+    const gutterRect = gutterElement.getBoundingClientRect()
+    const lastNumberRect = lastNumber.getBoundingClientRect()
+    const firstText = document.createTreeWalker(code, NodeFilter.SHOW_TEXT).nextNode()
+    if (!firstText || !firstText.textContent) return null
+    const sourceRange = document.createRange()
+    sourceRange.setStart(firstText, 0)
+    sourceRange.setEnd(firstText, 1)
+    const sourceRect = sourceRange.getClientRects()[0]
+    if (!sourceRect) return null
+    return {
+      blockBottom: blockRect.bottom,
+      blockTop: blockRect.top,
+      gutterTop: gutterRect.top,
+      lastNumberBottom: lastNumberRect.bottom,
+      sourceLeftOffset: sourceRect.left - blockRect.left,
+    }
+  }, await gutter.elementHandle())
 }
 
 test.describe('Editor code block theme', () => {
@@ -80,11 +113,16 @@ test.describe('Editor code block theme', () => {
     await expect(codeBlock).toBeVisible({ timeout: 10_000 })
     await expect(inlineCode).toBeVisible({ timeout: 10_000 })
     await expect(fencedCode).toBeVisible()
-    await expect(page.locator('[data-code-line-numbers]').first().locator(':scope > *')).toHaveCount(6)
+    await expect(page.locator('[data-code-line-numbers]').first().locator(':scope > *')).toHaveCount(11)
     await expect.poll(() => fencedCode.evaluate((element) => {
       const pre = element.closest('pre')
       return pre ? pre.scrollWidth <= pre.clientWidth : false
     })).toBe(true)
+    const gutterGeometry = await codeBlockGutterGeometry(page, codeBlock)
+    expect(gutterGeometry).not.toBeNull()
+    expect(gutterGeometry!.gutterTop).toBeGreaterThanOrEqual(gutterGeometry!.blockTop)
+    expect(gutterGeometry!.lastNumberBottom).toBeLessThanOrEqual(gutterGeometry!.blockBottom)
+    expect(gutterGeometry!.sourceLeftOffset).toBeLessThanOrEqual(58)
 
     await expect.poll(() => backgroundColor(inlineCode)).toBe('rgb(240, 240, 239)')
     await expect.poll(() => backgroundColor(fencedCode)).toBe('rgba(0, 0, 0, 0)')

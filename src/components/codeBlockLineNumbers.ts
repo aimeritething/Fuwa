@@ -35,36 +35,59 @@ function textBoundaryAt(code: HTMLElement, targetOffset: number): [Node, number]
   return [code, code.childNodes.length]
 }
 
-function visualRowsForLine(code: HTMLElement, start: number, end: number): number {
+function rangeTopAtOffset(code: HTMLElement, offset: number): number | null {
   const range = document.createRange()
-  const [startNode, startOffset] = textBoundaryAt(code, start)
-  const [endNode, endOffset] = textBoundaryAt(code, end)
+  const [startNode, startOffset] = textBoundaryAt(code, offset)
   range.setStart(startNode, startOffset)
-  range.setEnd(endNode, endOffset)
-  if (typeof range.getClientRects !== 'function') return 1
+  range.collapse(true)
+  const caretRect = Array.from(range.getClientRects?.() ?? [])[0]
+  if (caretRect) return caretRect.top
 
-  const rowTops = new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top)))
-  return Math.max(rowTops.size, 1)
+  const nextOffset = Math.min(offset + 1, code.textContent?.length ?? 0)
+  if (nextOffset === offset) return null
+  const [endNode, endOffset] = textBoundaryAt(code, nextOffset)
+  range.setEnd(endNode, endOffset)
+  return Array.from(range.getClientRects?.() ?? [])[0]?.top ?? null
 }
 
-function updateLineHeights(code: HTMLElement, gutter: HTMLElement, lines: string[]): void {
-  const computedLineHeight = Number.parseFloat(getComputedStyle(code).lineHeight)
+function numericStyle(style: CSSStyleDeclaration, property: 'paddingBottom' | 'paddingLeft' | 'paddingTop'): number {
+  const value = Number.parseFloat(style[property])
+  return Number.isFinite(value) ? value : 0
+}
+
+function updateLinePositions(code: HTMLElement, pre: HTMLElement, gutter: HTMLElement, lines: string[]): void {
+  const computedStyle = getComputedStyle(code)
+  const computedLineHeight = Number.parseFloat(computedStyle.lineHeight)
   const lineHeight = Number.isFinite(computedLineHeight) ? computedLineHeight : 20
+  const preStyle = getComputedStyle(pre)
+  const preRect = pre.getBoundingClientRect()
+  const contentTop = preRect.top + numericStyle(preStyle, 'paddingTop')
+  const contentHeight = Math.max(
+    preRect.height - numericStyle(preStyle, 'paddingTop') - numericStyle(preStyle, 'paddingBottom'),
+    lineHeight,
+  )
+  gutter.style.fontFamily = computedStyle.fontFamily
+  gutter.style.fontSize = computedStyle.fontSize
+  gutter.style.height = `${contentHeight}px`
+  gutter.style.lineHeight = `${lineHeight}px`
   let offset = 0
+  let fallbackTop = contentTop
 
   lines.forEach((line, index) => {
-    const rows = visualRowsForLine(code, offset, offset + line.length)
     const number = gutter.children.item(index) as HTMLElement | null
-    if (number) number.style.height = `${rows * lineHeight}px`
+    const measuredTop = rangeTopAtOffset(code, offset) ?? fallbackTop
+    if (number) number.style.top = `${Math.max(measuredTop - contentTop, 0)}px`
+    fallbackTop = measuredTop + lineHeight
     offset += line.length + 1
   })
 }
 
 function positionGutter(pre: HTMLElement, host: HTMLElement, gutter: HTMLElement): void {
+  const preStyle = getComputedStyle(pre)
   const preRect = pre.getBoundingClientRect()
   const hostRect = host.getBoundingClientRect()
-  gutter.style.left = `${preRect.left - hostRect.left + host.scrollLeft + 24}px`
-  gutter.style.top = `${preRect.top - hostRect.top + host.scrollTop + 24}px`
+  gutter.style.left = `${preRect.left - hostRect.left + host.scrollLeft + numericStyle(preStyle, 'paddingLeft')}px`
+  gutter.style.top = `${preRect.top - hostRect.top + host.scrollTop + numericStyle(preStyle, 'paddingTop')}px`
 }
 
 export function syncCodeBlockLineNumbers(
@@ -80,7 +103,7 @@ export function syncCodeBlockLineNumbers(
     const lines = (code.textContent ?? '').split('\n')
     const gutter = createLineNumbers(lines.length)
     positionGutter(pre, host, gutter)
-    updateLineHeights(code, gutter, lines)
+    updateLinePositions(code, pre, gutter, lines)
     gutters.push(gutter)
   })
   layer.replaceChildren(...gutters)
