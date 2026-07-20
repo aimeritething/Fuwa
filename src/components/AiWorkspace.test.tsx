@@ -537,7 +537,6 @@ describe('AiWorkspace', () => {
     })
     const menu = await screen.findByRole('menu')
 
-    expect(within(menu).getByText('Local agents')).toBeTruthy()
     expect(within(menu).getByText('Local models')).toBeTruthy()
     expect(within(menu).getByText('API models')).toBeTruthy()
     expect(within(menu).getByText('Claude Code')).toBeTruthy()
@@ -568,8 +567,9 @@ describe('AiWorkspace', () => {
       />,
     )
 
-    const trigger = await screen.findByTestId('ai-workspace-model-trigger')
-    expect(trigger).toHaveAccessibleName('Model: Agent default')
+    const trigger = await screen.findByTestId('ai-workspace-target-trigger')
+    expect(trigger).toHaveAccessibleName('AI target: Codex, Model: Agent default')
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-busy', 'false'))
     act(() => {
       trigger.focus()
       fireEvent.keyDown(trigger, { key: 'ArrowDown' })
@@ -582,6 +582,54 @@ describe('AiWorkspace', () => {
       ])
     })
     expect(controllerCalls.at(-1)).toEqual(expect.objectContaining({ model: 'gpt-5.6-sol' }))
+  })
+
+  it('combines installed agents and their models in one composer selector', async () => {
+    const onConversationSettingsChange = vi.fn()
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={[]}
+        conversationSettings={[{
+          id: 'combined-picker-chat',
+          title: 'Combined picker chat',
+          target_id: 'agent:codex',
+          model_id: null,
+          archived: false,
+        }]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+        onConversationSettingsChange={onConversationSettingsChange}
+      />,
+    )
+
+    const trigger = await screen.findByTestId('ai-workspace-target-trigger')
+    expect(screen.queryByTestId('ai-workspace-model-trigger')).toBeNull()
+    expect(trigger).toHaveAccessibleName('AI target: Codex, Model: Agent default')
+    expect(screen.getByTestId('ai-workspace-composer-controls')).toHaveClass('flex', 'items-center')
+    await waitFor(() => expect(trigger).toHaveAttribute('aria-busy', 'false'))
+
+    act(() => {
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    })
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getByText('Claude Code')).toBeTruthy()
+    expect(within(menu).getByText('Codex')).toBeTruthy()
+    fireEvent.click(within(menu).getByText('GPT-5.6 Sol'))
+
+    await waitFor(() => {
+      expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({
+          id: 'combined-picker-chat',
+          target_id: 'agent:codex',
+          model_id: 'gpt-5.6-sol',
+        }),
+      ])
+    })
+    expect(trigger).toHaveAccessibleName('AI target: Codex, Model: GPT-5.6 Sol')
   })
 
   it('restores independent model preferences when switching agents', async () => {
@@ -605,15 +653,18 @@ describe('AiWorkspace', () => {
       />,
     )
 
-    expect(await screen.findByTestId('ai-workspace-model-trigger')).toHaveAccessibleName('Model: GPT-5.6 Terra')
-    const targetTrigger = screen.getByTestId('ai-workspace-target-trigger')
+    const targetTrigger = await screen.findByTestId('ai-workspace-target-trigger')
+    await waitFor(() => {
+      expect(targetTrigger).toHaveAccessibleName('AI target: Codex, Model: GPT-5.6 Terra')
+      expect(targetTrigger).toHaveAttribute('aria-busy', 'false')
+    })
     act(() => {
       targetTrigger.focus()
       fireEvent.keyDown(targetTrigger, { key: 'ArrowDown' })
     })
-    fireEvent.click(within(await screen.findByRole('menu')).getByText('Claude Code'))
+    fireEvent.click(within(await screen.findByRole('menu')).getByText('Sonnet'))
     await waitFor(() => {
-      expect(screen.getByTestId('ai-workspace-model-trigger')).toHaveAccessibleName('Model: Sonnet')
+      expect(screen.getByTestId('ai-workspace-target-trigger')).toHaveAccessibleName('AI target: Claude Code, Model: Sonnet')
     })
 
     const claudeTrigger = screen.getByTestId('ai-workspace-target-trigger')
@@ -621,9 +672,9 @@ describe('AiWorkspace', () => {
       claudeTrigger.focus()
       fireEvent.keyDown(claudeTrigger, { key: 'ArrowDown' })
     })
-    fireEvent.click(within(await screen.findByRole('menu')).getByText('Codex'))
+    fireEvent.click(within(await screen.findByRole('menu')).getByText('GPT-5.6 Terra'))
     await waitFor(() => {
-      expect(screen.getByTestId('ai-workspace-model-trigger')).toHaveAccessibleName('Model: GPT-5.6 Terra')
+      expect(screen.getByTestId('ai-workspace-target-trigger')).toHaveAccessibleName('AI target: Codex, Model: GPT-5.6 Terra')
     })
   })
 
@@ -658,7 +709,7 @@ describe('AiWorkspace', () => {
     expect(controllerCalls.at(-1)).toEqual(expect.objectContaining({ model: undefined }))
   })
 
-  it('locks agent and model selectors while a response is active', async () => {
+  it('locks the combined agent and model selector while a response is active', async () => {
     mockedAgentStatus = 'thinking'
     render(
       <AiWorkspace
@@ -679,7 +730,7 @@ describe('AiWorkspace', () => {
     )
 
     expect(screen.getByTestId('ai-workspace-target-trigger')).toBeDisabled()
-    expect(await screen.findByTestId('ai-workspace-model-trigger')).toBeDisabled()
+    expect(screen.queryByTestId('ai-workspace-model-trigger')).toBeNull()
   })
 
   it('keeps direct API model targets separate from agent model choices', async () => {
@@ -707,7 +758,7 @@ describe('AiWorkspace', () => {
     })
   })
 
-  it('uses responsive composer control columns at narrow side-panel widths', async () => {
+  it('keeps composer controls on one row at narrow side-panel widths', async () => {
     localStorage.setItem('tolaria:ai-workspace-side-width', '240')
     render(
       <AiWorkspace
@@ -720,11 +771,9 @@ describe('AiWorkspace', () => {
       />,
     )
 
-    expect(await screen.findByTestId('ai-workspace-model-trigger')).toBeTruthy()
-    expect(screen.getByTestId('ai-workspace-composer-controls')).toHaveClass(
-      'grid-cols-[repeat(auto-fit,minmax(min(140px,100%),1fr))]',
-    )
-    expect(screen.getByTestId('ai-workspace-target-trigger')).toHaveClass('min-w-0', 'w-full')
+    expect(await screen.findByTestId('ai-workspace-target-trigger')).toHaveClass('min-w-0', 'flex-1')
+    expect(screen.queryByTestId('ai-workspace-model-trigger')).toBeNull()
+    expect(screen.getByTestId('ai-workspace-composer-controls')).toHaveClass('flex', 'items-center', 'overflow-hidden')
   })
 
   it('reports the selected workspace target to parent surfaces', async () => {
@@ -755,7 +804,7 @@ describe('AiWorkspace', () => {
       fireEvent.keyDown(trigger, { key: 'ArrowDown' })
     })
     const menu = await screen.findByRole('menu')
-    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /Codex/i }))
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Codex, Agent default' }))
 
     await waitFor(() => {
       expect(onActiveTargetChange).toHaveBeenLastCalledWith(expect.objectContaining({

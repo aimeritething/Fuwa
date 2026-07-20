@@ -5,10 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
@@ -50,8 +46,7 @@ import { cloneAiWorkspaceSessionUntilMessage } from '../lib/aiWorkspaceSessionSt
 import { AiPanelView } from './AiPanel'
 import { GuidanceWarning, WorkspaceHeader } from './AiWorkspaceChrome'
 import { WorkspaceResizeHandles } from './AiWorkspaceResizeHandles'
-import { AiAgentIcon } from './AiAgentIcon'
-import { AiAgentModelPicker } from './AiAgentModelPicker'
+import { AiTargetModelPicker } from './AiAgentModelPicker'
 import { ConversationSidebar } from './AiWorkspaceSidebar'
 import { ResizeHandle } from './ResizeHandle'
 import { SideWorkspaceHeader } from './AiWorkspaceSideHeader'
@@ -111,133 +106,6 @@ interface AiWorkspaceProps {
   vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   vaultPath: string
   vaultPaths?: string[]
-}
-
-function TargetGroup({ label, targets }: { label: string; targets: AiTarget[] }) {
-  if (targets.length === 0) return null
-
-  return (
-    <>
-      <DropdownMenuLabel>{label}</DropdownMenuLabel>
-      {targets.map((target) => (
-        <DropdownMenuRadioItem key={target.id} value={target.id} className="gap-2">
-          {target.kind === 'agent' ? <AiAgentIcon agent={target.agent} size={16} /> : null}
-          <span className="truncate">{target.label}</span>
-        </DropdownMenuRadioItem>
-      ))}
-    </>
-  )
-}
-
-function TargetPickerTrigger({
-  compact,
-  disabled,
-  hasTargets,
-  locale,
-  selectedTarget,
-}: {
-  compact: boolean
-  disabled: boolean
-  hasTargets: boolean
-  locale: AppLocale
-  selectedTarget: AiTarget
-}) {
-  return (
-    <DropdownMenuTrigger asChild>
-      <Button
-        type="button"
-        variant={compact ? 'ghost' : 'outline'}
-        size={compact ? 'xs' : 'sm'}
-        className={cn(
-          'justify-between gap-1.5 text-muted-foreground hover:text-foreground',
-          compact ? 'w-full min-w-0 rounded-full px-2 text-[12px]' : 'max-w-[240px] gap-2',
-        )}
-        disabled={disabled || !hasTargets}
-        aria-label={translate(locale, 'ai.workspace.targetLabel')}
-        data-testid="ai-workspace-target-trigger"
-      >
-        {selectedTarget.kind === 'agent' ? <AiAgentIcon agent={selectedTarget.agent} size={compact ? 14 : 16} /> : null}
-        <span className="truncate">{selectedTarget.shortLabel}</span>
-        <CaretDown size={compact ? 12 : 13} />
-      </Button>
-    </DropdownMenuTrigger>
-  )
-}
-
-function TargetPickerContent({
-  groups,
-  hasTargets,
-  locale,
-  onSelectTarget,
-  selectedTarget,
-  side,
-}: {
-  groups: AiWorkspaceTargetGroups
-  hasTargets: boolean
-  locale: AppLocale
-  selectedTarget: AiTarget
-  onSelectTarget: (targetId: string) => void
-  side: 'bottom' | 'top'
-}) {
-  const hasLocalAgentsSeparator = groups.localAgents.length > 0
-    && (groups.localModels.length > 0 || groups.apiModels.length > 0)
-  const hasLocalModelsSeparator = groups.localModels.length > 0 && groups.apiModels.length > 0
-
-  return (
-    <DropdownMenuContent align="start" side={side} className="min-w-[280px]">
-      {hasTargets ? (
-        <DropdownMenuRadioGroup value={selectedTarget.id} onValueChange={onSelectTarget}>
-          <TargetGroup label={translate(locale, 'ai.workspace.targetLocalAgents')} targets={groups.localAgents} />
-          {hasLocalAgentsSeparator && <DropdownMenuSeparator />}
-          <TargetGroup label={translate(locale, 'ai.workspace.targetLocalModels')} targets={groups.localModels} />
-          {hasLocalModelsSeparator && <DropdownMenuSeparator />}
-          <TargetGroup label={translate(locale, 'ai.workspace.targetApiModels')} targets={groups.apiModels} />
-        </DropdownMenuRadioGroup>
-      ) : (
-        <DropdownMenuItem disabled>{translate(locale, 'ai.workspace.noTargets')}</DropdownMenuItem>
-      )}
-    </DropdownMenuContent>
-  )
-}
-
-function TargetPicker({
-  compact = false,
-  disabled,
-  groups,
-  locale,
-  selectedTarget,
-  side = 'bottom',
-  onSelectTarget,
-}: {
-  compact?: boolean
-  disabled: boolean
-  groups: AiWorkspaceTargetGroups
-  locale: AppLocale
-  selectedTarget: AiTarget
-  side?: 'bottom' | 'top'
-  onSelectTarget: (targetId: string) => void
-}) {
-  const hasTargets = flatTargets(groups).length > 0
-
-  return (
-    <DropdownMenu>
-      <TargetPickerTrigger
-        compact={compact}
-        disabled={disabled}
-        hasTargets={hasTargets}
-        locale={locale}
-        selectedTarget={selectedTarget}
-      />
-      <TargetPickerContent
-        groups={groups}
-        hasTargets={hasTargets}
-        locale={locale}
-        selectedTarget={selectedTarget}
-        side={side}
-        onSelectTarget={onSelectTarget}
-      />
-    </DropdownMenu>
-  )
 }
 
 function PermissionPicker({
@@ -446,6 +314,8 @@ function activeContextForSession({
 }
 
 function ConversationComposerControls({
+  catalog,
+  catalogReady,
   disabled,
   groups,
   locale,
@@ -459,12 +329,14 @@ function ConversationComposerControls({
   modelOptions,
   selectedModelId,
 }: {
+  catalog: AiAgentModelCatalog
+  catalogReady: boolean
   disabled: boolean
   groups: AiWorkspaceTargetGroups
   locale: AppLocale
   onOpenAiSettings?: () => void
   onPermissionModeChange: (mode: AiAgentPermissionMode) => void
-  onSelectModel: (modelId: string) => void
+  onSelectModel: (agentId: AiAgentId, modelId: string) => void
   onSelectTarget: (targetId: string) => void
   permissionMode: AiAgentPermissionMode
   side: 'bottom' | 'top'
@@ -473,25 +345,21 @@ function ConversationComposerControls({
   selectedModelId: string
 }) {
   return (
-    <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(140px,100%),1fr))] gap-1" data-testid="ai-workspace-composer-controls">
-      <TargetPicker
-        compact
+    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden" data-testid="ai-workspace-composer-controls">
+      <AiTargetModelPicker
+        catalog={catalog}
+        catalogReady={catalogReady}
         disabled={disabled}
         groups={groups}
         locale={locale}
+        modelOptions={modelOptions}
+        onSelectAgentModel={onSelectModel}
+        onSelectTarget={onSelectTarget}
+        selectedModelId={selectedModelId}
         selectedTarget={target}
         side={side}
-        onSelectTarget={onSelectTarget}
       />
-      <AiAgentModelPicker
-        disabled={disabled}
-        label={translate(locale, 'ai.workspace.modelLabel')}
-        onChange={onSelectModel}
-        options={modelOptions}
-        selectedId={selectedModelId}
-        side={side}
-      />
-      <div className="col-span-full flex min-w-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <PermissionPicker
           compact
           disabled={disabled}
@@ -735,6 +603,8 @@ function ConversationSession({
   })
   const composerControls = (
     <ConversationComposerControls
+      catalog={modelCatalog}
+      catalogReady={modelCatalogReady}
       disabled={running}
       groups={groups}
       locale={locale}

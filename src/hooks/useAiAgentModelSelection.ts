@@ -77,7 +77,7 @@ export function useAiAgentModelActions({
   onSelectModel,
   selection,
   surface,
-}: UseAiAgentModelActionsOptions): (modelId: string) => void {
+}: UseAiAgentModelActionsOptions): (agentId: AiAgentId, modelId: string) => void {
   const fallbackModelRef = useRef<string | null>(null)
   useEffect(() => {
     if (!selection.agentId || !selection.unavailableModelId) {
@@ -92,12 +92,11 @@ export function useAiAgentModelActions({
     addLocalMarker(fallbackMessage)
   }, [addLocalMarker, fallbackMessage, onSelectModel, selection.agentId, selection.unavailableModelId])
 
-  return useCallback((modelId: string) => {
-    if (!selection.agentId) return
+  return useCallback((agentId: AiAgentId, modelId: string) => {
     if (disabled) return
     const normalized = modelId.trim() || null
-    setPreferredAgentModel(selection.agentId, normalized)
+    setPreferredAgentModel(agentId, normalized)
     onSelectModel(normalized)
-    trackAiAgentModelSelected(selection.agentId, normalized === null, surface)
-  }, [disabled, onSelectModel, selection.agentId, surface])
+    trackAiAgentModelSelected(agentId, normalized === null, surface)
+  }, [disabled, onSelectModel, surface])
 }
