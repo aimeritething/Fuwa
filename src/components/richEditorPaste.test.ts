@@ -51,6 +51,18 @@ describe('handleRichEditorPaste', () => {
     expect(context.defaultPasteHandler).toHaveBeenCalledWith()
   })
 
+  it('keeps explicit Markdown clips containing angle brackets on the regular paste path', () => {
+    const context = pasteContext({
+      'text/markdown': 'Use <kbd>Enter</kbd>',
+      'text/plain': 'Use <kbd>Enter</kbd>',
+    })
+
+    expect(handleRichEditorPaste(context)).toBe(true)
+
+    expect(context.defaultPasteHandler).toHaveBeenCalledWith()
+    expect(context.editor.pasteText).not.toHaveBeenCalled()
+  })
+
   it('pastes immediately, then rewrites imported image blocks to local assets', async () => {
     let completeImport: ((value: {
       failedCount: number

@@ -62,6 +62,19 @@ describe('Editor', () => {
   })
 
   it.each([
+    'The C file includes <time.h>.',
+    '<time.h>',
+    '#include <limits.h>',
+    'Render literal <strong> text safely',
+  ])('preserves angle-bracketed plain text literally: %s', (text) => {
+    const { defaultPasteHandler, handled, pasteText } = runConfiguredPlainTextPaste(text)
+
+    expect(handled).toBe(true)
+    expect(pasteText).toHaveBeenCalledWith(text)
+    expect(defaultPasteHandler).not.toHaveBeenCalled()
+  })
+
+  it.each([
     ['renders tab bar with open tabs', {}],
     ['shows BlockNote editor when a tab is active', {}],
     ['renders editor for modified file without breadcrumb status', { getNoteStatus: () => 'modified' as const }],
