@@ -229,6 +229,7 @@ fn codex_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
         PathBuf::from("/usr/local/bin/codex"),
         PathBuf::from("/opt/homebrew/bin/codex"),
         PathBuf::from("/Applications/Codex.app/Contents/Resources/codex"),
+        PathBuf::from("/Applications/ChatGPT.app/Contents/Resources/codex"),
     ];
     candidates.extend(nvm_codex_binary_candidates_for_home(home));
     candidates
@@ -1070,6 +1071,7 @@ printf '%s\n' '{"type":"item.completed","item":{"id":"msg_1","type":"agent_messa
             home.join(".npm-global/bin/codex"),
             home.join(".bun/bin/codex"),
             PathBuf::from("/Applications/Codex.app/Contents/Resources/codex"),
+            PathBuf::from("/Applications/ChatGPT.app/Contents/Resources/codex"),
         ];
 
         for candidate in expected {
