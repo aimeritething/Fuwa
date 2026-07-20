@@ -57,6 +57,16 @@ describe('editor callout schema', () => {
     expect(await roundTrip(markdown)).toBe(markdown)
   })
 
+  it('round-trips multiline callout bodies without appending backslashes', async () => {
+    const markdown = [
+      '> [!note] Clean source',
+      '> First line',
+      '> Second line',
+    ].join('\n')
+
+    expect(await roundTrip(markdown)).toBe(markdown)
+  })
+
   it('leaves ordinary blockquotes unchanged', async () => {
     const editor = BlockNoteEditor.create({ schema })
     const parsed = await editor.tryParseMarkdownToBlocks('> ordinary quote')

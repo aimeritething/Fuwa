@@ -822,6 +822,20 @@ files:
     noteGitUrls.copied: 6832bf85abaa03a6304cd1cce073d747
     noteGitUrls.error.copyFailed: 1952ee267f473efe8e28ca90659f75f6
     noteGitUrls.error.unavailable: ed08c134bba26350fd28f780c6f1b55b
+    editor.slash.callout: 1eaf6bb9a4bb96ff81a5d26a4cc0314c
+    editor.slash.callout.abstract: e353dbe42c8654f33588d4da0b517469
+    editor.slash.callout.bug: c83640c604dd5e0eacbf3de0a1181101
+    editor.slash.callout.danger: 990816b607ebf99b1415760965e4d564
+    editor.slash.callout.example: 0a52730597fb4ffa01fc117d9e71e3a9
+    editor.slash.callout.failure: e139a585510a502bbf1841cf589f5086
+    editor.slash.callout.info: 4059b0251f66a18cb56f544728796875
+    editor.slash.callout.note: 3b0649c72650c313a357338dcdfb64ec
+    editor.slash.callout.question: a97ea56b0e00b2379736ae60869ff66a
+    editor.slash.callout.quote: c48e929b2b1eabba2ba036884433345e
+    editor.slash.callout.success: 505a83f220c02df2f85c3810cd9ceb38
+    editor.slash.callout.tip: 12ae2a12586001e30745cb0457586ae3
+    editor.slash.callout.todo: bc97e12414b8ea00107c66aa552029ae
+    editor.slash.callout.warning: 0eaadb4fcb48a0a0ed7bc9868be9fbaa
     editor.slash.date: 44749712dbec183e983dcd78a7736c41
     editor.slash.datetime: 2b0b7c9cbd6d6e9fa6b99aa06e828673
     editor.slash.htmlBlock: 3ae2ca009c2969a3af7c0b4d1098eafb

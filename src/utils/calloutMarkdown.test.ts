@@ -4,10 +4,10 @@ import {
   buildCalloutBlock,
   calloutHeading,
   calloutStartsExpanded,
-  calloutVisualFamily,
   parseCalloutMarker,
   serializeCalloutBlock,
 } from './calloutMarkdown'
+import { resolveCalloutDefinition } from './calloutCatalog'
 
 function quote(content: InlineItem[]): BlockLike {
   return { type: 'quote', content }
@@ -33,10 +33,29 @@ describe('callout markers', () => {
   })
 
   it('maps known aliases to semantic families and unknown types to note styling', () => {
-    expect(calloutVisualFamily('TIP')).toBe('success')
-    expect(calloutVisualFamily('caution')).toBe('warning')
-    expect(calloutVisualFamily('bug')).toBe('error')
-    expect(calloutVisualFamily('custom-alert')).toBe('note')
+    expect(resolveCalloutDefinition({ type: 'TIP' }).family).toBe('success')
+    expect(resolveCalloutDefinition({ type: 'caution' }).family).toBe('warning')
+    expect(resolveCalloutDefinition({ type: 'bug' }).family).toBe('error')
+    expect(resolveCalloutDefinition({ type: 'custom-alert' }).family).toBe('note')
+  })
+
+  it('resolves every default Obsidian type and alias to its canonical style', () => {
+    const canonicalType = (type: string) => resolveCalloutDefinition({ type }).type
+    expect(canonicalType('summary')).toBe('abstract')
+    expect(canonicalType('tldr')).toBe('abstract')
+    expect(canonicalType('hint')).toBe('tip')
+    expect(canonicalType('important')).toBe('tip')
+    expect(canonicalType('check')).toBe('success')
+    expect(canonicalType('done')).toBe('success')
+    expect(canonicalType('help')).toBe('question')
+    expect(canonicalType('faq')).toBe('question')
+    expect(canonicalType('caution')).toBe('warning')
+    expect(canonicalType('attention')).toBe('warning')
+    expect(canonicalType('fail')).toBe('failure')
+    expect(canonicalType('missing')).toBe('failure')
+    expect(canonicalType('error')).toBe('danger')
+    expect(canonicalType('cite')).toBe('quote')
+    expect(canonicalType('custom-alert')).toBe('note')
   })
 
   it('uses the fold marker as the initial disclosure state', () => {
@@ -86,5 +105,33 @@ describe('callout block conversion', () => {
     expect(editor.blocksToMarkdownLossy).toHaveBeenCalledWith([
       expect.objectContaining({ type: 'paragraph' }),
     ])
+  })
+
+  it('does not add hard-break backslashes to multiline callout bodies', () => {
+    const editor = {
+      blocksToMarkdownDirect: vi.fn().mockReturnValue({
+        markdown: 'First line\nSecond line',
+        metrics: {
+          blockCount: 1,
+          cacheHits: 0,
+          cacheMisses: 1,
+          durationMs: 0,
+          fallbackReason: null,
+        },
+        supported: true,
+      }),
+      blocksToMarkdownLossy: vi.fn().mockReturnValue('First line\\\\\nSecond line'),
+    }
+
+    expect(serializeCalloutBlock(editor, {
+      type: 'calloutBlock',
+      props: { calloutType: 'note', fold: '', title: '' },
+      content: [{ type: 'text', text: 'First line\nSecond line' }],
+    })).toBe([
+      '> [!note]',
+      '> First line',
+      '> Second line',
+    ].join('\n'))
+    expect(editor.blocksToMarkdownLossy).not.toHaveBeenCalled()
   })
 })

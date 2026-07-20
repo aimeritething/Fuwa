@@ -1,9 +1,9 @@
 import type { BlockLike, InlineItem, MarkdownSerializer } from './durableMarkdownBlocks'
+import { serializeBlockNoteMarkdown } from './blockNoteDirectMarkdown'
 
 export const CALLOUT_BLOCK_TYPE = 'calloutBlock'
 
 export type CalloutFold = '' | '+' | '-'
-export type CalloutVisualFamily = 'error' | 'example' | 'note' | 'quote' | 'success' | 'warning'
 
 export interface CalloutMarker {
   fold: CalloutFold
@@ -18,11 +18,6 @@ interface CalloutBlockProps {
 }
 
 const CALLOUT_MARKER = /^\[!([a-z][a-z0-9_-]*)\]([+-]?)[ \t]*(.*)$/iu
-const SUCCESS_TYPES = new Set(['check', 'done', 'hint', 'success', 'tip'])
-const WARNING_TYPES = new Set(['attention', 'caution', 'faq', 'help', 'important', 'question', 'warning'])
-const ERROR_TYPES = new Set(['bug', 'danger', 'error', 'fail', 'failure', 'missing'])
-const QUOTE_TYPES = new Set(['cite', 'quote'])
-
 function normalizedCalloutType(type: string): string {
   return type.trim().toLowerCase()
 }
@@ -43,16 +38,6 @@ export function parseCalloutMarker(line: string): CalloutMarker | null {
 export function formatCalloutMarker(marker: CalloutMarker): string {
   const head = `[!${normalizedCalloutType(marker.type)}]${marker.fold}`
   return marker.title ? `${head} ${marker.title}` : head
-}
-
-export function calloutVisualFamily(type: string): CalloutVisualFamily {
-  const normalized = normalizedCalloutType(type)
-  if (SUCCESS_TYPES.has(normalized)) return 'success'
-  if (WARNING_TYPES.has(normalized)) return 'warning'
-  if (ERROR_TYPES.has(normalized)) return 'error'
-  if (QUOTE_TYPES.has(normalized)) return 'quote'
-  if (normalized === 'example') return 'example'
-  return 'note'
 }
 
 export function calloutStartsExpanded(fold: CalloutFold): boolean {
@@ -173,11 +158,15 @@ function quoteLine(line: string): string {
 
 function serializeCalloutBody(editor: MarkdownSerializer, block: BlockLike): string {
   if (!Array.isArray(block.content) || block.content.length === 0) return ''
-  return editor.blocksToMarkdownLossy([{
+  const markdown = serializeBlockNoteMarkdown(editor, [{
     content: block.content,
     props: {},
     type: 'paragraph',
   }]).trim()
+  const lines = markdown.split('\n')
+  return lines.map((line, index) => (
+    index < lines.length - 1 && line.endsWith('\\') ? line.slice(0, -1) : line
+  )).join('\n')
 }
 
 export function serializeCalloutBlock(editor: MarkdownSerializer, block: BlockLike): string {

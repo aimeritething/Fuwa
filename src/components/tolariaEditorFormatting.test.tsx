@@ -8,6 +8,7 @@ vi.mock('../lib/telemetry', () => ({
 
 import {
   addItemsToMediaGroup,
+  createCalloutSlashMenuItem,
   createDateTimeSlashMenuItems,
   createHtmlBlockSlashMenuItem,
   createMathSlashMenuItem,
@@ -22,6 +23,9 @@ import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '../utils/htmlBlockMa
 import { trackEvent } from '../lib/telemetry'
 import { MATH_BLOCK_TYPE } from '../utils/mathMarkdown'
 import { mermaidFenceSource } from '../utils/mermaidMarkdown'
+import { CALLOUT_BLOCK_TYPE } from '../utils/calloutMarkdown'
+import type { ObsidianCalloutType } from '../utils/calloutCatalog'
+import { calloutIconForType } from './calloutIcons'
 
 function createSlashCommandEditorFixture() {
   const block = { id: 'active-block' }
@@ -307,6 +311,57 @@ describe('tolariaEditorFormatting', () => {
     }])
     expect(updateBlock).not.toHaveBeenCalled()
     expect(trackEvent).toHaveBeenCalledWith('editor_math_slash_command_used')
+  })
+
+  it('creates a callout parent command with every default style in its submenu', () => {
+    const { block, editor, replaceBlocks } = createSlashCommandEditorFixture()
+    const calloutTypeTitles = Object.fromEntries([
+      'note',
+      'abstract',
+      'info',
+      'todo',
+      'tip',
+      'success',
+      'question',
+      'warning',
+      'failure',
+      'danger',
+      'bug',
+      'example',
+      'quote',
+    ].map(type => [type, type])) as Record<ObsidianCalloutType, string>
+    const calloutItem = createCalloutSlashMenuItem(editor, {
+      calloutTitle: 'Callout',
+      calloutTypeTitles,
+    })
+
+    expect(calloutItem).toEqual(expect.objectContaining({
+      key: 'callout',
+      title: 'Callout',
+      aliases: ['admonition', 'alert', 'aside'],
+    }))
+    expect(calloutItem.submenuItems?.map(item => item.key)).toEqual(
+      Object.keys(calloutTypeTitles).map(type => `callout_${type}`),
+    )
+
+    calloutItem.submenuItems?.find(item => item.key === 'callout_tip')?.onItemClick()
+
+    expect(replaceBlocks).toHaveBeenCalledWith([block], [{
+      type: CALLOUT_BLOCK_TYPE,
+      props: { calloutType: 'tip', fold: '', title: '' },
+    }])
+    expect(trackEvent).toHaveBeenCalledWith('editor_callout_slash_command_used', {
+      type: 'tip',
+    })
+  })
+
+  it('uses a distinct Phosphor icon for every default callout type', () => {
+    const types: ObsidianCalloutType[] = [
+      'note', 'abstract', 'info', 'todo', 'tip', 'success', 'question',
+      'warning', 'failure', 'danger', 'bug', 'example', 'quote',
+    ]
+
+    expect(new Set(types.map(calloutIconForType)).size).toBe(types.length)
   })
 
   it('inserts resolved local date and time values from slash commands', () => {

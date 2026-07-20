@@ -1,35 +1,19 @@
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react'
 import {
   CaretRight,
-  CheckCircle,
-  Info,
-  Lightbulb,
-  Quotes,
-  WarningCircle,
-  XCircle,
-  type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
-import { useState } from 'react'
+import { createElement, useState } from 'react'
 import { useAppLocale } from '../hooks/useAppPreferences'
 import { translate } from '../lib/i18n'
 import {
   CALLOUT_BLOCK_TYPE,
   calloutHeading,
   calloutStartsExpanded,
-  calloutVisualFamily,
   type CalloutFold,
-  type CalloutVisualFamily,
 } from '../utils/calloutMarkdown'
+import { resolveCalloutDefinition } from '../utils/calloutCatalog'
+import { calloutIconForType } from './calloutIcons'
 import { Button } from './ui/button'
-
-const CALLOUT_ICONS: Record<CalloutVisualFamily, PhosphorIcon> = {
-  error: XCircle,
-  example: Lightbulb,
-  note: Info,
-  quote: Quotes,
-  success: CheckCircle,
-  warning: WarningCircle,
-}
 
 const CALLOUT_BLOCK_CONFIG = {
   type: CALLOUT_BLOCK_TYPE,
@@ -64,8 +48,8 @@ function CalloutHeading({
   heading: string
   onToggle: () => void
 }) {
-  const Icon = CALLOUT_ICONS[calloutVisualFamily(calloutType)]
-  if (!fold) return <><Icon aria-hidden="true" weight="fill" /><span>{heading}</span></>
+  const icon = createElement(calloutIconForType(calloutType), { 'aria-hidden': true, weight: 'fill' })
+  if (!fold) return <>{icon}<span>{heading}</span></>
 
   return (
     <Button
@@ -79,7 +63,7 @@ function CalloutHeading({
       onClick={onToggle}
     >
       <CaretRight className="tolaria-callout__caret" aria-hidden="true" />
-      <Icon aria-hidden="true" weight="fill" />
+      {icon}
       <span>{heading}</span>
     </Button>
   )
@@ -90,7 +74,7 @@ function CalloutBlockView({ block, contentRef }: CalloutBlockViewProps) {
   const { calloutType, fold: foldProp, title } = block.props
   const fold = normalizedCalloutFold(foldProp)
   const [expanded, setExpanded] = useState(calloutStartsExpanded(fold))
-  const family = calloutVisualFamily(calloutType)
+  const family = resolveCalloutDefinition({ type: calloutType }).family
   const heading = calloutHeading(calloutType, title, translate(locale, 'editor.callout.defaultHeading'))
 
   return (

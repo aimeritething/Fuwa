@@ -16,6 +16,7 @@ import {
   ListChecks,
   ListNumbers,
   Minus,
+  Note,
   Pi,
   Paragraph,
   Quotes,
@@ -33,6 +34,11 @@ import {
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
 import { trackEvent } from '../lib/telemetry'
+import { CALLOUT_BLOCK_TYPE, calloutHeading } from '../utils/calloutMarkdown'
+import {
+  OBSIDIAN_CALLOUT_DEFINITIONS,
+  type ObsidianCalloutType,
+} from '../utils/calloutCatalog'
 import {
   RICH_EDITOR_BLOCK_TYPE_DEFINITIONS,
   type RichEditorBlockTypeDefinition,
@@ -42,8 +48,12 @@ import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '../utils/htmlBlockMa
 import { MATH_BLOCK_TYPE } from '../utils/mathMarkdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown'
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
+import { calloutIconForType } from './calloutIcons'
 
-type TolariaSlashMenuItem = DefaultReactSuggestionItem & { key: string }
+export type TolariaSlashMenuItem = DefaultReactSuggestionItem & {
+  key: string
+  submenuItems?: TolariaSlashMenuItem[]
+}
 type TolariaBlockTypeSelectItem = RichEditorBlockTypeDefinition & {
   icon: PhosphorIcon
 }
@@ -61,6 +71,8 @@ type BlockSlashMenuItemConfig = {
   type: string
 }
 type TolariaSlashMenuLabels = {
+  calloutTitle: string
+  calloutTypeTitles: Record<ObsidianCalloutType, string>
   dateTitle: string
   datetimeTitle: string
   htmlTitle: string
@@ -116,6 +128,7 @@ const TOLARIA_BLOCK_TYPE_SELECT_ICONS: Record<RichEditorBlockTypeKey, PhosphorIc
 const TOLARIA_SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
   audio: SpeakerHigh,
   bullet_list: ListBullets,
+  callout: Note,
   check_list: ListChecks,
   code_block: CodeBlock,
   date: CalendarBlank,
@@ -143,6 +156,10 @@ const TOLARIA_SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
   video: Video,
   whiteboard: ScribbleLoop,
 }
+
+const DEFAULT_CALLOUT_TYPE_TITLES = Object.fromEntries(
+  OBSIDIAN_CALLOUT_DEFINITIONS.map(({ type }) => [type, calloutHeading(type, '')]),
+) as Record<ObsidianCalloutType, string>
 
 const DATE_TIME_SLASH_COMMANDS: ReadonlyArray<{
   aliases: string[]
@@ -275,6 +292,39 @@ export function createHtmlBlockSlashMenuItem(
   })
 }
 
+export function createCalloutSlashMenuItem(
+  editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
+  labels: Pick<TolariaSlashMenuLabels, 'calloutTitle' | 'calloutTypeTitles'> = {
+    calloutTitle: 'Callout',
+    calloutTypeTitles: DEFAULT_CALLOUT_TYPE_TITLES,
+  },
+): TolariaSlashMenuItem {
+  const blockEditor = editor as unknown as SlashInsertEditor
+  const submenuItems = OBSIDIAN_CALLOUT_DEFINITIONS.map(({ aliases, type }) => ({
+    aliases: [...aliases],
+    icon: createTolariaSlashMenuIcon(calloutIconForType(type)),
+    key: `callout_${type}`,
+    onItemClick: () => {
+      const block = blockEditor.getTextCursorPosition().block
+      blockEditor.replaceBlocks([block], [{
+        type: CALLOUT_BLOCK_TYPE,
+        props: { calloutType: type, fold: '', title: '' },
+      }])
+      trackEvent('editor_callout_slash_command_used', { type })
+    },
+    title: labels.calloutTypeTitles[type],
+  } satisfies TolariaSlashMenuItem))
+
+  return {
+    aliases: ['admonition', 'alert', 'aside'],
+    badge: '›',
+    key: 'callout',
+    onItemClick: () => {},
+    submenuItems,
+    title: labels.calloutTitle,
+  } as TolariaSlashMenuItem
+}
+
 function createBlockSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
   config: BlockSlashMenuItemConfig,
@@ -370,6 +420,12 @@ export function getTolariaSlashMenuItems(
 ) {
   const defaultItems = getDefaultReactSlashMenuItems(editor) as TolariaSlashMenuItem[]
   const otherGroup = defaultItems.find((item) => item.key === 'emoji')?.group
+  const quoteIndex = defaultItems.findIndex(item => item.key === 'quote')
+  const calloutItem = {
+    ...createCalloutSlashMenuItem(editor, labels),
+    group: defaultItems.at(quoteIndex)?.group,
+  }
+  defaultItems.splice(quoteIndex === -1 ? 0 : quoteIndex + 1, 0, calloutItem)
   const dateTimeItems = createDateTimeSlashMenuItems(editor, labels).map((item) => ({
     ...item,
     group: otherGroup,
