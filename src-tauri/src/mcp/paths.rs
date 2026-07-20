@@ -74,8 +74,7 @@ mod tests {
     fn includes_windows_install_locations() {
         let local_app_data = PathBuf::from(r"C:\Users\alex\AppData\Local");
         let install_dir = local_app_data.join("Tolaria");
-        let roots =
-            runtime_resource_roots_for_env(None, None, Some(local_app_data.clone()));
+        let roots = runtime_resource_roots_for_env(None, None, Some(local_app_data.clone()));
 
         assert_eq!(roots.iter().filter(|root| *root == &install_dir).count(), 1);
         assert!(roots.contains(&local_app_data.join("tolaria")));
