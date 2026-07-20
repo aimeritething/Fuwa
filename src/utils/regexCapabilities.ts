@@ -5,6 +5,7 @@ export function supportsModernRegexFeatures(): boolean {
     new RegExp('(?<=a)b')
     new RegExp('(?<!a)b')
     new RegExp('(?<label>a)')
+    new RegExp('(?<=^|\\s|\\p{P}|\\p{S})a', 'gu')
     return true
   } catch {
     return false

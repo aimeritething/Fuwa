@@ -24,20 +24,28 @@ function rejectsLegacyWebKitRegex(source: string, flags?: string): boolean {
   return source.includes('(?<')
 }
 
-function installLegacyWebKitRegExp() {
-  const LegacyWebKitRegExp = function (pattern?: string | RegExp, flags?: string) {
+function installRejectingRegExp(shouldReject: (source: string, flags?: string) => boolean) {
+  const RejectingRegExp = function (pattern?: string | RegExp, flags?: string) {
     const source = pattern instanceof NativeRegExp ? pattern.source : String(pattern ?? '')
-    if (rejectsLegacyWebKitRegex(source, flags)) {
+    if (shouldReject(source, flags)) {
       throw new SyntaxError('Invalid regular expression: invalid group specifier name')
     }
 
     return new NativeRegExp(pattern, flags)
   } as RegExpConstructor
 
-  Object.setPrototypeOf(LegacyWebKitRegExp, NativeRegExp)
-  LegacyWebKitRegExp.prototype = NativeRegExp.prototype
+  Object.setPrototypeOf(RejectingRegExp, NativeRegExp)
+  RejectingRegExp.prototype = NativeRegExp.prototype
 
-  setRegExpConstructor(LegacyWebKitRegExp)
+  setRegExpConstructor(RejectingRegExp)
+}
+
+function installLegacyWebKitRegExp() {
+  installRejectingRegExp(rejectsLegacyWebKitRegex)
+}
+
+function installPartialLookbehindWebKitRegExp() {
+  installRejectingRegExp(source => source.includes('(?<=^|\\s|\\p{P}|\\p{S})'))
 }
 
 afterEach(() => {
@@ -46,6 +54,16 @@ afterEach(() => {
 })
 
 describe('MarkdownContent WebKit regex fallback', () => {
+  async function expectEmailMarkdownFallback() {
+    const { MarkdownContent } = await import('./MarkdownContent')
+
+    expect(() => {
+      render(<MarkdownContent content="Contact luca@example.com for details" />)
+    }).not.toThrow()
+    expect(screen.getByText('Contact luca@example.com for details')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'luca@example.com' })).not.toBeInTheDocument()
+  }
+
   it('renders AI code fences without syntax highlighting when modern regex features are unavailable', async () => {
     installLegacyWebKitRegExp()
     vi.resetModules()
@@ -62,12 +80,13 @@ describe('MarkdownContent WebKit regex fallback', () => {
     installLegacyWebKitRegExp()
     vi.resetModules()
 
-    const { MarkdownContent } = await import('./MarkdownContent')
+    await expectEmailMarkdownFallback()
+  })
 
-    expect(() => {
-      render(<MarkdownContent content="Contact luca@example.com for details" />)
-    }).not.toThrow()
-    expect(screen.getByText('Contact luca@example.com for details')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'luca@example.com' })).not.toBeInTheDocument()
+  it('renders AI email text when WebKit only supports fixed-length lookbehind', async () => {
+    installPartialLookbehindWebKitRegExp()
+    vi.resetModules()
+
+    await expectEmailMarkdownFallback()
   })
 })
