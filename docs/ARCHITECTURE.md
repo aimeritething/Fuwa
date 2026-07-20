@@ -479,14 +479,16 @@ The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is repl
 
 ## Search
 
-Search is keyword-based, using `walkdir` to scan all `.md` files in the vault directory. No external binary or indexing step required.
+Search is keyword-based and keeps a process-local index per vault. `walkdir` refreshes the visible `.md` path set, while unchanged files reuse indexed title/content and only created or metadata-changed files are read again. The index is never written to disk.
 
-- Matches query against file titles and content (case-insensitive)
-- Scores results: title matches ranked higher than content-only matches
+- Matches query against file titles, vault-relative paths, and content (case-insensitive)
+- Scores results by explicit match category: exact title, title, path, then body
 - Extracts contextual snippets around the first match
 - Skips hidden files
 
-The `search_vault` Tauri command runs the scan in a blocking Tokio task and returns results sorted by relevance score.
+The `search_vault` Tauri command refreshes and queries the shared index in a blocking Tokio task, returning absolute and vault-relative paths plus match category and relevance score. Create, edit, rename, delete, Gitignore, and mount changes are detected on the next query.
+
+The global Quick Launcher is a singleton `quick-launcher` Tauri webview opened by `tauri-plugin-global-shortcut`. Its renderer fans `search_vault` out across available, mounted vaults whose installation-local `searchEnabled` preference is on, and keys duplicates by vault slug plus relative path. Selecting a result emits a validated `tolaria://` URL to the main window, which reuses `useDeepLinks` for vault switching, reload, and note selection. Quick capture resolves configured, active, then last-successful destinations; configured-but-unavailable destinations require explicit user input. Creation previews and rechecks a unique path before calling the create-only vault-bounded command, so existing notes are never overwritten.
 
 The note-list search field combines client-side scoped filtering with that same command: title, snippet, and visible-property matches resolve immediately, while backend body-content hits use `search_vault` with frontmatter excluded before adding matching paths for the currently visible workspace roots without displaying matched body text in the note row.
 
@@ -835,7 +837,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 
 | Command | Description |
 |---------|-------------|
-| `search_vault` | Keyword search across vault files |
+| `search_vault` | Incremental indexed keyword search across vault titles, paths, and content |
 
 ### Vault Maintenance
 

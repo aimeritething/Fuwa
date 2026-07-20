@@ -3,6 +3,7 @@ import { type KeyboardEvent, useState } from 'react'
 import { AccentColorPicker } from './AccentColorPicker'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { WorkspaceGlobalSearchSetting } from './WorkspaceGlobalSearchSetting'
 import { SettingsGroupItem } from './SettingsControls'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { WorkspaceMoveButtons } from './WorkspaceMoveButtons'
@@ -298,6 +299,7 @@ function WorkspaceSettingsRow({
         />
       )}
       <WorkspaceIdentityInputs canEdit={canEdit} locale={locale} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} />
+      <WorkspaceGlobalSearchSetting locale={locale} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} />
     </div>
   )
 }

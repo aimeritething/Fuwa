@@ -11,6 +11,7 @@ export interface PersistedVaultList {
     color?: string | null
     icon?: string | null
     mounted?: boolean | null
+    searchEnabled?: boolean | null
   }>
   active_vault: string | null
   default_workspace_path?: string | null
@@ -26,6 +27,7 @@ function persistedVaultOption(v: PersistedVaultList['vaults'][number]): VaultOpt
     color: v.color ?? null,
     icon: v.icon ?? null,
     mounted: v.mounted !== false,
+    searchEnabled: v.searchEnabled !== false,
   }
 }
 
@@ -43,14 +45,22 @@ async function checkAvailability(v: PersistedVaultList['vaults'][number]): Promi
   }
 }
 
-export async function loadVaultList(): Promise<{
+function activeVaultEntry(data: PersistedVaultList): PersistedVaultList['vaults'][number] | null {
+  const path = data.active_vault
+  if (!path || data.vaults.some((vault) => vault.path === path)) return null
+  const label = path.split('/').filter(Boolean).pop() ?? 'Workspace'
+  return { label, path, mounted: true, searchEnabled: true }
+}
+
+export async function loadVaultList(options: { includeActive?: boolean } = {}): Promise<{
   vaults: VaultOption[]
   activeVault: string | null
   defaultWorkspacePath: string | null
   hiddenDefaults: string[]
 }> {
   const data = await tauriCall<PersistedVaultList>('load_vault_list', {})
-  const persisted = data.vaults
+  const active = options.includeActive ? activeVaultEntry(data) : null
+  const persisted = active ? [...data.vaults, active] : data.vaults
   const checked = await Promise.all(persisted.map(checkAvailability))
   return {
     vaults: checked,
@@ -75,6 +85,7 @@ export function saveVaultList(
       color: v.color ?? null,
       icon: v.icon ?? null,
       mounted: v.mounted !== false,
+      searchEnabled: v.searchEnabled !== false,
     })),
     active_vault: activeVault,
     default_workspace_path: defaultWorkspacePath,

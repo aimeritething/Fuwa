@@ -327,6 +327,8 @@ fn setup_desktop_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
         .plugin(tauri_plugin_updater::Builder::new().build())?;
     app.handle().plugin(tauri_plugin_process::init())?;
     app.handle().plugin(tauri_plugin_opener::init())?;
+    app.handle()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
     if should_use_native_desktop_menu(std::env::consts::OS) {
         menu::setup_menu(app)?;
     }

@@ -1014,6 +1014,7 @@ describe('App', () => {
             color: null,
             icon: null,
             mounted: true,
+            searchEnabled: true,
           }],
           active_vault: selectedVaultPath,
           default_workspace_path: selectedVaultPath,

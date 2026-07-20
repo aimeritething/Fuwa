@@ -63,6 +63,15 @@ import { SettingsFooter } from './SettingsFooter'
 import { VaultContentSettingsSection } from './VaultContentSettingsSection'
 import { WorkspaceSettingsSection } from './WorkspaceSettingsSection'
 import {
+  QuickLauncherSettingsSection,
+} from './QuickLauncherSettingsSection'
+import {
+  quickLauncherSettingsPatch,
+  quickLauncherSettingsValue,
+  type QuickLauncherSettingsChange,
+  type QuickLauncherSettingsValue,
+} from '../lib/quickLauncherSettings'
+import {
   resolveAllNotesFileVisibility,
   settingsWithAllNotesFileVisibility,
   type AllNotesFileVisibility,
@@ -131,6 +140,7 @@ interface SettingsDraft {
   crashReporting: boolean
   analytics: boolean
   explicitOrganization: boolean
+  quickLauncher: QuickLauncherSettingsValue
 }
 
 interface SettingsBodyProps {
@@ -194,6 +204,8 @@ interface SettingsBodyProps {
   onRemoveVault?: (path: string) => void; onReorderVaults?: (orderedPaths: string[]) => void; onSetDefaultWorkspace?: (path: string) => void; onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   explicitOrganization: boolean
   setExplicitOrganization: (value: boolean) => void
+  quickLauncher: QuickLauncherSettingsValue
+  setQuickLauncher: QuickLauncherSettingsChange
   crashReporting: boolean
   setCrashReporting: (value: boolean) => void
   analytics: boolean
@@ -247,6 +259,7 @@ function createSettingsDraft(
     crashReporting: settings.crash_reporting_enabled ?? false,
     analytics: settings.analytics_enabled ?? false,
     explicitOrganization: explicitOrganizationEnabled,
+    quickLauncher: quickLauncherSettingsValue(settings),
   }
 }
 
@@ -298,6 +311,7 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     ai_model_providers: draft.aiModelProviders.length > 0 ? draft.aiModelProviders : null,
     hide_gitignored_files: draft.hideGitignoredFiles,
     multi_workspace_enabled: draft.multiWorkspaceEnabled,
+    ...quickLauncherSettingsPatch(draft.quickLauncher),
   }
   return settingsWithAllNotesFileVisibility(nextSettings, draft.allNotesFileVisibility)
 }
@@ -628,6 +642,8 @@ function SettingsBodyFromDraft({
       {...{ onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity }}
       explicitOrganization={draft.explicitOrganization}
       setExplicitOrganization={(value) => updateDraft('explicitOrganization', value)}
+      quickLauncher={draft.quickLauncher}
+      setQuickLauncher={(key, value) => updateDraft('quickLauncher', { ...draft.quickLauncher, [key]: value })}
       crashReporting={draft.crashReporting}
       setCrashReporting={(value) => updateDraft('crashReporting', value)}
       analytics={draft.analytics}
@@ -679,6 +695,8 @@ function SettingsSyncAndAppearanceSections({
   vaults,
   defaultWorkspacePath,
   onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
+  quickLauncher,
+  setQuickLauncher,
   themeMode,
   setThemeMode,
   uiLanguage,
@@ -711,6 +729,7 @@ function SettingsSyncAndAppearanceSections({
           vaults={vaults}
         />
       </SettingsSection>
+      <QuickLauncherSettingsSection onChange={setQuickLauncher} settings={quickLauncher} t={t} vaults={vaults} />
       <SettingsSection id={SETTINGS_SECTION_IDS.autogit}>
         <GitSettingsSection
           t={t}

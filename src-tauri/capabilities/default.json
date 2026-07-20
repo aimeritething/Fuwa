@@ -5,6 +5,7 @@
   "windows": [
     "main",
     "ai-workspace",
+    "quick-launcher",
     "note-*"
   ],
   "platforms": ["linux", "macOS", "windows"],
@@ -24,6 +25,8 @@
     "deep-link:default",
     "updater:default",
     "process:default",
-    "opener:default"
+    "opener:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
   ]
 }

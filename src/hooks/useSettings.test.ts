@@ -44,6 +44,10 @@ const defaultSettings: Settings = {
   all_notes_show_pdfs: null,
   all_notes_show_images: null,
   all_notes_show_unsupported: null,
+  quick_launcher_shortcut: null,
+  quick_capture_vault_path: null,
+  quick_capture_folder: null,
+  quick_capture_open_after_save: null,
 }
 
 const savedSettings: Settings = {
@@ -78,6 +82,10 @@ const savedSettings: Settings = {
   all_notes_show_pdfs: null,
   all_notes_show_images: null,
   all_notes_show_unsupported: null,
+  quick_launcher_shortcut: null,
+  quick_capture_vault_path: null,
+  quick_capture_folder: null,
+  quick_capture_open_after_save: null,
 }
 
 let mockSettingsStore: Settings = { ...defaultSettings }
@@ -149,6 +157,10 @@ function changedSettings(): Settings {
     all_notes_show_pdfs: true,
     all_notes_show_images: false,
     all_notes_show_unsupported: true,
+    quick_launcher_shortcut: null,
+    quick_capture_vault_path: null,
+    quick_capture_folder: null,
+    quick_capture_open_after_save: null,
   }
 }
 

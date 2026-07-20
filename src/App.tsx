@@ -15,6 +15,7 @@ import { StatusBar } from './components/StatusBar'
 import { AppAiWorkspaceSurface } from './components/AppAiWorkspaceSurface'
 import { AiWorkspaceFloatingButton } from './components/AiWorkspaceFloatingButton'
 import { AiWorkspaceWindowApp } from './components/AiWorkspaceWindowApp'
+import { QuickLauncherWindowApp } from './components/QuickLauncherWindowApp'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CloneVaultModal } from './components/CloneVaultModal'
 import { FeedbackDialog } from './components/FeedbackDialog'
@@ -53,6 +54,8 @@ import { useDeleteActions } from './hooks/useDeleteActions'
 import { useFolderActions } from './hooks/useFolderActions'
 import { useFileActions } from './hooks/useFileActions'
 import { useDeepLinks } from './hooks/useDeepLinks'
+import { useGlobalQuickLauncher } from './hooks/useGlobalQuickLauncher'
+import { useQuickLauncherMainBridge } from './hooks/useQuickLauncherMainBridge'
 import { useNoteGitUrls } from './hooks/useNoteGitUrls'
 import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
@@ -81,7 +84,7 @@ import { type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { viewMatchesSelection } from './utils/viewIdentity'
-import { isAiWorkspaceWindow, isNoteWindow, getNoteWindowParams, type NoteWindowParams } from './utils/windowMode'
+import { isAiWorkspaceWindow, isNoteWindow, isQuickLauncherWindow, getNoteWindowParams, type NoteWindowParams } from './utils/windowMode'
 import { GitSetupDialog } from './components/GitRequiredModal'
 import { RenameDetectedBanner } from './components/RenameDetectedBanner'
 import { openNoteListPropertiesPicker } from './components/note-list/noteListPropertiesEvents'
@@ -159,7 +162,9 @@ const DEFAULT_SELECTION: SidebarSelection = INBOX_SELECTION
 function App() {
   const noteWindowParams = useMemo(() => isNoteWindow() ? getNoteWindowParams() : null, [])
   const aiWorkspaceWindow = useMemo(() => isAiWorkspaceWindow(), [])
+  const quickLauncherWindow = useMemo(() => isQuickLauncherWindow(), [])
 
+  if (quickLauncherWindow) return <QuickLauncherWindowApp />
   if (aiWorkspaceWindow) return <AiWorkspaceWindowApp />
 
   return <MainApp noteWindowParams={noteWindowParams} />
@@ -202,6 +207,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   }, [])
   const networkStatus = useNetworkStatus()
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
+  useGlobalQuickLauncher(settings.quick_launcher_shortcut, settingsLoaded)
   const aiFeaturesEnabled = areAiFeaturesEnabled(settings)
 
   // onSwitch closure captures `notes` declared below — safe because it's only
@@ -1443,6 +1449,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     vaultListLoaded: vaultSwitcher.loaded,
     vaults: vaultSwitcher.allVaults,
   })
+  useQuickLauncherMainBridge(deepLinks.openDeepLink)
   const activeEditorVaultPath = activeTab ? vaultPathForEntry(activeTab.entry, resolvedPath) : resolvedPath
   const noteGitUrls = useNoteGitUrls({
     currentVaultPath: resolvedPath,
