@@ -22,8 +22,8 @@ export function prepareTitleHeadingPaste(
     return
   }
 
-  const firstBlock = editor.document[0]
-  if (firstBlock?.type !== 'heading' || typeof firstBlock.id !== 'string') return
+  const firstBlock = editor.document.at(0)
+  if (!firstBlock || firstBlock.type !== 'heading' || typeof firstBlock.id !== 'string') return
 
   try {
     editor.setTextCursorPosition(firstBlock.id, 'end')

@@ -1,7 +1,7 @@
 export function isBlankEditorDocument(blocks: unknown[]): boolean {
   if (blocks.length !== 1) return false
   const [block] = blocks as Array<{ type?: string; content?: unknown[] }>
-  return (block?.type === 'paragraph' || block?.type === 'heading') && (!block.content || block.content.length === 0)
+  return (block.type === 'paragraph' || block.type === 'heading') && (!block.content || block.content.length === 0)
 }
 
 export function editorDocumentSignature(blocks: unknown[]): string {

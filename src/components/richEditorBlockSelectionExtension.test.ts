@@ -107,7 +107,7 @@ function dispatchEditorClipboardEvent(
   })
   Object.defineProperty(event, 'clipboardData', { value: clipboardData })
   const handled = view.someProp('handleDOMEvents', (handlers) => {
-    const handler = handlers[type]
+    const handler = type === 'copy' ? handlers.copy : type === 'cut' ? handlers.cut : handlers.paste
     return handler?.(view, event) === true ? true : undefined
   })
 

@@ -47,11 +47,16 @@ function rangeTopAtOffset(code: HTMLElement, offset: number): number | null {
   if (nextOffset === offset) return null
   const [endNode, endOffset] = textBoundaryAt(code, nextOffset)
   range.setEnd(endNode, endOffset)
-  return Array.from(range.getClientRects?.() ?? [])[0]?.top ?? null
+  return Array.from(range.getClientRects()).at(0)?.top ?? null
 }
 
 function numericStyle(style: CSSStyleDeclaration, property: 'paddingBottom' | 'paddingLeft' | 'paddingTop'): number {
-  const value = Number.parseFloat(style[property])
+  const rawValue = property === 'paddingBottom'
+    ? style.paddingBottom
+    : property === 'paddingLeft'
+      ? style.paddingLeft
+      : style.paddingTop
+  const value = Number.parseFloat(rawValue)
   return Number.isFinite(value) ? value : 0
 }
 

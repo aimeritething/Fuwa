@@ -27,7 +27,9 @@ function parseCalendarVersion(version: string): CalendarVersionParts | null {
   const versionParts = version.split('-')
   if (versionParts.length > 2) return null
 
-  const [calendar, prerelease] = versionParts
+  const calendar = versionParts.at(0)
+  const prerelease = versionParts.at(1)
+  if (!calendar) return null
   const calendarVersion = parseCalendarVersionParts(calendar)
   if (!calendarVersion) return null
   if (prerelease === undefined) return calendarVersion

@@ -35,8 +35,9 @@ function parsePlan(planText) {
 }
 
 function readField(text, name) {
-  const match = text.match(new RegExp(`^\\s*${name}:\\s*(.+)$`, 'm'))
-  return match?.[1].trim() ?? ''
+  const prefix = `${name}:`
+  const line = text.split('\n').find((candidate) => candidate.trimStart().startsWith(prefix))
+  return line ? line.trimStart().slice(prefix.length).trim() : ''
 }
 
 function rememberEntry(entries, seen, entry) {

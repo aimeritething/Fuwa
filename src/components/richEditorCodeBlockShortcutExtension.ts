@@ -100,7 +100,7 @@ function resolveLanguage(languageName: string): string {
 function fenceLanguage(block: RichEditorBlock): string | null {
   if (block.type !== PARAGRAPH_TYPE) return null
   const match = plainText(block.content)?.match(FENCE_PATTERN)
-  return match ? resolveLanguage(match[1] ?? '') : null
+  return match ? resolveLanguage(match.at(1) ?? '') : null
 }
 
 function turnIntoCodeBlock({

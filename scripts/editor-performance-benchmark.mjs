@@ -48,33 +48,6 @@ function defaultOptions() {
   }
 }
 
-const flagOptions = {
-  '--headful': parsed => {
-    parsed.headful = true
-  },
-  '--update': parsed => {
-    parsed.update = true
-  },
-}
-
-const valueOptions = {
-  '--base-url': (parsed, value) => {
-    parsed.baseUrl = value
-  },
-  '--iterations': (parsed, value) => {
-    parsed.iterations = positiveInteger(value, '--iterations')
-  },
-  '--port': (parsed, value) => {
-    parsed.port = value
-  },
-  '--scenario': (parsed, value) => {
-    parsed.scenarioNames = value.split(',').filter(Boolean)
-  },
-  '--thresholds': (parsed, value) => {
-    parsed.thresholdsPath = value
-  },
-}
-
 function parseArgs(args) {
   const parsed = defaultOptions()
   for (let index = 0; index < args.length; index += 1) {
@@ -89,17 +62,30 @@ function parseArg(parsed, args, index) {
   const arg = args[index]
   if (arg === '--') return index
   if (arg === '--help' || arg === '-h') exitWithHelp(0)
-  if (flagOptions[arg]) {
-    flagOptions[arg](parsed)
-    return index
-  }
-  if (valueOptions[arg]) {
-    valueOptions[arg](parsed, requiredValue(args, index, arg))
-    return index + 1
-  }
+  if (applyFlagOption(parsed, arg)) return index
+  if (applyValueOption(parsed, args, index, arg)) return index + 1
   console.error(`Unknown argument: ${arg}`)
   exitWithHelp(2)
   return index
+}
+
+function applyFlagOption(parsed, arg) {
+  if (arg === '--headful') parsed.headful = true
+  else if (arg === '--update') parsed.update = true
+  else return false
+  return true
+}
+
+function applyValueOption(parsed, args, index, arg) {
+  const valueOptionNames = ['--base-url', '--iterations', '--port', '--scenario', '--thresholds']
+  if (!valueOptionNames.includes(arg)) return false
+  const value = requiredValue(args, index, arg)
+  if (arg === '--base-url') parsed.baseUrl = value
+  else if (arg === '--iterations') parsed.iterations = positiveInteger(value, arg)
+  else if (arg === '--port') parsed.port = value
+  else if (arg === '--scenario') parsed.scenarioNames = value.split(',').filter(Boolean)
+  else parsed.thresholdsPath = value
+  return true
 }
 
 function validateScenarioNames(scenarioNames) {
@@ -285,17 +271,17 @@ async function installSyntheticVault(page, entry, markdown) {
       return new URL(rawUrl, window.location.href).pathname
     }
     const originalFetch = window.fetch.bind(window)
-    const syntheticResponses = {
-      '/api/vault/all-content': () => jsonResponse([{ content: syntheticMarkdown, path: syntheticEntryValue.path }]),
-      '/api/vault/content': () => jsonResponse({ content: syntheticMarkdown }),
-      '/api/vault/entry': () => jsonResponse(syntheticEntryValue),
-      '/api/vault/list': () => jsonResponse([syntheticEntryValue]),
-      '/api/vault/ping': () => new Response('ok', { status: 200 }),
-      '/api/vault/search': () => jsonResponse([syntheticEntryValue]),
+    const syntheticResponse = (path) => {
+      if (path === '/api/vault/all-content') return jsonResponse([{ content: syntheticMarkdown, path: syntheticEntryValue.path }])
+      if (path === '/api/vault/content') return jsonResponse({ content: syntheticMarkdown })
+      if (path === '/api/vault/entry') return jsonResponse(syntheticEntryValue)
+      if (path === '/api/vault/list' || path === '/api/vault/search') return jsonResponse([syntheticEntryValue])
+      if (path === '/api/vault/ping') return new Response('ok', { status: 200 })
+      return null
     }
     window.fetch = async (input, init) => {
-      const responseFactory = syntheticResponses[requestPath(input)]
-      if (responseFactory) return responseFactory()
+      const response = syntheticResponse(requestPath(input))
+      if (response) return response
       return originalFetch(input, init)
     }
 

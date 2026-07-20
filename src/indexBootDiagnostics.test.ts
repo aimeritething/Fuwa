@@ -45,7 +45,11 @@ describe('index startup script', () => {
     if (!captureScript) throw new Error('index.html startup shell capture script was not found')
 
     Reflect.deleteProperty(window, STARTUP_SHELL_FALLBACK_NODE_KEY)
-    document.body.innerHTML = `<div id="root">${startupRootContentFromIndex()}</div>`
+    const parsed = new DOMParser().parseFromString(
+      `<div id="root">${startupRootContentFromIndex()}</div>`,
+      'text/html',
+    )
+    document.body.replaceChildren(...parsed.body.childNodes)
     new Function(captureScript)()
 
     const capturedNode = Reflect.get(window, STARTUP_SHELL_FALLBACK_NODE_KEY)
@@ -54,7 +58,7 @@ describe('index startup script', () => {
   })
 
   it('does not show the boot overlay for ResizeObserver loop notifications', () => {
-    document.body.innerHTML = ''
+    document.body.replaceChildren()
     new Function(firstInlineScriptFromIndex())()
 
     const event = new ErrorEvent('error', {

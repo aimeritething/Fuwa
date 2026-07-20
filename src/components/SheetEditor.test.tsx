@@ -644,7 +644,9 @@ describe('SheetEditor', () => {
     formulaInput.setSelectionRange(3, 3)
     fireEvent.input(formulaInput)
 
-    await screen.findByRole('listbox')
+    await waitFor(() => {
+      expect(document.querySelector('.sheet-formula-autocomplete')).not.toBeNull()
+    })
     expect(ironCalcMock.state.workbookRenders).toBe(rendersBeforeAutocomplete)
     expect(document.activeElement).toBe(formulaInput)
   })

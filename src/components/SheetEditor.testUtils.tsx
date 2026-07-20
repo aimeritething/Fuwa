@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
 import { clearNoteContentCache } from '../hooks/noteContentCache'
 import type { VaultEntry } from '../types'
@@ -667,7 +667,11 @@ export async function openFormulaAutocomplete(value = '=su'): Promise<HTMLInputE
   formulaInput.value = value
   formulaInput.setSelectionRange(value.length, value.length)
   fireEvent.input(formulaInput)
-  await screen.findByRole('listbox')
+  await waitFor(() => {
+    if (!document.querySelector('.sheet-formula-autocomplete')) {
+      throw new Error('Formula autocomplete did not open')
+    }
+  })
   return formulaInput
 }
 

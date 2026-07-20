@@ -63,7 +63,7 @@ function detectStringType(key: PropertyKey, strValue: PropertyValueText): Proper
 }
 
 export function detectPropertyType(key: PropertyKey, value: FrontmatterValue): PropertyDisplayMode {
-  if (value === null || value === undefined) return 'text'
+  if (value === null) return 'text'
   if (typeof value === 'number') return 'number'
   if (typeof value === 'boolean') return 'boolean'
   if (isIconKey(key)) return 'text'

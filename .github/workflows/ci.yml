@@ -41,6 +41,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Codacy differential gate (no new findings at any severity)
+        env:
+          CODACY_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: pnpm codacy:gate
+
       # Keep frontend and Rust quality gates in separate macOS jobs so the
       # expensive Rust target cache restore no longer blocks the frontend lane.
       # ── 0. Build check (catches type errors and bundler failures) ─────────

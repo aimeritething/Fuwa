@@ -9,7 +9,7 @@ type WebClipboardResult =
   | { status: 'unavailable' }
 
 function hasWebClipboard(): boolean {
-  return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
+  return typeof navigator !== 'undefined' && typeof navigator.clipboard.writeText === 'function'
 }
 
 async function writeWebClipboardText(text: string): Promise<WebClipboardResult> {

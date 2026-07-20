@@ -314,14 +314,12 @@ function handleRecoverableEntryLoadFailure(options: {
     return
   }
 
-  if (kind === 'unreadable-content') {
-    runEntryFailureCallback({
-      callback: onUnreadableNoteContent,
-      entry: callbackEntry,
-      error,
-      warning: 'Failed to handle unreadable note content:',
-    })
-  }
+  runEntryFailureCallback({
+    callback: onUnreadableNoteContent,
+    entry: callbackEntry,
+    error,
+    warning: 'Failed to handle unreadable note content:',
+  })
 }
 
 function handleEntryLoadFailure(options: {

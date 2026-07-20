@@ -32,7 +32,9 @@ export function InstancesPanel({ entry, entries, typeEntryMap, onNavigate }: {
       </span>
       <div className="flex flex-col gap-0.5">
         {displayed.map((e) => {
-          const te = typeEntryMap[e.isA ?? '']
+          const te = e.isA
+            ? Reflect.get(typeEntryMap, e.isA) as (typeof typeEntryMap)[string] | undefined
+            : undefined
           return (
             <LinkButton
               key={e.path}

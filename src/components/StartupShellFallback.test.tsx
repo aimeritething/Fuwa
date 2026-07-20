@@ -7,7 +7,7 @@ const STARTUP_SHELL_FALLBACK_NODE_KEY = '__tolariaStartupShellFallbackNode'
 describe('StartupShellFallback', () => {
   afterEach(() => {
     Reflect.deleteProperty(window, STARTUP_SHELL_FALLBACK_NODE_KEY)
-    document.body.innerHTML = ''
+    document.body.replaceChildren()
   })
 
   it('renders the startup shell content captured from index.html', () => {
@@ -33,11 +33,12 @@ describe('StartupShellFallback', () => {
   })
 
   it('falls back to the static boot shell when the capture script has not run', () => {
-    document.body.innerHTML = [
-      '<div id="tolaria-boot-shell">',
-      '<div class="startup-shell-fallback__list"></div>',
-      '</div>',
-    ].join('')
+    const bootShell = document.createElement('div')
+    bootShell.id = 'tolaria-boot-shell'
+    const list = document.createElement('div')
+    list.className = 'startup-shell-fallback__list'
+    bootShell.append(list)
+    document.body.replaceChildren(bootShell)
 
     render(<StartupShellFallback />)
 

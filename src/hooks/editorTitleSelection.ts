@@ -32,7 +32,8 @@ function findFirstHeadingRange(tiptap: TiptapEditor): HeadingRange | null {
 }
 
 function isTopLevelHeadingBlock(block: FocusableHeadingBlock): boolean {
-  return block.type === 'heading' && (block.props?.level === undefined || block.props?.level === 1)
+  const props = Reflect.get(block, 'props') as FocusableHeadingBlock['props'] | undefined
+  return block.type === 'heading' && (props?.level === undefined || props.level === 1)
 }
 
 function getFirstHeadingBlock(editor: FocusableEditor): FocusableHeadingBlock | undefined {
@@ -83,7 +84,8 @@ export function trySelectFirstHeading(editor: FocusableEditor): boolean {
   if (hasTitleHeadingText(getFirstHeadingBlock(editor))) return true
   if (trySelectEmptyFirstHeading(editor)) return true
   const tiptap = editor._tiptapEditor
-  if (!tiptap?.state?.doc) return false
+  const state = tiptap ? Reflect.get(tiptap, 'state') as TiptapEditor['state'] | undefined : undefined
+  if (!state?.doc) return false
 
   const range = findFirstHeadingRange(tiptap)
   if (!range) return false

@@ -69,6 +69,7 @@ Use Codacy as a security and static-analysis gate before a task is considered re
 - **Always fix Critical and High severity findings introduced by your change.** Do not move the task to In Review with new Critical/High Codacy issues.
 - Review Medium findings. Fix them when they are real defects or security-sensitive; otherwise explain why they are acceptable in the completion comment.
 - Never silence a Codacy rule just to pass the scan. Prefer small code changes that remove the finding.
+- `pnpm codacy:gate` is a fail-closed differential gate: every issue on an added line fails, regardless of severity. It runs in pre-push and CI and must never be skipped.
 
 ### Check suite (runs on every push)
 ```bash

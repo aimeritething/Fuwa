@@ -57,8 +57,8 @@ function htmlRemoteImages({ html }: { html: string }): RemotePasteImage[] {
 
 function markdownRemoteImages({ markdown }: { markdown: string }): RemotePasteImage[] {
   return Array.from(markdown.matchAll(MARKDOWN_IMAGE_RE), match => ({
-    alt: match[1] ?? '',
-    url: match[2] ?? '',
+    alt: match.at(1) ?? '',
+    url: match.at(2) ?? '',
   }))
 }
 

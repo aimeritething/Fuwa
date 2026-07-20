@@ -115,7 +115,7 @@ function parseScalarNode(value: FrontmatterScalarText): SheetFrontmatterNode {
 
 function parseKeyValue(line: FrontmatterLine): { key: FrontmatterKey; value: FrontmatterScalarText } | null {
   const match = line.match(/^["']?([^"':]+)["']?\s*:\s*(.*)$/)
-  return match ? { key: match[1].trim(), value: match[2] ?? '' } : null
+  return match ? { key: match.at(1)?.trim() ?? '', value: match.at(2) ?? '' } : null
 }
 
 function parentForIndent(stack: StackItem[], indent: FrontmatterIndent): SheetFrontmatterMapNode {

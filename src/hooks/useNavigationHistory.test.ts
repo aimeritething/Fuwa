@@ -14,7 +14,11 @@ function renderNavigationHistory(paths = []) {
 
 function navigate(result, direction, isValidPath) {
   let target = null
-  act(() => { target = result.current[direction](isValidPath) })
+  act(() => {
+    target = direction === 'goBack'
+      ? result.current.goBack(isValidPath)
+      : result.current.goForward(isValidPath)
+  })
   return target
 }
 

@@ -10,7 +10,7 @@ function selectedCaretRect(): DOMRect | null {
   const clientRects = typeof range.getClientRects === 'function'
     ? Array.from(range.getClientRects())
     : []
-  const lastClientRect = clientRects[clientRects.length - 1]
+  const lastClientRect = clientRects.at(-1)
   if (lastClientRect) return lastClientRect
 
   return typeof range.getBoundingClientRect === 'function'

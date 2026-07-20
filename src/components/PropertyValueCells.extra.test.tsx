@@ -166,10 +166,7 @@ describe('PropertyValueCells extra', () => {
     expect(screen.getByTestId('display-mode-menu').style.left).toBe('8px')
     expect(screen.getByTestId('display-mode-menu').style.top).toBe('24px')
 
-    const backdrop = Array.from(document.body.querySelectorAll('div')).find(
-      (node) => node.className === 'fixed inset-0 z-[12000]',
-    )
-    fireEvent.click(backdrop as HTMLDivElement)
+    fireEvent.click(screen.getByRole('button', { name: 'Close display mode menu' }))
     expect(screen.queryByTestId('display-mode-menu')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('display-mode-trigger'))
