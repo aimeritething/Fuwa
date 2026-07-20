@@ -58,6 +58,7 @@ import { useGlobalQuickLauncher } from './hooks/useGlobalQuickLauncher'
 import { useQuickLauncherMainBridge } from './hooks/useQuickLauncherMainBridge'
 import { useNoteGitUrls } from './hooks/useNoteGitUrls'
 import { useLayoutPanels } from './hooks/useLayoutPanels'
+import { useLastActiveNote } from './hooks/useLastActiveNote'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
 import { useNoteRetargetingUi } from './hooks/useNoteRetargetingUi'
@@ -566,6 +567,13 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   } = notes
   const noteActiveTabPath = notes.activeTabPath
   const noteActiveTabPathRef = notes.activeTabPathRef
+  useLastActiveNote({
+    activeTabPath: noteActiveTabPath,
+    enabled: !noteWindowParams && !aiWorkspaceWindow,
+    entries: visibleEntries,
+    isVaultLoading: vault.isLoading || !vaultSwitcher.loaded || !resolvedPath,
+    openNote: handleSelectNote,
+  })
   const noteTabsRef = useRef(notes.tabs)
   useEffect(() => {
     noteTabsRef.current = notes.tabs

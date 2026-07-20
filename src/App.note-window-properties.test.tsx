@@ -202,6 +202,7 @@ vi.mock('./mock-tauri', () => ({
 }))
 
 import App from './App'
+import { APP_STORAGE_KEYS } from './constants/appStorage'
 
 function renderApp(children: ReactNode) {
   return render(<TooltipProvider>{children}</TooltipProvider>)
@@ -241,6 +242,17 @@ describe('App note windows', () => {
       activeTabPath: activeEntry.path,
       entryTitles: ['Test Project', 'Software Development', 'Second Project'],
     })
+  })
+
+  it('does not replace the main window last-note state', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.lastActiveNotePath, secondEntry.path)
+
+    renderApp(<App />)
+
+    await waitFor(() => {
+      expect(editorSnapshots.at(-1)?.activeTabPath).toBe(activeEntry.path)
+    })
+    expect(localStorage.getItem(APP_STORAGE_KEYS.lastActiveNotePath)).toBe(secondEntry.path)
   })
 
   it('opens repeated note windows through the full app vault loader', async () => {
