@@ -85,7 +85,7 @@ export function trySelectFirstHeading(editor: FocusableEditor): boolean {
   if (trySelectEmptyFirstHeading(editor)) return true
   const tiptap = editor._tiptapEditor
   const state = tiptap ? Reflect.get(tiptap, 'state') as TiptapEditor['state'] | undefined : undefined
-  if (!state?.doc) return false
+  if (!tiptap || !state?.doc) return false
 
   const range = findFirstHeadingRange(tiptap)
   if (!range) return false

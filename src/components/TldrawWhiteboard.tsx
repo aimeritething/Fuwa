@@ -341,7 +341,6 @@ function useDeferredDialogOpen() {
   const [readyToOpen, setReadyToOpen] = useState(false)
 
   useEffect(() => {
-    void fullscreen
     const animationFrameId = window.requestAnimationFrame(() => {
       openedAtRef.current = performance.now()
       setReadyToOpen(true)

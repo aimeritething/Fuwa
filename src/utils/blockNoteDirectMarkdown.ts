@@ -284,7 +284,7 @@ function unsupportedBlockMarkdown(block: BlockLike, context: SerializeContext): 
 
 function specialBlockMarkdown(block: BlockLike, context: SerializeContext): string | null {
   switch (block.type) {
-    case 'codeBlock': return codeBlockMarkdown(block, context)
+    case 'codeBlock': return codeBlockMarkdown(block)
     case 'divider': return '---'
     case 'heading': return headingMarkdown(block)
     case 'quote': return quoteMarkdown(block)

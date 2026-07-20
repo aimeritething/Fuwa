@@ -4,7 +4,16 @@ import {
   useDictionary,
   type SuggestionMenuProps,
 } from '@blocknote/react'
-import { useCallback, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ComponentType,
+  type Dispatch,
+  type SetStateAction,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from './ui/button'
 import type { TolariaSlashMenuItem } from './tolariaEditorFormattingConfig'
@@ -159,6 +168,9 @@ export function TolariaSlashMenu({
   }, [editor.domElement, items, onItemClick, openItemSubmenu, openSubmenu, selectedIndex, submenuIndex, submenuItems])
 
   if (!Components) return null
+  const SuggestionMenuItem = Components.SuggestionMenu.Item as ComponentType<
+    ComponentProps<typeof Components.SuggestionMenu.Item> & { onMouseEnter: () => void }
+  >
 
   const renderedItems = items.flatMap((item, index) => {
     const nodes = []
@@ -177,7 +189,7 @@ export function TolariaSlashMenu({
           else itemElements.current.delete(item.key)
         }}
       >
-        <Components.SuggestionMenu.Item
+        <SuggestionMenuItem
           className="bn-suggestion-menu-item"
           id={`bn-suggestion-menu-item-${index}`}
           isSelected={index === selectedIndex}

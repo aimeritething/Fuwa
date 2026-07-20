@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import type { MouseEventHandler, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 const editorElement = document.createElement('div')
@@ -9,8 +9,12 @@ vi.mock('@blocknote/react', () => ({
   useComponentsContext: () => ({
     SuggestionMenu: {
       EmptyItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-      Item: ({ item, onClick }: { item: { title: string }; onClick: () => void }) => (
-        <button type="button" onClick={onClick}>{item.title}</button>
+      Item: ({ item, onClick, onMouseEnter }: {
+        item: { title: string }
+        onClick: () => void
+        onMouseEnter?: MouseEventHandler<HTMLButtonElement>
+      }) => (
+        <button type="button" onClick={onClick} onMouseEnter={onMouseEnter}>{item.title}</button>
       ),
       Label: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
       Loader: () => <div>Loading</div>,
@@ -47,7 +51,7 @@ describe('TolariaSlashMenu', () => {
       onItemClick={onItemClick}
     />)
 
-    fireEvent.mouseEnter(screen.getByText('Callout').parentElement!)
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Callout' }))
 
     const submenu = screen.getByRole('menu', { name: 'Callout' })
     expect(submenu).toHaveClass('tolaria-slash-menu__submenu')
