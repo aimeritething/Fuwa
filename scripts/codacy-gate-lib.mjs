@@ -40,6 +40,19 @@ export function biomeGateFailures(report, additions, repositoryRoot) {
   })
 }
 
+export function eslintGateFailures(report, additions) {
+  return report.flatMap(file => (file.messages ?? []).flatMap((message) => {
+    if (!message.line || !additions.get(file.filePath)?.has(message.line)) return []
+    return [{
+      line: message.line,
+      message: message.message ?? 'ESLint issue',
+      path: file.filePath,
+      rule: message.ruleId ?? 'unknown rule',
+      tool: 'Codacy ESLint security rules',
+    }]
+  }))
+}
+
 function resolveDiagnosticPath(path, repositoryRoot) {
   if (!path) return ''
   return path.startsWith('/') ? path : `${repositoryRoot}/${path}`

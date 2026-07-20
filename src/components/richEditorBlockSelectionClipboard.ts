@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify'
 import { selectedDocumentBlocks } from './richEditorBlockSelectionDocument'
 import {
   documentBlock,
@@ -6,6 +7,10 @@ import {
 } from './richEditorBlockSelectionTypes'
 
 export const TOLARIA_BLOCK_CLIPBOARD_MIME = 'application/x-tolaria-blocknote-blocks+json'
+
+function sanitizeMarkup(markup: string): string {
+  return DOMPurify.sanitize(markup)
+}
 
 function blockWithoutId(block: unknown): unknown {
   const source = documentBlock(block)
@@ -33,14 +38,14 @@ export function writeSelectedBlocksToClipboard(
   const blocks = selectedDocumentBlocks(editor.document, selectedBlockIds)
   if (blocks.length === 0) return false
 
-  const fullHTML = editor.blocksToFullHTML?.(blocks) ?? ''
-  const externalHTML = editor.blocksToHTMLLossy?.(blocks) ?? fullHTML
+  const fullMarkup = sanitizeMarkup(editor.blocksToFullHTML?.(blocks) ?? '')
+  const externalMarkup = sanitizeMarkup(editor.blocksToHTMLLossy?.(blocks) ?? fullMarkup)
   const markdown = editor.blocksToMarkdownLossy?.(blocks) ?? ''
 
   clipboardData.clearData()
   clipboardData.setData(TOLARIA_BLOCK_CLIPBOARD_MIME, JSON.stringify(blocks))
-  if (fullHTML) clipboardData.setData('blocknote/html', fullHTML)
-  if (externalHTML) clipboardData.setData('text/html', externalHTML)
+  if (fullMarkup) clipboardData.setData('blocknote/html', fullMarkup)
+  if (externalMarkup) clipboardData.setData('text/html', externalMarkup)
   if (markdown) {
     clipboardData.setData('text/markdown', markdown)
     clipboardData.setData('text/plain', markdown)
@@ -60,13 +65,13 @@ function parseTolariaClipboardBlocks(clipboardData: ClipboardDataLike): unknown[
   }
 }
 
-function parseHTMLClipboardBlocks(
+function parseMarkupClipboardBlocks(
   editor: RichEditorBlockSelectionEditor,
   clipboardData: ClipboardDataLike,
   mimeType: string,
 ): unknown[] {
-  const html = clipboardData.getData(mimeType)
-  return html ? editor.tryParseHTMLToBlocks?.(html) ?? [] : []
+  const markup = sanitizeMarkup(clipboardData.getData(mimeType))
+  return markup ? editor.tryParseHTMLToBlocks?.(markup) ?? [] : []
 }
 
 function parseMarkdownClipboardBlocks(
@@ -92,8 +97,8 @@ export function parseClipboardBlocks(
 ): unknown[] {
   return firstParsedClipboardBlocks([
     () => parseTolariaClipboardBlocks(clipboardData),
-    () => parseHTMLClipboardBlocks(editor, clipboardData, 'blocknote/html'),
-    () => parseHTMLClipboardBlocks(editor, clipboardData, 'text/html'),
+    () => parseMarkupClipboardBlocks(editor, clipboardData, 'blocknote/html'),
+    () => parseMarkupClipboardBlocks(editor, clipboardData, 'text/html'),
     () => parseMarkdownClipboardBlocks(editor, clipboardData),
   ])
 }

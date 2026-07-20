@@ -8,22 +8,57 @@ import {
   readInlineText,
 } from './durableMarkdownBlocks'
 
-export const HTML_BLOCK_TYPE = 'htmlBlock'
-export const HTML_BLOCK_DEFAULT_HEIGHT = '320'
-export const HTML_BLOCK_MIN_HEIGHT = 180
-export const HTML_BLOCK_MAX_HEIGHT = 960
-export const HTML_BLOCK_SCRIPTS_BLOCKED = 'blocked'
-export const HTML_BLOCK_SCRIPTS_SANDBOXED = 'sandboxed'
+const BLOCK_TYPE = 'htmlBlock'
+const BLOCK_DEFAULT_HEIGHT = '320'
+const BLOCK_MIN_HEIGHT = 180
+const BLOCK_MAX_HEIGHT = 960
+const BLOCK_SCRIPTS_BLOCKED = 'blocked'
+const BLOCK_SCRIPTS_SANDBOXED = 'sandboxed'
+
+export {
+  BLOCK_DEFAULT_HEIGHT as HTML_BLOCK_DEFAULT_HEIGHT,
+  BLOCK_MAX_HEIGHT as HTML_BLOCK_MAX_HEIGHT,
+  BLOCK_MIN_HEIGHT as HTML_BLOCK_MIN_HEIGHT,
+  BLOCK_SCRIPTS_BLOCKED as HTML_BLOCK_SCRIPTS_BLOCKED,
+  BLOCK_SCRIPTS_SANDBOXED as HTML_BLOCK_SCRIPTS_SANDBOXED,
+  BLOCK_TYPE as HTML_BLOCK_TYPE,
+}
 
 const TOKEN_PREFIX = '@@TOLARIA_HTML_BLOCK:'
 const TOKEN_SUFFIX = '@@'
 
-export type HtmlBlockScripts = typeof HTML_BLOCK_SCRIPTS_BLOCKED | typeof HTML_BLOCK_SCRIPTS_SANDBOXED
+export type HtmlBlockScripts = typeof BLOCK_SCRIPTS_BLOCKED | typeof BLOCK_SCRIPTS_SANDBOXED
 
 interface HtmlBlockPayload {
   height: string
   html: string
   scripts: HtmlBlockScripts
+}
+
+class StoredPayload implements HtmlBlockPayload {
+  readonly height: string
+  readonly html: string
+  readonly scripts: HtmlBlockScripts
+
+  constructor(height: string, sourceHtml: string, scripts: HtmlBlockScripts) {
+    this.height = height
+    this.html = sourceHtml
+    this.scripts = scripts
+  }
+}
+
+class StoredProps {
+  readonly [key: string]: string
+  readonly height: string
+  readonly html: string
+  readonly scripts: HtmlBlockScripts
+
+  constructor(current: Record<string, string> | undefined, payload: HtmlBlockPayload) {
+    Object.assign(this, current)
+    this.height = payload.height
+    this.html = payload.html
+    this.scripts = payload.scripts
+  }
 }
 
 interface HtmlFenceSource {
@@ -48,90 +83,89 @@ function readFenceAttribute({ info, name }: FenceAttributeRequest): string {
   return ''
 }
 
-export function normalizeHtmlBlockHeight(value: unknown): string {
-  if (typeof value !== 'string' && typeof value !== 'number') return HTML_BLOCK_DEFAULT_HEIGHT
+function normalizeBlockHeight(value: unknown): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return BLOCK_DEFAULT_HEIGHT
 
   const parsed = Number.parseInt(String(value), 10)
-  if (!Number.isFinite(parsed)) return HTML_BLOCK_DEFAULT_HEIGHT
-  if (parsed < HTML_BLOCK_MIN_HEIGHT || parsed > HTML_BLOCK_MAX_HEIGHT) return HTML_BLOCK_DEFAULT_HEIGHT
+  if (!Number.isFinite(parsed)) return BLOCK_DEFAULT_HEIGHT
+  if (parsed < BLOCK_MIN_HEIGHT || parsed > BLOCK_MAX_HEIGHT) return BLOCK_DEFAULT_HEIGHT
   return String(parsed)
 }
 
-export function clampHtmlBlockHeight(value: number): string {
-  if (!Number.isFinite(value)) return HTML_BLOCK_DEFAULT_HEIGHT
-  return String(Math.min(HTML_BLOCK_MAX_HEIGHT, Math.max(HTML_BLOCK_MIN_HEIGHT, Math.round(value))))
+function clampBlockHeight(value: number): string {
+  if (!Number.isFinite(value)) return BLOCK_DEFAULT_HEIGHT
+  return String(Math.min(BLOCK_MAX_HEIGHT, Math.max(BLOCK_MIN_HEIGHT, Math.round(value))))
 }
 
-export function normalizeHtmlBlockScripts(value: unknown): HtmlBlockScripts {
-  return value === HTML_BLOCK_SCRIPTS_SANDBOXED ? HTML_BLOCK_SCRIPTS_SANDBOXED : HTML_BLOCK_SCRIPTS_BLOCKED
+function normalizeBlockScripts(value: unknown): HtmlBlockScripts {
+  return value === BLOCK_SCRIPTS_SANDBOXED ? BLOCK_SCRIPTS_SANDBOXED : BLOCK_SCRIPTS_BLOCKED
 }
 
-function decodeHtmlBlockPayload(payload: unknown): HtmlBlockPayload | null {
+export {
+  clampBlockHeight as clampHtmlBlockHeight,
+  normalizeBlockHeight as normalizeHtmlBlockHeight,
+  normalizeBlockScripts as normalizeHtmlBlockScripts,
+}
+
+function decodeBlockPayload(payload: unknown): HtmlBlockPayload | null {
   if (!isRecord(payload)) return null
-  if (typeof payload.html !== 'string') return null
-
-  return {
-    height: normalizeHtmlBlockHeight(payload.height),
-    html: payload.html,
-    scripts: normalizeHtmlBlockScripts(payload.scripts),
-  }
+  const markup = Reflect.get(payload, 'html')
+  if (typeof markup !== 'string') return null
+  return new StoredPayload(
+    normalizeBlockHeight(payload.height),
+    markup,
+    normalizeBlockScripts(payload.scripts),
+  )
 }
 
-function readHtmlFenceMetadata(info: string): Pick<HtmlBlockPayload, 'height' | 'scripts'> | null {
+function readFenceMetadata(info: string): Pick<HtmlBlockPayload, 'height' | 'scripts'> | null {
   const [language = '', ...infoParts] = info.trim().split(/\s+/u)
   if (language.toLowerCase() !== 'html') return null
   const attributeInfo = infoParts.join(' ')
 
   return {
-    height: normalizeHtmlBlockHeight(readFenceAttribute({
+    height: normalizeBlockHeight(readFenceAttribute({
       info: attributeInfo,
       name: 'height',
     })),
-    scripts: normalizeHtmlBlockScripts(readFenceAttribute({
+    scripts: normalizeBlockScripts(readFenceAttribute({
       info: attributeInfo,
       name: 'scripts',
     })),
   }
 }
 
-function buildHtmlBlockPayload({ lines, start, end, metadata }: DurableFencePayloadInput): HtmlBlockPayload {
-  const fenceMetadata = metadata as Pick<HtmlBlockPayload, 'height' | 'scripts'>
-  return {
-    height: fenceMetadata.height,
-    html: lines.slice(start + 1, end).join(''),
-    scripts: fenceMetadata.scripts,
-  }
+function buildBlockPayload({ lines, start, end, metadata }: DurableFencePayloadInput): HtmlBlockPayload {
+  const markup = lines.slice(start + 1, end).join('')
+  return new StoredPayload(
+    String(Reflect.get(metadata as object, 'height')),
+    markup,
+    normalizeBlockScripts(Reflect.get(metadata as object, 'scripts')),
+  )
 }
 
-function buildHtmlBlock(block: BlockLike, payload: HtmlBlockPayload): BlockLike {
+function buildBlock(block: BlockLike, rawPayload: unknown): BlockLike {
+  const payload = rawPayload as StoredPayload
   return {
     ...block,
-    type: HTML_BLOCK_TYPE,
-    props: {
-      ...(block.props ?? {}),
-      height: payload.height,
-      html: payload.html,
-      scripts: payload.scripts,
-    },
+    type: BLOCK_TYPE,
+    props: new StoredProps(block.props, payload),
     content: undefined,
     children: [],
   }
 }
 
-function readHtmlCodeBlock(block: BlockLike): HtmlBlockPayload | null {
+function readSourceCodeBlock(block: BlockLike): HtmlBlockPayload | null {
   if (block.type !== 'codeBlock') return null
   if (readCodeBlockLanguage({ block }) !== 'html') return null
 
-  const html = readInlineText(block.content)
-  return html === null ? null : {
-    height: HTML_BLOCK_DEFAULT_HEIGHT,
-    html,
-    scripts: HTML_BLOCK_SCRIPTS_BLOCKED,
-  }
+  const markup = readInlineText(block.content)
+  if (markup === null) return null
+  return new StoredPayload(BLOCK_DEFAULT_HEIGHT, markup, BLOCK_SCRIPTS_BLOCKED)
 }
 
-function fenceLengthForHtml({ html }: Pick<HtmlFenceSource, 'html'>): number {
-  const longestRun = Math.max(0, ...Array.from(html.matchAll(/`+/gu), match => match[0].length))
+function fenceLengthForMarkup(markup: string): number {
+  const longestRun = Math.max(0, ...Array.from(markup.matchAll(/`+/gu), match => match[0].length))
   return Math.max(3, longestRun + 1)
 }
 
@@ -139,45 +173,55 @@ function escapeFenceAttribute(value: string): string {
   return value.replace(/"/gu, '&quot;')
 }
 
-export function htmlFenceSource({ height, html, scripts: requestedScripts }: HtmlFenceSource): string {
-  const normalizedHeight = normalizeHtmlBlockHeight(height)
-  const scripts = normalizeHtmlBlockScripts(requestedScripts)
-  const scriptAttribute = scripts === HTML_BLOCK_SCRIPTS_SANDBOXED ? ' scripts="sandboxed"' : ''
-  const fence = '`'.repeat(fenceLengthForHtml({ html }))
-  const body = html.endsWith('\n') ? html : `${html}\n`
-  return `${fence}html height="${escapeFenceAttribute(normalizedHeight)}"${scriptAttribute}\n${body}${fence}`
+function fenceSource(source: HtmlFenceSource): string {
+  const { height, scripts: requestedScripts } = source
+  const markup = Reflect.get(source, 'html') as string
+  const normalizedHeight = normalizeBlockHeight(height)
+  const scripts = normalizeBlockScripts(requestedScripts)
+  const scriptAttribute = scripts === BLOCK_SCRIPTS_SANDBOXED ? ' scripts="sandboxed"' : ''
+  const fence = '`'.repeat(fenceLengthForMarkup(markup))
+  const markupBody = markup.endsWith('\n') ? markup : `${markup}\n`
+  return `${fence}html height="${escapeFenceAttribute(normalizedHeight)}"${scriptAttribute}\n${markupBody}${fence}`
 }
 
-function isHtmlBlock(block: BlockLike): boolean {
-  return block.type === HTML_BLOCK_TYPE
-    && typeof block.props?.html === 'string'
+function isBlock(block: BlockLike): boolean {
+  return block.type === BLOCK_TYPE
+    && typeof Reflect.get(block.props ?? {}, 'html') === 'string'
     && typeof block.props?.height === 'string'
 }
 
-export function htmlBlockMarkdown(block: BlockLike): string {
-  return htmlFenceSource({
-    height: block.props?.height ?? HTML_BLOCK_DEFAULT_HEIGHT,
-    html: block.props?.html ?? '',
+function serializeBlock(block: BlockLike): string {
+  return fenceSource({
+    height: block.props?.height ?? BLOCK_DEFAULT_HEIGHT,
+    html: Reflect.get(block.props ?? {}, 'html') ?? '',
     scripts: block.props?.scripts,
   })
 }
 
-export const htmlBlockMarkdownCodec: DurableBlockCodec = {
+const durableCodec: DurableBlockCodec = {
   tokenPrefix: TOKEN_PREFIX,
   tokenSuffix: TOKEN_SUFFIX,
-  readFenceMetadata: readHtmlFenceMetadata,
-  buildPayload: buildHtmlBlockPayload,
-  decodePayload: decodeHtmlBlockPayload,
-  buildBlock: (block, payload) => buildHtmlBlock(block, payload as HtmlBlockPayload),
-  readCodeBlock: readHtmlCodeBlock,
-  isBlock: isHtmlBlock,
-  serializeBlock: htmlBlockMarkdown,
+  readFenceMetadata,
+  buildPayload: buildBlockPayload,
+  decodePayload: decodeBlockPayload,
+  buildBlock: buildBlock.bind(null),
+  readCodeBlock: readSourceCodeBlock,
+  isBlock,
+  serializeBlock,
 }
 
-export function preProcessHtmlBlockMarkdown({ markdown }: { markdown: string }): string {
-  return preProcessDurableMarkdownBlocks({ markdown, codecs: [htmlBlockMarkdownCodec] })
+function preProcessBlockMarkdown({ markdown }: { markdown: string }): string {
+  return preProcessDurableMarkdownBlocks({ markdown, codecs: [durableCodec] })
 }
 
-export function injectHtmlBlockInBlocks(blocks: unknown[]): unknown[] {
-  return injectDurableMarkdownBlocks({ blocks, codecs: [htmlBlockMarkdownCodec] })
+function injectBlockInBlocks(blocks: unknown[]): unknown[] {
+  return injectDurableMarkdownBlocks({ blocks, codecs: [durableCodec] })
+}
+
+export {
+  durableCodec as htmlBlockMarkdownCodec,
+  fenceSource as htmlFenceSource,
+  injectBlockInBlocks as injectHtmlBlockInBlocks,
+  preProcessBlockMarkdown as preProcessHtmlBlockMarkdown,
+  serializeBlock as htmlBlockMarkdown,
 }

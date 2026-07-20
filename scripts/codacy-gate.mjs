@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { addedLinesFromDiff, biomeGateFailures } from './codacy-gate-lib.mjs'
+import { addedLinesFromDiff, biomeGateFailures, eslintGateFailures } from './codacy-gate-lib.mjs'
 import { sarifGateFailures } from './codacy-sarif.mjs'
 
 const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim()
@@ -49,6 +49,27 @@ try {
   })
   if (!biome.stdout) failures.push({ message: 'Biome did not produce an analysis report', tool: 'Biome' })
   else failures.push(...biomeGateFailures(JSON.parse(biome.stdout), additions, root))
+
+  const eslintFiles = changedFiles.filter(path => /\.(?:[cm]?js|jsx|ts|tsx)$/u.test(path))
+  if (eslintFiles.length > 0) {
+    const eslint = spawnSync(process.execPath, [
+      'node_modules/eslint8/bin/eslint.js',
+      '--config',
+      'eslint.codacy.config.js',
+      '--format',
+      'json',
+      ...eslintFiles,
+    ], { cwd: root, encoding: 'utf8' })
+    if (!eslint.stdout || (eslint.status !== 0 && eslint.status !== 1)) {
+      failures.push({ message: 'security ESLint scanner did not produce a valid report', tool: 'Codacy ESLint security rules' })
+    } else {
+      try {
+        failures.push(...eslintGateFailures(JSON.parse(eslint.stdout), additions))
+      } catch {
+        failures.push({ message: 'security ESLint report was not valid JSON', tool: 'Codacy ESLint security rules' })
+      }
+    }
+  }
 
   for (const tool of ['opengrep', 'trivy']) {
     const output = join(temporaryDirectory, `${tool}.sarif`)

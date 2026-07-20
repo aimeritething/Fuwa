@@ -95,10 +95,9 @@ interface SingleLineParseInput {
 const HEADING_RE = /^(#{1,6})[ \t]+(.+?)\s*#*\s*$/u
 const ORDERED_LIST_RE = /^([ \t]*)(\d+)[.)][ \t]+(.+)$/u
 const UNORDERED_LIST_RE = /^([ \t]*)([-*+])[ \t]+(.+)$/u
-const CHECK_LIST_RE = /^([ \t]*)([-*+])[ \t]+\[([ xX])\](?:[ \t]+(.*))?$/u
+const CHECK_LIST_PREFIX_RE = /^([ \t]*)([-*+])[ \t]+\[([ xX])\]/u
 const THEMATIC_BREAK_RE = /^[ \t]{0,3}(?:-{3,}|\*{3,}|_{3,})[ \t]*$/u
 const FENCE_RE = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u
-const HTML_BLOCK_RE = /^[ \t]{0,3}<\/?[A-Za-z][^>]*>/u
 const MARKDOWN_IMAGE_RE = /(^|[^\\])!\[[^\]]*\]\(/u
 const REFERENCE_LINK_RE = /^[ \t]{0,3}\[[^\]]+\]:[ \t]+/u
 const UNSUPPORTED_BLOCK_RE = /^[ \t]{0,3}(?:#{7,}|:::+|\[\^.+\]:)/u
@@ -116,6 +115,13 @@ function sourceBytes(source: FastMarkdownSource): number {
   return textEncoder ? textEncoder.encode(source.markdown).byteLength : source.markdown.length
 }
 
+function startsHtmlBlock(line: MarkdownLine): boolean {
+  const candidate = line.trimStart()
+  if (line.length - candidate.length > 3 || candidate.charAt(0) !== '<') return false
+  const nameStart = candidate.charAt(1) === '/' ? 2 : 1
+  return /[A-Za-z]/u.test(candidate.charAt(nameStart)) && candidate.indexOf('>', nameStart + 1) !== -1
+}
+
 function paragraphBlock(content: InlineItem[]): BlockLike {
   return { type: 'paragraph', content, children: [] }
 }
@@ -125,7 +131,7 @@ function textItem(text: InlineMarkdownText, styles: TextStyles = {}): InlineItem
 }
 
 function stylesEqual(left?: TextStyles, right?: TextStyles): boolean {
-  return TEXT_STYLE_KEYS.every(style => Boolean(left?.[style]) === Boolean(right?.[style]))
+  return TEXT_STYLE_KEYS.every(style => Boolean(Reflect.get(left ?? {}, style)) === Boolean(Reflect.get(right ?? {}, style)))
 }
 
 function appendText(items: InlineItem[], text: string, styles: TextStyles): void {
@@ -258,7 +264,7 @@ function nextStyleMarker(text: InlineMarkdownText, index: LineIndex): { style: k
 }
 
 function unsupportedLine(line: MarkdownLine): string | null {
-  if (HTML_BLOCK_RE.test(line)) return 'html-block'
+  if (startsHtmlBlock(line)) return 'html-block'
   if (MARKDOWN_IMAGE_RE.test(line)) return 'markdown-image'
   if (REFERENCE_LINK_RE.test(line)) return 'reference-link'
   if (UNSUPPORTED_BLOCK_RE.test(line)) return 'unsupported-block-marker'
@@ -287,13 +293,13 @@ function quoteBlock(line: MarkdownLine): BlockLike | null {
 }
 
 function listLine(line: MarkdownLine): ListLine | null {
-  const check = CHECK_LIST_RE.exec(line)
+  const check = CHECK_LIST_PREFIX_RE.exec(line)
   if (check) {
     return {
-      checked: check[3].toLowerCase() === 'x',
-      depth: listDepth(check[1]),
-      marker: check[2],
-      text: check[4] ?? '',
+      checked: (check.at(3) ?? '').toLowerCase() === 'x',
+      depth: listDepth(check.at(1) ?? ''),
+      marker: check.at(2) ?? '-',
+      text: line.slice(check.at(0)?.length ?? 0).trimStart(),
       type: 'checkListItem',
     }
   }
@@ -354,7 +360,7 @@ function appendListBlock(
   } else if (!appendNestedListBlock(state, stack, item.depth, block)) {
     return false
   }
-  stack[item.depth] = block
+  stack.splice(item.depth, 1, block)
   stack.length = item.depth + 1
   return true
 }
@@ -365,7 +371,7 @@ function appendNestedListBlock(
   depth: number,
   block: BlockLike,
 ): boolean {
-  const parent = stack[depth - 1]
+  const parent = stack.at(depth - 1)
   if (!parent) {
     state.fallbackReason = 'list-parent-missing'
     return false
@@ -375,7 +381,7 @@ function appendNestedListBlock(
 }
 
 function parseList(state: ParserState, start: LineIndex): { blocks: BlockLike[]; next: LineIndex } | null {
-  const firstLine = state.lines[start]
+  const firstLine = state.lines.at(start)
   if (firstLine === undefined || !listLine(firstLine)) return null
 
   const root: BlockLike[] = []
@@ -383,7 +389,7 @@ function parseList(state: ParserState, start: LineIndex): { blocks: BlockLike[];
   let index = start
 
   while (index < state.lines.length) {
-    const item = listLine(state.lines[index])
+    const item = listLine(state.lines.at(index) ?? '')
     if (!item) break
     if (!appendListBlock(state, root, stack, item)) return null
     index += 1
@@ -393,7 +399,7 @@ function parseList(state: ParserState, start: LineIndex): { blocks: BlockLike[];
 }
 
 function parseFence(state: ParserState, start: LineIndex): { block: BlockLike; next: LineIndex } | null {
-  const opening = FENCE_RE.exec(state.lines[start])
+  const opening = FENCE_RE.exec(state.lines.at(start) ?? '')
   if (!opening) return null
   const marker = opening[1]
   const markerChar = marker.charAt(0)
@@ -401,7 +407,7 @@ function parseFence(state: ParserState, start: LineIndex): { block: BlockLike; n
   let end = start + 1
 
   while (end < state.lines.length) {
-    const trimmed = state.lines[end].trim()
+    const trimmed = (state.lines.at(end) ?? '').trim()
     if (trimmed.startsWith(markerChar.repeat(marker.length))) {
       return {
         block: {
@@ -451,22 +457,22 @@ function isTableSeparator(line: MarkdownLine): boolean {
 }
 
 function isTableStart(lines: MarkdownLine[], index: LineIndex): boolean {
-  const current = lines[index]
-  const next = lines[index + 1]
+  const current = lines.at(index)
+  const next = lines.at(index + 1)
   return Boolean(current?.includes('|') && next && isTableSeparator(next))
 }
 
 function isTableBodyLine(state: ParserState, index: number): boolean {
-  const line = state.lines[index]
+  const line = state.lines.at(index)
   return Boolean(line?.includes('|') && line.trim())
 }
 
 function parseTable(state: ParserState, start: LineIndex): { block: BlockLike; next: LineIndex } | null {
   if (!isTableStart(state.lines, start)) return null
-  const rows: string[][] = [splitTableRow(state.lines[start])]
+  const rows: string[][] = [splitTableRow(state.lines.at(start) ?? '')]
   let index = start + 2
   while (index < state.lines.length && isTableBodyLine(state, index)) {
-    rows.push(splitTableRow(state.lines[index]))
+    rows.push(splitTableRow(state.lines.at(index) ?? ''))
     index += 1
   }
 
@@ -485,7 +491,7 @@ function parseTable(state: ParserState, start: LineIndex): { block: BlockLike; n
         rows: rows.map(row => ({
           cells: Array.from({ length: width }, (_, cellIndex) => ({
             type: 'tableCell' as const,
-            content: parseInline(row[cellIndex] ?? ''),
+            content: parseInline(row.at(cellIndex) ?? ''),
           })),
         })),
       },
@@ -499,7 +505,7 @@ function parseParagraph(state: ParserState, start: LineIndex): { block: BlockLik
   const lines: string[] = []
   let index = start
   while (index < state.lines.length) {
-    const line = state.lines[index]
+    const line = state.lines.at(index) ?? ''
     if (!line.trim()) break
     if (index !== start && startsBlock(state.lines, index)) break
     lines.push(line.trim())
@@ -513,7 +519,7 @@ function parseParagraph(state: ParserState, start: LineIndex): { block: BlockLik
 }
 
 function startsBlock(lines: MarkdownLine[], index: LineIndex): boolean {
-  const line = lines[index]
+  const line = lines.at(index) ?? ''
   return Boolean(
     headingBlock(line)
     || quoteBlock(line)
@@ -555,7 +561,7 @@ function parseNextBlock(state: ParserState, index: LineIndex): ParsedBlockStep |
   const multiline = parseMultilineBlock(state, index)
   if (multiline || state.fallbackReason) return multiline
 
-  const line = state.lines[index]
+  const line = state.lines.at(index) ?? ''
   const singleLine = parseSingleLineBlock({ index, line })
   if (singleLine) return singleLine
 
@@ -583,7 +589,7 @@ function parseBlocks(source: FastMarkdownSource): FastMarkdownParseResult {
   let index = 0
 
   while (index < state.lines.length) {
-    const line = state.lines[index]
+    const line = state.lines.at(index) ?? ''
     const unsupported = unsupportedLine(line)
     if (unsupported) {
       state.fallbackReason = unsupported

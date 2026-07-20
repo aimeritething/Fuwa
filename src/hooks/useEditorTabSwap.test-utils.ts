@@ -37,7 +37,7 @@ export function makeMockEditor(docRef: { current: unknown[] }) {
     replaceBlocks: vi.fn((_old, newBlocks) => { docRef.current = newBlocks }),
     insertBlocks: vi.fn(),
     blocksToMarkdownLossy: vi.fn(() => ''),
-    blocksToHTMLLossy: vi.fn(() => ''),
+    blocksToHTMLLossy: () => '',
     tryParseMarkdownToBlocks: vi.fn(() => blocksA),
     _tiptapEditor: {
       state: { doc: { content: { size: 8 } } },

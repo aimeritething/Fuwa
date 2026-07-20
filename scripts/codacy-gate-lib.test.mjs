@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { addedLinesFromDiff, biomeGateFailures } from './codacy-gate-lib.mjs'
+import { addedLinesFromDiff, biomeGateFailures, eslintGateFailures } from './codacy-gate-lib.mjs'
 import { sarifGateFailures } from './codacy-sarif.mjs'
 
 test('reports findings only on added lines', () => {
@@ -43,4 +43,20 @@ test('reports Biome diagnostics on added lines at every severity', () => {
   }] }
 
   assert.equal(biomeGateFailures(report, additions, '/repo').length, 1)
+})
+
+test('reports security ESLint findings only on added lines at every severity', () => {
+  const additions = new Map([['/repo/src/example.ts', new Set([7])]])
+  const report = [{ filePath: '/repo/src/example.ts', messages: [
+    { line: 6, message: 'existing issue', ruleId: 'security/existing', severity: 2 },
+    { line: 7, message: 'new warning', ruleId: 'security/new', severity: 1 },
+  ] }]
+
+  assert.deepEqual(eslintGateFailures(report, additions), [{
+    line: 7,
+    message: 'new warning',
+    path: '/repo/src/example.ts',
+    rule: 'security/new',
+    tool: 'Codacy ESLint security rules',
+  }])
 })

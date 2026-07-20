@@ -196,10 +196,10 @@ function blockPrefix(block: BlockLike, depth: number, context: SerializeContext)
 
 function advanceCachedBlockContext(block: BlockLike, depth: number, context: SerializeContext): void {
   if (block.type === 'numberedListItem') {
-    const next = context.numberedStack[depth] ?? Number(block.props?.start ?? 1)
-    context.numberedStack[depth] = next + 1
+    const next = context.numberedStack.at(depth) ?? Number(block.props?.start ?? 1)
+    context.numberedStack.splice(depth, 1, next + 1)
   } else {
-    context.numberedStack[depth] = 1
+    context.numberedStack.splice(depth, 1, 1)
   }
   context.numberedStack.length = depth + 1
 }

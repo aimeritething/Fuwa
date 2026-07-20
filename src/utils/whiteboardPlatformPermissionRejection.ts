@@ -1,7 +1,7 @@
 let activeWhiteboardPlatformPermissionGuards = 0
 
 function errorStringProperty(error: unknown, property: 'message' | 'name'): string {
-  if (error instanceof Error) return error[property]
+  if (error instanceof Error) return property === 'message' ? error.message : error.name
   if (property === 'message' && typeof error === 'string') return error
   if (typeof error !== 'object' || error === null || !(property in error)) return ''
 

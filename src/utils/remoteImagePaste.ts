@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import DOMPurify from 'dompurify'
 import { portableAttachmentPathFromCurrentVaultPath } from './vaultAttachments'
 
 export type RemotePasteImage = {
@@ -43,11 +44,16 @@ function imageUrl(element: HTMLImageElement, baseUrl?: string): string | null {
     ?? firstSrcsetUrl({ value: element.getAttribute('srcset'), baseUrl })
 }
 
-function htmlRemoteImages({ html }: { html: string }): RemotePasteImage[] {
-  if (!html) return []
-  const document = new DOMParser().parseFromString(html, 'text/html')
+function sanitizeMarkup(markup: string): string {
+  return DOMPurify.sanitize(markup)
+}
+
+function markupRemoteImages(markup: string): RemotePasteImage[] {
+  if (!markup) return []
+  const sourceDocument = new DOMParser().parseFromString(markup, 'text/html')
+  const document = new DOMParser().parseFromString(sanitizeMarkup(markup), 'text/html')
   const baseUrl = remoteUrl({
-    value: document.querySelector('base')?.getAttribute('href') ?? null,
+    value: sourceDocument.querySelector('base')?.getAttribute('href') ?? null,
   }) ?? undefined
   return Array.from(document.querySelectorAll('img')).flatMap((element) => {
     const url = imageUrl(element, baseUrl)
@@ -89,23 +95,20 @@ async function invokeRemoteImageDownload({ url, vaultPath }: RemoteImageDownload
   return invoke<string>('download_remote_image_to_vault', { url, vaultPath })
 }
 
-async function importedReplacement(
+function importedReplacement(
   download: DownloadRemoteImage,
   image: RemotePasteImage,
   vaultPath: string,
 ): Promise<[string, string] | null> {
-  try {
-    const path = await download({ url: image.url, vaultPath })
+  return download({ url: image.url, vaultPath }).then((path) => {
     const portablePath = portableAttachmentPathFromCurrentVaultPath({ path, vaultPath })
-    return portablePath ? [image.url, portablePath] : null
-  } catch {
-    return null
-  }
+    return portablePath ? [image.url, portablePath] as [string, string] : null
+  }).catch(() => null)
 }
 
 export function clipboardRemoteImages(data: DataTransfer): RemotePasteImage[] {
   return uniqueImages([
-    ...htmlRemoteImages({ html: data.getData('text/html') }),
+    ...markupRemoteImages(data.getData('text/html')),
     ...markdownRemoteImages({ markdown: data.getData('text/plain') }),
   ])
 }
@@ -114,7 +117,7 @@ export function rawRemoteImagePasteText(data: DataTransfer): string {
   const text = data.getData('text/plain')
   return appendedRemoteImages({
     text,
-    images: htmlRemoteImages({ html: data.getData('text/html') }),
+    images: markupRemoteImages(data.getData('text/html')),
   })
 }
 

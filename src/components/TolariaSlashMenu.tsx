@@ -123,7 +123,7 @@ export function TolariaSlashMenu({
   const Components = useComponentsContext()
   const dictionary = useDictionary()
   const editor = useBlockNoteEditor()
-  const itemElements = useRef(new Map<string, HTMLDivElement>())
+  const itemElements = useRef(new Map<string, Element>())
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu | null>(null)
   const [submenuIndex, setSubmenuIndex] = useState(0)
   const submenuItems = submenuForKey(items, openSubmenu?.key)
