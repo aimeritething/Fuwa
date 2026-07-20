@@ -450,7 +450,9 @@ function handleActiveToggleCollapsedKey(
 
   stopEditorKey(event)
   const editorElement = editorBlockElement(tolariaEditor) ?? undefined
-  collapsibleBlockIds.forEach((blockId) => toggleCollapsedHeading(tolariaEditor, blockId, editorElement))
+  collapsibleBlockIds.forEach((blockId) => {
+    toggleCollapsedHeading(tolariaEditor, blockId, editorElement)
+  })
   editor.focus?.()
   dispatchBlockSelection(view, selection.blockIds)
   return true

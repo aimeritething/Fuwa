@@ -21,14 +21,6 @@ type SubmenuKeyboardAction =
   | { kind: 'open' }
   | { kind: 'select' }
 
-const OPEN_SUBMENU_KEY_ACTIONS: Readonly<Partial<Record<string, SubmenuKeyboardAction>>> = {
-  ArrowDown: { delta: 1, kind: 'move' },
-  ArrowLeft: { kind: 'close' },
-  ArrowUp: { delta: -1, kind: 'move' },
-  Enter: { kind: 'select' },
-  Escape: { kind: 'close' },
-}
-
 function stopMenuKeyboardEvent(event: KeyboardEvent) {
   event.preventDefault()
   event.stopImmediatePropagation()
@@ -36,6 +28,23 @@ function stopMenuKeyboardEvent(event: KeyboardEvent) {
 
 function nextWrappedIndex(index: number, delta: number, length: number): number {
   return (index + delta + length) % length
+}
+
+function openSubmenuAction(key: string, canOpen: boolean): SubmenuKeyboardAction | null {
+  return key === 'ArrowRight' && canOpen ? { kind: 'open' } : null
+}
+
+function closeSubmenuAction(key: string): SubmenuKeyboardAction | null {
+  return ['ArrowLeft', 'Escape'].includes(key) ? { kind: 'close' } : null
+}
+
+function moveSubmenuAction(key: string): SubmenuKeyboardAction | null {
+  if (key === 'ArrowDown') return { delta: 1, kind: 'move' }
+  return key === 'ArrowUp' ? { delta: -1, kind: 'move' } : null
+}
+
+function selectSubmenuAction(key: string): SubmenuKeyboardAction | null {
+  return key === 'Enter' ? { kind: 'select' } : null
 }
 
 function submenuForKey(items: TolariaSlashMenuItem[], key?: string) {
@@ -51,8 +60,11 @@ function submenuKeyboardAction({
   isOpen: boolean
   key: string
 }): SubmenuKeyboardAction | null {
-  if (key === 'ArrowRight' && canOpen) return { kind: 'open' }
-  return isOpen ? OPEN_SUBMENU_KEY_ACTIONS[key] ?? null : null
+  const openAction = openSubmenuAction(key, canOpen)
+  if (openAction) return openAction
+  if (!isOpen) return null
+  return [closeSubmenuAction(key), moveSubmenuAction(key), selectSubmenuAction(key)]
+    .find((action) => action !== null) ?? null
 }
 
 function applySubmenuKeyboardAction({
@@ -74,20 +86,23 @@ function applySubmenuKeyboardAction({
   submenuIndex: number
   submenuItems: TolariaSlashMenuItem[]
 }) {
-  const handlers: Record<SubmenuKeyboardAction['kind'], () => void> = {
-    close: () => setOpenSubmenu(null),
-    move: () => {
-      const delta = action.kind === 'move' ? action.delta : 0
-      setSubmenuIndex(current => nextWrappedIndex(current, delta, submenuItems.length))
-    },
-    open: () => selectedItem && openItemSubmenu(selectedItem),
-    select: () => {
+  switch (action.kind) {
+    case 'close':
+      setOpenSubmenu(null)
+      break
+    case 'move':
+      setSubmenuIndex(current => nextWrappedIndex(current, action.delta, submenuItems.length))
+      break
+    case 'open':
+      if (selectedItem) openItemSubmenu(selectedItem)
+      break
+    case 'select': {
       const submenuItem = submenuItems.at(submenuIndex)
       if (submenuItem) onItemClick?.(submenuItem)
       setOpenSubmenu(null)
-    },
+      break
+    }
   }
-  handlers[action.kind]()
 }
 
 export function TolariaSlashMenu({
@@ -96,7 +111,7 @@ export function TolariaSlashMenu({
   onItemClick,
   selectedIndex,
 }: SuggestionMenuProps<TolariaSlashMenuItem>) {
-  const Components = useComponentsContext()!
+  const Components = useComponentsContext()
   const dictionary = useDictionary()
   const editor = useBlockNoteEditor()
   const itemElements = useRef(new Map<string, HTMLDivElement>())
@@ -143,6 +158,8 @@ export function TolariaSlashMenu({
     return () => element?.removeEventListener('keydown', handleKeyDown, true)
   }, [editor.domElement, items, onItemClick, openItemSubmenu, openSubmenu, selectedIndex, submenuIndex, submenuItems])
 
+  if (!Components) return null
+
   const renderedItems = items.flatMap((item, index) => {
     const nodes = []
     if (item.group !== items[index - 1]?.group) {
@@ -159,13 +176,13 @@ export function TolariaSlashMenu({
           if (element) itemElements.current.set(item.key, element)
           else itemElements.current.delete(item.key)
         }}
-        onMouseEnter={() => openItemSubmenu(item)}
       >
         <Components.SuggestionMenu.Item
           className="bn-suggestion-menu-item"
           id={`bn-suggestion-menu-item-${index}`}
           isSelected={index === selectedIndex}
           item={item}
+          onMouseEnter={() => openItemSubmenu(item)}
           onClick={() => item.submenuItems?.length ? openItemSubmenu(item) : onItemClick?.(item)}
         />
       </div>,

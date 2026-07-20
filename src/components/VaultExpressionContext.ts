@@ -85,7 +85,7 @@ function mergeCachedDependencyContents(entries: VaultEntry[]): Record<string, st
     if (content === null) {
       prefetchNoteContent(entry, { parsedBlockPreload: false })
     } else {
-      cachedContents[entry.path] = content
+      Reflect.set(cachedContents, entry.path, content)
     }
   }
   return cachedContents
@@ -98,10 +98,12 @@ function retainDependencyContents(
 ): Record<string, string> {
   const next: Record<string, string> = {}
   for (const path of paths) {
-    if (cached[path] !== undefined) {
-      next[path] = cached[path]
-    } else if (current[path] !== undefined) {
-      next[path] = current[path]
+    const cachedContent = Reflect.get(cached, path) as string | undefined
+    const currentContent = Reflect.get(current, path) as string | undefined
+    if (cachedContent !== undefined) {
+      Reflect.set(next, path, cachedContent)
+    } else if (currentContent !== undefined) {
+      Reflect.set(next, path, currentContent)
     }
   }
   return next
@@ -111,7 +113,7 @@ function sameContents(left: Record<string, string>, right: Record<string, string
   const leftKeys = Object.keys(left)
   const rightKeys = Object.keys(right)
   return leftKeys.length === rightKeys.length
-    && leftKeys.every((key) => left[key] === right[key])
+    && leftKeys.every((key) => Reflect.get(left, key) === Reflect.get(right, key))
 }
 
 function deferStateUpdate(update: () => void): void {

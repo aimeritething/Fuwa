@@ -74,7 +74,9 @@ function unquoteScalar(value: FrontmatterScalarText): FrontmatterScalarText {
 }
 
 function isNumericScalar(value: FrontmatterScalarText): boolean {
-  return /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value)
+  const numericCharacters = new Set('0123456789.eE+-')
+  return [...value].every((character) => numericCharacters.has(character))
+    && Number.isFinite(Number(value))
 }
 
 function isUnsupportedScalarSyntax(value: FrontmatterScalarText): boolean {

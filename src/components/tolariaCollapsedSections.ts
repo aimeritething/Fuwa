@@ -49,7 +49,9 @@ function createCollapsedHeadingStore(): CollapsedHeadingStore {
     collapsedHeadingIds: new Set(),
     emit: () => {
       store.version += 1
-      store.listeners.forEach((listener) => listener())
+      store.listeners.forEach((listener) => {
+        listener()
+      })
     },
     getSnapshot: () => store.version,
     listeners: new Set(),
@@ -412,8 +414,12 @@ function mergeCollapsedSectionRenderStates(...states: CollapsedSectionRenderStat
   const merged = emptyCollapsedSectionRenderState()
 
   for (const state of states) {
-    state.collapsedHeadingIds.forEach((blockId) => merged.collapsedHeadingIds.add(blockId))
-    state.hiddenBlockIds.forEach((blockId) => merged.hiddenBlockIds.add(blockId))
+    state.collapsedHeadingIds.forEach((blockId) => {
+      merged.collapsedHeadingIds.add(blockId)
+    })
+    state.hiddenBlockIds.forEach((blockId) => {
+      merged.hiddenBlockIds.add(blockId)
+    })
   }
 
   return merged

@@ -1,22 +1,30 @@
-const STARTUP_SHELL_FALLBACK_HTML_KEY = '__tolariaStartupShellFallbackHtml'
+import { useLayoutEffect, useRef } from 'react'
 
-function startupShellFallbackHtml() {
-  const capturedHtml = Reflect.get(window, STARTUP_SHELL_FALLBACK_HTML_KEY)
-  if (typeof capturedHtml === 'string') return capturedHtml
+const STARTUP_SHELL_FALLBACK_NODE_KEY = '__tolariaStartupShellFallbackNode'
 
-  return document.getElementById('tolaria-boot-shell')?.innerHTML
-    ?? ''
+function startupShellFallbackNode(): Node | null {
+  const capturedNode = Reflect.get(window, STARTUP_SHELL_FALLBACK_NODE_KEY)
+  if (capturedNode instanceof Node) return capturedNode.cloneNode(true)
+
+  return document.getElementById('tolaria-boot-shell')?.cloneNode(true) ?? null
 }
 
 export function StartupShellFallback() {
-  const html = startupShellFallbackHtml()
+  const containerRef = useRef<HTMLDivElement | null>(null)
+
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    const shell = startupShellFallbackNode()
+    if (!(container && shell)) return
+    container.replaceChildren(...Array.from(shell.childNodes, (child) => child.cloneNode(true)))
+  }, [])
 
   return (
     <div
+      ref={containerRef}
       className="startup-shell-fallback"
       data-testid="startup-shell-fallback"
       aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: html }}
     />
   )
 }

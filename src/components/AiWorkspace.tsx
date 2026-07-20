@@ -24,13 +24,13 @@ import {
   aiAgentPermissionModeLabels,
   type AiAgentPermissionMode,
 } from '../lib/aiAgentPermissionMode'
-import {
-  type VaultAiGuidanceStatus,
+import type {
+  VaultAiGuidanceStatus,
 } from '../lib/vaultAiGuidance'
 import { translate, type AppLocale } from '../lib/i18n'
 import { trackAiWorkspaceChatTitled, trackAiWorkspaceSidebarToggled } from '../lib/productAnalytics'
 import {
-  modelOptionsForAgent,
+  type modelOptionsForAgent,
   preferredAgentModel,
   type AiAgentModelCatalog,
 } from '../lib/aiAgentModels'
@@ -41,7 +41,7 @@ import type { AiWorkspaceConversationSetting } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
 import { NEW_AI_CHAT_EVENT } from '../utils/aiPromptBridge'
-import { type GenerateAiConversationTitleRequest } from '../utils/aiConversationTitle'
+import type { GenerateAiConversationTitleRequest } from '../utils/aiConversationTitle'
 import { cloneAiWorkspaceSessionUntilMessage } from '../lib/aiWorkspaceSessionStore'
 import { AiPanelView } from './AiPanel'
 import { GuidanceWarning, WorkspaceHeader } from './AiWorkspaceChrome'
@@ -726,13 +726,12 @@ function SideAiWorkspaceLayout({
   const [headerSeparated, setHeaderSeparated] = useState(false)
 
   return (
-    <section
+    <aside
       className={workspaceClassName('side', expanded)}
       style={workspaceStyle('side', sizing.workspaceSize, expanded)}
       data-testid="ai-workspace"
       data-ai-workspace-mode="side"
       data-ai-workspace-expanded={expanded ? 'true' : 'false'}
-      role="complementary"
       aria-label={translate(workspace.locale, 'ai.workspace.title')}
     >
       {!expanded && <WorkspaceResizeHandles mode="side" onResize={sizing.onWorkspaceResize} />}
@@ -754,7 +753,7 @@ function SideAiWorkspaceLayout({
         />
         <ConversationSessions model={model} workspace={workspace} onMessageHistoryScrollStateChange={setHeaderSeparated} />
       </div>
-    </section>
+    </aside>
   )
 }
 

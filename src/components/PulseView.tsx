@@ -478,7 +478,10 @@ export const PulseView = memo(function PulseView({
     }
   }, [vaultPath, skip, loadingMore, hasMore])
 
-  useEffect(() => { loadInitial() }, [loadInitial, refreshKey])
+  useEffect(() => {
+    void refreshKey
+    loadInitial()
+  }, [loadInitial, refreshKey])
 
   // Intersection Observer for infinite scroll
   useEffect(() => {

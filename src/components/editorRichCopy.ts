@@ -112,9 +112,8 @@ function clipboardWikilinksFromHtml(html: string): ClipboardWikilink[] | null {
   const ownerDocument = globalThis.document
   if (!ownerDocument || html.length === 0) return null
 
-  const container = ownerDocument.createElement('div')
-  container.innerHTML = html
-  return clipboardWikilinksFromContainer(container)
+  const parsed = new DOMParser().parseFromString(html, 'text/html')
+  return clipboardWikilinksFromContainer(parsed.body)
 }
 
 function clipboardWikilinksFromContainer(container: ParentNode): ClipboardWikilink[] | null {

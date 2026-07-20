@@ -35,7 +35,7 @@ function translationValuesFrom(value: unknown): TranslationValues | undefined {
 }
 
 function isTranslationKey(value: unknown): value is TranslationKey {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(EN_TRANSLATIONS, value)
+  return typeof value === 'string' && Object.hasOwn(EN_TRANSLATIONS, value)
 }
 
 function parseLocalizedErrorPayload(message: string): LocalizedErrorPayload | null {

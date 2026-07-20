@@ -180,17 +180,17 @@ export function QuickLauncherSearchPanel({
     void createNote()
   }
 
-  const keyboardActions: Partial<Record<string, () => void>> = {
-    ArrowDown: () => setSelectedIndex((index) => Math.min(index + 1, Math.max(0, presentedResults.length - 1))),
-    ArrowUp: () => setSelectedIndex((index) => Math.max(index - 1, 0)),
-    Enter: activateSelection,
-  }
-
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    const action = keyboardActions[event.key]
-    if (!action) return
-    event.preventDefault()
-    action()
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setSelectedIndex((index) => Math.min(index + 1, Math.max(0, presentedResults.length - 1)))
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setSelectedIndex((index) => Math.max(index - 1, 0))
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      activateSelection()
+    }
   }
 
   const canOfferCreate = Boolean(trimmedQuery)

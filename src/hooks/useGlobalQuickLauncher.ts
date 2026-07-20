@@ -18,7 +18,9 @@ const statusListeners = new Set<() => void>()
 
 function publishShortcutStatus(status: QuickLauncherShortcutStatus): void {
   shortcutStatus = status
-  statusListeners.forEach((listener) => listener())
+  statusListeners.forEach((listener) => {
+    listener()
+  })
 }
 
 function subscribeShortcutStatus(listener: () => void): () => void {

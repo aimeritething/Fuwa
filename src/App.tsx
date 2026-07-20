@@ -81,7 +81,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
 import type { AiWorkspaceConversationSetting, GitSetupPreference, SidebarSelection, InboxPeriod, VaultEntry, WorkspaceIdentity } from './types'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
-import { type NoteListFilter } from './utils/noteListHelpers'
+import type { NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { refreshNoteWindowVaultChanges } from './utils/noteWindowVaultRefresh'
@@ -154,8 +154,7 @@ import './App.css'
 declare global {
   interface Window {
     __mockContent?: Record<string, string>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock handler map for Playwright test overrides
-    __mockHandlers?: Record<string, (args: any) => any>
+    __mockHandlers?: Record<string, (args?: unknown) => unknown>
   }
 }
 
@@ -530,8 +529,8 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     void refreshGitModifiedFiles()
   }, [markRecentVaultWrite, refreshGitModifiedFiles])
   const handleMissingActiveVault = useCallback(() => {
-    if (!noteWindowParams && !aiWorkspaceWindow && resolvedPath) vault.markVaultUnavailable(resolvedPath)
-  }, [aiWorkspaceWindow, noteWindowParams, resolvedPath, vault])
+    if (!noteWindowParams && resolvedPath) vault.markVaultUnavailable(resolvedPath)
+  }, [noteWindowParams, resolvedPath, vault])
 
   const notes = useNoteActions({
     addEntry: vault.addEntry,

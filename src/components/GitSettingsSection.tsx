@@ -78,7 +78,6 @@ function GitRepositoryRootRow({ t, workspace }: { t: Translate; workspace: GitWo
       <span
         className="block max-w-80 break-all text-right text-xs text-muted-foreground"
         data-testid="settings-git-root"
-        tabIndex={0}
       >
         {workspace.gitRoot}
       </span>

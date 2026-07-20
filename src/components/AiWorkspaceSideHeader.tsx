@@ -189,6 +189,7 @@ function useHorizontalScrollFades(dependencyKey: string) {
   }, [])
 
   useEffect(() => {
+    void dependencyKey
     const element = scrollRef.current
     updateFades()
     if (!element) return

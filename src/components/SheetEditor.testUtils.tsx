@@ -501,12 +501,14 @@ vi.mock('@ironcalc/workbook', () => ({
     return (
       <div className="scroll" data-testid="mock-sheet-scroll">
         <div
+          role="listbox"
+          aria-label="Spreadsheet workbook"
+          tabIndex={0}
           className="sheet-container"
           data-testid="ironcalc-workbook"
           ref={focusMockWorkbookOnRender}
           onKeyDown={handleMockWorkbookKeyDown}
           onPointerDown={(event) => handleMockWorkbookPointerDown(event, model)}
-          tabIndex={0}
         >
           <canvas data-testid="mock-sheet-canvas" />
           <input aria-label="Formula" data-testid="mock-formula-input" style={{ caretColor: 'rgb(242, 153, 74)' }} />

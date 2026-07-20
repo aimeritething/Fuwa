@@ -517,6 +517,9 @@ function SearchResultRow({
         selected ? "bg-accent" : "hover:bg-secondary",
       )}
       onClick={() => onSelect(result)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onSelect(result)
+      }}
       onMouseMove={(event) => onHover(index, event)}
     >
       <div className="flex items-center gap-2">

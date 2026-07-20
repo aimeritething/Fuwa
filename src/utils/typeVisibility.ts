@@ -17,8 +17,9 @@ export function buildTypeVisibilityLookup(entries: VaultEntry[]): TypeVisibility
     if (!isActiveTypeDefinition(entry)) continue
     const key = normalizeTypeName({ type: entry.title })
     if (!key) continue
-    lookup[key] = lookup[key] ?? {}
-    lookup[key][entryTypeWorkspaceKey(entry)] = entry.visible !== false
+    const workspaceVisibility = (Reflect.get(lookup, key) as Record<string, boolean> | undefined) ?? {}
+    Reflect.set(workspaceVisibility, entryTypeWorkspaceKey(entry), entry.visible !== false)
+    Reflect.set(lookup, key, workspaceVisibility)
   }
   return lookup
 }
@@ -28,9 +29,9 @@ export function isTypeVisibleInWorkspace(
   type: string,
   workspacePath?: string | null,
 ): boolean {
-  const typeLookup = lookup[normalizeTypeName({ type })]
+  const typeLookup = Reflect.get(lookup, normalizeTypeName({ type })) as Record<string, boolean> | undefined
   if (!typeLookup) return true
-  const visible = typeLookup[typeWorkspaceKey({ path: workspacePath })]
+  const visible = Reflect.get(typeLookup, typeWorkspaceKey({ path: workspacePath })) as boolean | undefined
   return visible !== false
 }
 

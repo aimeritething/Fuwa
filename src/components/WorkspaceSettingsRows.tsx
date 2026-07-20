@@ -220,8 +220,7 @@ function WorkspaceRemovalConfirmation({
   const title = t('status.vault.removeConfirmTitle')
 
   return (
-    <div
-      role="group"
+    <fieldset
       aria-label={title}
       className="rounded-md border border-destructive/40 bg-destructive/5 p-3"
       data-testid={`settings-workspace-remove-confirm-${workspace.alias}`}
@@ -243,7 +242,7 @@ function WorkspaceRemovalConfirmation({
           {t('status.vault.removeConfirmAction')}
         </Button>
       </div>
-    </div>
+    </fieldset>
   )
 }
 

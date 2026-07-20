@@ -135,7 +135,9 @@ function handlePointerForScope(
 
 function handleDocumentPointerDown(event: PointerEvent): void {
   const target = event.target
-  focusOwnershipScopes.forEach((record) => handlePointerForScope(record, event, target))
+  focusOwnershipScopes.forEach((record) => {
+    handlePointerForScope(record, event, target)
+  })
 }
 
 function installDocumentListeners(): void {

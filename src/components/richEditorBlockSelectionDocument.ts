@@ -116,7 +116,8 @@ export function blockSelectionAfterArrow(
   const targetIndex = direction === 'up'
     ? Math.max(0, firstIndex - 1)
     : Math.min(allBlockIds.length - 1, lastIndex + 1)
-  return allBlockIds[targetIndex] ? [allBlockIds[targetIndex]] : selected
+  const targetBlockId = allBlockIds.at(targetIndex)
+  return targetBlockId ? [targetBlockId] : selected
 }
 
 export function blockSelectionAfterDelete(
@@ -129,7 +130,8 @@ export function blockSelectionAfterDelete(
   if (remaining.length === 0) return []
 
   const nextIndex = Math.min(Math.max(firstSelectedIndex, 0), remaining.length - 1)
-  return [remaining[nextIndex]]
+  const nextBlockId = remaining.at(nextIndex)
+  return nextBlockId ? [nextBlockId] : []
 }
 
 function parentIdsByBlockId(entries: readonly DocumentBlockEntry[]): Map<string, string | null> {
@@ -193,9 +195,11 @@ export function collapsedContentOperationBlockIds(
 
     operationBlockIds.push(entry.id)
     let cursor = index + 1
-    while (cursor < entries.length && hiddenBlockIds.has(entries[cursor].id)) {
-      operationBlockIds.push(entries[cursor].id)
+    let cursorEntry = entries.at(cursor)
+    while (cursorEntry && hiddenBlockIds.has(cursorEntry.id)) {
+      operationBlockIds.push(cursorEntry.id)
       cursor += 1
+      cursorEntry = entries.at(cursor)
     }
   })
 
@@ -206,7 +210,7 @@ function hasSameBlockIds(leftBlockIds: readonly string[], rightBlockIds: readonl
   const left = uniqueBlockIds(leftBlockIds)
   const right = uniqueBlockIds(rightBlockIds)
 
-  return left.length === right.length && left.every((blockId, index) => right[index] === blockId)
+  return left.length === right.length && left.every((blockId, index) => right.at(index) === blockId)
 }
 
 function movePlacementForSelection(

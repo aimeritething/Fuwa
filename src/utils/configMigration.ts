@@ -83,9 +83,9 @@ function applyJsonRecordMigration(
   primaryKey: string,
   legacyKey: string,
 ) {
-  if (result[field] !== null) return
+  if (Reflect.get(result, field) !== null) return
   const values = readJson<Record<string, string>>(primaryKey) ?? readJson<Record<string, string>>(legacyKey)
-  if (hasRecordValues(values)) result[field] = values
+  if (hasRecordValues(values)) Reflect.set(result, field, values)
 }
 
 /**

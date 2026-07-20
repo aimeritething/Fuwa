@@ -240,7 +240,7 @@ function MermaidLightbox({ svg }: { svg: string }) {
 }
 
 function MermaidSourceFallback({ source }: { source: string }) {
-  return <pre aria-label="Mermaid source"><code>{source}</code></pre>
+  return <pre role="img" aria-label="Mermaid source"><code>{source}</code></pre>
 }
 
 export function MermaidDiagram({ diagram, source }: MermaidDiagramProps) {

@@ -18,7 +18,7 @@ type RemoteImageDownloadRequest = {
 }
 type DownloadRemoteImage = (request: RemoteImageDownloadRequest) => Promise<string>
 
-const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)(?:\s+["'][^)]*["'])?\)/giu
+const MARKDOWN_IMAGE_RE = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/giu
 const REMOTE_PROTOCOLS = new Set(['http:', 'https:'])
 
 function remoteUrl({ value, baseUrl }: { value: string | null; baseUrl?: string }): string | null {

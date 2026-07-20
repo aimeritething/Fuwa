@@ -40,13 +40,11 @@ export function AiAgentIcon({
     <span
       className={cn('rounded-[5px]', className)}
       style={{ ...ICON_STYLE, width: size, height: size }}
-      role={title ? 'img' : undefined}
-      aria-label={title ? label : undefined}
       aria-hidden={title ? undefined : true}
     >
       <img
         src={AI_AGENT_ICON_SOURCES[agent]}
-        alt=""
+        alt={title ? label : ''}
         draggable={false}
         width={size}
         height={size}

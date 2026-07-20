@@ -104,7 +104,7 @@ export function QuickCapturePanel({ initialDestination, settings, t, vaults }: Q
   const destinationLabel = quickCaptureDestinationLabel({ folder, preview, t, vaultPath })
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3" onKeyDown={handleKeyDown}>
+    <form className="flex min-h-0 flex-1 flex-col gap-3" onKeyDown={handleKeyDown} onSubmit={(event) => event.preventDefault()}>
       <div className="grid grid-cols-2 gap-2">
         <Select value={vaultPath} onValueChange={selectVault}>
           <SelectTrigger className="w-full" aria-label={t('quickLauncher.vaultLabel')}><SelectValue placeholder={t('quickLauncher.vaultLabel')} /></SelectTrigger>
@@ -125,8 +125,8 @@ export function QuickCapturePanel({ initialDestination, settings, t, vaults }: Q
         {preview?.collided && <div className="mt-2 space-y-2">
           <p className="text-xs text-amber-600 dark:text-amber-400">{t('quickLauncher.collision', { path: preview.relativePath })}</p>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => void openExisting()}>{t('quickLauncher.openExisting')}</Button>
-            <Button size="sm" variant="ghost" onClick={() => titleRef.current?.focus()}>{t('quickLauncher.chooseAnotherTitle')}</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => void openExisting()}>{t('quickLauncher.openExisting')}</Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => titleRef.current?.focus()}>{t('quickLauncher.chooseAnotherTitle')}</Button>
           </div>
         </div>}
       </div>
@@ -134,8 +134,8 @@ export function QuickCapturePanel({ initialDestination, settings, t, vaults }: Q
         <div className="text-muted-foreground text-xs" role="status" aria-live="polite">
           {validationMessage || (saveState === 'saved' ? t('quickLauncher.saved') : saveState === 'error' ? t('quickLauncher.saveError') : t('quickLauncher.shortcutHint'))}
         </div>
-        <Button onClick={() => void saveCapture()} disabled={saveState === 'saving' || !vaultPath}>{saveState === 'saving' ? t('quickLauncher.saving') : t('quickLauncher.save')}</Button>
+        <Button type="button" onClick={() => void saveCapture()} disabled={saveState === 'saving' || !vaultPath}>{saveState === 'saving' ? t('quickLauncher.saving') : t('quickLauncher.save')}</Button>
       </div>
-    </div>
+    </form>
   )
 }

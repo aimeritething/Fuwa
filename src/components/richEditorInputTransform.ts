@@ -44,7 +44,9 @@ const RECOVERED_INPUT_TRANSFORM_ERROR = Symbol('recoveredInputTransformError')
 type TransformReadResult = RichEditorInputTransformResult | null | typeof RECOVERED_INPUT_TRANSFORM_ERROR
 
 function resetInputTransforms(transforms: RichEditorInputTransform[]): void {
-  transforms.forEach((transform) => transform.reset?.())
+  transforms.forEach((transform) => {
+    transform.reset?.()
+  })
 }
 
 function isLiveEditorView(view: RichEditorInputView): boolean {

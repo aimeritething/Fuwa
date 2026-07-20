@@ -33,6 +33,7 @@ import { MermaidDiagram } from './MermaidDiagram'
 import { SafeHtmlSpan } from './SafeMarkup'
 import { updateTldrawBlockPropsSafely } from './tldrawBlockProps'
 import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
+import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 import { dispatchRichEditorExternalChange } from './editorExternalChangeEvents'
 import { CalloutBlockSpec } from './CalloutBlock'
@@ -215,13 +216,10 @@ export function MathBlockEditor({ block, editor }: MathBlockEditorProps) {
     }
   }
 
-  return (
-    <div
-      className={editing ? 'math-block-shell math-block-shell--editing' : 'math-block-shell'}
-      onDoubleClick={editing ? stopMathEditorEvent : startEditing}
-    >
-      {editing ? (
-        <div contentEditable={false} onMouseDown={stopMathEditorEvent}>
+  if (editing) {
+    return (
+      <div className="math-block-shell math-block-shell--editing">
+        <div contentEditable={false}>
           <Textarea
             ref={textareaRef}
             aria-label={`Math: ${currentLatex}`}
@@ -230,12 +228,17 @@ export function MathBlockEditor({ block, editor }: MathBlockEditorProps) {
             onBlur={finishEditing}
             onChange={(event) => setDraftLatex(event.target.value)}
             onKeyDown={handleKeyDown}
+            onMouseDown={stopMathEditorEvent}
           />
         </div>
-      ) : (
-        <MathRender latex={currentLatex} displayMode />
-      )}
-    </div>
+      </div>
+    )
+  }
+
+  return (
+    <Button type="button" variant="ghost" className="math-block-shell" onDoubleClick={startEditing}>
+      <MathRender latex={currentLatex} displayMode />
+    </Button>
   )
 }
 

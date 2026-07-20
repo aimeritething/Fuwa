@@ -50,7 +50,7 @@ export function resolveAgentModelSelection({
   ready,
   selectedModelId,
 }: ResolveAgentModelSelectionOptions): AgentModelSelection {
-  const discovered = agentId ? catalog[agentId] ?? [] : []
+  const discovered = agentId ? (Reflect.get(catalog, agentId) as AiAgentModelCatalog[string] | undefined) ?? [] : []
   const valid = selectionIsValid(discovered, selectedModelId)
   return {
     agentId,

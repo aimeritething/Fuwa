@@ -336,7 +336,7 @@
     <script>
       (function () {
         var bootShell = document.getElementById('tolaria-boot-shell');
-        window.__tolariaStartupShellFallbackHtml = bootShell ? bootShell.innerHTML : '';
+        window.__tolariaStartupShellFallbackNode = bootShell ? bootShell.cloneNode(true) : null;
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

@@ -16,7 +16,7 @@ export function WorkspaceGlobalSearchSetting({
   const t = createTranslator(locale)
   const label = t('settings.workspaces.globalSearch')
   return (
-    <label className="flex items-center justify-between gap-4 rounded-md bg-muted/30 px-3 py-2">
+    <div className="flex items-center justify-between gap-4 rounded-md bg-muted/30 px-3 py-2">
       <span className="min-w-0">
         <span className="block text-xs font-medium text-foreground">{label}</span>
         <span className="block text-[11px] text-muted-foreground">{t('settings.workspaces.globalSearchDescription')}</span>
@@ -27,6 +27,6 @@ export function WorkspaceGlobalSearchSetting({
         onCheckedChange={(searchEnabled) => onUpdateWorkspaceIdentity?.(vault.path, { searchEnabled })}
         aria-label={label}
       />
-    </label>
+    </div>
   )
 }

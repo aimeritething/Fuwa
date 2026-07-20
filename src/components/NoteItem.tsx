@@ -486,11 +486,15 @@ function NoteItemRow({
   return (
     <div
       role="option"
+      tabIndex={-1}
       aria-selected={isSelected || isMultiSelected}
       className={surfaceProps.className}
       draggable={surfaceProps.draggable}
       style={surfaceProps.style}
       onClick={surfaceProps.onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') event.currentTarget.click()
+      }}
       onContextMenu={surfaceProps.onContextMenu}
       onDragStart={surfaceProps.onDragStart}
       onMouseEnter={surfaceProps.onMouseEnter}

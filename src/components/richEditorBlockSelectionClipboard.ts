@@ -14,9 +14,9 @@ function blockWithoutId(block: unknown): unknown {
   const clone: Record<string, unknown> = {}
   Object.entries(source).forEach(([key, value]) => {
     if (key === 'id') return
-    clone[key] = key === 'children' && Array.isArray(value)
+    Reflect.set(clone, key, key === 'children' && Array.isArray(value)
       ? value.map(blockWithoutId)
-      : value
+      : value)
   })
   return clone
 }

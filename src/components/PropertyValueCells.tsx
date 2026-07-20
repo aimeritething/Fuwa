@@ -490,7 +490,10 @@ function DisplayModeMenu({
 
   return createPortal(
     <>
-      <div
+      <Button
+        type="button"
+        variant="ghost"
+        aria-label="Close display mode menu"
         className="fixed inset-0 z-[12000]"
         onClick={onClose}
       />

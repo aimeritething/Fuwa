@@ -1,5 +1,8 @@
+let fallbackStreamEventSequence = 0
+
 function fallbackStreamEventId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+  fallbackStreamEventSequence += 1
+  return `${Date.now().toString(36)}-${fallbackStreamEventSequence.toString(36)}`
 }
 
 export function createScopedStreamEventName(baseName: string): string {

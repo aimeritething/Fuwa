@@ -447,6 +447,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
   )
 
   useEffect(() => {
+    void loadOptionsKey
     const path = vaultPath
     const loadOptions = loadOptionsRef.current
     const effectOptions = {
@@ -484,7 +485,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
     setEntries, setFolders, setIsLoading, setModifiedFiles, setModifiedFilesError, setViews,
     loadOptionsRef,
     loadOptionsKey,
-    folderVaults
+    folderVaults,
   ])
 }
 

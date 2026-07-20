@@ -572,7 +572,7 @@ export function useSheetWorkbookController({
   const refreshSequenceRef = useRef(0), trackedOpenPathRef = useRef<string | null>(null), workbookGenerationRef = useRef(0)
   const workbookPathRef = useRef(path), workbookRef = useRef<SheetWorkbookState | null>(null)
 
-  useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange, onContentChangeRef])
+  useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
 
   const {
     cancelScheduledSerialize,

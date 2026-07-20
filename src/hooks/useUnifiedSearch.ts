@@ -123,7 +123,7 @@ export function useUnifiedSearch(vaultPath: string | string[], active: boolean) 
       setLoading(false)
       return
     }
-    debounceRef.current = setTimeout(() => performSearch(query), DEBOUNCE_MS)
+    debounceRef.current = setTimeout(() => { void performSearch(query) }, DEBOUNCE_MS)
     return () => {
       clearTimeout(debounceRef.current ?? undefined)
       debounceRef.current = null

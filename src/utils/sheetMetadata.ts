@@ -258,12 +258,51 @@ const CELL_METADATA_UPDATERS: Record<string, CellMetadataUpdater> = {
   },
 }
 
+function updateCellTextMetadata(property: string, value: MetadataValue): Partial<SheetCellMetadata> | null {
+  switch (property) {
+    case 'num_fmt': return CELL_METADATA_UPDATERS.num_fmt(value)
+    case 'bold': return CELL_METADATA_UPDATERS.bold(value)
+    case 'italic': return CELL_METADATA_UPDATERS.italic(value)
+    case 'underline': return CELL_METADATA_UPDATERS.underline(value)
+    case 'strike': return CELL_METADATA_UPDATERS.strike(value)
+    case 'font_size': return CELL_METADATA_UPDATERS.font_size(value)
+    case 'font_color': return CELL_METADATA_UPDATERS.font_color(value)
+    default: return null
+  }
+}
+
+function updateCellLayoutMetadata(property: string, value: MetadataValue): Partial<SheetCellMetadata> | null {
+  switch (property) {
+    case 'fill_color': return CELL_METADATA_UPDATERS.fill_color(value)
+    case 'horizontal_align': return CELL_METADATA_UPDATERS.horizontal_align(value)
+    case 'vertical_align': return CELL_METADATA_UPDATERS.vertical_align(value)
+    case 'wrap_text': return CELL_METADATA_UPDATERS.wrap_text(value)
+    default: return null
+  }
+}
+
+function updateCellBorderMetadata(property: string, value: MetadataValue): Partial<SheetCellMetadata> | null {
+  switch (property) {
+    case 'border_top': return CELL_METADATA_UPDATERS.border_top(value)
+    case 'border_right': return CELL_METADATA_UPDATERS.border_right(value)
+    case 'border_bottom': return CELL_METADATA_UPDATERS.border_bottom(value)
+    case 'border_left': return CELL_METADATA_UPDATERS.border_left(value)
+    default: return null
+  }
+}
+
+function updateCellMetadata(property: string, value: MetadataValue): Partial<SheetCellMetadata> | null {
+  return updateCellTextMetadata(property, value)
+    ?? updateCellLayoutMetadata(property, value)
+    ?? updateCellBorderMetadata(property, value)
+}
+
 function assignCellMetadata(metadata: SheetMetadata, assignment: MetadataAssignment): void {
   const { key, property, value } = assignment
   const cell = normalizeCellAddress(key)
   if (!cell) return
 
-  const update = CELL_METADATA_UPDATERS[property]?.(value)
+  const update = updateCellMetadata(property, value)
   if (!update) return
 
   metadata.cells[cell] = { ...metadata.cells[cell], ...update }
@@ -286,7 +325,17 @@ const SHEET_SETTING_ASSIGNERS: Record<string, SheetSettingAssigner> = {
 }
 
 function assignSheetSetting(metadata: SheetMetadata, assignment: SheetSettingAssignment): void {
-  SHEET_SETTING_ASSIGNERS[assignment.property]?.(metadata, assignment.value)
+  switch (assignment.property) {
+    case 'show_grid_lines':
+      SHEET_SETTING_ASSIGNERS.show_grid_lines(metadata, assignment.value)
+      break
+    case 'frozen_rows':
+      SHEET_SETTING_ASSIGNERS.frozen_rows(metadata, assignment.value)
+      break
+    case 'frozen_columns':
+      SHEET_SETTING_ASSIGNERS.frozen_columns(metadata, assignment.value)
+      break
+  }
 }
 
 function assignMetadataValue(metadata: SheetMetadata, assignment: MetadataAssignment): void {

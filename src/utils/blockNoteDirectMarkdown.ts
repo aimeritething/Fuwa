@@ -72,7 +72,6 @@ interface SerializeContext {
   numberedStack: number[]
 }
 
-const DIRECT_MARKDOWN_METHOD = 'blocksToMarkdownDirect'
 const ESCAPE_INLINE_TEXT_RE = /([\\`*_])/g
 const IMAGE_MARKER_BANG_RE = /!(?=\[)/g
 const LEADING_ATX_HEADING_RE = /^([ \t]{0,3})(#{1,6})(?=\s|$)/gm
@@ -86,7 +85,6 @@ const TEXT_CONTENT_BLOCK_TYPES = new Set([
 ])
 const MEDIA_BLOCK_TYPES = new Set(['audio', 'file', 'image', 'video'])
 
-type BlockMarkdownHandler = (block: BlockLike, context: SerializeContext) => string | null
 
 function now(): number {
   return globalThis.performance?.now?.() ?? Date.now()
@@ -186,11 +184,11 @@ function literalTextContent(content: InlineItem[] | undefined): string {
 function blockPrefix(block: BlockLike, depth: number, context: SerializeContext): MarkdownLinePrefix | null {
   const indent = '  '.repeat(depth)
   if (block.type === 'numberedListItem') {
-    const next = context.numberedStack[depth] ?? Number(block.props?.start ?? 1)
-    context.numberedStack[depth] = next + 1
+    const next = context.numberedStack.at(depth) ?? Number(block.props?.start ?? 1)
+    context.numberedStack.splice(depth, 1, next + 1)
     return { indent, marker: `${next}. ` }
   }
-  context.numberedStack[depth] = 1
+  context.numberedStack.splice(depth, 1, 1)
   if (block.type === 'bulletListItem') return { indent, marker: '- ' }
   if (block.type === 'checkListItem') return { indent, marker: block.props?.checked === true ? '- [x] ' : '- [ ] ' }
   return null
@@ -261,7 +259,7 @@ function tableMarkdown(block: BlockLike): string | null {
   const width = Math.max(...cellRows.map(row => row.length), 0)
   if (width === 0) return ''
 
-  const normalizedRows = cellRows.map(row => Array.from({ length: width }, (_, index) => row[index] ?? ''))
+  const normalizedRows = cellRows.map(row => Array.from({ length: width }, (_, index) => row.at(index) ?? ''))
   const [head, ...body] = normalizedRows
   return [
     `| ${head.join(' | ')} |`,
@@ -284,26 +282,29 @@ function unsupportedBlockMarkdown(block: BlockLike, context: SerializeContext): 
   return null
 }
 
-const BLOCK_MARKDOWN_HANDLERS: Record<string, BlockMarkdownHandler> = {
-  codeBlock: codeBlockMarkdown,
-  divider: () => '---',
-  heading: headingMarkdown,
-  quote: quoteMarkdown,
-  table: tableMarkdown,
+function specialBlockMarkdown(block: BlockLike, context: SerializeContext): string | null {
+  switch (block.type) {
+    case 'codeBlock': return codeBlockMarkdown(block, context)
+    case 'divider': return '---'
+    case 'heading': return headingMarkdown(block)
+    case 'quote': return quoteMarkdown(block)
+    case 'table': return tableMarkdown(block)
+    default: return unsupportedBlockMarkdown(block, context)
+  }
 }
 
 function blockMarkdownWithoutChildren(block: BlockLike, context: SerializeContext): string | null {
   if (typeof block.type !== 'string') return unsupportedBlockMarkdown(block, context)
   if (TEXT_CONTENT_BLOCK_TYPES.has(block.type)) return inlineBlockMarkdown(block)
   if (MEDIA_BLOCK_TYPES.has(block.type)) return mediaMarkdown(block)
-  return BLOCK_MARKDOWN_HANDLERS[block.type]?.(block, context) ?? unsupportedBlockMarkdown(block, context)
+  return specialBlockMarkdown(block, context)
 }
 
 function serializeChildren(block: BlockLike, depth: number, context: SerializeContext): string {
   const children = Array.isArray(block.children) ? block.children : []
   if (children.length === 0) return ''
   const childDepth = depth + 1
-  context.numberedStack[childDepth] = 1
+  context.numberedStack.splice(childDepth, 1, 1)
   const markdown = serializeBlockList(children, childDepth, context)
   context.numberedStack.length = childDepth
   return markdown
@@ -313,7 +314,7 @@ function blockCacheKey(block: BlockLike, depth: number, context: SerializeContex
   return [
     depth,
     block.type ?? '',
-    context.numberedStack[depth] ?? '',
+    context.numberedStack.at(depth) ?? '',
   ].join(':')
 }
 
@@ -422,7 +423,7 @@ export function serializeBlockNoteMarkdown(
   editor: DirectMarkdownCapableSerializer,
   blocks: unknown[],
 ): string {
-  const direct = editor[DIRECT_MARKDOWN_METHOD]?.(blocks)
+  const direct = editor.blocksToMarkdownDirect?.(blocks)
   if (direct?.supported) return direct.markdown
   return editor.blocksToMarkdownLossy(blocks)
 }
