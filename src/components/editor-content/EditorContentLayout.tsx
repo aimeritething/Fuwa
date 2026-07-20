@@ -7,6 +7,7 @@ import { useEditorFocusScope } from '../../hooks/editorFocusOwnership'
 import { dispatchEditorFindAvailability } from '../../utils/editorFindEvents'
 import { DiffView } from '../DiffView'
 import { BreadcrumbBar } from '../BreadcrumbBar'
+import { HtmlFilePreview } from '../HtmlFilePreview'
 import { ArchivedNoteBanner } from '../ArchivedNoteBanner'
 import { ConflictNoteBanner } from '../ConflictNoteBanner'
 import { RawEditorView } from '../RawEditorView'
@@ -353,25 +354,10 @@ function EditorChrome({
   )
 }
 
-function EditorCanvas({
-  showEditor,
-  isSheet,
-  richEditorContentReady,
-  cssVars,
-  editor,
-  activeTab,
-  entries,
-  onNavigateWikilink,
-  onEditorChange,
-  onRawContentChange,
-  sheetFlushRef,
-  isDeletedPreview,
-  vaultPath,
-  locale,
-  onImageImportError,
-}: Pick<
+type EditorCanvasProps = Pick<
   EditorContentModel,
   | 'showEditor'
+  | 'isHtmlPreview'
   | 'isSheet'
   | 'richEditorContentReady'
   | 'cssVars'
@@ -386,8 +372,39 @@ function EditorCanvas({
   | 'vaultPath'
   | 'locale'
   | 'onImageImportError'
->) {
-  if (!showEditor) return null
+>
+
+function EditorCanvas(props: EditorCanvasProps) {
+  if (!props.showEditor) return null
+  if (props.isHtmlPreview && props.activeTab) {
+    return (
+      <HtmlFilePreview
+        content={props.activeTab.content}
+        path={props.activeTab.entry.path}
+        title={props.activeTab.entry.title}
+        vaultPath={props.vaultPath ?? ''}
+      />
+    )
+  }
+  return <StandardEditorCanvas {...props} />
+}
+
+function StandardEditorCanvas({
+  isSheet,
+  richEditorContentReady,
+  cssVars,
+  editor,
+  activeTab,
+  entries,
+  onNavigateWikilink,
+  onEditorChange,
+  onRawContentChange,
+  sheetFlushRef,
+  isDeletedPreview,
+  vaultPath,
+  locale,
+  onImageImportError,
+}: EditorCanvasProps) {
   if (!isSheet && !richEditorContentReady) return null
 
   if (isSheet && activeTab) {
@@ -501,6 +518,7 @@ export function EditorContentLayout(model: EditorContentModel) {
     rawModeContent,
     sheetFlushRef,
     noteWidth,
+    isHtmlPreview,
     isSheet,
     richEditorContentReady,
     findRequest,
@@ -510,7 +528,7 @@ export function EditorContentLayout(model: EditorContentModel) {
   } = model
   const rootClassName = cn(
     'flex flex-1 flex-col min-w-0 min-h-0',
-    isSheet || noteWidth === 'wide' ? 'editor-content-width--wide' : 'editor-content-width--normal',
+    isHtmlPreview || isSheet || noteWidth === 'wide' ? 'editor-content-width--wide' : 'editor-content-width--normal',
   )
   const chromeTab = activeTab ?? loadingTab
   const chromePath = chromeTab?.entry.path ?? path
@@ -558,6 +576,7 @@ export function EditorContentLayout(model: EditorContentModel) {
           />
           <EditorCanvas
             showEditor={showEditor}
+            isHtmlPreview={isHtmlPreview}
             richEditorContentReady={richEditorContentReady}
             cssVars={cssVars}
             activeTab={activeTab}

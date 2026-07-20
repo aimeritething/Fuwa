@@ -144,6 +144,35 @@ describe('Editor', () => {
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
   })
 
+  it('renders HTML in-app and switches to editable source from the breadcrumb', async () => {
+    const htmlEntry: VaultEntry = {
+      ...mockEntry,
+      path: '/vault/reports/status.html',
+      filename: 'status.html',
+      title: 'status.html',
+      fileKind: 'text',
+    }
+
+    renderEditor({
+      tabs: [{ entry: htmlEntry, content: '<!doctype html><h1>Status</h1>' }],
+      activeTabPath: htmlEntry.path,
+      entries: [htmlEntry],
+      vaultPath: '/vault',
+    })
+
+    expect(screen.getByTestId('html-file-preview')).toBeInTheDocument()
+    expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open the raw editor' }))
+
+    expect(await screen.findByTestId('raw-editor-codemirror')).toBeInTheDocument()
+    expect(screen.queryByTestId('html-file-preview')).not.toBeInTheDocument()
+
+    act(() => {
+      resetVaultConfigStore()
+    })
+  })
+
   it('shows a graceful fallback when an image preview fails to render', () => {
     const imageEntry: VaultEntry = {
       ...mockEntry,

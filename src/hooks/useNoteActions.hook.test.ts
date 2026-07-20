@@ -186,7 +186,7 @@ describe('useNoteActions hook', () => {
     expect(result.current.activeTabPath).toBe('/vault/target.md')
   })
 
-  it.each(['html', 'HTM'])('opens .%s vault files externally without loading raw source', async (extension) => {
+  it.each(['html', 'HTM'])('loads .%s vault files into the editor for in-app preview', async (extension) => {
     const entry = makeEntry({
       path: `/test/vault/generated/report.${extension}`,
       filename: `report.${extension}`,
@@ -200,9 +200,12 @@ describe('useNoteActions hook', () => {
       await result.current.handleSelectNote(entry)
     })
 
-    expect(onOpenExternalFile).toHaveBeenCalledWith(entry.path)
-    expect(result.current.tabs).toHaveLength(0)
-    expect(mockInvoke).not.toHaveBeenCalledWith('get_note_content', expect.anything())
+    expect(onOpenExternalFile).not.toHaveBeenCalled()
+    expect(result.current.tabs).toEqual([{ entry, content: '' }])
+    expect(result.current.activeTabPath).toBe(entry.path)
+    expect(mockInvoke).toHaveBeenCalledWith('get_note_content', expect.objectContaining({
+      path: entry.path,
+    }))
   })
 
   it('handleNavigateWikilink warns when target not found', () => {

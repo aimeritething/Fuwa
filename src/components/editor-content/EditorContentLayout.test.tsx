@@ -21,6 +21,12 @@ vi.mock('../RawEditorView', () => ({
   RawEditorView: () => <div data-testid="raw-editor-view" />,
 }))
 
+vi.mock('../HtmlFilePreview', () => ({
+  HtmlFilePreview: ({ content, path }: { content: string; path: string }) => (
+    <div data-testid="html-file-preview" data-content={content} data-path={path} />
+  ),
+}))
+
 vi.mock('../SheetEditor', () => ({
   SheetEditor: ({
     content,
@@ -84,6 +90,7 @@ function createModel(overrides: Record<string, unknown> = {}) {
     onNavigateWikilink: vi.fn(),
     onEditorChange: vi.fn(),
     isDeletedPreview: false,
+    isHtmlPreview: false,
     rawLatestContentRef: { current: null },
     noteWidth: 'normal',
     onToggleNoteWidth: vi.fn(),
@@ -184,6 +191,27 @@ describe('EditorContentLayout', () => {
 
     expect(findScope).toHaveClass('editor-scroll-area')
     expect(rawEditor.closest('.editor-content-wrapper')).toBeNull()
+  })
+
+  it('renders HTML files in the editor pane without mounting the rich editor', () => {
+    render(<EditorContentLayout {...createModel({
+      isHtmlPreview: true,
+      richEditorContentReady: false,
+      activeTab: {
+        entry: {
+          path: '/vault/reports/status.html',
+          filename: 'status.html',
+          title: 'Status',
+          fileKind: 'text',
+        },
+        content: '<h1>Status</h1>',
+      },
+    })} />)
+
+    expect(screen.getByTestId('html-file-preview')).toHaveAttribute('data-path', '/vault/reports/status.html')
+    expect(screen.getByTestId('html-file-preview')).toHaveAttribute('data-content', '<h1>Status</h1>')
+    expect(screen.queryByTestId('single-editor-view')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('raw-editor-view')).not.toBeInTheDocument()
   })
 
   it('routes sheet notes to the sheet editor without the rich-editor wrapper', async () => {

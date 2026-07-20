@@ -78,6 +78,7 @@ export function useEditorContentModel(props: EditorContentProps) {
   const {
     isArchived,
     isDeletedPreview,
+    isHtmlPreview,
     isSheet,
     isNonMarkdownText,
     effectiveRawMode,
@@ -103,6 +104,7 @@ export function useEditorContentModel(props: EditorContentProps) {
     cssVars,
     isArchived,
     isDeletedPreview,
+    isHtmlPreview,
     isSheet,
     effectiveRawMode,
     forceRawMode: isNonMarkdownText || isDeletedPreview,

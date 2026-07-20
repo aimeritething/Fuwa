@@ -121,6 +121,7 @@ import {
 } from './utils/workspaces'
 import { notePathsMatch } from './utils/notePathIdentity'
 import { activeGitRepositories } from './utils/gitRepositories'
+import { entrySupportsPreviewSourceToggle } from './utils/filePreview'
 import { isMarkdownEntry } from './utils/typeDefinitions'
 import type { RichEditorBlockTypeDefinition } from './utils/richEditorBlockTypes'
 import { resolveTypeDeleteRequest, typeDeleteBlockedMessageKey } from './utils/typeDeletion'
@@ -1323,7 +1324,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   })
 
   const canToggleRichEditor = !!activeCommandEntry
-    && activeCommandEntry.filename.toLowerCase().endsWith('.md')
+    && entrySupportsPreviewSourceToggle(activeCommandEntry)
     && !activeDeletedFile
   const shouldBlockNeighborhoodEscape = (
     dialogs.showCreateTypeDialog

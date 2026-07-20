@@ -225,3 +225,4 @@ proposed → active → superseded
 | [0165](0165-window-owned-vault-watchers-and-main-window-git-background-work.md) | Window-owned vault watchers and main-window Git background work | active |
 | [0166](0166-snapshot-first-progressive-vault-startup.md) | Snapshot-first progressive vault startup | active |
 | [0167](0167-non-collapsible-callout-scope.md) | Non-collapsible callout scope | active |
+| [0168](0168-sandboxed-standalone-html-file-previews.md) | Sandboxed standalone HTML file previews | active |

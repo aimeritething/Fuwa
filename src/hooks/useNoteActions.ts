@@ -17,8 +17,6 @@ import { findByNotePath, notePathFilename, notePathsMatch } from '../utils/noteP
 import type { VaultOption } from '../components/status-bar/types'
 import { canonicalFrontmatterKey } from '../utils/systemMetadata'
 import { useActionHistory, type ActionHistoryController, type ActionHistoryEntry } from './useActionHistory'
-import { isHtmlFileEntry } from '../utils/filePreview'
-import { trackEvent } from '../lib/telemetry'
 
 export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
@@ -749,7 +747,7 @@ function buildNoteActionsResult({
 }
 
 export function useNoteActions(config: NoteActionsConfig) {
-  const { entries, onOpenExternalFile, setToastMessage, updateEntry } = config
+  const { entries, setToastMessage, updateEntry } = config
   const { handlePathRenamed, resolveActionPath } = useRenamedNotePathResolver(config.onPathRenamed)
   const tabMgmt = useTabManagement(buildTabManagementOptions(config))
   const {
@@ -760,14 +758,8 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleSwitchTab,
   } = tabMgmt
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
-    if (onOpenExternalFile && isHtmlFileEntry(entry)) {
-      trackEvent('html_file_opened_external')
-      onOpenExternalFile(entry.path)
-      return
-    }
-
     await selectTab(entry)
-  }, [onOpenExternalFile, selectTab])
+  }, [selectTab])
   const revealActionHistoryTarget = useCallback(async (item: ActionHistoryEntry) => {
     const { path } = item
     if (!path) return

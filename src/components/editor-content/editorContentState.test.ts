@@ -190,4 +190,40 @@ describe('deriveEditorContentState', () => {
 
     expect(binaryState.isSheet).toBe(false)
   })
+
+  it.each(['html', 'HTM'])('shows .%s text files as toggleable HTML previews', (extension) => {
+    const state = deriveState({
+      entry: {
+        ...baseEntry,
+        path: `/vault/reports/status.${extension}`,
+        filename: `status.${extension}`,
+        fileKind: 'text',
+      },
+      content: '<!doctype html><h1>Status</h1>',
+    })
+
+    expect(state.isHtmlPreview).toBe(true)
+    expect(state.isNonMarkdownText).toBe(false)
+    expect(state.effectiveRawMode).toBe(false)
+    expect(state.showEditor).toBe(true)
+  })
+
+  it('switches an HTML preview to the raw editor when raw mode is enabled', () => {
+    const entry = {
+      ...baseEntry,
+      path: '/vault/reports/status.html',
+      filename: 'status.html',
+      fileKind: 'text' as const,
+    }
+    const state = deriveEditorContentState({
+      activeTab: { entry, content: '<h1>Status</h1>' },
+      entries: [entry],
+      rawMode: true,
+      activeStatus: 'clean',
+    })
+
+    expect(state.isHtmlPreview).toBe(true)
+    expect(state.effectiveRawMode).toBe(true)
+    expect(state.showEditor).toBe(false)
+  })
 })
