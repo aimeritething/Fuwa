@@ -9,7 +9,11 @@ const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: '
 const requestedBase = process.env.CODACY_BASE_REF || 'origin/main'
 const verifiedBase = spawnSync('git', ['rev-parse', '--verify', `${requestedBase}^{commit}`], { cwd: root })
 const base = verifiedBase.status === 0 ? requestedBase : 'HEAD^'
-const diff = execFileSync('git', ['diff', '--unified=0', `${base}...HEAD`], { cwd: root, encoding: 'utf8' })
+const diff = execFileSync('git', ['diff', '--unified=0', `${base}...HEAD`], {
+  cwd: root,
+  encoding: 'utf8',
+  maxBuffer: 20 * 1024 * 1024,
+})
 const additions = addedLinesFromDiff(diff, root)
 
 if (additions.size === 0) {
