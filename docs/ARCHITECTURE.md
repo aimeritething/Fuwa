@@ -496,6 +496,8 @@ The note-list search field combines client-side scoped filtering with that same 
 
 The vault cache (`src-tauri/src/vault/cache.rs`) accelerates vault scanning using git-based incremental updates.
 
+Each cached scan resolves its `GitWorkspace` once, then reuses that context for HEAD, status, untracked-file, commit-diff, and Git-date queries. This keeps root-level and nested vault reloads from repeating provider probes and path canonicalization on the startup path.
+
 ### Cache File
 
 `~/.laputa/cache/<vault-hash>.json` — stored outside the vault directory so it never pollutes the user's git repo. The vault path is normalized through `vault/path_identity.rs` before hashing, so macOS `/tmp` aliases and separator variants share the same cache identity. Stores: vault path, git HEAD commit hash, all VaultEntry objects. Version: v14 (bumped on VaultEntry field changes to force full rescan). Cache replacement is best-effort: Tolaria writes a temp file, fsyncs it, and renames it into place only after a short-lived writer lock plus an on-disk fingerprint check confirm another window/process has not already refreshed the cache. Failures are logged and the app falls back to rebuilding from the filesystem.

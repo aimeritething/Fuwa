@@ -492,6 +492,8 @@ The local MCP WebSocket bridge follows the same active-vault boundary. `useVault
 
 `vault::scan_vault_cached(path)` wraps scanning with git-based caching:
 
+The scan owns one resolved `GitWorkspace` for its full lifetime and passes it through all cache-side Git helpers, including date history. Cache helpers must not resolve the same workspace independently because resolution invokes the active provider and canonicalizes paths on the vault-open path.
+
 1. Reads cache from `~/.laputa/cache/<vault-hash>.json` (external to vault)
 2. Compares cache version, vault path, and git HEAD commit hash
 3. If cache is valid and same commit → skip full git date-history lookup unless uncommitted changed files must be re-parsed

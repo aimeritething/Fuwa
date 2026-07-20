@@ -47,6 +47,7 @@ pub use conflict::{
     is_merge_in_progress, is_rebase_in_progress,
 };
 pub use connect::{disconnect_all_remotes, git_add_remote, GitAddRemoteResult};
+pub(crate) use dates::get_all_file_dates_for_workspace;
 pub use dates::{get_all_file_dates, GitDates};
 pub use file_url::git_file_url;
 pub use history::{get_file_diff, get_file_diff_at_commit, get_file_history};

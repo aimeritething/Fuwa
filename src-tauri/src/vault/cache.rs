@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::git::{get_all_file_dates, GitDates};
+use crate::git::{get_all_file_dates_for_workspace, GitDates, GitWorkspace};
 use std::collections::HashMap;
 #[cfg(test)]
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use super::path_identity::{
     normalize_path_for_identity, push_unique_relative_path, relative_path_key,
@@ -27,6 +27,8 @@ const CACHE_WRITE_LOCK_STALE_SECS: u64 = 30;
 
 #[cfg(test)]
 static PANIC_ON_GIT_DATE_LOOKUP: AtomicBool = AtomicBool::new(false);
+#[cfg(test)]
+static GIT_WORKSPACE_RESOLUTION_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 #[cfg(test)]
 struct GitDateLookupPanicGuard;
@@ -144,8 +146,14 @@ fn legacy_cache_path(vault: &Path) -> PathBuf {
     vault.join(".laputa-cache.json")
 }
 
-fn git_head_hash(vault: &Path) -> Option<String> {
-    let workspace = crate::git::GitWorkspace::resolve(vault).ok().flatten()?;
+fn resolve_git_workspace(vault: &Path) -> Option<GitWorkspace> {
+    #[cfg(test)]
+    GIT_WORKSPACE_RESOLUTION_COUNT.fetch_add(1, Ordering::SeqCst);
+
+    crate::git::GitWorkspace::resolve(vault).ok().flatten()
+}
+
+fn git_head_hash(workspace: &GitWorkspace) -> Option<String> {
     run_git(workspace.git_root(), &["rev-parse", "HEAD"]).map(|s| s.trim().to_string())
 }
 
@@ -160,13 +168,13 @@ fn run_git(vault: &Path, args: &[&str]) -> Option<String> {
     Some(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-fn load_git_dates(vault_path: &Path) -> HashMap<String, GitDates> {
+fn load_git_dates(workspace: &GitWorkspace) -> HashMap<String, GitDates> {
     #[cfg(test)]
     if PANIC_ON_GIT_DATE_LOOKUP.load(Ordering::SeqCst) {
         panic!("warm cache hit must not load full git date history");
     }
 
-    get_all_file_dates(vault_path)
+    get_all_file_dates_for_workspace(workspace)
 }
 
 /// Parse a git status porcelain line into (status_code, file_path).
@@ -229,10 +237,12 @@ fn collect_paths_from_porcelain(workspace: &crate::git::GitWorkspace, stdout: &s
     paths
 }
 
-fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String> {
-    let Some(workspace) = crate::git::GitWorkspace::resolve(vault).ok().flatten() else {
-        return Vec::new();
-    };
+fn git_changed_files(
+    vault: &Path,
+    workspace: &GitWorkspace,
+    from_hash: &str,
+    to_hash: &str,
+) -> Vec<String> {
     let diff_arg = format!("{}..{}", from_hash, to_hash);
     let mut files = run_git(
         workspace.git_root(),
@@ -244,11 +254,11 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
             workspace.vault_pathspec(),
         ],
     )
-    .map(|s| collect_paths_from_diff(vault, &workspace, &s))
+    .map(|s| collect_paths_from_diff(vault, workspace, &s))
     .unwrap_or_default();
 
     // Include uncommitted changes (modified, staged, and untracked files).
-    let uncommitted = git_uncommitted_files(vault);
+    let uncommitted = git_uncommitted_files(workspace);
 
     for path in uncommitted.into_iter() {
         push_unique_relative_path(&mut files, path);
@@ -257,16 +267,13 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
     files
 }
 
-fn git_uncommitted_files(vault: &Path) -> Vec<String> {
-    let Some(workspace) = crate::git::GitWorkspace::resolve(vault).ok().flatten() else {
-        return Vec::new();
-    };
+fn git_uncommitted_files(workspace: &GitWorkspace) -> Vec<String> {
     // Modified/staged tracked files from git status --porcelain
     let mut files: Vec<String> = run_git(
         workspace.git_root(),
         &["status", "--porcelain", "--", workspace.vault_pathspec()],
     )
-    .map(|s| collect_paths_from_porcelain(&workspace, &s))
+    .map(|s| collect_paths_from_porcelain(workspace, &s))
     .unwrap_or_default();
 
     // Untracked files via ls-files (lists individual files, not just directories).
@@ -660,12 +667,16 @@ fn finalize_and_cache(
 /// Handle same-commit cache hit: re-parse any uncommitted changes (new or modified files).
 /// Always prunes stale entries even when git reports no changes, so that files
 /// deleted outside git (e.g., via Finder) are removed from the cache on vault open.
-fn update_same_commit(vault: &Path, loaded_cache: LoadedCache) -> Vec<VaultEntry> {
+fn update_same_commit(
+    vault: &Path,
+    workspace: &GitWorkspace,
+    loaded_cache: LoadedCache,
+) -> Vec<VaultEntry> {
     let LoadedCache { cache, fingerprint } = loaded_cache;
-    let changed = git_uncommitted_files(vault);
+    let changed = git_uncommitted_files(workspace);
     let mut entries = cache.entries;
     if !changed.is_empty() {
-        let git_dates = load_git_dates(vault);
+        let git_dates = load_git_dates(workspace);
         let changed_set: std::collections::HashSet<String> =
             changed.iter().map(|path| relative_path_key(path)).collect();
         entries.retain(|e| !changed_set.contains(&to_relative_path_key(&e.path, vault)));
@@ -679,12 +690,13 @@ fn update_same_commit(vault: &Path, loaded_cache: LoadedCache) -> Vec<VaultEntry
 /// Handle different-commit cache: incremental update via git diff.
 fn update_different_commit(
     vault: &Path,
+    workspace: &GitWorkspace,
     loaded_cache: LoadedCache,
     current_hash: String,
     git_dates: &HashMap<String, GitDates>,
 ) -> Vec<VaultEntry> {
     let LoadedCache { cache, fingerprint } = loaded_cache;
-    let changed_files = git_changed_files(vault, &cache.commit_hash, &current_hash);
+    let changed_files = git_changed_files(vault, workspace, &cache.commit_hash, &current_hash);
     let changed_set: std::collections::HashSet<String> = changed_files
         .iter()
         .map(|path| relative_path_key(path))
@@ -743,7 +755,10 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     // Migrate legacy in-vault cache to external location on first run
     migrate_legacy_cache(vault_path);
 
-    let current_hash = match git_head_hash(vault_path) {
+    let Some(workspace) = resolve_git_workspace(vault_path) else {
+        return scan_vault(vault_path, &HashMap::new());
+    };
+    let current_hash = match git_head_hash(&workspace) {
         Some(h) => h,
         None => return scan_vault(vault_path, &HashMap::new()),
     };
@@ -757,7 +772,7 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
         }
         CacheLoadState::Loaded(loaded_cache) => {
             if cache_requires_full_rescan(&loaded_cache.cache, vault_path) {
-                let git_dates = load_git_dates(vault_path);
+                let git_dates = load_git_dates(&workspace);
                 return scan_and_cache_full(
                     vault_path,
                     &git_dates,
@@ -766,11 +781,12 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
                 );
             }
             return if loaded_cache.cache.commit_hash == current_hash {
-                Ok(update_same_commit(vault_path, loaded_cache))
+                Ok(update_same_commit(vault_path, &workspace, loaded_cache))
             } else {
-                let git_dates = load_git_dates(vault_path);
+                let git_dates = load_git_dates(&workspace);
                 Ok(update_different_commit(
                     vault_path,
+                    &workspace,
                     loaded_cache,
                     current_hash,
                     &git_dates,
@@ -780,7 +796,7 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     // No cache — full scan and write cache
-    let git_dates = load_git_dates(vault_path);
+    let git_dates = load_git_dates(&workspace);
     scan_and_cache_full(vault_path, &git_dates, current_hash, None)
 }
 
@@ -1035,6 +1051,32 @@ mod tests {
     }
 
     #[test]
+    fn test_nested_vault_cache_resolves_git_workspace_once_per_scan() {
+        let (_lock, _cache_tmp, repository) = setup_git_vault();
+        let vault = repository.path().join("docs");
+        fs::create_dir(&vault).unwrap();
+        create_test_file(&vault, "guide.md", "# Guide\n");
+        git_add_commit(repository.path(), "initial");
+
+        scan_vault_cached(&vault).unwrap();
+
+        GIT_WORKSPACE_RESOLUTION_COUNT.store(0, Ordering::SeqCst);
+        scan_vault_cached(&vault).unwrap();
+        let same_commit_resolutions = GIT_WORKSPACE_RESOLUTION_COUNT.swap(0, Ordering::SeqCst);
+
+        create_test_file(&vault, "guide.md", "# Guide\n\nUpdated.\n");
+        git_add_commit(repository.path(), "update guide");
+        scan_vault_cached(&vault).unwrap();
+        let different_commit_resolutions = GIT_WORKSPACE_RESOLUTION_COUNT.swap(0, Ordering::SeqCst);
+
+        assert_eq!(
+            (same_commit_resolutions, different_commit_resolutions),
+            (1, 1),
+            "each cache scan should resolve the nested Git workspace exactly once"
+        );
+    }
+
+    #[test]
     fn test_scan_vault_cached_invalidates_stale_vault_path() {
         let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
@@ -1139,7 +1181,8 @@ mod tests {
         git_add_commit(vault, "init");
         create_test_file(vault, relative_path, "# 初始\n\n更新\n");
 
-        let changed = git_uncommitted_files(vault);
+        let workspace = resolve_git_workspace(vault).unwrap();
+        let changed = git_uncommitted_files(&workspace);
 
         assert_eq!(changed, vec![relative_path.to_string()]);
     }
@@ -1158,7 +1201,8 @@ mod tests {
         create_test_file(&vault, "new.yml", "name: new\n");
         create_test_file(repository, "outside.md", "# Outside changed\n");
 
-        let changed = git_uncommitted_files(&vault);
+        let workspace = resolve_git_workspace(&vault).unwrap();
+        let changed = git_uncommitted_files(&workspace);
 
         assert_eq!(changed, vec!["guide.md", "new.yml"]);
     }
@@ -1424,7 +1468,8 @@ mod tests {
         create_test_file(vault, "note.md", "---\nArchived: Yes\n---\n# Note\n");
         git_add_commit(vault, "init");
 
-        let hash = git_head_hash(vault).unwrap();
+        let workspace = resolve_git_workspace(vault).unwrap();
+        let hash = git_head_hash(&workspace).unwrap();
 
         // Simulate a stale cache written by old code that parsed Archived: Yes as false
         let stale_entry = {

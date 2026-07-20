@@ -22,6 +22,12 @@ pub fn get_all_file_dates(vault_path: &Path) -> HashMap<String, GitDates> {
     let Ok(Some(workspace)) = GitWorkspace::resolve(vault_path) else {
         return HashMap::new();
     };
+    get_all_file_dates_for_workspace(&workspace)
+}
+
+pub(crate) fn get_all_file_dates_for_workspace(
+    workspace: &GitWorkspace,
+) -> HashMap<String, GitDates> {
     let output = match git_command_at(workspace.git_root()).and_then(|mut command| {
         command
             .args(["log", "--format=COMMIT %aI", "--name-only", "--"])
