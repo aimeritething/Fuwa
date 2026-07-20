@@ -49,6 +49,10 @@ interface CreatedQuickCapture {
   relativePath: string
 }
 
+function usesAtomicQuickLauncherCreation({ body, folder }: Pick<CreateQuickCaptureInput, 'body' | 'folder'>): boolean {
+  return isTauri() && !body.trim() && !folder.trim()
+}
+
 export interface QuickCapturePreview extends CreatedQuickCapture {
   collidingAbsolutePath: string | null
 }
@@ -146,6 +150,10 @@ export async function createQuickCapture({
   title,
   vaultPath,
 }: CreateQuickCaptureInput): Promise<CreatedQuickCapture> {
+  if (usesAtomicQuickLauncherCreation({ body, folder })) {
+    return invoke<CreatedQuickCapture>('create_quick_launcher_note', { title, vaultPath })
+  }
+
   const entries = await tauriCall<Array<{ path: string }>>('list_vault', { path: vaultPath })
   const existingRelativePaths = entries.map((entry) => relativeEntryPath({ path: entry.path, vaultPath }))
   const destination = uniqueCaptureRelativePath({ existingRelativePaths, folder, title })

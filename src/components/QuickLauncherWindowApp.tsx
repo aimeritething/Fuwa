@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 import { createTranslator } from '../lib/i18n'
-import { isTauri } from '../mock-tauri'
 import { QuickLauncherSearchPanel } from './quick-launcher/QuickLauncherSearchPanel'
 import { useQuickLauncherContext } from './quick-launcher/useQuickLauncherContext'
 import { hideQuickLauncherWindow } from '../utils/openQuickLauncherWindow'
@@ -14,21 +12,7 @@ function useLauncherDismissal(onFocus: () => void): void {
     window.addEventListener('focus', onFocus)
     window.addEventListener('keydown', handleKeyDown)
 
-    let disposed = false
-    let removeFocusListener: (() => void) | null = null
-    if (isTauri()) {
-      void getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-        if (focused) onFocus()
-        else void hideQuickLauncherWindow()
-      }).then((unlisten) => {
-        if (disposed) unlisten()
-        else removeFocusListener = unlisten
-      })
-    }
-
     return () => {
-      disposed = true
-      removeFocusListener?.()
       window.removeEventListener('focus', onFocus)
       window.removeEventListener('keydown', handleKeyDown)
     }

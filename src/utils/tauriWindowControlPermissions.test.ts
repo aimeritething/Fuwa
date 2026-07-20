@@ -13,6 +13,12 @@ const LINUX_WINDOW_CHROME_PERMISSIONS = [
   'core:window:allow-close',
 ] as const
 const NOTE_PDF_EXPORT_PERMISSIONS = ['core:webview:allow-print'] as const
+const QUICK_LAUNCHER_WINDOW_PERMISSIONS = [
+  'core:window:allow-hide',
+  'core:window:allow-set-focus',
+  'core:window:allow-show',
+  'core:window:allow-unminimize',
+] as const
 
 describe('Tauri window-control permissions', () => {
   it('allows the APIs used by Linux custom window chrome', () => {
@@ -31,6 +37,16 @@ describe('Tauri window-control permissions', () => {
     ) as TauriCapability
 
     expect(capability.windows).toEqual(expect.arrayContaining(['main', 'ai-workspace', 'note-*']))
+  })
+
+  it('allows the quick launcher to show, focus, and dismiss its native window', () => {
+    const capability = JSON.parse(
+      readFileSync(`${process.cwd()}/src-tauri/capabilities/default.json`, 'utf8'),
+    ) as TauriCapability
+
+    expect(capability.permissions).toEqual(
+      expect.arrayContaining([...QUICK_LAUNCHER_WINDOW_PERMISSIONS]),
+    )
   })
 
   it('allows note PDF export fallback to open the native print dialog', () => {

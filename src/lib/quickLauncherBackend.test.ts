@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultOption } from '../components/StatusBar'
 import { createQuickCapture, loadQuickLauncherEntries, searchQuickLauncherVaults } from './quickLauncherBackend'
 
-const mocks = vi.hoisted(() => ({ invoke: vi.fn() }))
+const mocks = vi.hoisted(() => ({ invoke: vi.fn(), nativeInvoke: vi.fn(), tauri: false }))
+vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.nativeInvoke }))
 vi.mock('../mock-tauri', () => ({
-  isTauri: () => false,
+  isTauri: () => mocks.tauri,
   mockInvoke: mocks.invoke,
 }))
 
@@ -15,7 +16,10 @@ const vaults: VaultOption[] = [
 ]
 
 describe('quickLauncherBackend', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.tauri = false
+  })
 
   it('searches only available opted-in vaults and preserves vault identity', async () => {
     mocks.invoke.mockResolvedValue({
@@ -61,6 +65,29 @@ describe('quickLauncherBackend', () => {
     expect(mocks.invoke).toHaveBeenLastCalledWith('create_note_content', {
       content: '# Meeting\n\nDecisions\n',
       path: '/work/inbox/meeting-3.md',
+      vaultPath: '/work',
+    })
+  })
+
+  it('uses the atomic native command for root-level launcher notes', async () => {
+    mocks.tauri = true
+    mocks.nativeInvoke.mockResolvedValue({
+      absolutePath: '/work/team-sync.md',
+      collided: false,
+      relativePath: 'team-sync.md',
+    })
+
+    const result = await createQuickCapture({
+      body: '',
+      folder: '',
+      title: 'Team Sync',
+      vaultPath: '/work',
+    })
+
+    expect(result.relativePath).toBe('team-sync.md')
+    expect(mocks.nativeInvoke).toHaveBeenCalledOnce()
+    expect(mocks.nativeInvoke).toHaveBeenCalledWith('create_quick_launcher_note', {
+      title: 'Team Sync',
       vaultPath: '/work',
     })
   })

@@ -490,6 +490,7 @@ macro_rules! app_invoke_handler {
             commands::get_note_content,
             commands::validate_note_content,
             commands::create_note_content,
+            commands::create_quick_launcher_note,
             commands::save_note_content,
             commands::update_frontmatter,
             commands::delete_frontmatter_property,
@@ -603,12 +604,40 @@ fn with_invoke_handler(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
 }
 
 #[cfg(desktop)]
-fn handle_run_event(app_handle: &tauri::AppHandle, event: &tauri::RunEvent) {
+fn should_hide_quick_launcher(label: &str, event: &tauri::WindowEvent) -> bool {
+    label == "quick-launcher" && matches!(event, tauri::WindowEvent::Focused(false))
+}
+
+#[cfg(desktop)]
+fn hide_quick_launcher_after_focus_loss(
+    app_handle: &tauri::AppHandle,
+    label: &str,
+    event: &tauri::WindowEvent,
+) {
     use tauri::Manager;
 
+    if !should_hide_quick_launcher(label, event) {
+        return;
+    }
+    let Some(window) = app_handle.get_webview_window(label) else {
+        return;
+    };
+    if let Err(error) = window.hide() {
+        log::warn!("Failed to hide quick launcher after focus loss: {error}");
+    }
+}
+
+#[cfg(desktop)]
+fn handle_run_event(app_handle: &tauri::AppHandle, event: &tauri::RunEvent) {
     window_state::handle_run_event(app_handle, event);
 
+    if let tauri::RunEvent::WindowEvent { label, event, .. } = event {
+        hide_quick_launcher_after_focus_loss(app_handle, label, event);
+    }
+
     if let tauri::RunEvent::Exit = event {
+        use tauri::Manager;
+
         let state: tauri::State<'_, WsBridgeChild> = app_handle.state();
         let mut guard = state.0.lock().unwrap();
         stop_ws_bridge_child(&mut guard);
@@ -650,7 +679,7 @@ mod tests {
 
     #[cfg(desktop)]
     use super::{
-        missing_asset_scope_roots, selected_mcp_bridge_vault_paths,
+        missing_asset_scope_roots, selected_mcp_bridge_vault_paths, should_hide_quick_launcher,
         spawn_startup_tasks_for_vault_with, validate_mcp_bridge_vault_path,
     };
     #[cfg(desktop)]
@@ -665,6 +694,25 @@ mod tests {
     fn macos_webview_shortcut_prevention_includes_ai_panel_shortcut() {
         assert_eq!(MACOS_WEBVIEW_RESERVED_COMMAND_KEYS, ["O", "F"]);
         assert_eq!(MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS, ["L"]);
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn quick_launcher_hides_only_after_losing_focus() {
+        use tauri::WindowEvent;
+
+        assert!(should_hide_quick_launcher(
+            "quick-launcher",
+            &WindowEvent::Focused(false)
+        ));
+        assert!(!should_hide_quick_launcher(
+            "quick-launcher",
+            &WindowEvent::Focused(true)
+        ));
+        assert!(!should_hide_quick_launcher(
+            "main",
+            &WindowEvent::Focused(false)
+        ));
     }
 
     #[cfg(desktop)]

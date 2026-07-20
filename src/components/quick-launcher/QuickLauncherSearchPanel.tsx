@@ -98,7 +98,6 @@ export function QuickLauncherSearchPanel({
   const [saving, setSaving] = useState(false)
   const [actionError, setActionError] = useState(false)
   const [vaultPath, setVaultPath] = useState(initialDestination?.vaultPath ?? '')
-  const [folder, setFolder] = useState(initialDestination?.folder ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
   const entries = useLauncherEntries(vaults)
   const presentedResults = usePresentedResults(entries, results)
@@ -152,19 +151,24 @@ export function QuickLauncherSearchPanel({
     if (!trimmedQuery || !vaultPath || saving) return
     setSaving(true)
     setActionError(false)
+    let created
     try {
-      const created = await createQuickCapture({ body: '', folder, title: trimmedQuery, vaultPath })
-      rememberQuickCaptureDestination({ folder, vaultPath })
-      trackQuickCaptureSaved({ collided: created.collided, openedAfterSave: settings.quick_capture_open_after_save === true })
-      if (settings.quick_capture_open_after_save) {
-        await openQuickLauncherNote({ absolutePath: created.absolutePath, vaultPath, vaults })
-      }
-      await hideQuickLauncherWindow()
+      created = await createQuickCapture({ body: '', folder: '', title: trimmedQuery, vaultPath })
     } catch {
       setActionError(true)
-    } finally {
       setSaving(false)
+      return
     }
+
+    rememberQuickCaptureDestination({ folder: '', vaultPath })
+    trackQuickCaptureSaved({ collided: created.collided, openedAfterSave: settings.quick_capture_open_after_save === true })
+    const followUpActions = [hideQuickLauncherWindow()]
+    if (settings.quick_capture_open_after_save) {
+      followUpActions.push(openQuickLauncherNote({ absolutePath: created.absolutePath, vaultPath, vaults }))
+    }
+    // The write already succeeded, so lifecycle failures must not invite a duplicate retry.
+    await Promise.allSettled(followUpActions)
+    setSaving(false)
   }
 
   const activateSelection = () => {
@@ -173,7 +177,7 @@ export function QuickLauncherSearchPanel({
       void openResult(selected)
       return
     }
-    if (!searching) void createNote()
+    void createNote()
   }
 
   const keyboardActions: Partial<Record<string, () => void>> = {
@@ -189,7 +193,7 @@ export function QuickLauncherSearchPanel({
     action()
   }
 
-  const canOfferCreate = Boolean(trimmedQuery && !searching && presentedResults.length === 0)
+  const canOfferCreate = Boolean(trimmedQuery)
   const emptyMessage = launcherEmptyMessage({ query: trimmedQuery, searching, t })
 
   return (
@@ -231,7 +235,7 @@ export function QuickLauncherSearchPanel({
           </Button>
           <div className="mt-2 flex items-center justify-between gap-3 px-2">
             <span className="text-xs text-muted-foreground">{t('quickLauncher.saveToVault')}</span>
-            <Select value={vaultPath} onValueChange={(value) => { setVaultPath(value); setFolder('') }}>
+            <Select value={vaultPath} onValueChange={setVaultPath}>
               <SelectTrigger className="h-8 w-48" aria-label={t('quickLauncher.saveToVault')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {writableVaults.map((vault) => <SelectItem key={vault.path} value={vault.path}>{vault.label}</SelectItem>)}

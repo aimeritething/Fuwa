@@ -92,10 +92,11 @@ describe('Quick Launcher panels', () => {
         vaultPath: '/work',
       }],
     })
-    render(<QuickLauncherSearchPanel initialDestination={{ folder: '', vaultPath: '/work' }} settings={settings} t={t} vaults={vaults} />)
+    render(<QuickLauncherSearchPanel initialDestination={{ folder: 'remembered/subfolder', vaultPath: '/work' }} settings={settings} t={t} vaults={vaults} />)
 
     fireEvent.change(screen.getByLabelText('Search notes or create one…'), { target: { value: 'meeting' } })
     expect(await screen.findByText('Meeting')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create note "meeting"' })).toBeVisible()
     expect(screen.getByText('Project')).toHaveStyle({ color: 'var(--accent-red)' })
     expect(screen.getByTestId('note-search-item-icon')).toHaveTextContent('📌')
     fireEvent.mouseDown(screen.getByText('Meeting'))
@@ -109,7 +110,8 @@ describe('Quick Launcher panels', () => {
   it('offers an unmatched query as a new note with only a vault destination control', async () => {
     mocks.search.mockResolvedValue({ failedVaultLabels: [], results: [] })
     mocks.create.mockResolvedValue({ absolutePath: '/research/meeting.md', collided: false, relativePath: 'meeting.md' })
-    render(<QuickLauncherSearchPanel initialDestination={{ folder: '', vaultPath: '/work' }} settings={settings} t={t} vaults={vaults} />)
+    mocks.hide.mockRejectedValueOnce(new Error('native hide denied'))
+    render(<QuickLauncherSearchPanel initialDestination={{ folder: 'remembered/subfolder', vaultPath: '/work' }} settings={settings} t={t} vaults={vaults} />)
 
     const input = screen.getByLabelText('Search notes or create one…')
     fireEvent.change(input, { target: { value: 'Meeting decisions' } })
@@ -129,5 +131,6 @@ describe('Quick Launcher panels', () => {
       vaultPath: '/research',
     }))
     await waitFor(() => expect(mocks.hide).toHaveBeenCalled())
+    expect(screen.queryByText('Could not complete that action. Try again.')).not.toBeInTheDocument()
   })
 })

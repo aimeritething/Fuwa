@@ -82,6 +82,7 @@ test('global launcher searches across vaults and safely captures a note @smoke',
   const launcherInput = page.getByLabel('Search notes or create one…')
   await launcherInput.fill('Beacon')
   await expect(page.getByText('Research Beacon', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create note "Beacon"' })).toBeVisible()
   await page.getByText('Research Beacon', { exact: true }).click()
   await expect.poll(() => page.evaluate(() => (window as QuickLauncherTestWindow).__laputaTest?.quickLauncherOpenUrl))
     .toBe('tolaria://research/notes/beacon.md')
