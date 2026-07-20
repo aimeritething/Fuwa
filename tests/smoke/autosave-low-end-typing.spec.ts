@@ -6,7 +6,6 @@ import {
   openFixtureVault,
   removeFixtureVaultCopy,
 } from '../helpers/fixtureVault'
-import { executeCommand, openCommandPalette } from './helpers'
 
 interface AutosaveProbeWindow {
   __autosaveProbe?: Array<{ path: string; content: string }>
@@ -19,9 +18,8 @@ async function openNote(page: Page, title: string) {
 }
 
 async function openRawMode(page: Page) {
-  await openCommandPalette(page)
-  await executeCommand(page, 'Toggle Raw')
-  await expect(page.locator('.cm-content')).toBeVisible({ timeout: 5_000 })
+  await page.getByRole('button', { name: 'Open the raw editor' }).click()
+  await expect(page.locator('.cm-content')).toBeVisible({ timeout: 10_000 })
 }
 
 async function setRawEditorContent(page: Page, content: string) {
@@ -65,6 +63,35 @@ async function installAutosaveProbe(page: Page) {
   })
 }
 
+function isTransientNavigationError(error: unknown): boolean {
+  return error instanceof Error
+    && (error.message.includes('ERR_ABORTED') || error.message.includes('Timeout'))
+}
+
+async function openFixtureVaultAfterTransientReload(page: Page, vaultPath: string) {
+  page.setDefaultNavigationTimeout(20_000)
+  try {
+    await openFixtureVault(page, vaultPath)
+  } catch (error) {
+    if (!isTransientNavigationError(error)) throw error
+    await openFixtureVault(page, vaultPath)
+  }
+}
+
+async function warmAppBundle(page: Page) {
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 120_000 })
+  } catch (error) {
+    if (!isTransientNavigationError(error)) throw error
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 120_000 })
+  }
+  await page.waitForFunction(
+    () => Boolean(document.querySelector('#root')?.childElementCount),
+    undefined,
+    { timeout: 30_000 },
+  )
+}
+
 async function readAutosaveProbe(page: Page) {
   return page.evaluate(() => {
     const probeWindow = window as typeof window & AutosaveProbeWindow
@@ -72,10 +99,20 @@ async function readAutosaveProbe(page: Page) {
   })
 }
 
+test.beforeAll(async ({ browser }, testInfo) => {
+  testInfo.setTimeout(180_000)
+  const warmupPage = await browser.newPage()
+  try {
+    await warmAppBundle(warmupPage)
+  } finally {
+    await warmupPage.close()
+  }
+})
+
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(60_000)
   tempVaultDir = createFixtureVaultCopy()
-  await openFixtureVault(page, tempVaultDir)
+  await openFixtureVaultAfterTransientReload(page, tempVaultDir)
   await installAutosaveProbe(page)
 })
 
