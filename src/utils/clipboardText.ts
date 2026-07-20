@@ -9,7 +9,9 @@ type WebClipboardResult =
   | { status: 'unavailable' }
 
 function hasWebClipboard(): boolean {
-  return typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
+  if (typeof navigator === 'undefined') return false
+  const clipboard = Reflect.get(navigator, 'clipboard') as Clipboard | undefined
+  return clipboard !== undefined && typeof clipboard.writeText === 'function'
 }
 
 async function writeWebClipboardText(text: string): Promise<WebClipboardResult> {

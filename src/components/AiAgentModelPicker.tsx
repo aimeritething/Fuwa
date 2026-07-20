@@ -57,7 +57,6 @@ function targetModelChoices(
   defaultLabel: string,
 ): AiTargetModelChoice[] {
   const agentChoices = groups.localAgents.flatMap((target) => {
-    if (target.kind !== 'agent') return []
     return modelOptionsForAgent(target.agent, catalog[target.agent] ?? [], defaultLabel).map((model) => ({
       agentId: target.agent,
       modelId: model.id,

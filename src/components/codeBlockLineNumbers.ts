@@ -40,14 +40,16 @@ function rangeTopAtOffset(code: HTMLElement, offset: number): number | null {
   const [startNode, startOffset] = textBoundaryAt(code, offset)
   range.setStart(startNode, startOffset)
   range.collapse(true)
-  const caretRect = Array.from(range.getClientRects?.() ?? [])[0]
+  const getClientRects = Reflect.get(range, 'getClientRects') as (() => DOMRectList) | undefined
+  if (typeof getClientRects !== 'function') return null
+  const caretRect = Array.from(getClientRects.call(range)).at(0)
   if (caretRect) return caretRect.top
 
-  const nextOffset = Math.min(offset + 1, code.textContent?.length ?? 0)
+  const nextOffset = Math.min(offset + 1, code.textContent.length)
   if (nextOffset === offset) return null
   const [endNode, endOffset] = textBoundaryAt(code, nextOffset)
   range.setEnd(endNode, endOffset)
-  return Array.from(range.getClientRects?.() ?? []).at(0)?.top ?? null
+  return Array.from(getClientRects.call(range)).at(0)?.top ?? null
 }
 
 function numericStyle(style: CSSStyleDeclaration, property: 'paddingBottom' | 'paddingLeft' | 'paddingTop'): number {

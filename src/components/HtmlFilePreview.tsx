@@ -29,7 +29,7 @@ export function HtmlFilePreview({ content, path, title, vaultPath }: HtmlFilePre
 
   useEffect(() => {
     trackEvent('html_file_preview_opened')
-  }, [path])
+  }, [])
 
   useEffect(() => {
     const releaseFocusedFrame = () => releaseFrameFocus(frameRef.current, containerRef.current)
@@ -41,6 +41,7 @@ export function HtmlFilePreview({ content, path, title, vaultPath }: HtmlFilePre
     <section
       ref={containerRef}
       className="min-h-0 flex-1 bg-background"
+      role="application"
       tabIndex={0}
       aria-label={title}
       onKeyDown={(event) => {

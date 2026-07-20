@@ -322,7 +322,7 @@ export function usePointerBlockReorder(
         startY: event.clientY,
       }
       try {
-        event.currentTarget.setPointerCapture?.(pointerId)
+        if ('setPointerCapture' in event.currentTarget) event.currentTarget.setPointerCapture(pointerId)
       } catch {
         // Document-level pointer listeners still complete the reorder gesture.
       }

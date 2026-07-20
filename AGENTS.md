@@ -122,7 +122,7 @@ Before pushing or moving a task to In Review, verify the release gates and add a
 - PostHog: meaningful new user actions/events are instrumented with safe metadata; noisy/minor changes explicitly say “PostHog: no event needed because …”.
 - Refactoring: any files refactored to meet the CodeScene gate, or "none needed".
 - ADRs: any new/updated ADRs, or "none".
-- Docs: any updated docs (`ARCHITECTURE.md`, `ABSTRACTIONS.md`, etc.), or "none".
+- Docs: any updated docs (`docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, etc.), or "none".
 - Demo vault dirt checked: `git status --short -- demo-vault demo-vault-v2` is empty unless fixture changes are intentional.
 
 ### ADRs & docs

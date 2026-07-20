@@ -151,7 +151,7 @@ export function QuickLauncherSearchPanel({
     if (!trimmedQuery || !vaultPath || saving) return
     setSaving(true)
     setActionError(false)
-    let created
+    let created: Awaited<ReturnType<typeof createQuickCapture>>
     try {
       created = await createQuickCapture({ body: '', folder: '', title: trimmedQuery, vaultPath })
     } catch {

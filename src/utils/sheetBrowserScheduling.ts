@@ -3,14 +3,18 @@ export type IdleHandle =
   | { kind: 'timeout'; id: ReturnType<typeof setTimeout> }
 
 export function scheduleIdle(callback: () => void): IdleHandle {
-  const requestIdle = typeof window !== 'undefined' ? window.requestIdleCallback?.bind(window) : undefined
+  const requestIdle = typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function'
+    ? window.requestIdleCallback.bind(window)
+    : undefined
   if (typeof requestIdle === 'function') return { kind: 'idle', id: requestIdle(callback) }
   return { kind: 'timeout', id: setTimeout(callback, 0) }
 }
 
 export function cancelIdle(handle: IdleHandle): void {
   if (handle.kind === 'idle') {
-    const cancelIdleFn = typeof window !== 'undefined' ? window.cancelIdleCallback?.bind(window) : undefined
+    const cancelIdleFn = typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function'
+      ? window.cancelIdleCallback.bind(window)
+      : undefined
     if (typeof cancelIdleFn === 'function') cancelIdleFn(handle.id)
     return
   }

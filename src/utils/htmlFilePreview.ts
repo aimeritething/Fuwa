@@ -194,12 +194,18 @@ function rewriteElementResources(element: Element, options: HtmlFilePreviewOptio
 }
 
 function applyPreviewResourcePolicy(documentObject: Document, options: HtmlFilePreviewOptions) {
-  documentObject.querySelectorAll('*').forEach(element => rewriteElementResources(element, options))
+  documentObject.querySelectorAll('*').forEach((element) => {
+    rewriteElementResources(element, options)
+  })
   documentObject.querySelectorAll('style').forEach((style) => {
     style.textContent = rewriteCssResources({ value: style.textContent ?? '', options })
   })
-  documentObject.querySelectorAll('link').forEach(link => rewriteStylesheetLink(link, options))
-  documentObject.querySelectorAll('a').forEach(anchor => rewriteAnchor(anchor, options))
+  documentObject.querySelectorAll('link').forEach((link) => {
+    rewriteStylesheetLink(link, options)
+  })
+  documentObject.querySelectorAll('a').forEach((anchor) => {
+    rewriteAnchor(anchor, options)
+  })
 }
 
 function installPreviewMetadata(documentObject: Document) {

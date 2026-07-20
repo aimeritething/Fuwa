@@ -393,9 +393,9 @@ export function compileVaultExpressionTemplate(source: TemplateSource): Compiled
   const parts: TemplatePart[] = []
   let lastIndex = 0
   for (const match of source.matchAll(TEMPLATE_EXPRESSION_PATTERN)) {
-    const index = match.index ?? 0
+    const index = match.index
     if (index > lastIndex) parts.push(source.slice(lastIndex, index))
-    parts.push(expressionPart(match[1] ?? ''))
+    parts.push(expressionPart(match[1]))
     lastIndex = index + match[0].length
   }
   if (lastIndex < source.length) parts.push(source.slice(lastIndex))
@@ -416,7 +416,8 @@ function htmlValue(html: HtmlText): HtmlExpressionValue {
 }
 
 function isHtmlValue(value: VaultExpressionValue): value is HtmlExpressionValue {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) && value.type === 'html'
+  if (value === null || Array.isArray(value) || typeof value !== 'object') return false
+  return value.type === 'html'
 }
 
 function valueText(value: VaultExpressionValue): string {
@@ -643,7 +644,7 @@ function expressionJsonValue(value: VaultExpressionValue, context: VaultExpressi
 }
 
 function safeJson(value: unknown): string {
-  return (JSON.stringify(value) ?? 'null')
+  return JSON.stringify(value)
     .replace(/</gu, '\\u003c')
     .replace(/>/gu, '\\u003e')
     .replace(/&/gu, '\\u0026')
