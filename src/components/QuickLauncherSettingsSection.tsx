@@ -133,7 +133,10 @@ function CaptureDestinationSettingsRows({
       <SelectControl
         value={captureFolder || '__root__'}
         onValueChange={(value) => onCaptureFolderChange(value === '__root__' ? '' : value)}
-        options={[{ value: '__root__', label: t('quickLauncher.vaultRoot') }, ...folders]}
+        options={[
+          { value: '__root__', label: t('quickLauncher.vaultRoot') },
+          ...folders.map((folder) => ({ value: folder.path, label: folder.label })),
+        ]}
         testId="settings-quick-capture-folder"
         ariaLabel={t('settings.quickLauncher.defaultFolder')}
       />
