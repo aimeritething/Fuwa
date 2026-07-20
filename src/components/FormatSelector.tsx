@@ -146,7 +146,7 @@ function EditableFormatSelector({
       case 'Enter':
       case ' ':
         event.preventDefault()
-        selectFormat(FORMAT_OPTIONS[highlightedIndex] ?? format)
+        selectFormat(FORMAT_OPTIONS.at(highlightedIndex) ?? format)
         return
       case 'Escape':
         event.preventDefault()

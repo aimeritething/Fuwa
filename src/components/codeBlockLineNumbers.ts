@@ -79,9 +79,9 @@ function updateLinePositions(code: HTMLElement, pre: HTMLElement, gutter: HTMLEl
   let fallbackTop = contentTop
 
   lines.forEach((line, index) => {
-    const number = gutter.children.item(index) as HTMLElement | null
+    const lineLabel = gutter.children.item(index)
     const measuredTop = rangeTopAtOffset(code, offset) ?? fallbackTop
-    if (number) number.style.top = `${Math.max(measuredTop - contentTop, 0)}px`
+    if (lineLabel instanceof HTMLElement) lineLabel.style.top = `${Math.max(measuredTop - contentTop, 0)}px`
     fallbackTop = measuredTop + lineHeight
     offset += line.length + 1
   })

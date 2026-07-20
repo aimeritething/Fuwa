@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify'
 import {
-  HTML_BLOCK_SCRIPTS_SANDBOXED,
-  normalizeHtmlBlockScripts,
+  HTML_BLOCK_SCRIPTS_SANDBOXED as SCRIPTS_SANDBOXED,
+  normalizeHtmlBlockScripts as normalizeBlockScripts,
   type HtmlBlockScripts,
 } from './htmlBlockMarkdown'
 
@@ -14,7 +14,7 @@ const REMOTE_LOADING_ATTRIBUTES = [
   'srcset',
   'xlink:href',
 ]
-const HTML_BLOCK_BASE_CSP_DIRECTIVES = [
+const BASE_CSP_DIRECTIVES = [
   "default-src 'none'",
   "connect-src 'none'",
   "worker-src 'none'",
@@ -26,12 +26,12 @@ const HTML_BLOCK_BASE_CSP_DIRECTIVES = [
   "font-src data:",
   "style-src 'unsafe-inline'",
 ]
-const HTML_BLOCK_ALLOWED_URI_PATTERN = /^(?:(?:https?|mailto|tel|tolaria):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/iu
+const ALLOWED_URI_PATTERN = /^(?:(?:https?|mailto|tel|tolaria):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/iu
 const EXECUTABLE_SCRIPT_TYPES = new Set(['', 'application/javascript', 'text/javascript'])
 const DATA_SCRIPT_TYPES = new Set(['application/json', 'application/ld+json', 'text/plain'])
 
-const HTML_BLOCK_SANITIZE_CONFIG = {
-  ALLOWED_URI_REGEXP: HTML_BLOCK_ALLOWED_URI_PATTERN,
+const SANITIZE_CONFIG = {
+  ALLOWED_URI_REGEXP: ALLOWED_URI_PATTERN,
   USE_PROFILES: { html: true },
   FORBID_TAGS: ['base', 'embed', 'iframe', 'link', 'meta', 'object', 'script'],
   WHOLE_DOCUMENT: true,
@@ -109,7 +109,7 @@ function safeScriptType(element: HTMLScriptElement): string | null {
   return null
 }
 
-function scriptElementHtml(element: HTMLScriptElement): string {
+function scriptElementAsHtml(element: HTMLScriptElement): string {
   const type = safeScriptType(element)
   if (type === null) return ''
 
@@ -119,25 +119,25 @@ function scriptElementHtml(element: HTMLScriptElement): string {
   return `<script${typeAttribute}${idAttribute}>${escapeScriptText(element.textContent ?? '')}</script>`
 }
 
-function extractSandboxedScriptHtml(markup: string, scripts: HtmlBlockScripts): string {
-  if (scripts !== HTML_BLOCK_SCRIPTS_SANDBOXED) return ''
+function extractSandboxedScriptAsHtml(markup: string, scripts: HtmlBlockScripts): string {
+  if (scripts !== SCRIPTS_SANDBOXED) return ''
 
   const parsed = new DOMParser().parseFromString(markup, 'text/html')
-  return Array.from(parsed.querySelectorAll('script'))
-    .map(scriptElementHtml)
-    .join('')
+  let scriptHtml = ''
+  for (const element of parsed.querySelectorAll('script')) {
+    scriptHtml += scriptElementAsHtml(element)
+  }
+  return scriptHtml
 }
 
-function extractStyleHtml(documentObject: Document): string {
+function extractStyleAsHtml(documentObject: Document): string {
   const styleElements = Array.from(documentObject.querySelectorAll('style'))
-
-  return styleElements
-    .map((styleElement) => {
-      const styleHtml = styleElement.outerHTML
-      styleElement.remove()
-      return styleHtml
-    })
-    .join('')
+  let styleHtml = ''
+  for (const styleElement of styleElements) {
+    styleHtml += styleElement.outerHTML
+    styleElement.remove()
+  }
+  return styleHtml
 }
 
 function sanitizeAnchor(anchor: HTMLAnchorElement): void {
@@ -147,14 +147,14 @@ function sanitizeAnchor(anchor: HTMLAnchorElement): void {
   anchor.setAttribute('rel', 'noreferrer noopener')
 }
 
-function sanitizeParsedHtml(documentObject: Document): SanitizedHtmlBlockMarkup {
+function sanitizeParsedMarkup(documentObject: Document): SanitizedHtmlBlockMarkup {
   documentObject.querySelectorAll('*').forEach((element) => {
     removeRemoteLoadingAttributes(element)
     sanitizeInlineStyle(element)
     if (element instanceof HTMLStyleElement) sanitizeStyleElement(element)
     if (element instanceof HTMLAnchorElement) sanitizeAnchor(element)
   })
-  const styleHtml = extractStyleHtml(documentObject)
+  const styleHtml = extractStyleAsHtml(documentObject)
   return {
     bodyHtml: documentObject.body.innerHTML,
     scriptHtml: '',
@@ -162,26 +162,26 @@ function sanitizeParsedHtml(documentObject: Document): SanitizedHtmlBlockMarkup 
   }
 }
 
-function htmlBlockCsp(scripts: HtmlBlockScripts): string {
-  const scriptPolicy = scripts === HTML_BLOCK_SCRIPTS_SANDBOXED
+function blockCsp(scripts: HtmlBlockScripts): string {
+  const scriptPolicy = scripts === SCRIPTS_SANDBOXED
     ? "script-src 'unsafe-inline'"
     : "script-src 'none'"
-  return [HTML_BLOCK_BASE_CSP_DIRECTIVES[0], scriptPolicy, ...HTML_BLOCK_BASE_CSP_DIRECTIVES.slice(1)].join('; ')
+  return [BASE_CSP_DIRECTIVES.at(0) ?? "default-src 'none'", scriptPolicy, ...BASE_CSP_DIRECTIVES.slice(1)].join('; ')
 }
 
-function sanitizeHtmlBlockMarkupParts(markup: string, options: HtmlBlockPreviewOptions = {}): SanitizedHtmlBlockMarkup {
-  const scripts = normalizeHtmlBlockScripts(options.scripts)
-  const scriptHtml = extractSandboxedScriptHtml(markup, scripts)
-  const sanitized = DOMPurify.sanitize(markup, HTML_BLOCK_SANITIZE_CONFIG)
+function sanitizeMarkupParts(markup: string, options: HtmlBlockPreviewOptions = {}): SanitizedHtmlBlockMarkup {
+  const scripts = normalizeBlockScripts(options.scripts)
+  const scriptHtml = extractSandboxedScriptAsHtml(markup, scripts)
+  const sanitized = DOMPurify.sanitize(markup, SANITIZE_CONFIG)
   const parsed = new DOMParser().parseFromString(sanitized, 'text/html')
   return {
-    ...sanitizeParsedHtml(parsed),
+    ...sanitizeParsedMarkup(parsed),
     scriptHtml,
   }
 }
 
 export function sanitizeHtmlBlockMarkup(markup: string, options: HtmlBlockPreviewOptions = {}): string {
-  const sanitized = sanitizeHtmlBlockMarkupParts(markup, options)
+  const sanitized = sanitizeMarkupParts(markup, options)
   return `${sanitized.styleHtml}${sanitized.bodyHtml}${sanitized.scriptHtml}`
 }
 
@@ -195,7 +195,7 @@ function htmlBlockIframeSrcDocFromSanitizedHtml({
     '<html>',
     '<head>',
     '<meta charset="utf-8">',
-    `<meta http-equiv="Content-Security-Policy" content="${htmlBlockCsp(scripts)}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${blockCsp(scripts)}">`,
     '<style>',
     ':root { color-scheme: light dark; }',
     'html, body { margin: 0; min-height: 100%; }',
@@ -214,8 +214,8 @@ function htmlBlockIframeSrcDocFromSanitizedHtml({
 }
 
 export function htmlBlockPreview(markup: string, options: HtmlBlockPreviewOptions = {}): HtmlBlockPreview {
-  const scripts = normalizeHtmlBlockScripts(options.scripts)
-  const sanitized = sanitizeHtmlBlockMarkupParts(markup, { scripts })
+  const scripts = normalizeBlockScripts(options.scripts)
+  const sanitized = sanitizeMarkupParts(markup, { scripts })
   const sanitizedHtml = `${sanitized.styleHtml}${sanitized.bodyHtml}${sanitized.scriptHtml}`
   return {
     sanitizedHtml,

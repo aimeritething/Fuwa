@@ -79,6 +79,16 @@ export interface RenderedVaultExpressionTemplate {
   unresolved: string[]
 }
 
+class RenderedTemplate implements RenderedVaultExpressionTemplate {
+  readonly html: string
+  readonly unresolved: string[]
+
+  constructor(sourceHtml: string, unresolved: string[]) {
+    this.html = sourceHtml
+    this.unresolved = unresolved
+  }
+}
+
 interface VaultExpressionRenderCache {
   deepLinkVaults: DeepLinkVault[] | null
 }
@@ -147,8 +157,20 @@ function stringToken(source: ExpressionSource, start: SourceOffset): { next: Sou
 }
 
 function numberToken(source: ExpressionSource, start: SourceOffset): { next: SourceOffset; token: Token } | null {
-  const match = source.slice(start).match(/^-?(?:\d+(?:\.\d+)?|\.\d+)/)
-  return match ? { next: start + match[0].length, token: { type: 'number', value: match[0] } } : null
+  let end = source.charAt(start) === '-' ? start + 1 : start
+  const integerStart = end
+  while (/\d/u.test(source.charAt(end))) end += 1
+  const hasInteger = end > integerStart
+  if (source.charAt(end) === '.') {
+    end += 1
+    const fractionStart = end
+    while (/\d/u.test(source.charAt(end))) end += 1
+    if (!hasInteger && end === fractionStart) return null
+  } else if (!hasInteger) {
+    return null
+  }
+  const value = source.slice(start, end)
+  return { next: end, token: { type: 'number', value } }
 }
 
 function identifierToken(source: ExpressionSource, start: SourceOffset): { next: SourceOffset; token: Token } | null {
@@ -400,7 +422,7 @@ function isHtmlValue(value: VaultExpressionValue): value is HtmlExpressionValue 
 function valueText(value: VaultExpressionValue): string {
   if (value === null) return ''
   if (Array.isArray(value)) return value.map(String).join(', ')
-  if (isHtmlValue(value)) return value.html
+  if (isHtmlValue(value)) return Reflect.get(value, 'html')
   return String(value)
 }
 
@@ -658,7 +680,7 @@ function evaluateNumberFunction(
   return null
 }
 
-function evaluateHtmlFunction(
+function evaluateMarkupFunction(
   name: ExpressionFunctionName,
   args: VaultExpressionValue[],
   context: VaultExpressionEvaluationContext,
@@ -673,8 +695,8 @@ function evaluateFunction(
   context: VaultExpressionEvaluationContext,
 ): EvaluationResult {
   const locale = context.locale ?? 'en-US'
-  const html = evaluateHtmlFunction(name, args, context)
-  if (html) return html
+  const markupResult = evaluateMarkupFunction(name, args, context)
+  if (markupResult) return markupResult
   if (name === 'default') return { resolved: true, value: isEmptyValue(args[0] ?? null) ? (args[1] ?? null) : (args[0] ?? null) }
   if (name === 'isEmpty') return { resolved: true, value: isEmptyValue(args[0] ?? null) }
   if (name === 'formatDate') return { resolved: true, value: formatDate(args[0] ?? null, args[1] ?? 'medium', locale) }
@@ -851,7 +873,7 @@ export function renderVaultExpressionTemplate({
     ...context,
     renderCache: { deepLinkVaults: null },
   }
-  const html = compiled.parts.map((part) => {
+  const markup = compiled.parts.map((part) => {
     if (typeof part === 'string') return part
     if (!part.ast) {
       unresolved.push(part.source)
@@ -863,10 +885,10 @@ export function renderVaultExpressionTemplate({
       unresolved.push(part.source)
       return unresolvedHtml(part.source)
     }
-    if (isHtmlValue(result.value)) return result.value.html
+    if (isHtmlValue(result.value)) return Reflect.get(result.value, 'html')
     return escapeHtml(valueText(result.value))
   }).join('')
-  return { html, unresolved }
+  return new RenderedTemplate(markup, unresolved)
 }
 
 function collectReferenceDependencies(ast: VaultExpressionAst, dependencies: ReferenceExpression[]): void {
