@@ -44,4 +44,16 @@ describe('useQuickLauncherMainBridge', () => {
     unmount()
     await waitFor(() => expect(mocks.unlisten).toHaveBeenCalledOnce())
   })
+
+  it('opens the note even when restoring main-window focus fails', async () => {
+    const openDeepLink = vi.fn()
+    mocks.unminimize.mockRejectedValueOnce(new Error('window state unavailable'))
+    renderHook(() => useQuickLauncherMainBridge(openDeepLink))
+    await waitFor(() => expect(mocks.listen).toHaveBeenCalled())
+
+    const listener = mocks.listen.mock.calls[0]?.[1]
+    listener({ payload: { url: 'tolaria://work/note.md' } })
+
+    await waitFor(() => expect(openDeepLink).toHaveBeenCalledWith('tolaria://work/note.md'))
+  })
 })

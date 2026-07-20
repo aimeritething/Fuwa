@@ -20,7 +20,8 @@ describe('quick launcher global shortcut', () => {
   })
 
   it('normalizes the portable default and rejects modifier-free shortcuts', () => {
-    expect(normalizeQuickLauncherShortcut(' cmdOrCtrl + shift + space ')).toBe(DEFAULT_QUICK_LAUNCHER_SHORTCUT)
+    expect(DEFAULT_QUICK_LAUNCHER_SHORTCUT).toBe('CommandOrControl+Alt+T')
+    expect(normalizeQuickLauncherShortcut(' cmdOrCtrl + option + t ')).toBe(DEFAULT_QUICK_LAUNCHER_SHORTCUT)
     expect(normalizeQuickLauncherShortcut('Space')).toBeNull()
     expect(normalizeQuickLauncherShortcut('CommandOrControl+Shift')).toBeNull()
   })

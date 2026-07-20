@@ -208,7 +208,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   }, [])
   const networkStatus = useNetworkStatus()
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
-  useGlobalQuickLauncher(settings.quick_launcher_shortcut, settingsLoaded)
+  useGlobalQuickLauncher(settings.quick_launcher_shortcut, settingsLoaded && !noteWindowParams)
   const aiFeaturesEnabled = areAiFeaturesEnabled(settings)
 
   // onSwitch closure captures `notes` declared below — safe because it's only

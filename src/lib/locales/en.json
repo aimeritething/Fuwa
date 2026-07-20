@@ -1040,7 +1040,7 @@
   "locale.skSK": "Slovak",
   "quickLauncher.searchTab": "Search",
   "quickLauncher.captureTab": "Capture",
-  "quickLauncher.searchPlaceholder": "Search every vault…",
+  "quickLauncher.searchPlaceholder": "Search notes or create one…",
   "quickLauncher.scopeLabel": "Search scope",
   "quickLauncher.allVaults": "All vaults",
   "quickLauncher.noResults": "No matching notes",
@@ -1065,7 +1065,10 @@
   "quickLauncher.collision": "A note with that name exists. This capture will be saved as {path}.",
   "quickLauncher.openExisting": "Open existing",
   "quickLauncher.chooseAnotherTitle": "Choose another title",
-  "quickLauncher.shortcutHint": "⌘↵ to save · Esc to close"
+  "quickLauncher.shortcutHint": "⌘↵ to save · Esc to close",
+  "quickLauncher.createNote": "Create note \"{title}\"",
+  "quickLauncher.saveToVault": "Save to vault",
+  "quickLauncher.actionError": "Could not complete that action. Try again."
   ,"settings.quickLauncher.title": "Quick Launcher"
   ,"settings.quickLauncher.shortcut": "Global shortcut"
   ,"settings.quickLauncher.shortcutDescription": "Focus the field and press a new key combination. Changes take effect after saving settings."

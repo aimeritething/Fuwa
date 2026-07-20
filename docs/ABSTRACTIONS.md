@@ -907,7 +907,7 @@ The NoteList header search keeps its local title/snippet/property filtering for 
 
 `search_vault` owns a process-local `VaultSearchIndex` per vault. Each query refreshes eligible paths and metadata, reads only new or changed Markdown files, removes renamed/deleted paths, and returns explicit match categories and vault-relative paths. This shared command serves both note-list body matching and the global Quick Launcher without persisting a second copy of note content.
 
-The Quick Launcher renderer treats `(vaultId, relativePath)` as note identity and delegates cross-vault opening to the main window through the existing deep-link resolver. Capture destinations use the pure `resolveQuickCaptureDestination` precedence rule (configured, active, last successful), but a configured unavailable vault is an attention state rather than permission to silently fall back. `uniqueCaptureRelativePath` previews collision-safe filenames; `create_note_content` remains the final create-only boundary.
+The Quick Launcher renderer treats `(vaultId, relativePath)` as note identity and delegates cross-vault opening to the main window through the existing deep-link resolver. Its result list reuses `NoteSearchList` plus full vault-entry metadata, so note icons, type icons/colors, and workspace badges stay identical to Cmd+O. The same input becomes a create-note action only when the cross-vault search has no results. Capture destinations use the pure `resolveQuickCaptureDestination` precedence rule (configured, active, last successful), but a configured unavailable vault is an attention state rather than permission to silently fall back. The input becomes the note H1 and filename stem, the configured folder remains implicit, and the launcher exposes only a bottom vault selector. `uniqueCaptureRelativePath` keeps filenames collision-safe; `create_note_content` remains the final create-only boundary.
 
 ## Vault Management
 
@@ -1031,7 +1031,7 @@ interface Settings {
   all_notes_show_pdfs: boolean | null // null = default false
   all_notes_show_images: boolean | null // null = default false
   all_notes_show_unsupported: boolean | null // null = default false
-  quick_launcher_shortcut: string | null // null = Cmd/Ctrl+Shift+Space
+  quick_launcher_shortcut: string | null // null = Cmd+Option+T / Ctrl+Alt+T
   quick_capture_vault_path: string | null // null = active, then last successful
   quick_capture_folder: string | null
   quick_capture_open_after_save: boolean | null // null = false

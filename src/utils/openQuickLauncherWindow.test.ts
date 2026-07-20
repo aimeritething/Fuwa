@@ -48,13 +48,13 @@ describe('openQuickLauncherWindow', () => {
         center: true,
         decorations: false,
         focus: true,
-        height: 520,
+        height: 420,
         minimizable: false,
         resizable: false,
         skipTaskbar: true,
         title: 'Tolaria Quick Launcher',
         visible: true,
-        width: 640,
+        width: 540,
       }),
     )
   })

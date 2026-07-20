@@ -16,9 +16,9 @@ export function useQuickLauncherMainBridge(openDeepLink: (url: string) => void):
       const url = quickLauncherOpenNoteUrl(event.payload)
       if (!url) return
       const mainWindow = getCurrentWindow()
-      void mainWindow.unminimize()
-        .then(() => mainWindow.show())
-        .then(() => mainWindow.setFocus())
+      void mainWindow.unminimize().catch(() => undefined)
+        .then(() => mainWindow.show().catch(() => undefined))
+        .then(() => mainWindow.setFocus().catch(() => undefined))
         .then(() => openDeepLink(url))
     }).then((unlisten) => {
       if (disposed) unlisten()

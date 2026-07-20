@@ -1,4 +1,4 @@
-export const DEFAULT_QUICK_LAUNCHER_SHORTCUT = 'CommandOrControl+Shift+Space'
+export const DEFAULT_QUICK_LAUNCHER_SHORTCUT = 'CommandOrControl+Alt+T'
 
 interface ShortcutAdapter {
   register: (shortcut: string, handler: () => void) => Promise<void>

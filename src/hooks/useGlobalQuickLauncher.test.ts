@@ -47,7 +47,7 @@ describe('useGlobalQuickLauncher', () => {
         useGlobalQuickLauncher(shortcut)
         return useQuickLauncherShortcutStatus()
       },
-      { initialProps: { shortcut: 'CommandOrControl+Shift+Space' } },
+      { initialProps: { shortcut: 'CommandOrControl+Alt+T' } },
     )
     await waitFor(() => expect(mocks.register).toHaveBeenCalledOnce())
     mocks.register.mockRejectedValueOnce(new Error('Shortcut already in use'))
@@ -56,7 +56,7 @@ describe('useGlobalQuickLauncher', () => {
     await waitFor(() => expect(mocks.register).toHaveBeenCalledTimes(3))
     const { result } = renderHook(() => useQuickLauncherShortcutStatus())
     expect(result.current).toEqual({
-      activeShortcut: 'CommandOrControl+Shift+Space',
+      activeShortcut: 'CommandOrControl+Alt+T',
       message: 'Shortcut already in use',
       state: 'error',
     })

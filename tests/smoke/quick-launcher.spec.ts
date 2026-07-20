@@ -14,6 +14,12 @@ type QuickLauncherTestWindow = Window & {
 async function installQuickLauncherMocks(page: Page): Promise<void> {
   await page.addInitScript(({ primaryVault, researchVault }) => {
     localStorage.clear()
+    const nativeFetch = window.fetch.bind(window)
+    window.fetch = (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/api/vault/ping')) return Promise.resolve(new Response('', { status: 503 }))
+      return nativeFetch(input, init)
+    }
     const testWindow = window as QuickLauncherTestWindow
     testWindow.__quickLauncherSearchVaults = []
     const entries = {
@@ -41,11 +47,12 @@ async function installQuickLauncherMocks(page: Page): Promise<void> {
         handlers.list_vault = (args) => entries[String(args?.path ?? '')] ?? []
         handlers.search_vault = (args) => {
           const vaultPath = String(args?.vaultPath ?? '')
+          const query = String(args?.query ?? '').toLocaleLowerCase()
           testWindow.__quickLauncherSearchVaults?.push(vaultPath)
           const matching = entries[vaultPath as keyof typeof entries] ?? []
           return {
             elapsed_ms: 1,
-            results: matching.filter((entry) => entry.title.includes('Beacon')).map((entry) => ({
+            results: matching.filter((entry) => entry.title.toLocaleLowerCase().includes(query)).map((entry) => ({
               match_category: 'title',
               path: entry.path,
               relative_path: entry.path.slice(vaultPath.length + 1),
@@ -72,7 +79,8 @@ test('global launcher searches across vaults and safely captures a note @smoke',
   await installQuickLauncherMocks(page)
   await page.goto('/?window=quick-launcher', { waitUntil: 'domcontentloaded' })
 
-  await page.getByLabel('Search every vault…').fill('Beacon')
+  const launcherInput = page.getByLabel('Search notes or create one…')
+  await launcherInput.fill('Beacon')
   await expect(page.getByText('Research Beacon', { exact: true })).toBeVisible()
   await page.getByText('Research Beacon', { exact: true }).click()
   await expect.poll(() => page.evaluate(() => (window as QuickLauncherTestWindow).__laputaTest?.quickLauncherOpenUrl))
@@ -80,16 +88,16 @@ test('global launcher searches across vaults and safely captures a note @smoke',
   expect(new Set(await page.evaluate(() => (window as QuickLauncherTestWindow).__quickLauncherSearchVaults)))
     .toEqual(new Set([PRIMARY_VAULT, RESEARCH_VAULT]))
 
-  await page.getByRole('tab', { name: 'Capture' }).click()
-  await page.getByLabel('Title').fill('Launcher Meeting')
-  await page.getByLabel('Body').fill('Decision captured outside the main window.')
-  await expect(page.getByText(`Destination: ${PRIMARY_VAULT}/launcher-meeting.md`)).toBeVisible()
-  await page.getByRole('button', { name: 'Save capture' }).click()
+  await launcherInput.fill('Launcher Meeting')
+  await expect(page.getByRole('button', { name: 'Create note "Launcher Meeting"' })).toBeVisible()
+  await page.getByLabel('Save to vault').click()
+  await page.getByRole('option', { name: 'Research Lab' }).click()
+  await launcherInput.press('Enter')
 
   await expect.poll(() => page.evaluate(() => (window as QuickLauncherTestWindow).__quickLauncherCapture))
     .toEqual({
-      content: '# Launcher Meeting\n\nDecision captured outside the main window.\n',
-      path: `${PRIMARY_VAULT}/launcher-meeting.md`,
-      vaultPath: PRIMARY_VAULT,
+      content: '# Launcher Meeting\n',
+      path: `${RESEARCH_VAULT}/launcher-meeting.md`,
+      vaultPath: RESEARCH_VAULT,
     })
 })
