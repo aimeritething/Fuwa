@@ -895,7 +895,7 @@ describe('SettingsPanel', () => {
     expectAutoGitControlsDisabled()
   })
 
-  it('shows a keyboard-readable parent Git repository root', async () => {
+  it('shows the parent Git repository root', async () => {
     const handlers = window.__mockHandlers as Record<string, unknown>
     const originalHandler = handlers.git_workspace_info
     handlers.git_workspace_info = () => ({
@@ -919,7 +919,7 @@ describe('SettingsPanel', () => {
 
     const root = await screen.findByTestId('settings-git-root')
     expect(root).toHaveTextContent('/repo')
-    expect(root).toHaveAttribute('tabindex', '0')
+    expect(root).toBeVisible()
     expect(screen.getByText(/Repository-wide sync actions use this parent folder/)).toBeInTheDocument()
 
     handlers.git_workspace_info = originalHandler

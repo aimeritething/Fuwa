@@ -47,7 +47,7 @@ function rangeTopAtOffset(code: HTMLElement, offset: number): number | null {
   if (nextOffset === offset) return null
   const [endNode, endOffset] = textBoundaryAt(code, nextOffset)
   range.setEnd(endNode, endOffset)
-  return Array.from(range.getClientRects()).at(0)?.top ?? null
+  return Array.from(range.getClientRects?.() ?? []).at(0)?.top ?? null
 }
 
 function numericStyle(style: CSSStyleDeclaration, property: 'paddingBottom' | 'paddingLeft' | 'paddingTop'): number {
