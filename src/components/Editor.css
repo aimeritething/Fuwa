@@ -612,31 +612,9 @@ body.mac-chrome .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadc
   font-weight: 650;
 }
 
-.tolaria-callout__header > svg,
-.tolaria-callout__toggle > svg:not(.tolaria-callout__caret) {
+.tolaria-callout__header > svg {
   width: 1.25rem;
   height: 1.25rem;
-}
-
-.tolaria-callout__toggle {
-  height: auto;
-  min-height: 1.5rem;
-  justify-content: flex-start;
-  padding: 0;
-  color: inherit;
-}
-
-.tolaria-callout__toggle:hover {
-  background: transparent;
-  color: inherit;
-}
-
-.tolaria-callout__caret {
-  transition: transform 140ms ease;
-}
-
-.tolaria-callout__toggle[aria-expanded='true'] .tolaria-callout__caret {
-  transform: rotate(90deg);
 }
 
 .tolaria-callout__body {

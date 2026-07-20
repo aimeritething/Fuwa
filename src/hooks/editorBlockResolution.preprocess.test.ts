@@ -85,7 +85,7 @@ describe('preProcessRichEditorMarkdown', () => {
       content: [
         '# Callout localization QA',
         '',
-        '> [!note]+',
+        '> [!note]',
         '> This untitled callout uses localized copy.',
       ].join('\n'),
       editor,

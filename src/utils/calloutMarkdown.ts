@@ -3,21 +3,17 @@ import { serializeBlockNoteMarkdown } from './blockNoteDirectMarkdown'
 
 export const CALLOUT_BLOCK_TYPE = 'calloutBlock'
 
-export type CalloutFold = '' | '+' | '-'
-
 export interface CalloutMarker {
-  fold: CalloutFold
   title: string
   type: string
 }
 
 interface CalloutBlockProps {
   calloutType: string
-  fold: CalloutFold
   title: string
 }
 
-const CALLOUT_MARKER = /^\[!([a-z][a-z0-9_-]*)\]([+-]?)[ \t]*(.*)$/iu
+const CALLOUT_MARKER = /^\[!([a-z][a-z0-9_-]*)\](?![+-])[ \t]*(.*)$/iu
 function normalizedCalloutType(type: string): string {
   return type.trim().toLowerCase()
 }
@@ -27,21 +23,15 @@ export function parseCalloutMarker(line: string): CalloutMarker | null {
   const type = match?.at(1)
   if (!type) return null
 
-  const foldToken = match?.at(2)
   return {
-    fold: foldToken === '+' || foldToken === '-' ? foldToken : '',
-    title: (match?.at(3) ?? '').trim(),
+    title: (match?.at(2) ?? '').trim(),
     type: normalizedCalloutType(type),
   }
 }
 
 export function formatCalloutMarker(marker: CalloutMarker): string {
-  const head = `[!${normalizedCalloutType(marker.type)}]${marker.fold}`
+  const head = `[!${normalizedCalloutType(marker.type)}]`
   return marker.title ? `${head} ${marker.title}` : head
-}
-
-export function calloutStartsExpanded(fold: CalloutFold): boolean {
-  return fold !== '-'
 }
 
 export function calloutHeading(type: string, title: string, defaultHeading = 'Note'): string {
@@ -125,7 +115,6 @@ export function buildCalloutBlock(block: BlockLike): BlockLike {
 
   const props: CalloutBlockProps = {
     calloutType: parsed.marker.type,
-    fold: parsed.marker.fold,
     title: parsed.marker.title,
   }
   const body = dropInlinePrefix(block.content ?? [], parsed.bodyOffset).content
@@ -143,11 +132,9 @@ export function isCalloutBlock(block: BlockLike): boolean {
 
 function readCalloutProps(block: BlockLike): CalloutBlockProps {
   const calloutType = block.props?.calloutType
-  const fold = block.props?.fold
   const title = block.props?.title
   return {
     calloutType: typeof calloutType === 'string' ? normalizedCalloutType(calloutType) : 'note',
-    fold: fold === '+' || fold === '-' ? fold : '',
     title: typeof title === 'string' ? title : '',
   }
 }
@@ -172,7 +159,6 @@ function serializeCalloutBody(editor: MarkdownSerializer, block: BlockLike): str
 export function serializeCalloutBlock(editor: MarkdownSerializer, block: BlockLike): string {
   const props = readCalloutProps(block)
   const marker = formatCalloutMarker({
-    fold: props.fold,
     title: props.title,
     type: props.calloutType,
   })

@@ -4,7 +4,10 @@ import { directionForCalloutMarkerText } from './richEditorTextDirection'
 describe('directionForCalloutMarkerText', () => {
   it('uses the first strong RTL character after an Obsidian callout marker', () => {
     expect(directionForCalloutMarkerText('[!note] כותרת חשובה')).toBe('rtl')
-    expect(directionForCalloutMarkerText('[!warning]- مرحبا بالعالم')).toBe('rtl')
+  })
+
+  it('does not interpret collapsible variants as supported callout markers', () => {
+    expect(directionForCalloutMarkerText('[!warning]- مرحبا بالعالم')).toBe('auto')
   })
 
   it('leaves English callout and quote content on browser auto direction', () => {

@@ -302,13 +302,18 @@ export function createCalloutSlashMenuItem(
   const blockEditor = editor as unknown as SlashInsertEditor
   const submenuItems = OBSIDIAN_CALLOUT_DEFINITIONS.map(({ aliases, type }) => ({
     aliases: [...aliases],
-    icon: createTolariaSlashMenuIcon(calloutIconForType(type)),
+    icon: createElement(calloutIconForType(type), {
+      'aria-hidden': true,
+      className: 'size-[18px]',
+      size: 18,
+      weight: 'regular',
+    }),
     key: `callout_${type}`,
     onItemClick: () => {
       const block = blockEditor.getTextCursorPosition().block
       blockEditor.replaceBlocks([block], [{
         type: CALLOUT_BLOCK_TYPE,
-        props: { calloutType: type, fold: '', title: '' },
+        props: { calloutType: type, title: '' },
       }])
       trackEvent('editor_callout_slash_command_used', { type })
     },

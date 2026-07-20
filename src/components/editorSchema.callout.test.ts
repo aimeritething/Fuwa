@@ -48,13 +48,15 @@ describe('editor callout schema', () => {
     })
   })
 
-  it('round-trips rich callout bodies and fold markers', async () => {
+  it('leaves collapsible callout variants as ordinary blockquotes', async () => {
     const markdown = [
       '> [!example]- Resources',
       '> **bold** and [docs](https://example.com)',
     ].join('\n')
 
-    expect(await roundTrip(markdown)).toBe(markdown)
+    const editor = BlockNoteEditor.create({ schema })
+    const parsed = await editor.tryParseMarkdownToBlocks(markdown)
+    expect(injectCalloutBlocks(parsed).at(0)).toMatchObject({ type: 'quote' })
   })
 
   it('round-trips multiline callout bodies without appending backslashes', async () => {

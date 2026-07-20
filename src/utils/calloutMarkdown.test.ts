@@ -3,7 +3,6 @@ import type { BlockLike, InlineItem } from './durableMarkdownBlocks'
 import {
   buildCalloutBlock,
   calloutHeading,
-  calloutStartsExpanded,
   parseCalloutMarker,
   serializeCalloutBlock,
 } from './calloutMarkdown'
@@ -20,16 +19,15 @@ describe('callout markers', () => {
 
   it('recognizes Obsidian and GFM alert markers case-insensitively', () => {
     expect(parseCalloutMarker('[!TIP] A useful tip')).toEqual({
-      fold: '',
       title: 'A useful tip',
       type: 'tip',
     })
-    expect(parseCalloutMarker('[!custom-alert]- Closed')).toEqual({
-      fold: '-',
-      title: 'Closed',
-      type: 'custom-alert',
-    })
     expect(parseCalloutMarker('[!123] Invalid')).toBeNull()
+  })
+
+  it('leaves collapsible marker variants as ordinary blockquotes', () => {
+    expect(parseCalloutMarker('[!custom-alert]- Closed')).toBeNull()
+    expect(parseCalloutMarker('[!tip]+ Open')).toBeNull()
   })
 
   it('maps known aliases to semantic families and unknown types to note styling', () => {
@@ -58,11 +56,6 @@ describe('callout markers', () => {
     expect(canonicalType('custom-alert')).toBe('note')
   })
 
-  it('uses the fold marker as the initial disclosure state', () => {
-    expect(calloutStartsExpanded('-')).toBe(false)
-    expect(calloutStartsExpanded('+')).toBe(true)
-    expect(calloutStartsExpanded('')).toBe(true)
-  })
 })
 
 describe('callout block conversion', () => {
@@ -80,7 +73,7 @@ describe('callout block conversion', () => {
 
     expect(block).toMatchObject({
       type: 'calloutBlock',
-      props: { calloutType: 'tip', fold: '', title: 'Read this' },
+      props: { calloutType: 'tip', title: 'Read this' },
       content: [
         { type: 'text', text: 'Bold body ', styles: { bold: true } },
         link,
@@ -94,12 +87,12 @@ describe('callout block conversion', () => {
     }
     const markdown = serializeCalloutBlock(editor, {
       type: 'calloutBlock',
-      props: { calloutType: 'tip', fold: '+', title: 'Read this' },
+      props: { calloutType: 'tip', title: 'Read this' },
       content: [{ type: 'text', text: 'body' }],
     })
 
     expect(markdown).toBe([
-      '> [!tip]+ Read this',
+      '> [!tip] Read this',
       '> **Bold body** and [docs](https://example.com)',
     ].join('\n'))
     expect(editor.blocksToMarkdownLossy).toHaveBeenCalledWith([
@@ -125,7 +118,7 @@ describe('callout block conversion', () => {
 
     expect(serializeCalloutBlock(editor, {
       type: 'calloutBlock',
-      props: { calloutType: 'note', fold: '', title: '' },
+      props: { calloutType: 'note', title: '' },
       content: [{ type: 'text', text: 'First line\nSecond line' }],
     })).toBe([
       '> [!note]',

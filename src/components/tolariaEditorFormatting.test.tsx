@@ -348,7 +348,7 @@ describe('tolariaEditorFormatting', () => {
 
     expect(replaceBlocks).toHaveBeenCalledWith([block], [{
       type: CALLOUT_BLOCK_TYPE,
-      props: { calloutType: 'tip', fold: '', title: '' },
+      props: { calloutType: 'tip', title: '' },
     }])
     expect(trackEvent).toHaveBeenCalledWith('editor_callout_slash_command_used', {
       type: 'tip',
@@ -362,6 +362,17 @@ describe('tolariaEditorFormatting', () => {
     ]
 
     expect(new Set(types.map(calloutIconForType)).size).toBe(types.length)
+  })
+
+  it('renders one Phosphor icon node for each callout submenu item', () => {
+    const { editor } = createSlashCommandEditorFixture()
+    const submenuItems = createCalloutSlashMenuItem(editor).submenuItems ?? []
+
+    submenuItems.forEach((item) => {
+      const type = item.key.replace('callout_', '')
+      expect(isValidElement(item.icon)).toBe(true)
+      expect((item.icon as ReactElement).type).toBe(calloutIconForType(type))
+    })
   })
 
   it('inserts resolved local date and time values from slash commands', () => {

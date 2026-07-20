@@ -3,7 +3,7 @@ import type { Node as ProsemirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type DecorationSet as ProsemirrorDecorationSet } from '@tiptap/pm/view'
 
-const CALLOUT_MARKER_PATTERN = /^\s*\[![^\]\s]+\][+-]?[ \t]*/u
+const CALLOUT_MARKER_PATTERN = /^\s*\[![^\]\s]+\](?![+-])[ \t]*/u
 const LATIN_CHARACTER_PATTERN = /[A-Za-z\u00C0-\u024F]/u
 const QUOTE_NODE_TYPE = 'quote'
 const RTL_CHARACTER_PATTERN = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/u

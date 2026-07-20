@@ -42,9 +42,16 @@ test('callout slash submenu opens on the right and inserts clean multiline markd
     return Boolean(parentBounds && submenuBounds && submenuBounds.x >= parentBounds.x + parentBounds.width)
   }).toBe(true)
 
+  const submenuItems = submenu.getByRole('menuitem')
+  await expect(submenuItems).toHaveCount(13)
+  for (let index = 0; index < 13; index += 1) {
+    await expect(submenuItems.nth(index).locator('svg')).toHaveCount(1)
+  }
+
   await page.getByRole('menuitem', { name: 'Tip' }).click()
   const callout = page.locator('.tolaria-callout[data-callout-type="tip"]')
   await expect(callout).toBeVisible()
+  await expect(callout.locator('button')).toHaveCount(0)
   await expect.poll(async () => callout.evaluate((element) => {
     const style = getComputedStyle(element)
     return style.borderTopWidth === '0px' && style.borderLeftWidth === '0px'
