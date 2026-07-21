@@ -75,4 +75,20 @@ describe('remote image paste', () => {
       replacements: result.replacements,
     })).toBe('![Photo](attachments/123-photo.png) ![Map](https://cdn.example.com/map.png)')
   })
+
+  it('rewrites overlapping remote image URLs without corrupting query-specific imports', () => {
+    expect(replaceImportedRemoteImages({
+      text: [
+        '![Full](https://cdn.example.com/photo.png?size=full)',
+        '![Thumb](https://cdn.example.com/photo.png)',
+      ].join('\n'),
+      replacements: new Map([
+        ['https://cdn.example.com/photo.png', 'attachments/photo.png'],
+        ['https://cdn.example.com/photo.png?size=full', 'attachments/photo-full.png'],
+      ]),
+    })).toBe([
+      '![Full](attachments/photo-full.png)',
+      '![Thumb](attachments/photo.png)',
+    ].join('\n'))
+  })
 })
