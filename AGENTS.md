@@ -64,12 +64,13 @@ Pre-push enforces **Hotspot Code Health** and **Average Code Health** ≥ thresh
 
 Use Codacy as a security and static-analysis gate before a task is considered releasable.
 
-- Prefer the Codacy MCP inside Codex to inspect repository/file issues for every touched code file.
-- If MCP is unavailable, use the local CLI wrapper, e.g. `.codacy/cli.sh analyze <path> --format sarif`; choose the relevant tool when useful (`eslint`, `opengrep`, `trivy`, `lizard`).
-- **Always fix Critical and High severity findings introduced by your change.** Do not move the task to In Review with new Critical/High Codacy issues.
-- Review Medium findings. Fix them when they are real defects or security-sensitive; otherwise explain why they are acceptable in the completion comment.
-- Never silence a Codacy rule just to pass the scan. Prefer small code changes that remove the finding.
-- `pnpm codacy:gate` is a fail-closed differential gate: every issue on an added line fails, regardless of severity. It runs in pre-push and CI and must never be skipped.
+- **Before editing:** record Codacy findings for every touched code file using the MCP; if unavailable, use `.codacy/cli.sh analyze <path> --format sarif` with every relevant configured tool.
+- **Zero-new-findings rule:** added or modified code must introduce no Codacy finding at any severity, including findings reported on unchanged lines or at file level because of the change.
+- **Boy Scout Rule:** after editing, every touched file must have fewer findings; a zero-finding file must stay at zero. Fix every existing Critical/High finding in a touched file.
+- **New files:** every new code file must have zero Codacy findings at every severity.
+- **Before every commit:** re-scan every touched/new code file and compare with its recorded baseline. Do not rely on added-line filtering alone.
+- **Escalation:** if a scanner is unavailable or a finding is demonstrably false, stop and obtain explicit repository-owner approval recorded in the completion comment; never suppress a rule merely to pass.
+- `pnpm codacy:gate` is a required fail-closed added-line safety net in pre-push and CI; it does not replace the touched-file before/after check.
 
 ### Check suite (runs on every push)
 ```bash
@@ -117,7 +118,7 @@ Before pushing or moving a task to In Review, verify the release gates and add a
 - Tests/coverage: commands run and final coverage result.
 - CodeScene: before/after touched-file checks plus final Hotspot and Average scores after push; final scores must pass `.codescene-thresholds`.
 - Coverage commands passed (`pnpm test:coverage` and `cargo llvm-cov ... --fail-under-lines 85`) or the change is docs-only.
-- Codacy: MCP/CLI scan summary; confirm no new Critical/High findings.
+- Codacy: before/after findings for every touched file; confirm fewer findings (or zero stayed zero), zero findings in new files, and no new findings at any severity.
 - Localization: any user-facing copy lives in `src/lib/locales/en.json`, `pnpm l10n:translate` was run, and `pnpm l10n:validate` passes. If no copy changed, say “Localization: no UI copy changes”.
 - PostHog: meaningful new user actions/events are instrumented with safe metadata; noisy/minor changes explicitly say “PostHog: no event needed because …”.
 - Refactoring: any files refactored to meet the CodeScene gate, or "none needed".
