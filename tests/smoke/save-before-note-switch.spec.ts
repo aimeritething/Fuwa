@@ -43,6 +43,8 @@ function collectReactUpdateLoopErrors(page: Page): string[] {
 async function openNote(page: Page, title: string) {
   const noteList = page.locator('[data-testid="note-list-container"]')
   await noteList.getByText(title, { exact: true }).click()
+  const filenameStem = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(filenameStem, { timeout: 5_000 })
 }
 
 async function openRawMode(page: Page) {

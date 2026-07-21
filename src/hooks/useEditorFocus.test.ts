@@ -169,6 +169,19 @@ describe('useEditorFocus', () => {
     expect(editor.focus).toHaveBeenCalledTimes(1)
   })
 
+  it('moves focus from the control that explicitly created the note', () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const { editor } = setup(true)
+    const createButton = document.createElement('button')
+    document.body.appendChild(createButton)
+    createButton.focus()
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+  })
+
   it('reclaims focus ownership when the launching surface suspends it during the tab swap', () => {
     vi.useFakeTimers()
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })

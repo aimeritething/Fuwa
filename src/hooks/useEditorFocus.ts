@@ -121,10 +121,8 @@ function handleTargetFocusRequest(options: TargetFocusOptions): void {
       clearPendingFocusRequest(targetPath)
       return
     }
-    if (focusReturnedToDocumentChrome()) {
-      resumeEditorFocus()
-      scheduleEditorFocus(context, () => clearPendingFocusRequest(targetPath))
-    }
+    resumeEditorFocus()
+    scheduleEditorFocus(context, () => clearPendingFocusRequest(targetPath))
     scheduleFocusStabilityChecks({ context, targetPath, pendingCleanups })
   }
   registerPendingTabFocus(targetPath, scheduleFocus, pendingCleanups)
