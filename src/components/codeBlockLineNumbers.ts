@@ -1,140 +1,62 @@
-const CODE_BLOCK_SELECTOR = '[data-content-type="codeBlock"]'
-const LINE_NUMBER_LAYER_CLASS = 'editor__code-line-number-layer'
+import type { Node as ProsemirrorNode } from '@tiptap/pm/model'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
-function codeBlockParts(block: Element) {
-  const pre = block.querySelector<HTMLElement>('pre')
-  const code = pre?.querySelector<HTMLElement>('code') ?? null
-  return { code, pre }
-}
+const CODE_BLOCK_TYPE = 'codeBlock'
+const LINE_NUMBER_CLASS = 'editor__code-line-number'
+const lineNumberPluginKey = new PluginKey<DecorationSet>('tolariaCodeBlockLineNumbers')
 
-function createLineNumbers(lineCount: number): HTMLElement {
-  const gutter = document.createElement('span')
-  gutter.setAttribute('data-code-line-numbers', '')
-  gutter.setAttribute('contenteditable', 'false')
-  gutter.setAttribute('aria-hidden', 'true')
-
-  for (let line = 1; line <= lineCount; line += 1) {
-    const number = document.createElement('span')
-    number.textContent = String(line)
-    gutter.appendChild(number)
+function lineStartOffsets(source: string): number[] {
+  const offsets = [0]
+  for (let offset = 0; offset < source.length; offset += 1) {
+    if (source.charCodeAt(offset) === 10) offsets.push(offset + 1)
   }
-  return gutter
+  return offsets
 }
 
-function textBoundaryAt(code: HTMLElement, targetOffset: number): [Node, number] {
-  const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT)
-  let remaining = targetOffset
-  let current = walker.nextNode()
-
-  while (current) {
-    const length = current.textContent?.length ?? 0
-    if (remaining <= length) return [current, remaining]
-    remaining -= length
-    current = walker.nextNode()
-  }
-  return [code, code.childNodes.length]
+function createLineNumberMarker(view: EditorView, lineNumber: number): HTMLElement {
+  const marker = view.dom.ownerDocument.createElement('span')
+  marker.className = LINE_NUMBER_CLASS
+  marker.dataset.codeLineNumber = String(lineNumber)
+  marker.setAttribute('aria-hidden', 'true')
+  marker.setAttribute('contenteditable', 'false')
+  return marker
 }
 
-function rangeTopAtOffset(code: HTMLElement, offset: number): number | null {
-  const range = document.createRange()
-  const [startNode, startOffset] = textBoundaryAt(code, offset)
-  range.setStart(startNode, startOffset)
-  range.collapse(true)
-  const getClientRects = Reflect.get(range, 'getClientRects') as (() => DOMRectList) | undefined
-  if (typeof getClientRects !== 'function') return null
-  const caretRect = Array.from(getClientRects.call(range)).at(0)
-  if (caretRect) return caretRect.top
-
-  const nextOffset = Math.min(offset + 1, code.textContent.length)
-  if (nextOffset === offset) return null
-  const [endNode, endOffset] = textBoundaryAt(code, nextOffset)
-  range.setEnd(endNode, endOffset)
-  return Array.from(getClientRects.call(range)).at(0)?.top ?? null
-}
-
-function numericStyle(style: CSSStyleDeclaration, property: 'paddingBottom' | 'paddingLeft' | 'paddingTop'): number {
-  const rawValue = property === 'paddingBottom'
-    ? style.paddingBottom
-    : property === 'paddingLeft'
-      ? style.paddingLeft
-      : style.paddingTop
-  const value = Number.parseFloat(rawValue)
-  return Number.isFinite(value) ? value : 0
-}
-
-function updateLinePositions(code: HTMLElement, pre: HTMLElement, gutter: HTMLElement, lines: string[]): void {
-  const computedStyle = getComputedStyle(code)
-  const computedLineHeight = Number.parseFloat(computedStyle.lineHeight)
-  const lineHeight = Number.isFinite(computedLineHeight) ? computedLineHeight : 20
-  const preStyle = getComputedStyle(pre)
-  const preRect = pre.getBoundingClientRect()
-  const contentTop = preRect.top + numericStyle(preStyle, 'paddingTop')
-  const contentHeight = Math.max(
-    preRect.height - numericStyle(preStyle, 'paddingTop') - numericStyle(preStyle, 'paddingBottom'),
-    lineHeight,
-  )
-  gutter.style.fontFamily = computedStyle.fontFamily
-  gutter.style.fontSize = computedStyle.fontSize
-  gutter.style.height = `${contentHeight}px`
-  gutter.style.lineHeight = `${lineHeight}px`
-  let offset = 0
-  let fallbackTop = contentTop
-
-  lines.forEach((line, index) => {
-    const lineLabel = gutter.children.item(index)
-    const measuredTop = rangeTopAtOffset(code, offset) ?? fallbackTop
-    if (lineLabel instanceof HTMLElement) lineLabel.style.top = `${Math.max(measuredTop - contentTop, 0)}px`
-    fallbackTop = measuredTop + lineHeight
-    offset += line.length + 1
+function lineNumberWidget(position: number, lineNumber: number): Decoration {
+  return Decoration.widget(position, (view) => createLineNumberMarker(view, lineNumber), {
+    ignoreSelection: true,
+    key: `code-line-${position}-${lineNumber}`,
+    side: -1,
   })
 }
 
-function positionGutter(pre: HTMLElement, host: HTMLElement, gutter: HTMLElement): void {
-  const preStyle = getComputedStyle(pre)
-  const preRect = pre.getBoundingClientRect()
-  const hostRect = host.getBoundingClientRect()
-  gutter.style.left = `${preRect.left - hostRect.left + host.scrollLeft + numericStyle(preStyle, 'paddingLeft')}px`
-  gutter.style.top = `${preRect.top - hostRect.top + host.scrollTop + numericStyle(preStyle, 'paddingTop')}px`
-}
+function buildLineNumberDecorations(doc: ProsemirrorNode): DecorationSet {
+  const decorations: Decoration[] = []
+  doc.descendants((node, position) => {
+    if (node.type.name !== CODE_BLOCK_TYPE) return true
 
-export function syncCodeBlockLineNumbers(
-  root: ParentNode,
-  layer: HTMLElement,
-  host: HTMLElement = layer.parentElement ?? layer,
-): void {
-  const gutters: HTMLElement[] = []
-  root.querySelectorAll(CODE_BLOCK_SELECTOR).forEach((block) => {
-    const { code, pre } = codeBlockParts(block)
-    if (!code || !pre) return
-
-    const lines = (code.textContent ?? '').split('\n')
-    const gutter = createLineNumbers(lines.length)
-    positionGutter(pre, host, gutter)
-    updateLinePositions(code, pre, gutter, lines)
-    gutters.push(gutter)
+    lineStartOffsets(node.textContent).forEach((offset, index) => {
+      decorations.push(lineNumberWidget(position + 1 + offset, index + 1))
+    })
+    return false
   })
-  layer.replaceChildren(...gutters)
+  return DecorationSet.create(doc, decorations)
 }
 
-export function installCodeBlockLineNumbers(root: HTMLElement, signal: AbortSignal): void {
-  const host = root.parentElement ?? root
-  const layer = document.createElement('div')
-  layer.className = LINE_NUMBER_LAYER_CLASS
-  host.classList.add('editor__code-line-number-host')
-  host.appendChild(layer)
-
-  const sync = () => syncCodeBlockLineNumbers(root, layer, host)
-  const mutationObserver = new MutationObserver(sync)
-  mutationObserver.observe(root, { childList: true, characterData: true, subtree: true })
-  const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(sync)
-  resizeObserver?.observe(root)
-  root.ownerDocument.addEventListener('scroll', sync, { capture: true, signal })
-
-  signal.addEventListener('abort', () => {
-    mutationObserver.disconnect()
-    resizeObserver?.disconnect()
-    layer.remove()
-    host.classList.remove('editor__code-line-number-host')
-  }, { once: true })
-  sync()
+export function createCodeBlockLineNumberPlugin(): Plugin<DecorationSet> {
+  return new Plugin<DecorationSet>({
+    key: lineNumberPluginKey,
+    props: {
+      decorations: (state) => lineNumberPluginKey.getState(state) ?? DecorationSet.empty,
+    },
+    state: {
+      init: (_, state) => buildLineNumberDecorations(state.doc),
+      apply: (transaction, decorations) => (
+        transaction.docChanged
+          ? buildLineNumberDecorations(transaction.doc)
+          : decorations.map(transaction.mapping, transaction.doc)
+      ),
+    },
+  })
 }

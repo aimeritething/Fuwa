@@ -3,7 +3,7 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import { trackEvent } from '../lib/telemetry'
 import { isMac } from '../utils/platform'
 import { createTolariaCodeBlockOptions } from './codeBlockOptions'
-import { installCodeBlockLineNumbers } from './codeBlockLineNumbers'
+import { createCodeBlockLineNumberPlugin } from './codeBlockLineNumbers'
 
 const CODE_BLOCK_TYPE = 'codeBlock'
 const PARAGRAPH_TYPE = 'paragraph'
@@ -133,15 +133,21 @@ function createFromShortcut(editor: ShortcutEditor, block: RichEditorBlock): boo
 
 function targetCodeElement(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null
-  return target.closest('[data-content-type="codeBlock"]')?.querySelector<HTMLElement>('pre code') ?? null
+  return codeElementWithin(target)
+}
+
+function codeElementWithin(element: Element | null): HTMLElement | null {
+  if (element === null) return null
+  const codeBlock = element.closest('[data-content-type="codeBlock"]')
+  if (codeBlock === null) return null
+  return codeBlock.querySelector<HTMLElement>('pre code')
 }
 
 function selectionCodeElement(target: EventTarget | null): HTMLElement | null {
   const ownerDocument = target instanceof Node ? target.ownerDocument ?? document : document
   const anchor = ownerDocument.getSelection()?.anchorNode
   const anchorElement = anchor instanceof Element ? anchor : anchor?.parentElement
-  return anchorElement?.closest('[data-content-type="codeBlock"]')
-    ?.querySelector<HTMLElement>('pre code') ?? null
+  return codeElementWithin(anchorElement ?? null)
 }
 
 function selectCodeBlockContents(target: EventTarget | null): boolean {
@@ -196,8 +202,8 @@ export const createRichEditorCodeBlockShortcutExtension = createExtension(({ edi
 
   return {
     key: 'richEditorCodeBlockShortcuts',
+    prosemirrorPlugins: [createCodeBlockLineNumberPlugin()],
     mount: ({ dom, signal }) => {
-      installCodeBlockLineNumbers(dom, signal)
       dom.addEventListener('keydown', handleKeyDown, { capture: true, signal })
     },
   } as const
