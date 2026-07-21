@@ -35,6 +35,7 @@ pub mod pi_cli;
 mod pi_config;
 mod pi_discovery;
 mod pi_events;
+mod quick_launcher_window;
 pub mod search;
 pub mod settings;
 pub mod telemetry;
@@ -500,6 +501,7 @@ macro_rules! app_invoke_handler {
             commands::validate_note_content,
             commands::create_note_content,
             commands::create_quick_launcher_note,
+            quick_launcher_window::show_quick_launcher,
             commands::save_note_content,
             commands::update_frontmatter,
             commands::delete_frontmatter_property,
