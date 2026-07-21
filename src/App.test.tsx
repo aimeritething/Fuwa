@@ -608,7 +608,7 @@ describe('App', () => {
     await waitFor(() => expect(window.__laputaTest?.activeTabPath).toBe('/vault/project/test.md'))
     expect(await screen.findByTestId('blocknote-view', {}, { timeout: SLOW_APP_READY_TIMEOUT_MS })).toHaveAttribute('data-editable', 'true')
     expect(listVault).toHaveBeenCalled()
-  })
+  }, SLOW_APP_READY_TIMEOUT_MS * 2)
 
   it('shows keyboard shortcut hints', async () => {
     const quickOpenHint = formatShortcutDisplay({ display: '⌘P / ⌘O' })

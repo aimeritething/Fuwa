@@ -133,6 +133,7 @@ import { syncVaultAssetScope, useNoteWindowLifecycle } from './hooks/useNoteWind
 import { useVaultRenameDetection } from './hooks/useVaultRenameDetection'
 import { useVaultOpenedTelemetry } from './hooks/useVaultOpenedTelemetry'
 import { useStartupScreenState } from './hooks/useStartupScreenState'
+import { useStartupStateMilestones } from './hooks/useStartupStateMilestones'
 import { useGitFileWorkflows } from './hooks/useGitFileWorkflows'
 import { useAutoGitWork } from './hooks/useAutoGitWork'
 import { useAppAiWorkspaceBridge } from './hooks/useAppAiWorkspaceBridge'
@@ -352,7 +353,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   })
 
   const vault = useVaultLoader(
-    resolvedPath,
+    vaultSwitcher.loaded ? resolvedPath : '',
     graphVaults,
     multiWorkspaceEnabled ? defaultWorkspacePath : null,
     folderVaults,
@@ -1493,6 +1494,12 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     telemetryConsent: settings.telemetry_consent,
     vaultIsLoading: vault.isLoading,
     vaultSwitcher,
+  })
+  useStartupStateMilestones({
+    isVaultContentLoading,
+    onboardingStatus: onboarding.state.status,
+    settingsLoaded,
+    vaultListLoaded: vaultSwitcher.loaded,
   })
   const deepLinks = useDeepLinks({
     activeEntry: activeTab?.entry ?? null,

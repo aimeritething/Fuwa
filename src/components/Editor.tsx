@@ -57,6 +57,7 @@ import {
 import { installRichEditorMarkdownSerializer } from '../utils/richEditorMarkdown'
 import { installRichEditorDispatchPerformanceProbe } from './richEditorDispatchPerformance'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
+import { markStartupPhase } from '../lib/startupPerformance'
 import { useTurnCurrentBlockIntoCommand } from './useTurnCurrentBlockIntoCommand'
 import './Editor.css'
 import './EditorTheme.css'
@@ -370,6 +371,9 @@ function useEditorSetup({
     activeTabIsSheet,
     editorContentPath,
   })
+  useEffect(() => {
+    if (richEditorContentReady) markStartupPhase('editor_interactive')
+  }, [richEditorContentReady])
   useEffect(() => {
     flushPendingEditorChangeRef.current = flushPendingEditorChange
     return () => {

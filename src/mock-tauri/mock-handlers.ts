@@ -428,6 +428,12 @@ function handleMoveNoteToWorkspace(args: {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock handler map accepts heterogeneous arg types
 export const mockHandlers: Record<string, (args: any) => any> = {
   read_vault_snapshot: () => MOCK_ENTRIES,
+  record_startup_milestone: ({ name, detail }: { name: string; detail?: number | null }) => ({
+    name,
+    detail: detail ?? null,
+    elapsed_ms: 0,
+  }),
+  get_startup_trace: () => [],
   list_vault: () => MOCK_ENTRIES,
   list_vault_folders: () => [],
   list_views: () => [],

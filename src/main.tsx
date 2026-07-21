@@ -25,6 +25,9 @@ import {
 import { isRecoveredActionTooltipError } from './components/ui/actionTooltipRecovery'
 import { isMac, shouldUseCustomWindowChrome } from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
+import { markStartupPhase } from './lib/startupPerformance'
+
+markStartupPhase('renderer_module_loaded')
 
 const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
 const DISMISSABLE_ESCAPE_SURFACE_SELECTOR = [
@@ -72,7 +75,12 @@ async function installMacosFullscreenChromeTracking(): Promise<void> {
   }
 }
 
-const RootApp = lazy(() => import('./App.tsx'))
+const RootApp = lazy(async () => {
+  markStartupPhase('app_module_requested')
+  const appModule = await import('./App.tsx')
+  markStartupPhase('app_module_loaded')
+  return appModule
+})
 
 function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false

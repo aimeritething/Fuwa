@@ -31,7 +31,7 @@ use std::sync::OnceLock;
 #[cfg(test)]
 use std::cell::RefCell;
 
-use crate::cli_agent_runtime::{env_value_from_process_or_user_shell, EnvName};
+use crate::cli_agent_runtime::{env_bindings_from_process_or_user_shell, EnvName};
 
 pub(crate) use author::ensure_author_config;
 pub use author::{git_author_identity, GitAuthorIdentity};
@@ -190,13 +190,16 @@ fn apply_git_shell_env(command: &mut Command) {
 fn git_shell_env_bindings() -> &'static Vec<GitShellEnvBinding> {
     static BINDINGS: OnceLock<Vec<GitShellEnvBinding>> = OnceLock::new();
     BINDINGS.get_or_init(|| {
-        GIT_SHELL_ENV_NAMES
-            .iter()
-            .filter_map(|name| {
-                env_value_from_process_or_user_shell(*name).map(|value| GitShellEnvBinding {
-                    name: name.as_str(),
-                    value,
-                })
+        env_bindings_from_process_or_user_shell(&GIT_SHELL_ENV_NAMES)
+            .into_iter()
+            .filter_map(|(name, value)| {
+                GIT_SHELL_ENV_NAMES
+                    .iter()
+                    .find(|candidate| candidate.as_str() == name)
+                    .map(|candidate| GitShellEnvBinding {
+                        name: candidate.as_str(),
+                        value,
+                    })
             })
             .collect()
     })

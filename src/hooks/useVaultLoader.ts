@@ -26,6 +26,7 @@ import {
   recordActiveVaultSnapshot,
   recordActiveVaultUsable,
   recordBackgroundReconciled,
+  markStartupPhase,
 } from '../lib/startupPerformance'
 import { useUnavailableVaultState } from './useUnavailableVaultState'
 import { resetVaultState } from './vaultStateReset'
@@ -104,6 +105,7 @@ async function loadInitialVaultEntriesState(options: Pick<
   const { handleVaultAvailable, handleVaultUnavailable, isCurrentVaultPath, path, setEntries } = options
 
   try {
+    markStartupPhase('vault_load_started')
     const { entries, reconciliation, source } = await loadStartupVaultData({
       vaultPath: path,
       vaults: initialVaultsForPath(path, options.vaults),
@@ -112,7 +114,7 @@ async function loadInitialVaultEntriesState(options: Pick<
       reloadIfEmpty: options.reloadIfEmpty,
     })
     if (isCurrentVaultPath(path)) {
-      if (source === 'snapshot') recordActiveVaultSnapshot()
+      if (source === 'snapshot') recordActiveVaultSnapshot(entries.length)
       handleVaultAvailable(path)
       setEntries((currentEntries) => replaceLoadedWorkspaceEntries({
         defaultWorkspacePath: options.defaultWorkspacePath,

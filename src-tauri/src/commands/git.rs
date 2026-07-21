@@ -214,9 +214,13 @@ pub fn git_discard_file(
 
 #[cfg(desktop)]
 #[tauri::command]
-pub fn is_git_repo(vault_path: VaultPathArg) -> bool {
-    let vault_path = expand_tilde(&vault_path);
-    crate::git::is_inside_work_tree(std::path::Path::new(vault_path.as_ref()))
+pub async fn is_git_repo(vault_path: VaultPathArg) -> bool {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || {
+        crate::git::is_inside_work_tree(std::path::Path::new(&vault_path))
+    })
+    .await
+    .unwrap_or(false)
 }
 
 #[cfg(desktop)]
@@ -528,7 +532,7 @@ mod tests {
         let (dir, vault) = create_initialized_vault();
         let note = note_path(&dir, "note.md");
 
-        assert!(is_git_repo(vault.clone()));
+        assert!(is_git_repo(vault.clone()).await);
 
         fs::write(dir.path().join("note.md"), "# Updated\n").unwrap();
         let modified = get_modified_files(vault.clone(), None).await.unwrap();
@@ -584,8 +588,8 @@ mod tests {
         assert!(!documents.join(".git").exists());
     }
 
-    #[test]
-    fn init_git_repo_allows_named_vault_subfolder_under_documents() {
+    #[tokio::test]
+    async fn init_git_repo_allows_named_vault_subfolder_under_documents() {
         let dir = TempDir::new().unwrap();
         let vault = dir.path().join("Documents").join("Tolaria");
         fs::create_dir_all(&vault).unwrap();
@@ -594,11 +598,11 @@ mod tests {
 
         init_git_repo(vault.clone()).unwrap();
 
-        assert!(is_git_repo(vault));
+        assert!(is_git_repo(vault).await);
     }
 
-    #[test]
-    fn is_git_repo_accepts_vault_nested_inside_parent_worktree() {
+    #[tokio::test]
+    async fn is_git_repo_accepts_vault_nested_inside_parent_worktree() {
         let parent = TempDir::new().unwrap();
         fs::write(parent.path().join("README.md"), "# Parent\n").unwrap();
         crate::git::init_repo(parent.path()).unwrap();
@@ -607,7 +611,7 @@ mod tests {
         fs::create_dir_all(&nested_vault).unwrap();
         fs::write(nested_vault.join("note.md"), "# Nested\n").unwrap();
 
-        assert!(is_git_repo(nested_vault.to_string_lossy().into_owned()));
+        assert!(is_git_repo(nested_vault.to_string_lossy().into_owned()).await);
         assert!(!nested_vault.join(".git").exists());
     }
 

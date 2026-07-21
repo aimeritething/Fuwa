@@ -488,6 +488,8 @@ macro_rules! app_invoke_handler {
             commands::list_vault,
             commands::read_vault_snapshot,
             commands::get_startup_elapsed_ms,
+            commands::record_startup_milestone,
+            commands::get_startup_trace,
             commands::list_vault_folders,
             commands::get_note_content,
             commands::validate_note_content,

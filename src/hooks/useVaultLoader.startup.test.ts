@@ -122,6 +122,22 @@ describe('useVaultLoader startup recovery', () => {
     expect(startupMock.activeReloadCount()).toBeGreaterThanOrEqual(2)
   })
 
+  it('retries an empty active workspace when persisted metadata is ready before startup', async () => {
+    const laputa: VaultOption = { label: 'Laputa', path: ACTIVE_VAULT_PATH, available: true, mounted: true }
+    const vaults = [laputa]
+    const startupMock = buildUpgradeStartupMock()
+    backendInvokeFn.mockImplementation(startupMock.invoke)
+
+    const { result } = renderHook(() => (
+      useVaultLoader(ACTIVE_VAULT_PATH, vaults, ACTIVE_VAULT_PATH, vaults)
+    ))
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Recovered'])
+    })
+    expect(startupMock.activeReloadCount()).toBeGreaterThanOrEqual(2)
+  })
+
   it('makes the active vault usable from a snapshot before reconciliation finishes', async () => {
     const reconciliation = createDeferred<VaultEntry[]>()
     backendInvokeFn.mockImplementation((command: string) => {

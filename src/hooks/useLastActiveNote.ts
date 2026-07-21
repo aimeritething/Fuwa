@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { APP_STORAGE_KEYS } from '../constants/appStorage'
 import type { VaultEntry } from '../types'
 import { notePathsMatch } from '../utils/notePathIdentity'
+import { markStartupPhase } from '../lib/startupPerformance'
 
 interface LastActiveNoteOptions {
   activeTabPath: string | null
@@ -52,7 +53,11 @@ function restoreLastActiveNote(
     return
   }
 
-  void options.openNote(storedEntry).then(complete, () => {
+  markStartupPhase('last_active_note_restore_started')
+  void options.openNote(storedEntry).then(() => {
+    markStartupPhase('last_active_note_restored')
+    complete()
+  }, () => {
     saveLastActiveNotePath(null)
     complete()
   })

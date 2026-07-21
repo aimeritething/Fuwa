@@ -106,6 +106,7 @@ async function installStartupRecoveryMock(page: Page): Promise<void> {
         ai_model_providers: [],
       }),
       get_vault_settings: () => ({ theme: null }),
+      read_vault_snapshot: () => null,
       reload_vault: (args) => {
         if (commandPath(args) !== vaultPath) return emptyArray()
         reloadCount += 1
@@ -131,7 +132,8 @@ async function installStartupRecoveryMock(page: Page): Promise<void> {
       invoke: async (command, args) => {
         if (command === 'plugin:event|listen') return 1
         if (command === 'plugin:event|unlisten') return null
-        return handlers[command]?.(args) ?? startupWindow.__mockHandlers?.[command]?.(args) ?? null
+        const handler = handlers[command]
+        return handler ? handler(args) : startupWindow.__mockHandlers?.[command]?.(args) ?? null
       },
     }
     startupWindow.isTauri = true

@@ -15,7 +15,8 @@ pub(crate) use line_stream::strip_ansi_codes;
 pub(crate) use line_stream::{run_ai_agent_line_stream, LineStreamProcess};
 pub(crate) use mcp_config::tolaria_node_mcp_server;
 pub(crate) use shell_env::{
-    apply_user_shell_env_vars_if_missing, env_value_from_process_or_user_shell, EnvName,
+    apply_user_shell_env_vars_if_missing, env_bindings_from_process_or_user_shell,
+    env_value_from_process_or_user_shell, EnvName,
 };
 
 #[derive(Debug, Clone, Deserialize)]

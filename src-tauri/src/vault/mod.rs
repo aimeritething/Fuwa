@@ -25,7 +25,7 @@ mod view_tests;
 mod view_value_conversions;
 mod views;
 
-pub use cache::{invalidate_cache, read_vault_snapshot, scan_vault_cached};
+pub use cache::{invalidate_cache, read_vault_snapshot, refresh_vault_cache, scan_vault_cached};
 pub use config_seed::{
     get_ai_guidance_status, migrate_agents_md, repair_config_files, restore_ai_guidance_files,
     seed_config_files, AiGuidanceFileState, VaultAiGuidanceStatus,

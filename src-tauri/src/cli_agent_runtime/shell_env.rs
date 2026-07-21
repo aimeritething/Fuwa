@@ -35,6 +35,30 @@ pub(crate) fn env_value_from_process_or_user_shell(name: EnvName<'_>) -> Option<
     process_value(name).or_else(|| user_shell_value(name))
 }
 
+pub(crate) fn env_bindings_from_process_or_user_shell(
+    names: &[EnvName<'_>],
+) -> Vec<(String, String)> {
+    let names = valid_unique_names(names);
+    let mut bindings = names
+        .iter()
+        .filter_map(|name| process_value(*name).map(|value| (name.as_str().to_string(), value)))
+        .collect::<Vec<_>>();
+    let missing = names
+        .into_iter()
+        .filter(|name| {
+            !bindings
+                .iter()
+                .any(|(existing, _)| existing == name.as_str())
+        })
+        .collect::<Vec<_>>();
+    bindings.extend(
+        user_shell_bindings(&missing)
+            .into_iter()
+            .map(|binding| (binding.name, binding.value)),
+    );
+    bindings
+}
+
 #[derive(Debug, PartialEq, Eq)]
 struct EnvBinding {
     name: String,
@@ -201,6 +225,30 @@ mod tests {
 
         std::env::remove_var(key);
         assert_eq!(value.as_deref(), Some("process-secret"));
+    }
+
+    #[test]
+    fn env_bindings_collect_multiple_process_values_together() {
+        let first = "TOLARIA_TEST_BATCH_ENV_FIRST";
+        let second = "TOLARIA_TEST_BATCH_ENV_SECOND";
+        std::env::set_var(first, " first ");
+        std::env::set_var(second, "second");
+
+        let values = env_bindings_from_process_or_user_shell(&[
+            EnvName::trusted(first),
+            EnvName::trusted(second),
+            EnvName::trusted(first),
+        ]);
+
+        std::env::remove_var(first);
+        std::env::remove_var(second);
+        assert_eq!(
+            values,
+            vec![
+                (first.into(), "first".into()),
+                (second.into(), "second".into())
+            ]
+        );
     }
 
     #[test]

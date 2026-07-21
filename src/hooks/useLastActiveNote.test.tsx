@@ -4,6 +4,10 @@ import { APP_STORAGE_KEYS } from '../constants/appStorage'
 import type { VaultEntry } from '../types'
 import { useLastActiveNote } from './useLastActiveNote'
 
+const markStartupPhase = vi.hoisted(() => vi.fn())
+
+vi.mock('../lib/startupPerformance', () => ({ markStartupPhase }))
+
 const storage = (() => {
   let values: Record<string, string> = {}
   return {
@@ -44,6 +48,8 @@ describe('useLastActiveNote', () => {
     rerender({ entries: [storedEntry], isVaultLoading: false })
     await act(async () => vi.runAllTimers())
     expect(openNote).toHaveBeenCalledWith(storedEntry)
+    expect(markStartupPhase).toHaveBeenCalledWith('last_active_note_restore_started')
+    expect(markStartupPhase).toHaveBeenCalledWith('last_active_note_restored')
   })
 
   it('clears a stored note that is missing after the vault scan', async () => {

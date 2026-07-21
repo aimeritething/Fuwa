@@ -302,11 +302,19 @@ fn ensure_missing_folder(folder_path: &Path, folder_name: &str) -> Result<(), St
 
 fn scan_visible_vault_entries(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     let entries = vault::scan_vault_cached(vault_path)?;
-    Ok(vault::filter_gitignored_entries(
+    Ok(filter_visible_vault_entries(
         vault_path,
         entries,
         crate::settings::hide_gitignored_files_enabled(),
     ))
+}
+
+fn filter_visible_vault_entries(
+    vault_path: &Path,
+    entries: Vec<VaultEntry>,
+    hide_gitignored: bool,
+) -> Vec<VaultEntry> {
+    vault::filter_gitignored_entries(vault_path, entries, hide_gitignored)
 }
 
 fn scan_visible_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> {
@@ -384,11 +392,13 @@ pub async fn list_vault(path: PathBuf) -> Result<Vec<VaultEntry>, String> {
 
 #[tauri::command]
 pub async fn read_vault_snapshot(path: PathBuf) -> Result<Option<Vec<VaultEntry>>, String> {
-    if crate::settings::hide_gitignored_files_enabled() {
-        return Ok(None);
-    }
+    let hide_gitignored = crate::settings::hide_gitignored_files_enabled();
     tokio::task::spawn_blocking(move || {
-        with_expanded_vault_root(path.as_path(), vault::read_vault_snapshot)
+        with_expanded_vault_root(path.as_path(), |vault_path| {
+            let snapshot = vault::read_vault_snapshot(vault_path)?;
+            Ok(snapshot
+                .map(|entries| filter_visible_vault_entries(vault_path, entries, hide_gitignored)))
+        })
     })
     .await
     .map_err(|e| format!("Task panicked: {e}"))?
@@ -497,6 +507,25 @@ mod tests {
 
         let folders = list_vault_folders(root).await.unwrap();
         assert!(folders.iter().any(|folder| folder.name == "Projects"));
+    }
+
+    #[test]
+    fn startup_snapshot_visibility_keeps_snapshot_and_filters_ignored_entries() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("visible.md"), "# Visible\n").unwrap();
+        fs::write(dir.path().join("ignored.md"), "# Ignored\n").unwrap();
+        fs::write(dir.path().join(".gitignore"), "ignored.md\n").unwrap();
+        std::process::Command::new("git")
+            .arg("init")
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+        let entries = vault::scan_vault_cached(dir.path()).unwrap();
+
+        let visible = filter_visible_vault_entries(dir.path(), entries, true);
+
+        assert!(visible.iter().any(|entry| entry.filename == "visible.md"));
+        assert!(!visible.iter().any(|entry| entry.filename == "ignored.md"));
     }
 
     #[test]

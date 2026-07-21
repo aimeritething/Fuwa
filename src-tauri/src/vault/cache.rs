@@ -825,6 +825,32 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     scan_and_cache_full(vault_path, &git_dates, current_hash, None)
 }
 
+/// Rebuild a vault from disk while keeping the previous snapshot readable until
+/// the replacement is complete. This makes explicit reloads crash-safe: an app
+/// exit during the scan cannot leave the next startup without a usable cache.
+pub fn refresh_vault_cache(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
+    if !vault_path.is_dir() {
+        return Err(format!(
+            "Vault path does not exist or is not a directory: {}",
+            vault_path.display()
+        ));
+    }
+
+    migrate_legacy_cache(vault_path);
+    // Fingerprint the bytes directly so even an invalid cache can be replaced
+    // transactionally. Parsing it first would lose the expected fingerprint
+    // and make `write_cache` treat the same corrupt file as a concurrent write.
+    let expected_previous = read_cache_fingerprint(&cache_path(vault_path))?;
+    let Some(workspace) = resolve_git_workspace(vault_path) else {
+        return scan_vault(vault_path, &HashMap::new());
+    };
+    let Some(current_hash) = git_head_hash(&workspace) else {
+        return scan_vault(vault_path, &HashMap::new());
+    };
+    let git_dates = load_git_dates(&workspace);
+    scan_and_cache_full(vault_path, &git_dates, current_hash, expected_previous)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1487,6 +1513,40 @@ mod tests {
             entries2[0].archived,
             "note must be archived after invalidate + rescan"
         );
+    }
+
+    #[test]
+    fn test_refresh_replaces_snapshot_without_invalidating_first() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let vault = dir.path();
+
+        create_test_file(vault, "note.md", "---\n_archived: false\n---\n# Note\n");
+        git_add_commit(vault, "init");
+        let initial = scan_vault_cached(vault).unwrap();
+        assert!(!initial[0].archived);
+        assert!(read_vault_snapshot(vault).unwrap().is_some());
+
+        create_test_file(vault, "note.md", "---\n_archived: true\n---\n# Note\n");
+        let refreshed = refresh_vault_cache(vault).unwrap();
+
+        assert!(refreshed[0].archived);
+        let snapshot = read_vault_snapshot(vault).unwrap().unwrap();
+        assert!(snapshot[0].archived);
+    }
+
+    #[test]
+    fn test_refresh_replaces_invalid_snapshot() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let vault = dir.path();
+
+        create_test_file(vault, "note.md", "# Note\n");
+        git_add_commit(vault, "init");
+        fs::write(cache_path(vault), b"not valid json").unwrap();
+
+        let refreshed = refresh_vault_cache(vault).unwrap();
+
+        assert_eq!(refreshed.len(), 1);
+        assert_eq!(read_vault_snapshot(vault).unwrap().unwrap().len(), 1);
     }
 
     /// Integration test: a note with `Archived: Yes` (string, not boolean)

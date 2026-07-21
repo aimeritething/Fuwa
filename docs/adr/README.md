@@ -226,3 +226,4 @@ proposed → active → superseded
 | [0166](0166-snapshot-first-progressive-vault-startup.md) | Snapshot-first progressive vault startup | active |
 | [0167](0167-non-collapsible-callout-scope.md) | Non-collapsible callout scope | active |
 | [0168](0168-sandboxed-standalone-html-file-previews.md) | Sandboxed standalone HTML file previews | active |
+| [0170](0170-measurable-crash-safe-startup.md) | Measurable, crash-safe startup | active |
