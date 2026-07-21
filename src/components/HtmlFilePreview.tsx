@@ -41,6 +41,7 @@ export function HtmlFilePreview({ content, path, title, vaultPath }: HtmlFilePre
     <section
       ref={containerRef}
       className="min-h-0 flex-1 bg-background"
+      data-note-pdf-export-root="true"
       role="application"
       tabIndex={0}
       aria-label={title}

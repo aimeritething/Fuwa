@@ -8,6 +8,7 @@ import {
 } from '../utils/notePdfExport'
 import type { VaultEntry } from '../types'
 import { isMarkdownEntry } from '../utils/typeDefinitions'
+import { isHtmlFileEntry } from '../utils/filePreview'
 
 interface EditorPdfExportTab {
   entry: VaultEntry
@@ -49,8 +50,8 @@ interface PendingPdfExportParams {
   setPendingSource: (source: NotePdfExportSource | null) => void
 }
 
-function isMarkdownTab(activeTab: EditorPdfExportTab | null): activeTab is EditorPdfExportTab {
-  return Boolean(activeTab && isMarkdownEntry(activeTab.entry))
+function isPdfExportableTab(activeTab: EditorPdfExportTab | null): activeTab is EditorPdfExportTab {
+  return Boolean(activeTab && (isMarkdownEntry(activeTab.entry) || isHtmlFileEntry(activeTab.entry)))
 }
 
 function errorMessage(error: unknown): string {
@@ -84,7 +85,7 @@ function usePendingPdfExport({
   setPendingSource,
 }: PendingPdfExportParams): void {
   useEffect(() => {
-    if (!pendingSource || diffMode || rawMode || !isMarkdownTab(activeTab)) return
+    if (!pendingSource || diffMode || rawMode || !isPdfExportableTab(activeTab)) return
 
     let cancelled = false
     const defaultFilename = notePdfExportFilename(activeTab.entry.filename)
@@ -132,7 +133,7 @@ export function useEditorPdfExport({
   const [pendingSource, setPendingSource] = useState<NotePdfExportSource | null>(null)
 
   const exportNoteAsPdf = useCallback((source: NotePdfExportSource = 'breadcrumb') => {
-    if (!isMarkdownTab(activeTab)) {
+    if (!isPdfExportableTab(activeTab)) {
       trackNotePdfExportFailed(source, 'export_unavailable')
       onToast?.(translate(locale, 'editor.exportPdf.unavailable'))
       return

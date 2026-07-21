@@ -1,4 +1,4 @@
-import { screen, fireEvent, act, within } from '@testing-library/react'
+import { screen, fireEvent, act, within, waitFor } from '@testing-library/react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
@@ -161,6 +161,7 @@ describe('Editor', () => {
     })
 
     expect(screen.getByTestId('html-file-preview')).toBeInTheDocument()
+    expect(screen.getByTestId('html-file-preview').parentElement).toHaveAttribute('data-note-pdf-export-root', 'true')
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open the raw editor' }))
@@ -171,6 +172,37 @@ describe('Editor', () => {
     act(() => {
       resetVaultConfigStore()
     })
+  })
+
+  it('exports the rendered HTML preview through the PDF flow', async () => {
+    const standaloneEntry: VaultEntry = {
+      ...mockEntry,
+      path: '/vault/reports/status.html',
+      filename: 'status.html',
+      title: 'status.html',
+      fileKind: 'text',
+    }
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+
+    try {
+      renderEditor({
+        tabs: [{ entry: standaloneEntry, content: '' }],
+        activeTabPath: standaloneEntry.path,
+        entries: [standaloneEntry],
+        vaultPath: '/vault',
+      })
+
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'More note actions' }), {
+        button: 0,
+        ctrlKey: false,
+      })
+      fireEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Export note as PDF' }))
+
+      await waitFor(() => expect(print).toHaveBeenCalledOnce())
+      window.dispatchEvent(new Event('afterprint'))
+    } finally {
+      print.mockRestore()
+    }
   })
 
   it('shows a graceful fallback when an image preview fails to render', () => {

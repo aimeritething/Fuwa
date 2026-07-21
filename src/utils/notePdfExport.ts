@@ -88,8 +88,8 @@ function ensurePdfExtension(path: string): string {
   return path.toLowerCase().endsWith(PDF_EXTENSION) ? path : `${path}${PDF_EXTENSION}`
 }
 
-function stripMarkdownExtension(filename: string): string {
-  return filename.replace(/\.(md|markdown)$/i, '')
+function stripExportableExtension(filename: string): string {
+  return filename.replace(/\.(?:html?|markdown|md)$/i, '')
 }
 
 function sanitizeFilenameStem(filename: string): string {
@@ -100,7 +100,7 @@ function sanitizeFilenameStem(filename: string): string {
 }
 
 export function notePdfExportFilename(filename = 'Untitled Note'): string {
-  const stem = sanitizeFilenameStem(stripMarkdownExtension(filename)).trim()
+  const stem = sanitizeFilenameStem(stripExportableExtension(filename)).trim()
   return `${stem || 'Untitled Note'}${PDF_EXTENSION}`
 }
 

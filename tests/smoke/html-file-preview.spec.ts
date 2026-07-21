@@ -96,6 +96,26 @@ test('previews standalone HTML and exposes source through the breadcrumb and key
   const previewFrame = page.frameLocator('[data-testid="html-file-preview"]')
   await expect(previewFrame.getByRole('heading', { name: 'HTML preview is rendering' })).toBeVisible()
   await expect(previewFrame.getByText('Scripts stayed blocked')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add to favorites' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Set note as organized' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: "Open note's neighborhood" })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Switch to wide note width' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Open table of contents' })).toHaveCount(0)
+
+  await page.evaluate(() => {
+    if (!window.__mockHandlers) return
+    window.__mockHandlers.can_export_current_webview_pdf = () => false
+    window.__mockHandlers.print_current_webview = () => {
+      document.body.dataset.pdfExportRequested = 'true'
+      return null
+    }
+  })
+  await page.getByRole('button', { name: 'More note actions' }).click()
+  const actionMenu = page.getByRole('menu')
+  await expect(actionMenu.getByRole('menuitem', { name: 'Archive this note' })).toHaveCount(0)
+  await actionMenu.getByRole('menuitem', { name: 'Export note as PDF' }).click()
+  await expect(page.locator('body')).toHaveAttribute('data-pdf-export-requested', 'true')
+  await page.evaluate(() => window.dispatchEvent(new Event('afterprint')))
 
   await page.getByRole('button', { name: 'Open the raw editor' }).click()
   await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })

@@ -341,6 +341,44 @@ describe('BreadcrumbBar — file actions', () => {
   })
 })
 
+describe('BreadcrumbBar — standalone HTML actions', () => {
+  it('keeps applicable file actions and hides Markdown-only actions', async () => {
+    renderBreadcrumb({
+      path: '/vault/reports/status.html',
+      filename: 'status.html',
+      title: 'status.html',
+      fileKind: 'text',
+    }, {
+      noteWidth: 'normal',
+      onArchive: vi.fn(),
+      onCopyFilePath: vi.fn(),
+      onDelete: vi.fn(),
+      onEnterNeighborhood: vi.fn(),
+      onExportPdf: vi.fn(),
+      onRevealFile: vi.fn(),
+      onToggleFavorite: vi.fn(),
+      onToggleNoteWidth: vi.fn(),
+      onToggleOrganized: vi.fn(),
+      onToggleRaw: vi.fn(),
+      onToggleTableOfContents: vi.fn(),
+    })
+
+    expect(screen.getByRole('button', { name: 'Open the raw editor' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reveal in Finder' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy file path' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add to favorites' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Set note as organized' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: "Open note's neighborhood" })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Switch to wide note width' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open table of contents' })).not.toBeInTheDocument()
+
+    const menu = await openOverflowMenu()
+    expect(within(menu).getByRole('menuitem', { name: 'Export note as PDF' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Delete this note' })).toBeInTheDocument()
+    expect(within(menu).queryByRole('menuitem', { name: 'Archive this note' })).not.toBeInTheDocument()
+  })
+})
+
 describe('BreadcrumbBar — organized shortcut hint', () => {
   it('shows Cmd+E on the organized toggle tooltip', async () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleOrganized={vi.fn()} />)

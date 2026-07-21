@@ -129,4 +129,9 @@ describe('note PDF export', () => {
     expect(notePdfExportFilename('Project Plan.md')).toBe('Project Plan.pdf')
     expect(notePdfExportFilename('unsafe:/name.markdown')).toBe('unsafe--name.pdf')
   })
+
+  it('replaces a standalone HTML extension in the default PDF filename', () => {
+    expect(notePdfExportFilename('status.html')).toBe('status.pdf')
+    expect(notePdfExportFilename('legacy.HTM')).toBe('legacy.pdf')
+  })
 })
