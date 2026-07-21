@@ -514,14 +514,13 @@ interface PersistCallbacks {
 }
 
 /** Persist to disk; track pending state via onStart/onEnd. */
-async function persistOptimistic(request: PersistNewNoteRequest, cbs: PersistCallbacks): Promise<void> {
+function persistOptimistic(request: PersistNewNoteRequest, cbs: PersistCallbacks): Promise<void> {
   cbs.onStart?.(request.path)
-  try {
-    await persistNewNote(request)
+  return persistNewNote(request).then(() => {
     cbs.onPersisted?.(request.path)
-  } finally {
+  }).finally(() => {
     cbs.onEnd?.(request.path)
-  }
+  })
 }
 
 interface PersistResolvedOptions {
