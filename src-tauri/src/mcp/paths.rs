@@ -1,5 +1,14 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+
+static RUNTIME_RESOURCE_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+pub(super) fn set_runtime_resource_dir(resource_dir: PathBuf) {
+    if !resource_dir.as_os_str().is_empty() {
+        let _ = RUNTIME_RESOURCE_DIR.set(resource_dir);
+    }
+}
 
 pub(super) fn runtime_resource_roots() -> Vec<PathBuf> {
     let local_app_data = if cfg!(windows) {
@@ -11,6 +20,7 @@ pub(super) fn runtime_resource_roots() -> Vec<PathBuf> {
         non_empty_env_path("RESOURCEPATH"),
         non_empty_env_path("APPDIR"),
         local_app_data,
+        RUNTIME_RESOURCE_DIR.get().cloned(),
     )
 }
 
@@ -18,11 +28,15 @@ fn runtime_resource_roots_for_env(
     resource_path: Option<PathBuf>,
     appdir: Option<PathBuf>,
     local_app_data: Option<PathBuf>,
+    runtime_resource_dir: Option<PathBuf>,
 ) -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
     if let Some(resource_path) = resource_path {
         push_resource_root(&mut roots, resource_path);
+    }
+    if let Some(runtime_resource_dir) = runtime_resource_dir {
+        push_resource_root(&mut roots, runtime_resource_dir);
     }
     if let Some(appdir) = appdir {
         push_resource_root(&mut roots, appdir.join("usr"));
@@ -71,10 +85,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn includes_tauri_macos_app_bundle_resource_directory() {
+        let resource_dir = PathBuf::from("/Applications/Tolaria.app/Contents/Resources");
+        let roots = runtime_resource_roots_for_env(None, None, None, Some(resource_dir.clone()));
+
+        assert!(roots.contains(&resource_dir));
+
+        let candidates =
+            super::super::mcp_server_dir_candidates(Path::new("/repo/mcp-server"), &roots);
+        assert!(candidates.contains(&resource_dir.join("mcp-server")));
+    }
+
+    #[test]
     fn includes_windows_install_locations() {
         let local_app_data = PathBuf::from(r"C:\Users\alex\AppData\Local");
         let install_dir = local_app_data.join("Tolaria");
-        let roots = runtime_resource_roots_for_env(None, None, Some(local_app_data.clone()));
+        let roots = runtime_resource_roots_for_env(None, None, Some(local_app_data.clone()), None);
 
         assert_eq!(roots.iter().filter(|root| *root == &install_dir).count(), 1);
         assert!(roots.contains(&local_app_data.join("tolaria")));

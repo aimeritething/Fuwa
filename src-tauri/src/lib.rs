@@ -413,7 +413,12 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     setup_common_plugins(app)?;
 
     #[cfg(desktop)]
-    setup_desktop_plugins(app)?;
+    {
+        use tauri::Manager;
+
+        mcp::set_runtime_resource_dir(app.path().resource_dir()?);
+        setup_desktop_plugins(app)?;
+    }
 
     if telemetry::init_sentry_from_settings() {
         log::info!("Sentry initialized (crash reporting enabled)");

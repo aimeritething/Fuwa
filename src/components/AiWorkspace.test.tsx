@@ -269,7 +269,7 @@ describe('AiWorkspace', () => {
     expect(workspace).toHaveAttribute('data-ai-workspace-expanded', 'false')
     expect(workspace).not.toHaveClass('fixed')
     expect(workspace).toHaveClass('bg-sidebar')
-    expect(workspace).toHaveStyle({ width: '360px', minWidth: '240px' })
+    expect(workspace).toHaveStyle({ width: '360px', minWidth: '320px' })
     const header = screen.getByTestId('ai-workspace-side-header')
     const tabStrip = screen.getByTestId('ai-workspace-side-tabs')
     expect(header).not.toHaveClass('border-b')
@@ -394,8 +394,11 @@ describe('AiWorkspace', () => {
     render(<AiWorkspace open mode="docked" aiAgentsStatus={installedStatuses()} aiModelProviders={providers} vaultPath="/tmp/vault" onClose={vi.fn()} />)
 
     const workspace = screen.getByTestId('ai-workspace')
+    const horizontalResizeHandle = screen.getByTestId('ai-workspace-left-resize')
+    expect(horizontalResizeHandle).toHaveClass('inset-y-0', 'h-auto', 'min-h-0', 'w-2', 'rounded-none', 'p-0')
+    expect(screen.getByTestId('ai-workspace-top-resize')).toHaveClass('h-2', 'min-h-0', 'w-auto', 'rounded-none', 'p-0')
     fireEvent.click(screen.getByRole('button', { name: 'Expand AI chat list' }))
-    fireEvent.mouseDown(screen.getByTestId('ai-workspace-left-resize'), { clientX: 100, clientY: 20 })
+    fireEvent.mouseDown(horizontalResizeHandle, { clientX: 100, clientY: 20 })
     fireEvent.mouseMove(window, { clientX: 60, clientY: 20 })
     fireEvent.mouseUp(window)
     expect(workspace).toHaveStyle({ width: '600px' })
@@ -758,7 +761,7 @@ describe('AiWorkspace', () => {
     })
   })
 
-  it('keeps composer controls on one row at narrow side-panel widths', async () => {
+  it('clamps legacy narrow side-panel widths so the composer remains visible', async () => {
     localStorage.setItem('tolaria:ai-workspace-side-width', '240')
     render(
       <AiWorkspace
@@ -771,6 +774,7 @@ describe('AiWorkspace', () => {
       />,
     )
 
+    expect(screen.getByTestId('ai-workspace')).toHaveStyle({ minWidth: '320px', width: '320px' })
     expect(await screen.findByTestId('ai-workspace-target-trigger')).toHaveClass('min-w-0', 'flex-1')
     expect(screen.queryByTestId('ai-workspace-model-trigger')).toBeNull()
     expect(screen.getByTestId('ai-workspace-composer-controls')).toHaveClass('flex', 'items-center', 'overflow-hidden')

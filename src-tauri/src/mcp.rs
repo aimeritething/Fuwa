@@ -29,7 +29,7 @@ pub enum McpStatus {
 /// Resolve the path to `mcp-server/`.
 ///
 /// In dev mode, prefers `CARGO_MANIFEST_DIR` and falls back to runtime checkout ancestors.
-/// In release mode, uses launcher roots plus bundle paths derived from the executable.
+/// In release mode, uses launcher roots plus Tauri's trusted bundle resource directory.
 pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     let dev_path = build_time_dev_mcp_server_dir();
     let resource_roots = paths::runtime_resource_roots();
@@ -49,6 +49,10 @@ pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     Err(format!(
         "mcp-server not found. Searched these paths: {searched}"
     ))
+}
+
+pub(crate) fn set_runtime_resource_dir(resource_dir: PathBuf) {
+    paths::set_runtime_resource_dir(resource_dir);
 }
 
 fn mcp_server_dir_for_registration() -> Result<PathBuf, String> {

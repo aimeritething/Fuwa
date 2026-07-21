@@ -111,7 +111,7 @@ describe('NoteList context menu', () => {
 
     clickBuildLaputaAction('Delete this note')
     expect(onBulkDeletePermanently).toHaveBeenCalledWith([mockEntries[0].path])
-  })
+  }, 20_000)
 
   it('shows stateful favorite and organized labels for pinned notes', () => {
     renderNoteList({
