@@ -1,7 +1,9 @@
+#[cfg(any(test, all(desktop, target_os = "macos")))]
 const ESCAPE_KEY_CODE: u16 = 53;
 static DISMISSABLE_SURFACE_OPEN: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);
 
+#[cfg(any(test, all(desktop, target_os = "macos")))]
 fn should_suppress_escape(key_code: u16, surface_open: bool, is_fullscreen: bool) -> bool {
     key_code == ESCAPE_KEY_CODE && surface_open && is_fullscreen
 }
