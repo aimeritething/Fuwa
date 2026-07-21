@@ -3,9 +3,17 @@ import { describe, expect, it, vi } from 'vitest'
 import type { EditorProps } from './Editor'
 import { LazyEditor } from './LazyEditor'
 
-const markStartupPhase = vi.hoisted(() => vi.fn())
+const startup = vi.hoisted(() => {
+  let resolveInteractive!: () => void
+  const interactive = new Promise<void>((resolve) => { resolveInteractive = resolve })
+  return {
+    markStartupPhase: vi.fn(),
+    resolveInteractive,
+    waitForStartupPhase: vi.fn(() => interactive),
+  }
+})
 
-vi.mock('../lib/startupPerformance', () => ({ markStartupPhase }))
+vi.mock('../lib/startupPerformance', () => startup)
 
 const editorModule = vi.hoisted(() => {
   let resolve!: () => void
@@ -23,14 +31,17 @@ describe('LazyEditor', () => {
     const { rerender } = render(<LazyEditor {...({ activeTabPath: null } as EditorProps)} />)
 
     expect(screen.getByTestId('editor-module-loading')).toBeInTheDocument()
-    expect(markStartupPhase).not.toHaveBeenCalledWith('editor_module_requested')
+    expect(startup.waitForStartupPhase).toHaveBeenCalledWith('react_shell')
+    expect(startup.markStartupPhase).not.toHaveBeenCalledWith('editor_module_requested')
+
+    await act(async () => { startup.resolveInteractive() })
+    expect(startup.markStartupPhase).toHaveBeenCalledWith('editor_module_requested')
 
     rerender(<LazyEditor {...({ activeTabPath: '/vault/note.md' } as EditorProps)} />)
-    expect(markStartupPhase).toHaveBeenCalledWith('editor_module_requested')
 
     await act(async () => { editorModule.resolve() })
     expect(await screen.findByText('Loaded editor')).toBeInTheDocument()
-    expect(markStartupPhase).toHaveBeenCalledWith('editor_module_loaded')
-    expect(markStartupPhase).toHaveBeenCalledWith('editor_committed')
+    expect(startup.markStartupPhase).toHaveBeenCalledWith('editor_module_loaded')
+    expect(startup.markStartupPhase).toHaveBeenCalledWith('editor_committed')
   })
 })

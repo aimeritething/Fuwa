@@ -67,4 +67,18 @@ describe('startup performance telemetry', () => {
       rendererElapsedMs: expect.any(Number),
     })
   })
+
+  it('releases deferred startup work when its prerequisite phase arrives', async () => {
+    const startup = await import('./startupPerformance')
+    const ready = startup.waitForStartupPhase('app_interactive')
+    let released = false
+    void ready.then(() => { released = true })
+
+    await Promise.resolve()
+    expect(released).toBe(false)
+
+    startup.markStartupPhase('app_interactive')
+    await ready
+    expect(released).toBe(true)
+  })
 })

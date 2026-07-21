@@ -34,6 +34,7 @@ export type StartupPhase =
 
 const frontendStartedAt = performance.now()
 const phases = new Map<StartupPhase, number>()
+const phaseWaiters = new Map<StartupPhase, Array<() => void>>()
 let usableEventSent = false
 let reconciliationEventSent = false
 
@@ -55,8 +56,20 @@ export function markStartupPhase(phase: StartupPhase, detail: number | null = nu
   if (existing !== undefined) return existing
   const elapsed = elapsedSinceFrontendStart()
   phases.set(phase, elapsed)
+  const waiters = phaseWaiters.get(phase) ?? []
+  phaseWaiters.delete(phase)
+  waiters.forEach((resolve) => resolve())
   recordNativeMilestone(phase, elapsed, detail)
   return elapsed
+}
+
+export function waitForStartupPhase(phase: StartupPhase): Promise<void> {
+  if (phases.has(phase)) return Promise.resolve()
+  return new Promise((resolve) => {
+    const waiters = phaseWaiters.get(phase) ?? []
+    waiters.push(resolve)
+    phaseWaiters.set(phase, waiters)
+  })
 }
 
 async function nativeStartupElapsedMs(): Promise<number | null> {
