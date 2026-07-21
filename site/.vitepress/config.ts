@@ -1,3 +1,4 @@
+import process from "node:process";
 import { defineConfig } from "vitepress";
 
 const base = process.env.VITEPRESS_BASE ?? "/";
@@ -7,6 +8,11 @@ export default defineConfig({
   description:
     "Tolaria is a local-first Markdown knowledge base with native relationships, Git history, and AI workflows.",
   base,
+  vite: {
+    build: {
+      target: "esnext",
+    },
+  },
   ignoreDeadLinks: [/^\/download\/?(?:index)?$/, /^\/releases\/?(?:index)?$/],
   cleanUrls: true,
   head: [
