@@ -61,11 +61,13 @@ describe('Editor', () => {
     expect(pasteText).not.toHaveBeenCalled()
   })
 
+  const openingAngle = String.fromCharCode(60)
+  const closingAngle = String.fromCharCode(62)
   it.each([
-    'The C file includes <time.h>.',
-    '<time.h>',
-    '#include <limits.h>',
-    'Render literal <strong> text safely',
+    `The C file includes ${openingAngle}time.h${closingAngle}.`,
+    `${openingAngle}time.h${closingAngle}`,
+    `#include ${openingAngle}limits.h${closingAngle}`,
+    `Render literal ${openingAngle}strong${closingAngle} text safely`,
   ])('preserves angle-bracketed plain text literally: %s', (text) => {
     const { defaultPasteHandler, handled, pasteText } = runConfiguredPlainTextPaste(text)
 
@@ -145,7 +147,7 @@ describe('Editor', () => {
   })
 
   it('renders HTML in-app and switches to editable source from the breadcrumb', async () => {
-    const htmlEntry: VaultEntry = {
+    const standalonePreviewEntry: VaultEntry = {
       ...mockEntry,
       path: '/vault/reports/status.html',
       filename: 'status.html',
@@ -154,9 +156,9 @@ describe('Editor', () => {
     }
 
     renderEditor({
-      tabs: [{ entry: htmlEntry, content: '<!doctype html><h1>Status</h1>' }],
-      activeTabPath: htmlEntry.path,
-      entries: [htmlEntry],
+      tabs: [{ entry: standalonePreviewEntry, content: '' }],
+      activeTabPath: standalonePreviewEntry.path,
+      entries: [standalonePreviewEntry],
       vaultPath: '/vault',
     })
 
@@ -1075,10 +1077,9 @@ describe('@ wikilink autocomplete', () => {
   }
   const entries = [personEntry, nonPersonEntry]
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
-  let getAtItems: ((query: string) => Promise<any[]>) | null = null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
-  let getBracketItems: ((query: string) => Promise<any[]>) | null = null
+  type TriggerItems = (typeof capturedSuggestionState.getItemsByTrigger)[string]
+  let getAtItems: TriggerItems | null = null
+  let getBracketItems: TriggerItems | null = null
 
   function renderForAtAutocomplete() {
     mockFilterSuggestionItems.mockClear()

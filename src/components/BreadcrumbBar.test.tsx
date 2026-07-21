@@ -168,13 +168,13 @@ function mockCollapsedBreadcrumbOverflow() {
     return 1
   })
   const cancelFrame = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {})
-  const rects = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+  const rects = vi.spyOn(Object.getPrototypeOf(document.createElement('div')), 'getBoundingClientRect').mockImplementation(function () {
     if (this.classList.contains('breadcrumb-bar__actions')) {
       return DOMRect.fromRect({ x: 200, y: 0, width: 20, height: 52 })
     }
     return DOMRect.fromRect({ x: 0, y: 0, width: 500, height: 52 })
   })
-  const scrollWidths = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function () {
+  const scrollWidths = vi.spyOn(Object.getPrototypeOf(document.createElement('div')), 'scrollWidth', 'get').mockImplementation(function () {
     return this.classList.contains('breadcrumb-bar__actions') ? 400 : 500
   })
 
@@ -192,14 +192,14 @@ function mockOscillatingBreadcrumbOverflow() {
     return 1
   })
   const cancelFrame = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {})
-  const rects = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+  const rects = vi.spyOn(Object.getPrototypeOf(document.createElement('div')), 'getBoundingClientRect').mockImplementation(function () {
     if (this.classList.contains('breadcrumb-bar__actions')) {
       const collapsed = this.getAttribute('data-overflow-collapsed') === 'true'
       return DOMRect.fromRect({ x: collapsed ? 1000 : 200, y: 0, width: 20, height: 52 })
     }
     return DOMRect.fromRect({ x: 0, y: 0, width: 500, height: 52 })
   })
-  const scrollWidths = vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function () {
+  const scrollWidths = vi.spyOn(Object.getPrototypeOf(document.createElement('div')), 'scrollWidth', 'get').mockImplementation(function () {
     return this.classList.contains('breadcrumb-bar__actions') ? 400 : 500
   })
 
@@ -214,17 +214,17 @@ function mockOscillatingBreadcrumbOverflow() {
 describe('BreadcrumbBar — drag region', () => {
   it('forwards mousedown events to the shared drag-region hook', () => {
     const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
-    const bar = container.querySelector('.breadcrumb-bar') as HTMLElement
+    const breadcrumbHtml = container.querySelector('.breadcrumb-bar') as HTMLElement
 
-    fireEvent.mouseDown(bar, { button: 0 })
+    breadcrumbHtml.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
 
     expect(dragRegionMouseDown).toHaveBeenCalledOnce()
   })
 
   it('has data-tauri-drag-region on the container', () => {
     const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
-    const bar = container.firstElementChild as HTMLElement
-    expect(bar.dataset.tauriDragRegion).toBeDefined()
+    const breadcrumbHtml = container.firstElementChild as HTMLElement
+    expect(breadcrumbHtml.hasAttribute('data-tauri-drag-region')).toBe(true)
   })
 
   it('marks the center spacer as a drag region', () => {
