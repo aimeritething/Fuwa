@@ -57,12 +57,18 @@ async function tokenColors(locator: Locator) {
 
 async function codeBlockLineNumberGeometry(codeBlock: Locator) {
   return codeBlock.evaluate((block) => {
-    const code = block.querySelector<HTMLElement>('pre code')!
-    const firstMarker = code.querySelector<HTMLElement>('[data-code-line-number="1"]')!
-    const postWrapMarker = code.querySelector<HTMLElement>('[data-code-line-number="7"]')!
-    const lastMarker = code.querySelector<HTMLElement>('[data-code-line-number="11"]')!
-    const firstSourceToken = firstMarker.nextElementSibling as HTMLElement
-    const postWrapSourceToken = postWrapMarker.nextElementSibling as HTMLElement
+    const code = block.querySelector<HTMLElement>('pre code')
+    if (!code) return null
+    const firstMarker = code.querySelector<HTMLElement>('[data-code-line-number="1"]')
+    if (!firstMarker) return null
+    const postWrapMarker = code.querySelector<HTMLElement>('[data-code-line-number="7"]')
+    if (!postWrapMarker) return null
+    const lastMarker = code.querySelector<HTMLElement>('[data-code-line-number="11"]')
+    if (!lastMarker) return null
+    const firstSourceToken = firstMarker.nextElementSibling
+    if (!(firstSourceToken instanceof HTMLElement)) return null
+    const postWrapSourceToken = postWrapMarker.nextElementSibling
+    if (!(postWrapSourceToken instanceof HTMLElement)) return null
 
     const blockRect = block.getBoundingClientRect()
     const firstMarkerRect = firstMarker.getBoundingClientRect()
@@ -123,11 +129,12 @@ test.describe('Editor code block theme', () => {
     })).toBe(true)
     const gutterGeometry = await codeBlockLineNumberGeometry(codeBlock)
     expect(gutterGeometry).not.toBeNull()
-    expect(gutterGeometry!.firstNumberTop).toBeGreaterThanOrEqual(gutterGeometry!.blockTop)
-    expect(gutterGeometry!.lastNumberBottom).toBeLessThanOrEqual(gutterGeometry!.blockBottom)
-    expect(gutterGeometry!.numberGap).toBeGreaterThanOrEqual(8)
-    expect(gutterGeometry!.postWrapCenterDelta).toBeLessThanOrEqual(0.5)
-    expect(gutterGeometry!.sourceLeftOffset).toBeLessThanOrEqual(80)
+    if (gutterGeometry === null) throw new Error('Code block line-number geometry was unavailable')
+    expect(gutterGeometry.firstNumberTop).toBeGreaterThanOrEqual(gutterGeometry.blockTop)
+    expect(gutterGeometry.lastNumberBottom).toBeLessThanOrEqual(gutterGeometry.blockBottom)
+    expect(gutterGeometry.numberGap).toBeGreaterThanOrEqual(8)
+    expect(gutterGeometry.postWrapCenterDelta).toBeLessThanOrEqual(0.5)
+    expect(gutterGeometry.sourceLeftOffset).toBeLessThanOrEqual(80)
 
     await expect.poll(() => backgroundColor(inlineCode)).toBe('rgb(240, 240, 239)')
     await expect.poll(() => backgroundColor(fencedCode)).toBe('rgba(0, 0, 0, 0)')
