@@ -77,6 +77,15 @@ describe('Quick Launcher panels', () => {
     mocks.hide.mockResolvedValue(undefined)
   })
 
+  it('focuses and optically aligns the unified input as soon as it mounts', () => {
+    mocks.loadEntries.mockReturnValueOnce(new Promise(() => {}))
+    render(<QuickLauncherSearchPanel initialDestination={{ folder: '', vaultPath: '/work' }} settings={settings} t={t} vaults={vaults} />)
+
+    const input = screen.getByLabelText('Search notes or create one…')
+    expect(input).toHaveFocus()
+    expect(input).toHaveClass('leading-5')
+  })
+
   it('searches across registered vaults and opens the selected exact identity', async () => {
     mocks.search.mockResolvedValue({
       failedVaultLabels: [],

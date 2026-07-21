@@ -405,6 +405,10 @@
     width: 100%;
     height: 100%;
   }
+  html:has([data-quick-launcher-frame]),
+  body:has([data-quick-launcher-frame]) {
+    background: transparent;
+  }
   html,
   body,
   #root {

@@ -12,6 +12,7 @@ const getByLabel = vi.fn()
 const show = vi.fn().mockResolvedValue(undefined)
 const unminimize = vi.fn().mockResolvedValue(undefined)
 const setFocus = vi.fn().mockResolvedValue(undefined)
+const once = vi.fn()
 
 vi.mock('../mock-tauri', () => ({ isTauri: vi.fn() }))
 vi.mock('@tauri-apps/api/webviewWindow', () => ({
@@ -21,6 +22,9 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
     constructor(label: string, options: unknown) {
       webviewWindowCalls(label, options)
     }
+
+    once = once
+    setFocus = setFocus
   },
 }))
 
@@ -49,7 +53,7 @@ describe('openQuickLauncherWindow', () => {
         center: true,
         decorations: false,
         focus: true,
-        height: 420,
+        height: 460,
         minimizable: false,
         resizable: false,
         shadow: false,
@@ -57,9 +61,14 @@ describe('openQuickLauncherWindow', () => {
         title: 'Tolaria Quick Launcher',
         transparent: true,
         visible: true,
-        width: 540,
+        width: 580,
       }),
     )
+    expect(once).toHaveBeenCalledWith('tauri://created', expect.any(Function))
+
+    const handleCreated = once.mock.calls[0]?.[1] as (() => void) | undefined
+    handleCreated?.()
+    expect(setFocus).toHaveBeenCalledOnce()
   })
 
   it('focuses the existing singleton instead of creating another window', async () => {

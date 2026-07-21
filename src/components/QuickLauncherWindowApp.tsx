@@ -28,17 +28,29 @@ export function QuickLauncherWindowApp() {
   useLauncherDismissal(handleFocus)
 
   return (
-    <main className="bg-popover text-foreground flex h-screen flex-col overflow-hidden rounded-xl border border-[var(--border-dialog)] shadow-[0_8px_32px_var(--shadow-dialog)]">
-      <div className="h-2 shrink-0" data-tauri-drag-region />
-      {context.loaded && (
-        <QuickLauncherSearchPanel
-          key={invocationKey}
-          initialDestination={context.destinationResolution.destination}
-          settings={context.settings}
-          t={t}
-          vaults={context.vaults}
-        />
-      )}
+    <main
+      className="text-foreground flex h-screen bg-transparent p-5"
+      data-quick-launcher-frame
+      data-testid="quick-launcher-frame"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) void hideQuickLauncherWindow()
+      }}
+    >
+      <section
+        className="bg-popover flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-dialog)] shadow-[0_24px_64px_var(--shadow-dialog),0_8px_24px_var(--shadow-dialog)]"
+        data-testid="quick-launcher-surface"
+      >
+        <div className="h-2 shrink-0" data-tauri-drag-region />
+        {context.loaded && (
+          <QuickLauncherSearchPanel
+            key={invocationKey}
+            initialDestination={context.destinationResolution.destination}
+            settings={context.settings}
+            t={t}
+            vaults={context.vaults}
+          />
+        )}
+      </section>
     </main>
   )
 }

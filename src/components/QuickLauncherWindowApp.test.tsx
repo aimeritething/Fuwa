@@ -30,8 +30,13 @@ describe('QuickLauncherWindowApp', () => {
     render(<QuickLauncherWindowApp />)
 
     expect(screen.getByLabelText('Unified launcher input')).toBeInTheDocument()
+    expect(screen.getByTestId('quick-launcher-frame')).toHaveClass('p-5')
+    expect(screen.getByTestId('quick-launcher-surface')).toHaveClass(
+      'shadow-[0_24px_64px_var(--shadow-dialog),0_8px_24px_var(--shadow-dialog)]',
+    )
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(mocks.hide).toHaveBeenCalledOnce()
+    fireEvent.mouseDown(screen.getByTestId('quick-launcher-frame'))
+    expect(mocks.hide).toHaveBeenCalledTimes(2)
   })
 })

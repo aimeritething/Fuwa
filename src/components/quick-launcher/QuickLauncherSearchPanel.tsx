@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MagnifyingGlass as SearchIcon, Plus } from '@phosphor-icons/react'
 import type { VaultOption } from '../StatusBar'
 import type { Settings, VaultEntry } from '../../types'
@@ -104,6 +104,14 @@ export function QuickLauncherSearchPanel({
   const writableVaults = vaults.filter(writableVault)
   const trimmedQuery = query.trim()
 
+  useLayoutEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+
+    input.focus({ preventScroll: true })
+    input.setSelectionRange(input.value.length, input.value.length)
+  }, [])
+
   useEffect(() => {
     if (!trimmedQuery) return
     let current = true
@@ -207,7 +215,7 @@ export function QuickLauncherSearchPanel({
           onKeyDown={handleKeyDown}
           placeholder={t('quickLauncher.searchPlaceholder')}
           aria-label={t('quickLauncher.searchPlaceholder')}
-          className="h-auto rounded-none border-0 py-3 pr-4 pl-11 text-[15px] shadow-none focus-visible:ring-0"
+          className="h-auto rounded-none border-0 py-3 pr-4 pl-11 text-[15px] leading-5 shadow-none focus-visible:ring-0"
           autoFocus
         />
       </div>

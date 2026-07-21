@@ -25,10 +25,10 @@ function quickLauncherWindowOptions() {
   return {
     url: runtimeQuickLauncherWindowUrl(),
     title: QUICK_LAUNCHER_WINDOW_TITLE,
-    width: 540,
-    height: 420,
-    minWidth: 540,
-    minHeight: 420,
+    width: 580,
+    height: 460,
+    minWidth: 580,
+    minHeight: 460,
     center: true,
     resizable: false,
     minimizable: false,
@@ -62,7 +62,10 @@ export async function openQuickLauncherWindow(): Promise<void> {
     return
   }
 
-  new WebviewWindow(QUICK_LAUNCHER_WINDOW_LABEL, quickLauncherWindowOptions())
+  const launcher = new WebviewWindow(QUICK_LAUNCHER_WINDOW_LABEL, quickLauncherWindowOptions())
+  void launcher.once('tauri://created', () => {
+    void launcher.setFocus()
+  })
   trackQuickLauncherOpened()
 }
 
