@@ -1008,7 +1008,7 @@ export default defineConfig({
     // starve UI tests on local dev machines. Keep the default hook path stable,
     // while still allowing CI or one-off runs to opt into a different cap.
     maxWorkers: process.env.VITEST_MAX_WORKERS ?? 4,
-    testTimeout: 10_000,
+    testTimeout: Number(process.env.VITEST_TEST_TIMEOUT_MS ?? 10_000),
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

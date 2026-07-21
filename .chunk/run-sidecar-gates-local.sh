@@ -8,6 +8,7 @@ playwright_shards="${PLAYWRIGHT_SHARDS:-8}"
 playwright_concurrency="${PLAYWRIGHT_CONCURRENCY:-4}"
 playwright_shared_server="${PLAYWRIGHT_SHARED_SERVER:-1}"
 vitest_coverage_max_workers="${VITEST_COVERAGE_MAX_WORKERS:-${SIDECAR_VITEST_MAX_WORKERS:-2}}"
+vitest_test_timeout_ms="${VITEST_TEST_TIMEOUT_MS:-10000}"
 frontend_coverage_shards="${FRONTEND_COVERAGE_SHARDS:-${SIDECAR_FRONTEND_COVERAGE_SHARDS:-2}}"
 cargo_build_jobs="${CARGO_BUILD_JOBS:-2}"
 timeout_seconds="${SIDECAR_GATE_TIMEOUT:-1800}"
@@ -169,7 +170,7 @@ launch_lane() {
       --sidecar-id "$sidecar_id" \
       --command bash \
       --args -lc \
-      --args "cd '$remote_workdir' && export RUST_CHANGED='$rust_changed' PLAYWRIGHT_SHARDS='$playwright_shards' PLAYWRIGHT_CONCURRENCY='$playwright_concurrency' PLAYWRIGHT_SHARED_SERVER='$playwright_shared_server' VITEST_COVERAGE_MAX_WORKERS='$vitest_coverage_max_workers' FRONTEND_COVERAGE_SHARDS='$frontend_coverage_shards' CARGO_BUILD_JOBS='$cargo_build_jobs' && rm -f '$remote_status' '$remote_log' '$remote_pid' '$remote_launcher' && nohup setsid -f bash -lc 'bash .chunk/run-sidecar-lane.sh $lane >\"$remote_log\" 2>&1; printf \"%s\\n\" \"\$?\" >\"$remote_status\"' </dev/null >'$remote_launcher' 2>&1" \
+      --args "cd '$remote_workdir' && export RUST_CHANGED='$rust_changed' PLAYWRIGHT_SHARDS='$playwright_shards' PLAYWRIGHT_CONCURRENCY='$playwright_concurrency' PLAYWRIGHT_SHARED_SERVER='$playwright_shared_server' VITEST_COVERAGE_MAX_WORKERS='$vitest_coverage_max_workers' VITEST_TEST_TIMEOUT_MS='$vitest_test_timeout_ms' FRONTEND_COVERAGE_SHARDS='$frontend_coverage_shards' CARGO_BUILD_JOBS='$cargo_build_jobs' && rm -f '$remote_status' '$remote_log' '$remote_pid' '$remote_launcher' && nohup setsid -f bash -lc 'bash .chunk/run-sidecar-lane.sh $lane >\"$remote_log\" 2>&1; printf \"%s\\n\" \"\$?\" >\"$remote_status\"' </dev/null >'$remote_launcher' 2>&1" \
       >"$launch_output_file" 2>&1 &
     launch_pid=$!
 
