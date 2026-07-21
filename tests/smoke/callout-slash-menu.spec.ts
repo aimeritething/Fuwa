@@ -25,7 +25,10 @@ test.afterEach(() => {
 async function openCalloutSubmenu(page: Page) {
   await page.locator('.bn-block-content').last().click()
   await page.keyboard.press('Enter')
-  await page.keyboard.type('/call')
+  await page.keyboard.type('/')
+  await expect(page.locator('#bn-suggestion-menu')).toBeVisible({ timeout: 5_000 })
+  await expect(page.locator('#tolaria-fatal-render-error')).toHaveCount(0)
+  await page.keyboard.type('call')
   const calloutItem = page.getByRole('option', { name: /Callout/i })
   await expect(calloutItem).toBeVisible({ timeout: 5_000 })
   await calloutItem.click()

@@ -9,8 +9,6 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type ComponentProps,
-  type ComponentType,
   type Dispatch,
   type SetStateAction,
 } from 'react'
@@ -168,9 +166,6 @@ export function TolariaSlashMenu({
   }, [editor.domElement, items, onItemClick, openItemSubmenu, openSubmenu, selectedIndex, submenuIndex, submenuItems])
 
   if (!Components) return null
-  const SuggestionMenuItem = Components.SuggestionMenu.Item as ComponentType<
-    ComponentProps<typeof Components.SuggestionMenu.Item> & { onMouseEnter: () => void }
-  >
 
   const renderedItems = items.flatMap((item, index) => {
     const nodes = []
@@ -184,17 +179,17 @@ export function TolariaSlashMenu({
     nodes.push(
       <div
         key={item.key}
+        onMouseEnter={() => openItemSubmenu(item)}
         ref={element => {
           if (element) itemElements.current.set(item.key, element)
           else itemElements.current.delete(item.key)
         }}
       >
-        <SuggestionMenuItem
+        <Components.SuggestionMenu.Item
           className="bn-suggestion-menu-item"
           id={`bn-suggestion-menu-item-${index}`}
           isSelected={index === selectedIndex}
           item={item}
-          onMouseEnter={() => openItemSubmenu(item)}
           onClick={() => item.submenuItems?.length ? openItemSubmenu(item) : onItemClick?.(item)}
         />
       </div>,

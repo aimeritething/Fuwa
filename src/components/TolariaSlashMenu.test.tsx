@@ -1,21 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { MouseEventHandler, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 const editorElement = document.createElement('div')
+const mocks = vi.hoisted(() => ({ suggestionMenuItemProps: vi.fn() }))
 
 vi.mock('@blocknote/react', () => ({
   useBlockNoteEditor: () => ({ domElement: editorElement }),
   useComponentsContext: () => ({
     SuggestionMenu: {
       EmptyItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-      Item: ({ item, onClick, onMouseEnter }: {
+      Item: (props: {
         item: { title: string }
         onClick: () => void
-        onMouseEnter?: MouseEventHandler<HTMLButtonElement>
-      }) => (
-        <button type="button" onClick={onClick} onMouseEnter={onMouseEnter}>{item.title}</button>
-      ),
+      }) => {
+        mocks.suggestionMenuItemProps(props)
+        const { item, onClick } = props
+        return <button type="button" onClick={onClick}>{item.title}</button>
+      },
       Label: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
       Loader: () => <div>Loading</div>,
       Root: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
@@ -41,6 +43,19 @@ function calloutItem(): TolariaSlashMenuItem {
 }
 
 describe('TolariaSlashMenu', () => {
+  it('passes only supported props to the BlockNote suggestion item', () => {
+    render(<TolariaSlashMenu
+      items={[calloutItem()]}
+      loadingState="loaded"
+      selectedIndex={0}
+      onItemClick={vi.fn()}
+    />)
+
+    expect(mocks.suggestionMenuItemProps).toHaveBeenCalledWith(
+      expect.not.objectContaining({ onMouseEnter: expect.anything() }),
+    )
+  })
+
   it('opens the callout type submenu on the right and selects a clicked style', () => {
     const item = calloutItem()
     const onItemClick = vi.fn()
