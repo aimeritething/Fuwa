@@ -58,7 +58,7 @@ export function markStartupPhase(phase: StartupPhase, detail: number | null = nu
   phases.set(phase, elapsed)
   const waiters = phaseWaiters.get(phase) ?? []
   phaseWaiters.delete(phase)
-  waiters.forEach((resolve) => resolve())
+  for (const resolve of waiters) resolve()
   recordNativeMilestone(phase, elapsed, detail)
   return elapsed
 }
