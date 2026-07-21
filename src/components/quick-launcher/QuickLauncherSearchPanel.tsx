@@ -1,18 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { MagnifyingGlass as SearchIcon, Plus } from '@phosphor-icons/react'
 import type { VaultOption } from '../StatusBar'
-import type { Settings, VaultEntry } from '../../types'
+import type { Settings } from '../../types'
 import type { TranslationKey } from '../../lib/i18n'
 import type { QuickCaptureDestination, QuickLauncherSearchResult } from '../../lib/quickLauncher'
-import {
-  createQuickCapture,
-  loadQuickLauncherEntries,
-  searchQuickLauncherVaults,
-} from '../../lib/quickLauncherBackend'
+import { createQuickCapture, searchQuickLauncherVaults } from '../../lib/quickLauncherBackend'
 import { trackQuickCaptureSaved, trackQuickLauncherResultOpened, trackQuickLauncherSearchCompleted } from '../../lib/productAnalytics'
 import { openQuickLauncherNote } from '../../utils/openQuickLauncherNote'
 import { hideQuickLauncherWindow } from '../../utils/openQuickLauncherWindow'
-import { useNoteSearch } from '../../hooks/useNoteSearch'
+import { workspaceIdentityFromVault } from '../../utils/workspaces'
 import { Input } from '../ui/input'
 import { Button } from '../ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
@@ -47,41 +43,19 @@ function launcherEmptyMessage({
   return query ? t('quickLauncher.noResults') : t('quickLauncher.searchHint')
 }
 
-function useLauncherEntries(vaults: readonly VaultOption[]): VaultEntry[] {
-  const [entries, setEntries] = useState<VaultEntry[]>([])
-  useEffect(() => {
-    let current = true
-    void loadQuickLauncherEntries(vaults).then((loaded) => {
-      if (current) setEntries(loaded)
-    }).catch(() => {
-      if (current) setEntries([])
-    })
-    return () => { current = false }
-  }, [vaults])
-  return entries
-}
-
 function usePresentedResults(
-  entries: VaultEntry[],
+  vaults: readonly VaultOption[],
   results: QuickLauncherSearchResult[],
 ): PresentedLauncherResult[] {
-  const { results: presentations } = useNoteSearch(entries, '', Math.max(entries.length, 1))
   return useMemo(() => {
-    const byPath = new Map(presentations.map((item) => [item.entry.path, item]))
+    const workspacesByPath = new Map(vaults.map((vault) => [vault.path, workspaceIdentityFromVault(vault)]))
     return results.map((result) => {
-      const presentation = byPath.get(result.absolutePath)
       return {
         ...result,
-        noteIcon: presentation?.noteIcon,
-        noteType: presentation?.noteType,
-        title: presentation?.title ?? result.title,
-        typeColor: presentation?.typeColor,
-        typeLightColor: presentation?.typeLightColor,
-        TypeIcon: presentation?.TypeIcon,
-        workspace: presentation?.workspace,
+        workspace: workspacesByPath.get(result.vaultPath),
       }
     })
-  }, [presentations, results])
+  }, [results, vaults])
 }
 
 export function QuickLauncherSearchPanel({
@@ -99,8 +73,7 @@ export function QuickLauncherSearchPanel({
   const [actionError, setActionError] = useState(false)
   const [vaultPath, setVaultPath] = useState(initialDestination?.vaultPath ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
-  const entries = useLauncherEntries(vaults)
-  const presentedResults = usePresentedResults(entries, results)
+  const presentedResults = usePresentedResults(vaults, results)
   const writableVaults = vaults.filter(writableVault)
   const trimmedQuery = query.trim()
 

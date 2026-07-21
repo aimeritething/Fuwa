@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTranslator } from '../../lib/i18n'
-import type { Settings, VaultEntry } from '../../types'
+import type { Settings } from '../../types'
 import { QuickLauncherSearchPanel } from './QuickLauncherSearchPanel'
 
 const mocks = vi.hoisted(() => ({
@@ -35,44 +35,9 @@ const settings = {
   quick_capture_open_after_save: false,
 } satisfies Settings
 
-const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
-  path: '/work/meeting.md',
-  filename: 'meeting.md',
-  title: 'Meeting',
-  isA: 'Project',
-  aliases: [],
-  belongsTo: [],
-  relatedTo: [],
-  status: 'Active',
-  archived: false,
-  modifiedAt: 1700000000,
-  createdAt: 1700000000,
-  fileSize: 100,
-  snippet: '',
-  wordCount: 0,
-  relationships: {},
-  icon: '📌',
-  color: null,
-  order: null,
-  sidebarLabel: null,
-  template: null,
-  sort: null,
-  view: null,
-  visible: true,
-  organized: false,
-  favorite: false,
-  favoriteIndex: null,
-  listPropertiesDisplay: [],
-  outgoingLinks: [],
-  properties: {},
-  hasH1: true,
-  ...overrides,
-})
-
 describe('Quick Launcher panels', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.loadEntries.mockResolvedValue([makeEntry()])
     mocks.openNote.mockResolvedValue(undefined)
     mocks.hide.mockResolvedValue(undefined)
   })
@@ -84,6 +49,7 @@ describe('Quick Launcher panels', () => {
     const input = screen.getByLabelText('Search notes or create one…')
     expect(input).toHaveFocus()
     expect(input).toHaveClass('leading-5')
+    expect(mocks.loadEntries).not.toHaveBeenCalled()
   })
 
   it('searches across registered vaults and opens the selected exact identity', async () => {
@@ -106,8 +72,7 @@ describe('Quick Launcher panels', () => {
     fireEvent.change(screen.getByLabelText('Search notes or create one…'), { target: { value: 'meeting' } })
     expect(await screen.findByText('Meeting')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Create note "meeting"' })).toBeVisible()
-    expect(screen.getByText('Project')).toHaveStyle({ color: 'var(--accent-red)' })
-    expect(screen.getByTestId('note-search-item-icon')).toHaveTextContent('📌')
+    expect(screen.getByTestId('note-search-workspace-badge')).toHaveTextContent('WK')
     fireEvent.mouseDown(screen.getByText('Meeting'))
 
     await waitFor(() => expect(mocks.openNote).toHaveBeenCalledWith(expect.objectContaining({

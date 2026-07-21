@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultOption } from '../components/StatusBar'
-import { createQuickCapture, loadQuickLauncherEntries, searchQuickLauncherVaults } from './quickLauncherBackend'
+import { createQuickCapture, searchQuickLauncherVaults } from './quickLauncherBackend'
 
 const mocks = vi.hoisted(() => ({ invoke: vi.fn(), nativeInvoke: vi.fn(), tauri: false }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: mocks.nativeInvoke }))
@@ -92,15 +92,4 @@ describe('quickLauncherBackend', () => {
     })
   })
 
-  it('loads searchable vault entries with workspace presentation metadata', async () => {
-    mocks.invoke.mockResolvedValue([{ path: '/work/project.md', title: 'Project' }])
-
-    const entries = await loadQuickLauncherEntries(vaults)
-
-    expect(mocks.invoke).toHaveBeenCalledOnce()
-    expect(entries).toEqual([expect.objectContaining({
-      path: '/work/project.md',
-      workspace: expect.objectContaining({ label: 'Work', path: '/work' }),
-    })])
-  })
 })

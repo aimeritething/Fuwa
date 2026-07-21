@@ -1,10 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { VaultOption } from '../components/StatusBar'
-import type { FolderNode, VaultEntry } from '../types'
+import type { FolderNode } from '../types'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import { relativePathForVaultItem, vaultDeepLinkSlug } from '../utils/deepLinks'
 import { joinVaultPath } from '../utils/notePathIdentity'
-import { workspaceIdentityFromVault } from '../utils/workspaces'
 import {
   rankQuickLauncherResults,
   uniqueCaptureRelativePath,
@@ -119,18 +118,6 @@ export async function searchQuickLauncherVaults({
     .map((vault) => vault.label)
   const results = settled.flatMap((outcome) => outcome.status === 'fulfilled' ? outcome.value : [])
   return { failedVaultLabels, results: rankQuickLauncherResults(results) }
-}
-
-async function loadLauncherVaultEntries(vault: VaultOption): Promise<VaultEntry[]> {
-  const entries = await tauriCall<VaultEntry[]>('list_vault', { path: vault.path })
-  const workspace = workspaceIdentityFromVault(vault)
-  return entries.map((entry) => ({ ...entry, workspace }))
-}
-
-export async function loadQuickLauncherEntries(vaults: readonly VaultOption[]): Promise<VaultEntry[]> {
-  const targets = searchableVaults({ scopePath: null, vaults })
-  const settled = await Promise.allSettled(targets.map(loadLauncherVaultEntries))
-  return settled.flatMap((result) => result.status === 'fulfilled' ? result.value : [])
 }
 
 function relativeEntryPath({ path, vaultPath }: { path: string; vaultPath: string }): string {
