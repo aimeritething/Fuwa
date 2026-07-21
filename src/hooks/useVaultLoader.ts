@@ -51,6 +51,7 @@ interface InitialVaultLoadStateOptions {
   isCurrentVaultPath: (path: string) => boolean
   setEntries: Dispatch<SetStateAction<VaultEntry[]>>
   setFolders: (folders: FolderNode[]) => void
+  setHasCompletedInitialLoad: (hasCompleted: boolean) => void
   setIsLoading: (isLoading: boolean) => void
   setViews: (views: ViewFile[]) => void
   vaults?: VaultOption[]
@@ -147,7 +148,7 @@ async function loadInitialVaultEntriesState(options: Pick<
 }
 
 async function loadInitialVaultState(options: InitialVaultLoadStateOptions) {
-  const { path, isCurrentVaultPath, setIsLoading } = options
+  const { path, isCurrentVaultPath, setHasCompletedInitialLoad, setIsLoading } = options
   let vaultUnavailable = false
   const chromeLoad = loadInitialVaultChromeState({
     ...options,
@@ -159,6 +160,7 @@ async function loadInitialVaultState(options: InitialVaultLoadStateOptions) {
   vaultUnavailable = entriesResult.unavailable
   if (isCurrentVaultPath(path)) {
     setIsLoading(false)
+    setHasCompletedInitialLoad(true)
     recordActiveVaultUsable(entriesResult.source, entriesResult.entryCount)
   }
   await chromeLoad
@@ -328,6 +330,7 @@ interface InitialVaultLoadOptions {
   resetReloading: () => void
   setEntries: Dispatch<SetStateAction<VaultEntry[]>>
   setFolders: (folders: FolderNode[]) => void
+  setHasCompletedInitialLoad: (hasCompleted: boolean) => void
   setIsLoading: (isLoading: boolean) => void
   setModifiedFiles: (files: ModifiedFile[]) => void
   setModifiedFilesError: (message: string | null) => void
@@ -415,6 +418,7 @@ function startFreshInitialVaultLoad(
     defaultWorkspacePath: loadOptions.defaultWorkspacePath, forceReload: loadOptions.forceReload, reloadIfEmpty: loadOptions.reloadIfEmpty,
     setEntries: options.setEntries,
     setFolders: options.setFolders,
+    setHasCompletedInitialLoad: options.setHasCompletedInitialLoad,
     setIsLoading: options.setIsLoading,
     setViews: options.setViews,
   })
@@ -432,6 +436,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
     resetReloading,
     setEntries,
     setFolders,
+    setHasCompletedInitialLoad,
     setIsLoading,
     setModifiedFiles,
     setModifiedFilesError,
@@ -457,7 +462,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
       resetReloading,
       clearNewPaths: tracker.clear,
       clearUnsaved: unsaved.clearAll,
-      setEntries, setFolders, setIsLoading, setModifiedFiles, setModifiedFilesError, setViews,
+      setEntries, setFolders, setHasCompletedInitialLoad, setIsLoading, setModifiedFiles, setModifiedFilesError, setViews,
       vaultPath, folderVaults,
     }
     const reuseLoadedWorkspaceEntries = shouldReuseLoadedWorkspaceEntries(path, loadOptions, isWorkspacePathLoaded)
@@ -484,7 +489,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
     isCurrentVaultPath,
     isWorkspacePathLoaded,
     resetReloading,
-    setEntries, setFolders, setIsLoading, setModifiedFiles, setModifiedFilesError, setViews,
+    setEntries, setFolders, setHasCompletedInitialLoad, setIsLoading, setModifiedFiles, setModifiedFilesError, setViews,
     loadOptionsRef,
     loadOptionsKey,
     folderVaults,
@@ -803,6 +808,7 @@ function useGitignoredVisibilityReloads(
 function useVaultState(vaultPath: string, loadModifiedFiles: boolean) {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [folders, setFolders] = useState<FolderNode[]>([])
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false)
   const [isLoading, setIsLoading] = useState(() => hasVaultPath({ vaultPath }))
   const [views, setViews] = useState<ViewFile[]>([])
   const tracker = useNewNoteTracker()
@@ -814,12 +820,14 @@ function useVaultState(vaultPath: string, loadModifiedFiles: boolean) {
   return {
     entries,
     folders,
+    hasCompletedInitialLoad,
     isCurrentVaultPath,
     isLoading,
     modified,
     pendingSave,
     setEntries,
     setFolders,
+    setHasCompletedInitialLoad,
     setIsLoading,
     setViews,
     tracker,
@@ -905,6 +913,7 @@ function useVaultLoaderStartup(options: VaultLoaderStartupOptions) {
     resetReloading: vaultReloads.resetReloading,
     setEntries: state.setEntries,
     setFolders: setInitialFolders,
+    setHasCompletedInitialLoad: state.setHasCompletedInitialLoad,
     setIsLoading: state.setIsLoading,
     setModifiedFiles: state.modified.setModifiedFiles,
     setModifiedFilesError: state.modified.setModifiedFilesError,
@@ -1186,6 +1195,7 @@ function useVaultLoaderResult({
   return {
     entries: state.entries,
     folders: state.folders,
+    hasCompletedInitialLoad: state.hasCompletedInitialLoad,
     isLoading: state.isLoading,
     isReloading: vaultReloads.isReloading,
     views: state.views,

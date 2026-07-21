@@ -536,7 +536,7 @@ describe('App', () => {
     }, { timeout: SLOW_APP_READY_TIMEOUT_MS })
   })
 
-  it('keeps the app shell usable while the vault note scan is pending', async () => {
+  it('keeps one startup shell visible while the initial vault note scan is pending', async () => {
     let resolveListVault: ((value: typeof mockEntries) => void) | null = null
     const listVaultPromise = new Promise<typeof mockEntries>((resolve) => {
       resolveListVault = resolve
@@ -545,22 +545,10 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByTestId('sidebar-loading-favorites', {}, { timeout: 5000 })).toBeInTheDocument()
-    expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-top-nav')).toHaveTextContent('Inbox')
-    expect(screen.getByTestId('sidebar-loading-views')).toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-loading-types')).toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-loading-folders')).toBeInTheDocument()
-    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
-    expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
-    expect(screen.queryByTestId('editor-content-skeleton')).not.toBeInTheDocument()
-    expect(screen.queryByText('Select a note to start editing')).not.toBeInTheDocument()
-    expect(screen.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
-    await act(async () => {
-      fireEvent.keyDown(window, { key: 'p', code: 'KeyP', metaKey: true })
-      await Promise.resolve()
-    })
-    expect(within(screen.getByTestId('quick-open-palette')).getByText('Reloading vault...')).toBeInTheDocument()
+    expect(await screen.findByTestId('startup-shell-fallback', {}, { timeout: 5000 })).toBeInTheDocument()
+    expect(screen.queryByTestId('sidebar-loading-favorites')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('status-vault-reloading')).not.toBeInTheDocument()
 
     await act(async () => {
       resolveListVault?.(mockEntries)
@@ -568,11 +556,8 @@ describe('App', () => {
     })
 
     await waitFor(() => {
-      expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('startup-shell-fallback')).not.toBeInTheDocument()
       expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('breadcrumb-title-skeleton')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('editor-content-skeleton')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('status-vault-reloading')).not.toBeInTheDocument()
       expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0)
     })
   })
@@ -906,7 +891,7 @@ describe('App', () => {
     expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
   })
 
-  it('uses the app shell loading state while the last vault is still resolving', async () => {
+  it('keeps one startup shell visible while the last vault is still resolving', async () => {
     localStorage.setItem('tolaria_welcome_dismissed', '1')
 
     let resolveVaultList: ((value: typeof mockVaultList) => void) | null = null
@@ -925,12 +910,9 @@ describe('App', () => {
       await Promise.resolve()
     })
 
-    expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
-    expect(screen.getByTestId('sidebar-loading-favorites')).toBeInTheDocument()
-    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
-    expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
-    expect(screen.queryByTestId('editor-content-skeleton')).not.toBeInTheDocument()
-    expect(screen.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
+    expect(screen.getByTestId('startup-shell-fallback')).toBeInTheDocument()
+    expect(screen.queryByTestId('note-list-loading-skeleton')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('status-vault-reloading')).not.toBeInTheDocument()
 
     await act(async () => {
       resolveVaultList?.({
@@ -942,6 +924,7 @@ describe('App', () => {
     })
 
     await waitFor(() => {
+      expect(screen.queryByTestId('startup-shell-fallback')).not.toBeInTheDocument()
       expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Work Vault')
     })
   })
@@ -1274,6 +1257,10 @@ describe('App', () => {
   })
 
   it('switches vaults from the bottom bar after onboarding is ready', async () => {
+    let resolveSwitchedVaultScan: ((value: typeof mockEntries) => void) | null = null
+    const switchedVaultScan = new Promise<typeof mockEntries>((resolve) => {
+      resolveSwitchedVaultScan = resolve
+    })
     mockCommandResults.load_vault_list = {
       vaults: [
         { label: 'Test Vault', path: '/work' },
@@ -1282,6 +1269,8 @@ describe('App', () => {
       active_vault: '/work',
       hidden_defaults: [],
     }
+    mockCommandResults.list_vault = ({ path }: { path?: string } = {}) =>
+      path === '/vault-2' ? switchedVaultScan : mockEntries
 
     render(<App />)
 
@@ -1291,6 +1280,15 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     fireEvent.click(screen.getByTestId('vault-menu-item-Work Vault'))
+
+    expect(await screen.findByTestId('sidebar-loading-favorites')).toBeInTheDocument()
+    expect(screen.queryByTestId('startup-shell-fallback')).not.toBeInTheDocument()
+    expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
+
+    await act(async () => {
+      resolveSwitchedVaultScan?.(mockEntries)
+      await Promise.resolve()
+    })
 
     await waitFor(() => {
       expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Work Vault')

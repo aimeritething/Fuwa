@@ -21,6 +21,7 @@ import { CloneVaultModal } from './components/CloneVaultModal'
 import { FeedbackDialog } from './components/FeedbackDialog'
 import { McpSetupDialog } from './components/McpSetupDialog'
 import { NoteRetargetingDialogs } from './components/note-retargeting/NoteRetargetingDialogs'
+import { StartupShellFallback } from './components/StartupShellFallback'
 import { StartupScreen } from './components/StartupScreen'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
 import { useAiAgentsStatus } from './hooks/useAiAgentsStatus'
@@ -1690,6 +1691,9 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
       locale={appLocale}
     />
   )
+  if (!vault.hasCompletedInitialLoad && isVaultContentLoading) {
+    return <StartupShellFallback />
+  }
   if (shouldShowStartupScreen) {
     return (
       <StartupScreen

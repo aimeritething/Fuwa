@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { openCommandPalette, sendShortcut } from './helpers'
+import { sendShortcut } from './helpers'
 
 type MockHandlers = Record<string, (args?: unknown) => unknown>
 type MockWindow = Window & {
@@ -98,28 +98,18 @@ async function installSlowVaultMock(page: Page): Promise<void> {
   }, slowVaultEntries)
 }
 
-async function expectResponsiveShellWhileVaultLoads(page: Page): Promise<void> {
-  await expect(page.getByTestId('sidebar-loading-favorites')).toBeVisible({ timeout: 5_000 })
+async function expectUnifiedShellWhileVaultLoads(page: Page): Promise<void> {
+  await expect(page.getByTestId('startup-shell-fallback')).toBeVisible({ timeout: 5_000 })
   await expect(page.getByTestId('vault-loading-skeleton')).not.toBeVisible()
-  await expect(page.getByTestId('sidebar-top-nav')).toContainText('Inbox')
-  await expect(page.getByTestId('sidebar-loading-views')).toBeVisible()
-  await expect(page.getByTestId('sidebar-loading-types')).toBeVisible()
-  await expect(page.getByTestId('sidebar-loading-folders')).toBeVisible()
-  await expect(page.getByTestId('note-list-loading-skeleton')).toBeVisible()
-  await expect(page.getByTestId('breadcrumb-title-skeleton')).toBeVisible()
+  await expect(page.getByTestId('sidebar-loading-favorites')).not.toBeVisible()
+  await expect(page.getByTestId('sidebar-loading-views')).not.toBeVisible()
+  await expect(page.getByTestId('sidebar-loading-types')).not.toBeVisible()
+  await expect(page.getByTestId('sidebar-loading-folders')).not.toBeVisible()
+  await expect(page.getByTestId('note-list-loading-skeleton')).not.toBeVisible()
+  await expect(page.getByTestId('breadcrumb-title-skeleton')).not.toBeVisible()
   await expect(page.getByTestId('editor-content-skeleton')).not.toBeVisible()
   await expect(page.getByText('Select a note to start editing')).not.toBeVisible()
-  await expect(page.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
-
-  await sendShortcut(page, 'p', ['Control'])
-  await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })
-  await expect(page.getByTestId('quick-open-palette').getByText('Reloading vault...')).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByTestId('quick-open-palette')).not.toBeVisible()
-
-  await openCommandPalette(page)
-  await expect(page.locator('input[placeholder="Type a command..."]')).toBeVisible()
-  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('status-vault-reloading')).not.toBeVisible()
 }
 
 async function resolveVaultScan(page: Page): Promise<void> {
@@ -129,9 +119,10 @@ async function resolveVaultScan(page: Page): Promise<void> {
 }
 
 async function expectLoadedVaultSearch(page: Page): Promise<void> {
+  await expect(page.getByTestId('note-list-container')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('startup-shell-fallback')).not.toBeVisible()
   await expect(page.getByTestId('vault-loading-skeleton')).not.toBeVisible()
   await expect(page.getByTestId('status-vault-reloading')).not.toBeVisible()
-  await expect(page.getByTestId('note-list-container')).toBeVisible()
   await expect(page.getByText('Large Vault Note')).toBeVisible()
 
   await sendShortcut(page, 'p', ['Control'])
@@ -139,11 +130,11 @@ async function expectLoadedVaultSearch(page: Page): Promise<void> {
   await expect(page.getByTestId('quick-open-palette').getByText('Large Vault Note')).toBeVisible()
 }
 
-test('slow vault open keeps the app shell usable while notes load', async ({ page }) => {
+test('slow vault open keeps one startup shell visible while notes load', async ({ page }) => {
   await installSlowVaultMock(page)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await expect(page.locator('#tolaria-boot-diagnostics')).toHaveCount(0)
-  await expectResponsiveShellWhileVaultLoads(page)
+  await expectUnifiedShellWhileVaultLoads(page)
   await resolveVaultScan(page)
   await expectLoadedVaultSearch(page)
 })
