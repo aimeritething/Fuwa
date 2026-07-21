@@ -1,27 +1,133 @@
 import { useEffect } from 'react'
 import { focusEditorWithRetries, type FocusableEditor } from './editorFocusUtils'
+import { resumeEditorFocus } from './editorFocusOwnership'
 
 const TAB_SWAP_EVENT_NAME = 'laputa:editor-tab-swapped'
 const FOCUS_EVENT_NAME = 'laputa:focus-editor'
 const SWAP_WAIT_FALLBACK_MS = 250
+const FOCUS_STABILITY_CHECK_DELAYS_MS = [160, 500, 1_000, 2_000, 4_000] as const
 
-interface FocusEventDetail {
+export interface FocusEventDetail {
   t0?: number
   selectTitle?: boolean
   path?: string | null
 }
 
-function scheduleEditorFocus(
+interface PendingFocusRequest {
+  id: number
+  detail: FocusEventDetail
+}
+
+const PENDING_FOCUS_TTL_MS = 6_000
+let nextFocusRequestId = 0
+let pendingFocusRequest: PendingFocusRequest | null = null
+
+function rememberPendingFocusRequest(detail: FocusEventDetail): PendingFocusRequest | null {
+  if (!detail.path) return null
+  const request = { id: ++nextFocusRequestId, detail }
+  pendingFocusRequest = request
+  window.setTimeout(() => {
+    if (pendingFocusRequest?.id === request.id) pendingFocusRequest = null
+  }, PENDING_FOCUS_TTL_MS)
+  return request
+}
+
+function clearPendingFocusRequest(path: string): void {
+  if (pendingFocusRequest?.detail.path === path) pendingFocusRequest = null
+}
+
+export function requestEditorFocus(detail: FocusEventDetail): void {
+  rememberPendingFocusRequest(detail)
+  window.setTimeout(() => {
+    window.dispatchEvent(new CustomEvent(FOCUS_EVENT_NAME, { detail }))
+  }, 0)
+}
+
+interface EditorFocusContext {
   editor: FocusableEditor,
   editorMountedRef: React.RefObject<boolean>,
   selectTitle: boolean,
   t0: number | undefined,
-): void {
+}
+
+function scheduleEditorFocus(context: EditorFocusContext, onFocused?: () => void): void {
+  const { editor, editorMountedRef, selectTitle, t0 } = context
+  const focus = () => {
+    focusEditorWithRetries(editor, selectTitle, t0)
+    if (editorHasFocus()) onFocused?.()
+  }
   if (editorMountedRef.current) {
-    requestAnimationFrame(() => focusEditorWithRetries(editor, selectTitle, t0))
+    requestAnimationFrame(focus)
     return
   }
-  setTimeout(() => focusEditorWithRetries(editor, selectTitle, t0), 80)
+  setTimeout(focus, 80)
+}
+
+function focusReturnedToDocumentChrome(): boolean {
+  const activeElement = document.activeElement
+  return activeElement === null
+    || activeElement === document.body
+    || activeElement === document.documentElement
+}
+
+function editorHasFocus(): boolean {
+  const activeElement = document.activeElement
+  return activeElement instanceof Element
+    && (Reflect.get(activeElement, 'isContentEditable') === true
+      || activeElement.closest('[contenteditable="true"]') !== null)
+}
+
+interface FocusStabilityOptions {
+  context: EditorFocusContext
+  targetPath: string
+  pendingCleanups: Set<() => void>
+}
+
+function scheduleFocusStabilityChecks(options: FocusStabilityOptions): void {
+  const { context, targetPath, pendingCleanups } = options
+  for (const delay of FOCUS_STABILITY_CHECK_DELAYS_MS) {
+    let timeoutId = 0
+    const cleanup = () => {
+      window.clearTimeout(timeoutId)
+      pendingCleanups.delete(cleanup)
+    }
+    timeoutId = window.setTimeout(() => {
+      pendingCleanups.delete(cleanup)
+      if (editorHasFocus()) {
+        clearPendingFocusRequest(targetPath)
+        return
+      }
+      if (!focusReturnedToDocumentChrome()) return
+      resumeEditorFocus()
+      focusEditorWithRetries(context.editor, context.selectTitle, context.t0)
+      if (editorHasFocus()) clearPendingFocusRequest(targetPath)
+    }, delay)
+    pendingCleanups.add(cleanup)
+  }
+}
+
+interface TargetFocusOptions {
+  context: EditorFocusContext
+  detail: FocusEventDetail
+  targetPath: string
+  pendingCleanups: Set<() => void>
+}
+
+function handleTargetFocusRequest(options: TargetFocusOptions): void {
+  const { context, detail, targetPath, pendingCleanups } = options
+  if (pendingFocusRequest?.detail.path !== targetPath) rememberPendingFocusRequest(detail)
+  const scheduleFocus = () => {
+    if (editorHasFocus()) {
+      clearPendingFocusRequest(targetPath)
+      return
+    }
+    if (focusReturnedToDocumentChrome()) {
+      resumeEditorFocus()
+      scheduleEditorFocus(context, () => clearPendingFocusRequest(targetPath))
+    }
+    scheduleFocusStabilityChecks({ context, targetPath, pendingCleanups })
+  }
+  registerPendingTabFocus(targetPath, scheduleFocus, pendingCleanups)
 }
 
 function registerPendingTabFocus(
@@ -64,21 +170,25 @@ export function useEditorFocus(
   useEffect(() => {
     const pendingCleanups = new Set<() => void>()
 
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as FocusEventDetail | undefined
+    const handleFocusRequest = (detail: FocusEventDetail | undefined) => {
       const t0 = detail?.t0
       const selectTitle = detail?.selectTitle ?? false
       const targetPath = detail?.path ?? null
-      const scheduleFocus = () => scheduleEditorFocus(editor, editorMountedRef, selectTitle, t0)
+      const context = { editor, editorMountedRef, selectTitle, t0 }
 
       if (!targetPath) {
-        scheduleFocus()
+        scheduleEditorFocus(context)
         return
       }
-      registerPendingTabFocus(targetPath, scheduleFocus, pendingCleanups)
+      handleTargetFocusRequest({ context, detail: detail ?? {}, targetPath, pendingCleanups })
+    }
+
+    const handler = (e: Event) => {
+      handleFocusRequest((e as CustomEvent).detail as FocusEventDetail | undefined)
     }
 
     window.addEventListener(FOCUS_EVENT_NAME, handler)
+    if (pendingFocusRequest) handleFocusRequest(pendingFocusRequest.detail)
     return () => {
       window.removeEventListener(FOCUS_EVENT_NAME, handler)
       for (const cleanup of pendingCleanups) {

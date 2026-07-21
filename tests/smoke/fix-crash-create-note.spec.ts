@@ -37,6 +37,7 @@ function untitledRow(page: Page, typeLabel: string) {
 }
 
 type EmptyHeadingState = {
+  activeElement: string
   contentType: string | null
   editorFocused: boolean
   placeholder: string | null
@@ -53,9 +54,13 @@ async function readEmptyHeadingState(page: Page): Promise<EmptyHeadingState> {
     const active = document.activeElement as HTMLElement | null
     const firstBlock = document.querySelector('.bn-block-content') as HTMLElement | null
     const inlineHeading = firstBlock?.querySelector('.bn-inline-content') as HTMLElement | null
+    const editorFocused = Boolean(active?.isContentEditable || active?.closest('[contenteditable="true"]'))
     return {
+      activeElement: editorFocused
+        ? 'editor'
+        : `${active?.tagName ?? 'none'}:${active?.getAttribute('role') ?? 'no-role'}:${active?.getAttribute('data-testid') ?? 'no-testid'}`,
       contentType: firstBlock?.getAttribute('data-content-type') ?? null,
-      editorFocused: Boolean(active?.isContentEditable || active?.closest('[contenteditable="true"]')),
+      editorFocused,
       placeholder: inlineHeading ? getComputedStyle(inlineHeading, '::before').content : null,
     }
   })
@@ -65,14 +70,18 @@ function hasExpectedTitlePlaceholder(placeholder: string | null): boolean {
   return placeholder === '"Heading"' || placeholder === '"Title"'
 }
 
-function isReadyEmptyTitleHeading(state: EmptyHeadingState): boolean {
-  return state.editorFocused && state.contentType === 'heading' && hasExpectedTitlePlaceholder(state.placeholder)
-}
-
 async function expectReadyEmptyTitleHeading(page: Page): Promise<void> {
-  await expect.poll(async () => isReadyEmptyTitleHeading(await readEmptyHeadingState(page)), {
+  await expect.poll(async () => {
+    const state = await readEmptyHeadingState(page)
+    return {
+      activeElement: state.activeElement,
+      contentType: state.contentType,
+      editorFocused: state.editorFocused,
+      titlePlaceholder: hasExpectedTitlePlaceholder(state.placeholder),
+    }
+  }, {
     timeout: 5_000,
-  }).toBe(true)
+  }).toEqual({ activeElement: 'editor', contentType: 'heading', editorFocused: true, titlePlaceholder: true })
 }
 
 async function expectUntitledNoteWithoutCrash(

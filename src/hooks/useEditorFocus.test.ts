@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useEditorFocus } from './useEditorFocus'
+import { requestEditorFocus, useEditorFocus } from './useEditorFocus'
 import type { FocusableEditor } from './editorFocusUtils'
+import { resumeEditorFocus, suspendEditorFocus } from './editorFocusOwnership'
 import { trackEvent } from '../lib/telemetry'
 
 vi.mock('../lib/telemetry', () => ({
@@ -38,6 +39,7 @@ function expectSelectionRange(
 
 describe('useEditorFocus', () => {
   afterEach(() => {
+    resumeEditorFocus()
     vi.restoreAllMocks()
     document.body.innerHTML = ''
   })
@@ -57,8 +59,8 @@ describe('useEditorFocus', () => {
       ...editorOverrides,
     } as FocusableEditor & Record<string, unknown>
     const mountedRef = { current: isMounted }
-    renderHook(() => useEditorFocus(editor, mountedRef))
-    return { editor, tiptap, editable }
+    const hook = renderHook(() => useEditorFocus(editor, mountedRef))
+    return { editor, tiptap, editable, unmount: hook.unmount }
   }
 
   it('focuses editor via rAF when already mounted', async () => {
@@ -99,6 +101,107 @@ describe('useEditorFocus', () => {
     window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
     expect(rAF).toHaveBeenCalled()
     expect(editor.focus).toHaveBeenCalled()
+  })
+
+  it('recovers new-note focus when late rendering returns focus to the document chrome', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const { editor } = setup(true)
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+
+    document.body.tabIndex = -1
+    document.body.focus()
+    vi.advanceTimersByTime(200)
+
+    expect(editor.focus).toHaveBeenCalledTimes(2)
+
+    document.body.focus()
+    vi.advanceTimersByTime(400)
+
+    expect(editor.focus).toHaveBeenCalledTimes(3)
+
+    document.body.focus()
+    vi.advanceTimersByTime(600)
+
+    expect(editor.focus).toHaveBeenCalledTimes(4)
+
+    document.body.focus()
+    vi.advanceTimersByTime(1_000)
+
+    expect(editor.focus).toHaveBeenCalledTimes(5)
+
+    document.body.focus()
+    vi.advanceTimersByTime(2_000)
+
+    expect(editor.focus).toHaveBeenCalledTimes(6)
+    vi.useRealTimers()
+  })
+
+  it('recovers document focus while the editor mount ref is still settling', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const { editor } = setup(false)
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    vi.advanceTimersByTime(80)
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+
+    document.body.tabIndex = -1
+    document.body.focus()
+    vi.advanceTimersByTime(80)
+
+    expect(editor.focus).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('resumes editor focus ownership for an explicit new-note target', () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const { editor } = setup(true)
+    suspendEditorFocus(document.body)
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+  })
+
+  it('reclaims focus ownership when the launching surface suspends it during the tab swap', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const { editor } = setup(true)
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    suspendEditorFocus(document.body)
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+
+    expect(editor.focus).toHaveBeenCalledTimes(1)
+
+    suspendEditorFocus(document.body)
+    document.body.tabIndex = -1
+    document.body.focus()
+    vi.advanceTimersByTime(200)
+
+    expect(editor.focus).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('carries a pending focus request across an editor remount', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    requestEditorFocus({ path: '/vault/new-note.md', selectTitle: true })
+
+    const first = setup(true)
+    first.unmount()
+    const second = setup(true)
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+
+    expect(first.editor.focus).not.toHaveBeenCalled()
+    expect(second.editor.focus).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 
   it('falls back to focusing when the swap event never arrives', () => {

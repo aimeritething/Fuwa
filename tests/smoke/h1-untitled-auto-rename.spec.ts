@@ -95,10 +95,11 @@ async function expectActiveFilename(page: Page, filenameStem: string): Promise<v
 async function expectEditorFocused(page: Page): Promise<void> {
   await expect.poll(async () => page.evaluate(() => {
     const active = document.activeElement as HTMLElement | null
-    return Boolean(active?.isContentEditable || active?.closest('[contenteditable="true"]'))
+    if (active?.isContentEditable || active?.closest('[contenteditable="true"]')) return 'focused'
+    return `unfocused:${active?.tagName ?? 'none'}:${active?.getAttribute('role') ?? 'no-role'}`
   }), {
     timeout: 5_000,
-  }).toBe(true)
+  }).toBe('focused')
 }
 
 async function readEmptyTitleHeadingState(page: Page): Promise<EmptyTitleHeadingState> {

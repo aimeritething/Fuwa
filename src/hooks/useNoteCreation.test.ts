@@ -664,6 +664,7 @@ describe('useNoteCreation hook', () => {
   })
 
   it('handleCreateNoteImmediate requests editor focus for the new path', async () => {
+    vi.useFakeTimers()
     const focusListener = vi.fn()
     window.addEventListener('laputa:focus-editor', focusListener)
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
@@ -672,6 +673,7 @@ describe('useNoteCreation hook', () => {
       result.current.handleCreateNoteImmediate()
       await flushImmediateCreate()
     })
+    await act(async () => { await vi.runAllTimersAsync() })
 
     expect(focusListener).toHaveBeenCalledTimes(1)
     const event = focusListener.mock.calls[0][0] as CustomEvent
