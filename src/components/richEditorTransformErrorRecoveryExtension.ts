@@ -9,6 +9,14 @@ import {
 export { isStaleBlockReferenceError } from './richEditorRecoveryClassifier'
 
 const DISPATCH_RECOVERY_STATE_KEY = '__tolariaRichEditorTransformErrorRecovery'
+const RECOVERABLE_EDITOR_HANDLER_PROPS = new Set([
+  'handleDOMEvents',
+  'handleDrop',
+  'handleKeyDown',
+  'handleKeyPress',
+  'handlePaste',
+  'handleTextInput',
+])
 
 type RichEditorDispatch = (transaction: unknown) => unknown
 type RichEditorPropRunner<T> = (prop: T) => unknown
@@ -161,7 +169,7 @@ function createRecoveringDispatch(
   }
 }
 
-function createRecoveringKeydownRunner<T>(
+function createRecoveringInteractionRunner<T>(
   view: RichEditorRecoveryView,
   recoveryState: DispatchRecoveryState,
   run: RichEditorPropRunner<T>,
@@ -199,7 +207,7 @@ function createRecoveringSomeProp(
     const originalSomeProp = recoveryState.originalSomeProp
     if (!originalSomeProp) return undefined
 
-    if (propName !== 'handleKeyDown' || typeof run !== 'function') {
+    if (!RECOVERABLE_EDITOR_HANDLER_PROPS.has(propName) || typeof run !== 'function') {
       return callSomeProp(view, originalSomeProp, propName, run)
     }
 
@@ -207,7 +215,7 @@ function createRecoveringSomeProp(
       view,
       originalSomeProp,
       propName,
-      createRecoveringKeydownRunner(view, recoveryState, run),
+      createRecoveringInteractionRunner(view, recoveryState, run),
     )
   }
 }

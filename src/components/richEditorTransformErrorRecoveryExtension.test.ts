@@ -247,6 +247,22 @@ describe('installRichEditorTransformErrorRecovery', () => {
     })
   })
 
+  it('repairs null append failures thrown during text input handling', () => {
+    const { view, keyDownPlugin } = createViewWithSomeProp(() => {
+      throw new TypeError("Cannot read properties of null (reading 'append')")
+    })
+    const recoverDocument = vi.fn()
+
+    installRichEditorTransformErrorRecovery(view, { recoverDocument })
+
+    expect(view.someProp('handleTextInput', (handler) => handler())).toBe(true)
+    expect(keyDownPlugin).toHaveBeenCalledTimes(1)
+    expect(recoverDocument).toHaveBeenCalledTimes(1)
+    expect(trackEvent).toHaveBeenCalledWith('rich_editor_transform_error_recovered', {
+      reason: 'null_fragment_append',
+    })
+  })
+
   it('recovers invalid table-cell joins thrown during keydown handling', () => {
     const { view, keyDownPlugin } = createViewWithSomeProp(() => {
       throw transformError('Cannot join tableCell onto blockContainer')
