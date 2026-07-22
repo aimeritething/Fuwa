@@ -124,7 +124,7 @@ function AiTargetModelTrigger({
         type="button"
         variant="ghost"
         size="xs"
-        className="min-w-0 max-w-full flex-1 justify-between gap-1.5 rounded-full px-2 text-[12px] text-muted-foreground hover:text-foreground"
+        className="min-w-0 max-w-full flex-1 !flex-none justify-start gap-1.5 rounded-full px-2 text-[12px] text-muted-foreground hover:text-foreground"
         disabled={disabled}
         aria-label={presentation.accessibleLabel}
         aria-busy={busy}

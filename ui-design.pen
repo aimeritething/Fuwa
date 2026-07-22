@@ -14641,6 +14641,121 @@
           "letterSpacing": 0
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "ai_target_content_width",
+      "x": 0,
+      "y": 14140,
+      "name": "AI target selector — content width",
+      "theme": {
+        "Mode": "Light"
+      },
+      "width": 720,
+      "height": 160,
+      "fill": "$--background",
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "ai_target_content_width_title",
+          "fill": "$--foreground",
+          "content": "AI composer controls",
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": "600"
+        },
+        {
+          "type": "frame",
+          "id": "ai_target_content_width_row",
+          "name": "Left-aligned intrinsic-width controls",
+          "width": "fill_container",
+          "height": 36,
+          "alignItems": "center",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ai_target_content_width_trigger",
+              "name": "Agent and model selector",
+              "height": 28,
+              "fill": "$--muted",
+              "cornerRadius": 14,
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ai_target_content_width_agent_icon",
+                  "fill": "$--accent-orange",
+                  "content": "✦",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "ai_target_content_width_label",
+                  "fill": "$--muted-foreground",
+                  "content": "Claude",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "ai_target_content_width_caret",
+                  "fill": "$--muted-foreground",
+                  "content": "⌄",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ai_target_content_width_permission",
+              "name": "Permission selector",
+              "height": 28,
+              "fill": "$--muted",
+              "cornerRadius": 14,
+              "padding": [
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ai_target_content_width_permission_label",
+                  "fill": "$--muted-foreground",
+                  "content": "Power User  ⌄",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "ai_target_content_width_note",
+          "fill": "$--muted-foreground",
+          "content": "Controls stay grouped on the left. The agent selector hugs its icon, label, and caret instead of filling the toolbar.",
+          "fontFamily": "Inter",
+          "fontSize": 12,
+          "fontWeight": "normal"
+        }
+      ]
     }
   ],
   "themes": {
