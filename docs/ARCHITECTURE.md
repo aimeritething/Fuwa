@@ -484,16 +484,14 @@ The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is repl
 
 ## Search
 
-Search is keyword-based and keeps a process-local index per vault. `walkdir` refreshes the visible `.md` path set, while unchanged files reuse indexed title/content and only created or metadata-changed files are read again. The index is never written to disk.
+Search is keyword-based, using `walkdir` to scan all `.md` files in the vault directory. No external binary or indexing step required.
 
-- Matches query against file titles, vault-relative paths, and content (case-insensitive)
-- Scores results by explicit match category: exact title, title, path, then body
+- Matches query against file titles and content (case-insensitive)
+- Scores results: title matches ranked higher than content-only matches
 - Extracts contextual snippets around the first match
 - Skips hidden files
 
-The `search_vault` Tauri command refreshes and queries the shared index in a blocking Tokio task, returning absolute and vault-relative paths plus match category and relevance score. Create, edit, rename, delete, Gitignore, and mount changes are detected on the next query.
-
-The global Quick Launcher is a singleton transparent, undecorated `quick-launcher` Tauri webview opened by `tauri-plugin-global-shortcut`. The main window alone owns the global registration, whose default is `Cmd+Option+T` on macOS and `Ctrl+Alt+T` elsewhere. Window creation and reuse are delegated to the native `show_quick_launcher` command: the renderer resolves its native title and recovery copy from the active JSON locale catalog, then the command builds the webview hidden and unfocused, configures both the native window and webview backing surfaces as transparent, disables the native rectangular shadow, and only then reveals and focuses it. Reused launchers refresh the localized native title and reassert their transparent backing surface before every reveal. Before the frontend bundle loads, `index.html` detects the launcher route, adds `quick-launcher-native-window`, and overrides its otherwise opaque critical-startup canvas; CSS is therefore responsible only for the rounded panel and diffused shadow, never for correcting native or boot-time opacity. Opening the launcher performs no vault scan: after the user types, its renderer fans `search_vault` out across available, mounted vaults whose installation-local `searchEnabled` preference is on, keys duplicates by vault slug plus relative path, and presents the native results with workspace identity from the in-memory vault registry. Selecting a result emits a validated `tolaria://` URL to the main window, which reuses `useDeepLinks` for vault switching, reload, and note selection even if a best-effort focus/unminimize call fails. Tauri's native run loop hides the launcher immediately on focus loss, independent of renderer state; Escape uses the renderer's key handler and the explicitly granted hide capability. Every non-empty query also remains available as a create-note action, even when search results match; `create_quick_launcher_note` performs root-level slugging, collision selection, boundary validation, and the create-only write atomically in Tauri, while the renderer exposes only the destination vault.
+The `search_vault` Tauri command runs the scan in a blocking Tokio task and returns results sorted by relevance score.
 
 The note-list search field combines client-side scoped filtering with that same command: title, snippet, and visible-property matches resolve immediately, while backend body-content hits use `search_vault` with frontmatter excluded before adding matching paths for the currently visible workspace roots without displaying matched body text in the note row.
 
@@ -851,7 +849,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 
 | Command | Description |
 |---------|-------------|
-| `search_vault` | Incremental indexed keyword search across vault titles, paths, and content |
+| `search_vault` | Keyword search across vault files |
 
 ### Vault Maintenance
 

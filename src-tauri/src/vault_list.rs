@@ -20,9 +20,6 @@ pub struct VaultEntry {
     pub icon: Option<String>,
     #[serde(default)]
     pub mounted: Option<bool>,
-    #[serde(default)]
-    #[serde(rename = "searchEnabled")]
-    pub search_enabled: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -223,7 +220,6 @@ mod tests {
                 color: Some("green".to_string()),
                 icon: Some("briefcase".to_string()),
                 mounted: Some(false),
-                search_enabled: Some(false),
             }],
             active_vault: Some("/tmp/personal".to_string()),
             default_workspace_path: Some("/tmp/team".to_string()),
@@ -233,7 +229,6 @@ mod tests {
         let loaded = save_and_reload(&list);
 
         assert_eq!(loaded.default_workspace_path.as_deref(), Some("/tmp/team"));
-        assert_eq!(loaded.vaults[0].search_enabled, Some(false));
         assert_eq!(loaded.vaults[0].alias.as_deref(), Some("team"));
         assert_eq!(loaded.vaults[0].short_label.as_deref(), Some("TN"));
         assert_eq!(loaded.vaults[0].color.as_deref(), Some("green"));

@@ -7,7 +7,6 @@ import type { FilePreviewKind } from '../utils/filePreview'
 import type { GitProviderId, NoteWidthMode } from '../types'
 import type { CommitMessageDraftSource } from '../utils/commitMessageDraft'
 import type { ThemeMode } from './themeMode'
-import type { QuickLauncherMatchCategory } from './quickLauncher'
 
 type TrackedPreviewKind = FilePreviewKind | 'unsupported'
 type FilePreviewAction = 'copy_deep_link' | 'copy_path' | 'open_external' | 'reveal'
@@ -68,58 +67,6 @@ export function trackStartupBackgroundReconciled(properties: {
     entry_count: properties.entryCount,
   })
 }
-
-function queryLengthBucket(length: number): 'short' | 'medium' | 'long' {
-  if (length <= 8) return 'short'
-  if (length <= 32) return 'medium'
-  return 'long'
-}
-
-function resultCountBucket(count: number): 'none' | 'some' | 'many' {
-  if (count === 0) return 'none'
-  return count <= 10 ? 'some' : 'many'
-}
-
-export function trackQuickLauncherOpened(): void {
-  trackEvent('quick_launcher_opened', {})
-}
-
-export function trackQuickLauncherSearchCompleted({
-  failedVaultCount,
-  queryLength,
-  resultCount,
-  scope,
-}: {
-  failedVaultCount: number
-  queryLength: number
-  resultCount: number
-  scope: 'all' | 'single'
-}): void {
-  trackEvent('quick_launcher_search_completed', {
-    failed_vault_count: failedVaultCount,
-    query_length_bucket: queryLengthBucket(queryLength),
-    result_count_bucket: resultCountBucket(resultCount),
-    scope,
-  })
-}
-
-export function trackQuickLauncherResultOpened(matchCategory: QuickLauncherMatchCategory): void {
-  trackEvent('quick_launcher_result_opened', { match_category: matchCategory })
-}
-
-export function trackQuickCaptureSaved({
-  collided,
-  openedAfterSave,
-}: {
-  collided: boolean
-  openedAfterSave: boolean
-}): void {
-  trackEvent('quick_capture_saved', {
-    collision_avoided: numericFlag(collided),
-    opened_after_save: numericFlag(openedAfterSave),
-  })
-}
-
 function aiAgentResponsePayload(
   agent: AiAgentId,
   response: AiAgentResponseText,

@@ -6,7 +6,6 @@ import {
   findNoteWindowEntry,
   getNoteWindowPathCandidates,
   isAiWorkspaceWindow,
-  isQuickLauncherWindow,
   rememberAiWorkspaceWindow,
   rememberNoteWindowParams,
 } from './windowMode'
@@ -139,24 +138,6 @@ describe('windowMode', () => {
       rememberAiWorkspaceWindow()
 
       expect(isAiWorkspaceWindow()).toBe(true)
-    })
-  })
-
-  describe('isQuickLauncherWindow', () => {
-    it('returns true for the quick launcher route', () => {
-      setSearch('?window=quick-launcher')
-      expect(isQuickLauncherWindow()).toBe(true)
-    })
-
-    it('returns true for the dedicated Tauri window label', () => {
-      setSearch('')
-      setCurrentWindowLabel('quick-launcher')
-      expect(isQuickLauncherWindow()).toBe(true)
-    })
-
-    it('returns false for the main window', () => {
-      setSearch('')
-      expect(isQuickLauncherWindow()).toBe(false)
     })
   })
 

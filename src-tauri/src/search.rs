@@ -1,27 +1,14 @@
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 use walkdir::WalkDir;
-
-#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum SearchMatchCategory {
-    ExactTitle,
-    Title,
-    Path,
-    Body,
-}
 
 #[derive(Debug, Serialize, Clone)]
 pub struct SearchResult {
     pub title: String,
     pub path: String,
-    pub relative_path: String,
     pub snippet: String,
     pub score: f64,
-    pub match_category: SearchMatchCategory,
     pub note_type: Option<String>,
 }
 
@@ -56,28 +43,6 @@ struct MatchScoreRequest<'a> {
     content_lower: &'a str,
     query_lower: &'a str,
 }
-
-#[derive(Clone, PartialEq, Eq)]
-struct SearchFileFingerprint {
-    modified: Option<SystemTime>,
-    size: u64,
-}
-
-#[derive(Clone)]
-struct SearchDocument {
-    content: String,
-    fingerprint: SearchFileFingerprint,
-    path: PathBuf,
-    relative_path: String,
-    title: String,
-}
-
-#[derive(Default)]
-struct VaultSearchIndex {
-    documents: HashMap<PathBuf, SearchDocument>,
-}
-
-static SEARCH_INDEXES: OnceLock<Mutex<HashMap<PathBuf, VaultSearchIndex>>> = OnceLock::new();
 
 impl Utf8Boundary<'_> {
     fn floor(&self, index: usize) -> usize {
@@ -207,107 +172,6 @@ fn collect_markdown_paths(vault_dir: &Path, hide_gitignored_files: bool) -> Vec<
     crate::vault::filter_gitignored_paths(vault_dir, paths, hide_gitignored_files)
 }
 
-fn search_indexes() -> &'static Mutex<HashMap<PathBuf, VaultSearchIndex>> {
-    SEARCH_INDEXES.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-fn search_file_fingerprint(path: &Path) -> Option<SearchFileFingerprint> {
-    let metadata = std::fs::metadata(path).ok()?;
-    Some(SearchFileFingerprint {
-        modified: metadata.modified().ok(),
-        size: metadata.len(),
-    })
-}
-
-fn vault_relative_search_path(vault_dir: &Path, path: &Path) -> String {
-    path.strip_prefix(vault_dir)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/")
-}
-
-fn load_search_document(
-    vault_dir: &Path,
-    path: PathBuf,
-    fingerprint: SearchFileFingerprint,
-) -> Option<SearchDocument> {
-    let content = std::fs::read_to_string(&path).ok()?;
-    let filename = path
-        .file_name()
-        .and_then(|value| value.to_str())
-        .unwrap_or("");
-    let title = crate::vault::derive_markdown_title_from_content(&content, filename);
-    Some(SearchDocument {
-        content,
-        fingerprint,
-        relative_path: vault_relative_search_path(vault_dir, &path),
-        path,
-        title,
-    })
-}
-
-fn refresh_search_index(vault_dir: &Path, hide_gitignored_files: bool) -> Vec<SearchDocument> {
-    let paths = collect_markdown_paths(vault_dir, hide_gitignored_files);
-    let visible_paths = paths.iter().cloned().collect::<HashSet<_>>();
-    let mut indexes = search_indexes()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let index = indexes.entry(vault_dir.to_path_buf()).or_default();
-    index
-        .documents
-        .retain(|path, _| visible_paths.contains(path));
-
-    for path in paths {
-        let Some(fingerprint) = search_file_fingerprint(&path) else {
-            index.documents.remove(&path);
-            continue;
-        };
-        let unchanged = index
-            .documents
-            .get(&path)
-            .is_some_and(|document| document.fingerprint == fingerprint);
-        if unchanged {
-            continue;
-        }
-        if let Some(document) = load_search_document(vault_dir, path.clone(), fingerprint) {
-            index.documents.insert(path, document);
-        } else {
-            index.documents.remove(&path);
-        }
-    }
-
-    index.documents.values().cloned().collect()
-}
-
-fn match_category(
-    title_lower: &str,
-    relative_path_lower: &str,
-    content_lower: &str,
-    query_lower: &str,
-) -> Option<SearchMatchCategory> {
-    if title_lower.trim() == query_lower.trim() {
-        return Some(SearchMatchCategory::ExactTitle);
-    }
-    if title_lower.contains(query_lower) {
-        return Some(SearchMatchCategory::Title);
-    }
-    if relative_path_lower.contains(query_lower) {
-        return Some(SearchMatchCategory::Path);
-    }
-    content_lower
-        .contains(query_lower)
-        .then_some(SearchMatchCategory::Body)
-}
-
-fn category_score(category: SearchMatchCategory) -> f64 {
-    match category {
-        SearchMatchCategory::ExactTitle => 40.0,
-        SearchMatchCategory::Title => 30.0,
-        SearchMatchCategory::Path => 20.0,
-        SearchMatchCategory::Body => 10.0,
-    }
-}
-
 pub fn search_vault_with_options(options: SearchOptions<'_>) -> Result<SearchResponse, String> {
     let start = Instant::now();
     let query_lower = options.query.to_lowercase();
@@ -315,41 +179,43 @@ pub fn search_vault_with_options(options: SearchOptions<'_>) -> Result<SearchRes
 
     let mut results: Vec<SearchResult> = Vec::new();
 
-    for document in refresh_search_index(vault_dir, options.hide_gitignored_files) {
-        let searchable_content = searchable_content(&document.content, options.exclude_frontmatter);
-        let content_lower = searchable_content.to_lowercase();
-        let title_lower = document.title.to_lowercase();
-        let relative_path_lower = document.relative_path.to_lowercase();
-        let Some(match_category) = match_category(
-            &title_lower,
-            &relative_path_lower,
-            &content_lower,
-            &query_lower,
-        ) else {
-            continue;
+    for path in collect_markdown_paths(vault_dir, options.hide_gitignored_files) {
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(_) => continue,
         };
 
-        let score = category_score(match_category)
-            + MatchScoreRequest {
-                title_lower: &title_lower,
-                content_lower: &content_lower,
-                query_lower: &query_lower,
-            }
-            .score();
+        let searchable_content = searchable_content(&content, options.exclude_frontmatter);
+        let content_lower = searchable_content.to_lowercase();
+        let filename = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("");
+        let title = crate::vault::derive_markdown_title_from_content(&content, filename);
+        let title_lower = title.to_lowercase();
+
+        if !title_lower.contains(&query_lower) && !content_lower.contains(&query_lower) {
+            continue;
+        }
+
+        let score = MatchScoreRequest {
+            title_lower: &title_lower,
+            content_lower: &content_lower,
+            query_lower: &query_lower,
+        }
+        .score();
         let snippet = SnippetRequest {
             content: searchable_content,
             query_lower: &query_lower,
         }
         .extract();
-        let full_path = document.path.to_string_lossy().to_string();
+        let full_path = path.to_string_lossy().to_string();
 
         results.push(SearchResult {
-            title: document.title,
+            title,
             path: full_path,
-            relative_path: document.relative_path,
             snippet,
             score,
-            match_category,
             note_type: None,
         });
     }
@@ -576,96 +442,5 @@ mod tests {
 
         assert_eq!(response.results.len(), 1);
         assert_eq!(response.results[0].title, "Body Match");
-    }
-
-    #[test]
-    fn test_search_vault_reports_title_path_and_body_match_categories() {
-        let dir = Builder::new()
-            .prefix("search-categories-")
-            .tempdir_in(std::env::current_dir().unwrap())
-            .unwrap();
-        fs::create_dir_all(dir.path().join("roadmaps")).unwrap();
-        fs::write(dir.path().join("exact.md"), "# Needle\n\nNo body match.").unwrap();
-        fs::write(
-            dir.path().join("roadmaps/needle-plan.md"),
-            "# Project Plan\n\nNo body match.",
-        )
-        .unwrap();
-        fs::write(
-            dir.path().join("body.md"),
-            "# Reference\n\nThe needle appears in the body.",
-        )
-        .unwrap();
-
-        let response = search_vault(dir.path().to_str().unwrap(), "needle", "keyword", 10).unwrap();
-
-        assert_eq!(
-            response.results[0].match_category,
-            SearchMatchCategory::ExactTitle
-        );
-        assert_eq!(
-            response.results[1].match_category,
-            SearchMatchCategory::Path
-        );
-        assert_eq!(
-            response.results[2].match_category,
-            SearchMatchCategory::Body
-        );
-        assert_eq!(response.results[1].relative_path, "roadmaps/needle-plan.md");
-    }
-
-    #[test]
-    fn test_search_index_refreshes_created_edited_renamed_and_deleted_notes() {
-        let dir = Builder::new()
-            .prefix("search-refresh-")
-            .tempdir_in(std::env::current_dir().unwrap())
-            .unwrap();
-        let first_path = dir.path().join("first.md");
-        let renamed_path = dir.path().join("renamed.md");
-
-        fs::write(&first_path, "# First\n\nalpha").unwrap();
-        assert_eq!(
-            search_vault(dir.path().to_str().unwrap(), "alpha", "keyword", 10)
-                .unwrap()
-                .results
-                .len(),
-            1
-        );
-
-        fs::write(&first_path, "# First\n\nbeta with a different length").unwrap();
-        assert!(
-            search_vault(dir.path().to_str().unwrap(), "alpha", "keyword", 10)
-                .unwrap()
-                .results
-                .is_empty()
-        );
-        assert_eq!(
-            search_vault(dir.path().to_str().unwrap(), "beta", "keyword", 10)
-                .unwrap()
-                .results
-                .len(),
-            1
-        );
-
-        fs::rename(&first_path, &renamed_path).unwrap();
-        let renamed = search_vault(dir.path().to_str().unwrap(), "renamed", "keyword", 10).unwrap();
-        assert_eq!(renamed.results[0].relative_path, "renamed.md");
-
-        fs::remove_file(&renamed_path).unwrap();
-        assert!(
-            search_vault(dir.path().to_str().unwrap(), "beta", "keyword", 10)
-                .unwrap()
-                .results
-                .is_empty()
-        );
-
-        fs::write(dir.path().join("created.md"), "# Created\n\ngamma").unwrap();
-        assert_eq!(
-            search_vault(dir.path().to_str().unwrap(), "gamma", "keyword", 10)
-                .unwrap()
-                .results
-                .len(),
-            1
-        );
     }
 }

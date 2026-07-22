@@ -38,7 +38,6 @@ pub use ignored::{filter_gitignored_entries, filter_gitignored_folders, filter_g
 pub use image::{copy_image_to_vault, save_image};
 pub use migration::migrate_is_a_to_type;
 pub use remote_image::download_remote_image;
-pub(crate) use rename::title_to_slug;
 pub use rename::{
     auto_rename_untitled, detect_renames, move_note_to_folder, move_note_to_workspace, rename_note,
     rename_note_filename, update_wikilinks_for_renames, AutoRenameUntitledRequest, DetectedRename,

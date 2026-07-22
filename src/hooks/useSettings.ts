@@ -69,10 +69,6 @@ const EMPTY_SETTINGS: Settings = {
   all_notes_show_images: null,
   all_notes_show_unsupported: null,
   multi_workspace_enabled: null,
-  quick_launcher_shortcut: null,
-  quick_capture_vault_path: null,
-  quick_capture_folder: null,
-  quick_capture_open_after_save: null,
 }
 
 function normalizeSettings(settings: Settings): Settings {
@@ -104,10 +100,6 @@ function normalizeSettings(settings: Settings): Settings {
     all_notes_show_images: settings.all_notes_show_images ?? null,
     all_notes_show_unsupported: settings.all_notes_show_unsupported ?? null,
     multi_workspace_enabled: settings.multi_workspace_enabled ?? null,
-    quick_launcher_shortcut: nullableTrimmedString(settings.quick_launcher_shortcut),
-    quick_capture_vault_path: nullableTrimmedString(settings.quick_capture_vault_path),
-    quick_capture_folder: nullableTrimmedString(settings.quick_capture_folder),
-    quick_capture_open_after_save: settings.quick_capture_open_after_save ?? null,
   }
 }
 

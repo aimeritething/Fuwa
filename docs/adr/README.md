@@ -221,7 +221,6 @@ proposed → active → superseded
 | [0161](0161-parent-git-workspace-context.md) | Parent Git workspace context | active |
 | [0162](0162-safe-local-import-of-remote-paste-images.md) | Safe local import of remote paste images | active |
 | [0163](0163-agent-owned-model-selection.md) | Agent-owned model discovery and selection | active |
-| [0164](0164-local-cross-vault-quick-launcher-index.md) | Local incremental index for the cross-vault Quick Launcher | active |
 | [0165](0165-window-owned-vault-watchers-and-main-window-git-background-work.md) | Window-owned vault watchers and main-window Git background work | active |
 | [0166](0166-snapshot-first-progressive-vault-startup.md) | Snapshot-first progressive vault startup | active |
 | [0167](0167-non-collapsible-callout-scope.md) | Non-collapsible callout scope | active |

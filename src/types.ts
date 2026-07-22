@@ -149,10 +149,6 @@ export interface Settings {
   all_notes_show_images?: boolean | null
   all_notes_show_unsupported?: boolean | null
   multi_workspace_enabled?: boolean | null
-  quick_launcher_shortcut?: string | null
-  quick_capture_vault_path?: string | null
-  quick_capture_folder?: string | null
-  quick_capture_open_after_save?: boolean | null
 }
 
 export interface AiWorkspaceConversationSetting {

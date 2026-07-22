@@ -123,10 +123,6 @@ pub struct Settings {
     pub all_notes_show_images: Option<bool>,
     pub all_notes_show_unsupported: Option<bool>,
     pub multi_workspace_enabled: Option<bool>,
-    pub quick_launcher_shortcut: Option<String>,
-    pub quick_capture_vault_path: Option<String>,
-    pub quick_capture_folder: Option<String>,
-    pub quick_capture_open_after_save: Option<bool>,
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -258,10 +254,6 @@ fn normalize_settings(settings: Settings) -> Settings {
         all_notes_show_images: settings.all_notes_show_images,
         all_notes_show_unsupported: settings.all_notes_show_unsupported,
         multi_workspace_enabled: settings.multi_workspace_enabled,
-        quick_launcher_shortcut: normalize_optional_string(settings.quick_launcher_shortcut),
-        quick_capture_vault_path: normalize_optional_string(settings.quick_capture_vault_path),
-        quick_capture_folder: normalize_optional_string(settings.quick_capture_folder),
-        quick_capture_open_after_save: settings.quick_capture_open_after_save,
     }
 }
 
@@ -486,40 +478,10 @@ mod tests {
             all_notes_show_pdfs: Some(true),
             all_notes_show_images: Some(true),
             all_notes_show_unsupported: Some(false),
-            quick_launcher_shortcut: Some("CommandOrControl+Shift+K".to_string()),
-            quick_capture_vault_path: Some(" /vault ".to_string()),
-            quick_capture_folder: Some(" inbox ".to_string()),
-            quick_capture_open_after_save: Some(true),
         };
         let json = serde_json::to_string(&settings).unwrap();
         let parsed: Settings = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, settings);
-    }
-
-    #[test]
-    fn test_quick_launcher_settings_trim_optional_paths() {
-        let loaded = save_and_reload(Settings {
-            quick_launcher_shortcut: Some(" CommandOrControl+Shift+K ".to_string()),
-            quick_capture_vault_path: Some(" /vault ".to_string()),
-            quick_capture_folder: Some(" inbox ".to_string()),
-            quick_capture_open_after_save: Some(false),
-            ..Settings::default()
-        });
-
-        assert_eq!(
-            (
-                loaded.quick_launcher_shortcut.as_deref(),
-                loaded.quick_capture_vault_path.as_deref(),
-                loaded.quick_capture_folder.as_deref(),
-                loaded.quick_capture_open_after_save,
-            ),
-            (
-                Some("CommandOrControl+Shift+K"),
-                Some("/vault"),
-                Some("inbox"),
-                Some(false),
-            )
-        );
     }
 
     #[test]

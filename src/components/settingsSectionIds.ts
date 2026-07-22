@@ -1,7 +1,6 @@
 export const SETTINGS_SECTION_IDS = {
   sync: 'settings-section-sync',
   workspaces: 'settings-section-workspaces',
-  quickLauncher: 'settings-section-quick-launcher',
   autogit: 'settings-section-autogit',
   appearance: 'settings-section-appearance',
   content: 'settings-section-content',

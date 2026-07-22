@@ -405,11 +405,6 @@
     width: 100%;
     height: 100%;
   }
-  html.quick-launcher-native-window,
-  html.quick-launcher-native-window body,
-  html.quick-launcher-native-window #root {
-    background: transparent;
-  }
   html,
   body,
   #root {

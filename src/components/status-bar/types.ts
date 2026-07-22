@@ -8,5 +8,4 @@ export interface VaultOption {
   mounted?: boolean
   managedDefault?: boolean
   available?: boolean
-  searchEnabled?: boolean
 }

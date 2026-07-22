@@ -67,7 +67,7 @@ struct WikilinkUpdateSummary {
 }
 
 /// Convert a title to a filename slug (lowercase, hyphens, Unicode letters/digits preserved).
-pub(crate) fn title_to_slug(title: &str) -> String {
+pub(super) fn title_to_slug(title: &str) -> String {
     let slug = title
         .to_lowercase()
         .chars()

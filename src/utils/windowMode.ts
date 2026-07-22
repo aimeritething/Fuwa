@@ -20,7 +20,6 @@ interface TauriWindowInternals {
 const NOTE_WINDOW_STORAGE_PREFIX = 'tolaria:note-window:'
 const AI_WORKSPACE_WINDOW_STORAGE_PREFIX = 'tolaria:ai-workspace-window:'
 const AI_WORKSPACE_WINDOW_LABEL = 'ai-workspace'
-const QUICK_LAUNCHER_WINDOW_LABEL = 'quick-launcher'
 const AI_WORKSPACE_WINDOW_STORAGE_KEY = `${AI_WORKSPACE_WINDOW_STORAGE_PREFIX}${AI_WORKSPACE_WINDOW_LABEL}`
 
 function getCurrentWindowLabel(): string | null {
@@ -105,12 +104,6 @@ export function isAiWorkspaceWindow(): boolean {
   } catch {
     return false
   }
-}
-
-export function isQuickLauncherWindow(): boolean {
-  const params = new URLSearchParams(window.location.search)
-  return params.get('window') === QUICK_LAUNCHER_WINDOW_LABEL
-    || getCurrentWindowLabel() === QUICK_LAUNCHER_WINDOW_LABEL
 }
 
 export function getNoteWindowParams(): NoteWindowParams | null {

@@ -7,7 +7,6 @@ export interface LaputaTestBridge {
   activeTabPath?: string | null
   dispatchAppCommand?: (id: string) => void
   openDeepLink?: (url: string) => void
-  quickLauncherOpenUrl?: string
   dispatchShortcutEvent?: (init: AppCommandShortcutEventInit) => void
   dispatchBrowserMenuCommand?: (id: string) => void
   triggerMenuCommand?: (id: string) => Promise<unknown>

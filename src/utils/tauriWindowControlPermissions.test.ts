@@ -13,8 +13,7 @@ const LINUX_WINDOW_CHROME_PERMISSIONS = [
   'core:window:allow-close',
 ] as const
 const NOTE_PDF_EXPORT_PERMISSIONS = ['core:webview:allow-print'] as const
-const QUICK_LAUNCHER_WINDOW_PERMISSIONS = [
-  'core:window:allow-hide',
+const AI_WORKSPACE_RESTORE_PERMISSIONS = [
   'core:window:allow-set-focus',
   'core:window:allow-show',
   'core:window:allow-unminimize',
@@ -39,13 +38,13 @@ describe('Tauri window-control permissions', () => {
     expect(capability.windows).toEqual(expect.arrayContaining(['main', 'ai-workspace', 'note-*']))
   })
 
-  it('allows the quick launcher to show, focus, and dismiss its native window', () => {
+  it('allows the AI workspace to restore and focus its existing window', () => {
     const capability = JSON.parse(
       readFileSync(`${process.cwd()}/src-tauri/capabilities/default.json`, 'utf8'),
     ) as TauriCapability
 
     expect(capability.permissions).toEqual(
-      expect.arrayContaining([...QUICK_LAUNCHER_WINDOW_PERMISSIONS]),
+      expect.arrayContaining([...AI_WORKSPACE_RESTORE_PERMISSIONS]),
     )
   })
 

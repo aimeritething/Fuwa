@@ -28,14 +28,9 @@
           }
         });
 
-        var windowMode;
         try {
-          windowMode = new URLSearchParams(window.location.search).get('window');
-          if (windowMode === 'ai-workspace') {
+          if (new URLSearchParams(window.location.search).get('window') === 'ai-workspace') {
             document.documentElement.classList.add('ai-workspace-native-window');
-          }
-          if (windowMode === 'quick-launcher') {
-            document.documentElement.classList.add('quick-launcher-native-window');
           }
         } catch {
           // Leave the normal app chrome untouched if URL parsing is unavailable.
@@ -223,14 +218,6 @@
         background: #1F1E1B;
         border-color: #34322D;
         box-shadow: 0 12px 26px rgba(0, 0, 0, 0.30), 0 1px 4px rgba(0, 0, 0, 0.22);
-      }
-      :root.quick-launcher-native-window,
-      :root.quick-launcher-native-window body,
-      :root.quick-launcher-native-window #root {
-        background: transparent;
-      }
-      :root.quick-launcher-native-window .startup-shell-fallback {
-        display: none;
       }
     </style>
     <title>Tolaria</title>

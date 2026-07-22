@@ -24,21 +24,6 @@ function firstInlineScriptFromIndex(): string {
 }
 
 describe('index startup script', () => {
-  it('marks the quick launcher canvas before React starts', () => {
-    const originalUrl = window.location.href
-    try {
-      window.history.replaceState(null, '', '/?window=quick-launcher')
-      document.documentElement.classList.remove('quick-launcher-native-window')
-
-      new Function(firstInlineScriptFromIndex())()
-
-      expect(document.documentElement).toHaveClass('quick-launcher-native-window')
-    } finally {
-      document.documentElement.classList.remove('quick-launcher-native-window')
-      window.history.replaceState(null, '', originalUrl)
-    }
-  })
-
   it('does not ship a visible boot diagnostics element by default', () => {
     const html = indexHtml()
 
