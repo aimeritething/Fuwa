@@ -708,10 +708,10 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .editor__code-line-number {
-  color: var(--editor-code-block-language);
+  color: var(--text-muted);
   display: inline-block;
-  margin-inline-end: 0.75rem;
-  margin-inline-start: -2.75rem;
+  margin-inline-end: 1rem;
+  margin-inline-start: -3rem;
   pointer-events: none;
   text-align: right;
   user-select: none;
