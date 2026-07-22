@@ -10,6 +10,8 @@ describe('rawEditorLanguageIdForPath', () => {
     ['/vault/data/config.yml', 'yaml'],
     ['/vault/data/package.json', 'json'],
     ['/vault/data/settings.jsonc', 'json'],
+    ['/vault/reports/dashboard.html', 'html'],
+    ['/vault/reports/dashboard.HTM', 'html'],
     ['/vault/scripts/report.py', 'python'],
     ['/vault/scripts/report.pyw', 'python'],
   ])('maps %s to %s syntax highlighting', (path, languageId) => {

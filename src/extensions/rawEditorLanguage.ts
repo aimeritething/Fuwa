@@ -1,3 +1,4 @@
+import { html } from '@codemirror/lang-html'
 import { javascript } from '@codemirror/lang-javascript'
 import { json } from '@codemirror/lang-json'
 import { python } from '@codemirror/lang-python'
@@ -21,6 +22,7 @@ function highlighted(language: Extension): Extension[] {
 
 function markupLanguage(id: RawEditorLanguageId): Extension[] | null {
   switch (id) {
+    case 'html': return highlighted(html())
     case 'json': return highlighted(json())
     case 'markdown': return [markdownLanguage(), frontmatterHighlightTheme(), frontmatterHighlightPlugin]
     case 'plain': return []

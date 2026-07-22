@@ -118,7 +118,9 @@ test('previews standalone HTML and exposes source through the breadcrumb and key
   await page.evaluate(() => window.dispatchEvent(new Event('afterprint')))
 
   await page.getByRole('button', { name: 'Open the raw editor' }).click()
-  await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
+  const rawEditor = page.getByTestId('raw-editor-codemirror')
+  await expect(rawEditor).toBeVisible({ timeout: 5_000 })
+  await expect(rawEditor.locator('.cm-line span')).not.toHaveCount(0)
 
   await page.getByRole('button', { name: 'Return to the editor' }).click()
   await expect(preview).toBeVisible({ timeout: 5_000 })

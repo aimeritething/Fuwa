@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
-import { syntaxTree } from '@codemirror/language'
+import { language, syntaxTree } from '@codemirror/language'
 import type { EditorView } from '@codemirror/view'
 import { RawEditorView } from './RawEditorView'
 
@@ -58,6 +58,19 @@ describe('RawEditorView', () => {
 
     const container = screen.getByTestId('raw-editor-codemirror') as CodeMirrorHost
     expect(syntaxTree(container.__cmView!.state).toString()).toContain('Keyword')
+  })
+
+  it('uses the HTML language for standalone HTML source', () => {
+    render(<RawEditorView
+      {...defaultProps}
+      path="/vault/reports/dashboard.html"
+    />)
+
+    const container = screen.getByTestId('raw-editor-codemirror') as CodeMirrorHost
+    const view = container.__cmView
+    expect(view).toBeDefined()
+    if (!view) return
+    expect(view.state.facet(language)?.name).toBe('html')
   })
 
   it('keeps the editable CodeMirror surface out of spellcheck without disabling IME autocorrection', () => {

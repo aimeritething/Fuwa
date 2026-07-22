@@ -1,4 +1,5 @@
 export type RawEditorLanguageId =
+  | 'html'
   | 'javascript'
   | 'json'
   | 'jsx'
@@ -13,6 +14,8 @@ export type RawEditorLanguageId =
 const LANGUAGE_BY_EXTENSION = new Map<string, RawEditorLanguageId>([
   ['cjs', 'javascript'],
   ['cts', 'typescript'],
+  ['htm', 'html'],
+  ['html', 'html'],
   ['js', 'javascript'],
   ['json', 'json'],
   ['jsonc', 'json'],
