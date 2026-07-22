@@ -1082,7 +1082,16 @@
   "quickLauncher.shortcutHint": "⌘↵ to save · Esc to close",
   "quickLauncher.createNote": "Create note \"{title}\"",
   "quickLauncher.saveToVault": "Save to vault",
-  "quickLauncher.actionError": "Could not complete that action. Try again."
+  "quickLauncher.actionError": "Could not complete that action. Try again.",
+  "quickLauncher.native.title": "Tolaria Quick Launcher",
+  "quickLauncher.native.error.clearBackground": "Failed to clear quick launcher background: {error}",
+  "quickLauncher.native.error.create": "Failed to create quick launcher: {error}",
+  "quickLauncher.native.error.desktopOnly": "The quick launcher is only available on desktop",
+  "quickLauncher.native.error.disableShadow": "Failed to disable quick launcher native shadow: {error}",
+  "quickLauncher.native.error.focus": "Failed to focus quick launcher: {error}",
+  "quickLauncher.native.error.show": "Failed to show quick launcher: {error}",
+  "quickLauncher.native.error.title": "Failed to update quick launcher title: {error}",
+  "quickLauncher.native.error.unminimize": "Failed to unminimize quick launcher: {error}"
   ,"settings.quickLauncher.title": "Quick Launcher"
   ,"settings.quickLauncher.shortcut": "Global shortcut"
   ,"settings.quickLauncher.shortcutDescription": "Focus the field and press a new key combination. Changes take effect after saving settings."

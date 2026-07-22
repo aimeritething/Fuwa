@@ -1085,6 +1085,15 @@ files:
     quickLauncher.createNote: a4e964a3bc5b25e7ae87163624731e05
     quickLauncher.saveToVault: 63d5ffee2b1442cf5e866de83b43ab99
     quickLauncher.actionError: 260316e6f15f6302324c409bcbb3f8ba
+    quickLauncher.native.title: 44e4ca400fe2cccfecf726ccec30adf1
+    quickLauncher.native.error.clearBackground: aeeef278d609299000cf6a2f2bc86103
+    quickLauncher.native.error.create: 3704b4ce23dee662470fa8359e29f029
+    quickLauncher.native.error.desktopOnly: 468f00211e23da66dd682237db11e75f
+    quickLauncher.native.error.disableShadow: 8971779ad056105b3dc44f0bfd7ddaa4
+    quickLauncher.native.error.focus: 46ce83c620f55139e17dff01c4ad0d3c
+    quickLauncher.native.error.show: b1cef0783f62c0f87de6a5b2ffd21dca
+    quickLauncher.native.error.title: b8a5236001015249b175622266955f0e
+    quickLauncher.native.error.unminimize: a3067f94b1219b59b78ef2340d0f13c3
     settings.quickLauncher.title: 045b0bed73beb65380d256643f5281d4
     settings.quickLauncher.shortcut: a04d49cdc46809a13b0b7de875f9f7df
     settings.quickLauncher.shortcutDescription: 0349ce360ca58eee01130e69bd479e9c
