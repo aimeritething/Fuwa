@@ -91,7 +91,7 @@ export function ViewsSection({
   entries: VaultEntry[]
   locale?: AppLocale
 }) {
-  const viewIds = views.map(viewIdentityKey)
+  const viewIds = views.map((view) => view.filename)
   const handleViewDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -175,8 +175,7 @@ function SortableViewItem({
   entries: VaultEntry[]
   locale?: AppLocale
 }) {
-  const viewId = viewIdentityKey(view)
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: viewId })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: view.filename })
 
   return (
     <div
