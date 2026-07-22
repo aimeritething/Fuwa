@@ -548,4 +548,62 @@ describe('useNoteRename hook', () => {
     )
     expect(setToastMessage).toHaveBeenCalledWith('Moved to "Team" and updated 1 note')
   })
+
+  it('refreshes open backlinks after moving a note between workspaces', async () => {
+    const sourceWorkspace = makeWorkspace('/personal', 'personal')
+    const destinationWorkspace = makeWorkspace('/team', 'team')
+    destinationWorkspace.label = 'Team'
+    const entry = makeEntry({
+      path: '/personal/notes/project-kickoff.md',
+      filename: 'project-kickoff.md',
+      title: 'Project Kickoff',
+      workspace: sourceWorkspace,
+    })
+    const backlinkEntry = makeEntry({
+      path: '/personal/index.md',
+      filename: 'index.md',
+      title: 'Index',
+      workspace: sourceWorkspace,
+    })
+    const reloadedBacklinkContent = '# Index\n\nMoved link: [[team/notes/project-kickoff]]\n'
+    vi.mocked(mockInvoke).mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'move_note_to_workspace') {
+        return {
+          new_path: '/team/notes/project-kickoff.md',
+          updated_files: 1,
+          failed_updates: 0,
+        }
+      }
+      if (cmd === 'get_note_content') {
+        return args?.path === '/personal/index.md' ? reloadedBacklinkContent : '# Project Kickoff\n'
+      }
+      return ''
+    })
+
+    const { result } = renderHook(() => useNoteRename(
+      { entries: [entry, backlinkEntry], setToastMessage },
+      {
+        tabs: [
+          { entry, content: '# Project Kickoff\n' },
+          { entry: backlinkEntry, content: '# Index\n\nOld link: [[notes/project-kickoff]]\n' },
+        ],
+        setTabs,
+        activeTabPathRef,
+        handleSwitchTab,
+        updateTabContent,
+      },
+    ))
+
+    await act(async () => {
+      await result.current.handleMoveNoteToWorkspace(
+        '/personal/notes/project-kickoff.md',
+        destinationWorkspace,
+        '/personal',
+        vi.fn(),
+      )
+    })
+
+    expect(updateTabContent).toHaveBeenCalledWith('/personal/index.md', reloadedBacklinkContent)
+    expect(setToastMessage).toHaveBeenCalledWith('Moved to "Team" and updated 1 note')
+  })
 })
