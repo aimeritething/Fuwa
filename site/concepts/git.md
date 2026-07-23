@@ -27,3 +27,13 @@ You can commit changes inside Tolaria without leaving the app. This gives you us
 ## Remotes
 
 Connect a compatible Git remote when you want sync or backup. Tolaria relies on your system Git authentication, so GitHub CLI, SSH keys, credential helpers, and existing Git configuration can continue to work.
+
+## Vaults Inside A Parent Repository
+
+A vault can be a folder inside a larger Git repository. Tolaria discovers the nearest parent work tree but keeps the selected vault as the content boundary:
+
+- status, diffs, history, and app-created commits include only vault files
+- files elsewhere in the repository do not appear as Tolaria notes
+- pull, push, branch, merge, and rebase state still belong to the whole repository
+
+The resolved Git root is visible in Settings when it differs from the vault root.

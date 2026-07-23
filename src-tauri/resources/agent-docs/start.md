@@ -55,11 +55,17 @@ It exists to show Tolaria's conventions without requiring you to restructure you
 ## What It Demonstrates
 
 - Markdown notes with YAML frontmatter.
-- Types such as Project, Person, Topic, and Procedure.
+- Types such as Note, Project, Person, and Topic.
 - Wikilinks in note bodies.
 - Relationship fields in frontmatter.
+- Rich-editor blocks, callouts, collapsible sections, and durable formatting.
+- A spreadsheet with formulas and a cross-note frontmatter reference.
+- An HTML dashboard powered by vault expressions.
+- A standalone HTML report that can be previewed or edited in raw mode.
 - A local Git repository that can be connected to a remote later.
-- Vault guidance files for AI agents.
+- Vault guidance files plus example workflows for AI agents and direct models.
+
+In the cloned vault, open **Editor Playground** for block editing, **Project Dashboard** for vault expressions, and **Sample Report** for standalone HTML preview.
 
 ## Local-Only By Default
 
@@ -68,6 +74,8 @@ When Tolaria clones the sample, it removes the remote from the local copy. This 
 To connect a vault to your own remote, use the bottom status bar remote chip or run `Add Remote` from the command palette.
 
 Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Antigravity/Gemini guidance.
+
+Start with the `Start here!` view and follow **Get familiar with Tolaria**. The checklist links to working examples, so you can try each feature without changing your own notes.
 
 ## Use It Alongside Your Own Vaults
 

@@ -45,6 +45,7 @@ When users ask how to improve a knowledge base, structure notes, choose types, m
 - [Use The Command Palette](pages/guides/use-command-palette.md)
 - [Use HTML Blocks](pages/guides/use-html-blocks.md)
 - [Use Media Previews](pages/guides/use-media-previews.md)
+- [Use The Rich Editor](pages/guides/use-rich-editor.md)
 - [Use Spreadsheets](pages/guides/use-spreadsheets.md)
 - [Use The Table Of Contents](pages/guides/use-table-of-contents.md)
 - [Use Wikilinks](pages/guides/use-wikilinks.md)

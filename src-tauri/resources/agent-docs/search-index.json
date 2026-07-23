@@ -62,6 +62,7 @@
     "section": "concepts",
     "headings": [
       "Coding Agents",
+      "Agent Models",
       "Direct Models",
       "External MCP Setup",
       "Why Git Matters For AI"
@@ -89,6 +90,7 @@
       "Mermaid Diagrams",
       "Attachments",
       "Previews",
+      "HTML Files",
       "Whiteboards",
       "Git Boundary"
     ]
@@ -102,7 +104,8 @@
       "What Tolaria Uses Git For",
       "History And Diffs",
       "Local Commits",
-      "Remotes"
+      "Remotes",
+      "Vaults Inside A Parent Repository"
     ]
   },
   {
@@ -293,6 +296,7 @@
     "headings": [
       "Choose How To Prompt",
       "Choose A Target",
+      "Choose An Agent Model",
       "Permission Mode",
       "Good Requests",
       "Review Changes"
@@ -331,6 +335,21 @@
       "All Notes Visibility",
       "Attachments",
       "Troubleshooting"
+    ]
+  },
+  {
+    "title": "Use The Rich Editor",
+    "path": "pages/guides/use-rich-editor.md",
+    "url": "/guides/use-rich-editor",
+    "section": "guides",
+    "headings": [
+      "Insert Common Blocks",
+      "Select And Move Whole Blocks",
+      "Collapse Long Sections",
+      "Write Code",
+      "Add Callouts",
+      "Highlight Text",
+      "Check The Markdown"
     ]
   },
   {
@@ -408,6 +427,7 @@
     "headings": [
       "Update Docs When You Change",
       "Suggested Workflow",
+      "Release Communication Check",
       "Page Types",
       "Review Checklist"
     ]
@@ -438,7 +458,9 @@
     "path": "pages/reference/keyboard-shortcuts.md",
     "url": "/reference/keyboard-shortcuts",
     "section": "reference",
-    "headings": []
+    "headings": [
+      "Rich Editor Shortcuts"
+    ]
   },
   {
     "title": "Release Channels",

@@ -71,6 +71,7 @@ export default defineConfig({
           { text: "Capture A Note", link: "/guides/capture-a-note" },
           { text: "Organize The Inbox", link: "/guides/organize-inbox" },
           { text: "Use Wikilinks", link: "/guides/use-wikilinks" },
+          { text: "Use The Rich Editor", link: "/guides/use-rich-editor" },
           { text: "Use HTML Blocks", link: "/guides/use-html-blocks" },
           { text: "Use Spreadsheets", link: "/guides/use-spreadsheets" },
           { text: "Create Types", link: "/guides/create-types" },

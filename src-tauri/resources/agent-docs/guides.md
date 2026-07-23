@@ -287,11 +287,17 @@ Tolaria gives you two ways to ask for AI help: open the AI panel for an ongoing 
 
 Open Settings and choose the default AI target:
 
-- **Coding agent** for tool-backed vault editing through Claude Code, Codex, OpenCode, Pi, or Antigravity CLI.
+- **Coding agent** for tool-backed vault editing through Claude Code, Codex, GitHub Copilot, OpenCode, Pi, Antigravity CLI, Kiro, or Hermes Agent.
 - **Local model** for Ollama or LM Studio chat over note context.
 - **API model** for OpenAI, Anthropic, Gemini, OpenRouter, or an OpenAI-compatible endpoint.
 
 If a coding agent is missing, install it and reopen Tolaria or switch to another target.
+
+## Choose An Agent Model
+
+Some coding agents expose a model picker in the AI workspace. Choose **Agent default** to let the CLI decide, or select one of the models reported by the installed agent.
+
+Tolaria remembers the choice separately for each agent. If an agent removes a previously selected model, Tolaria falls back to **Agent default** instead of sending an obsolete model ID.
 
 ## Permission Mode
 
@@ -312,6 +318,8 @@ Direct model targets always stay in chat mode. They can use note context, but th
 ## Review Changes
 
 AI edits are file edits. Review them with Tolaria's diff and Git history before committing.
+
+Use the stop control when a request is no longer useful or an agent is taking the wrong direction. Stopping ends the active stream without changing the target for your next request.
 
 ---
 
@@ -454,7 +462,9 @@ Media previews let you inspect vault files without leaving Tolaria.
 
 ## Open A File
 
-Select an image, PDF, media file, or unsupported file from a folder or file list. Tolaria opens supported files in the app and offers an external-open action for files that should use the system default app.
+Select an image, PDF, media file, HTML file, or unsupported file from a folder or file list. Tolaria opens supported files in the app and offers an external-open action for files that should use the system default app.
+
+Standalone HTML files open as sanitized previews. Toggle raw mode to edit their source, and use the external-open action when a page needs scripts, forms, remote resources, or other browser behavior that the safe preview intentionally disables.
 
 ## All Notes Visibility
 
@@ -470,9 +480,96 @@ Folder browsing still shows files in their folders even when a category is hidde
 
 When you paste or drop an image into a note, Tolaria copies it into the vault and references the copied file from Markdown.
 
+When you paste a selection from a web page, Tolaria also tries to import public `http` and `https` images into the vault. The text is pasted immediately while image imports finish in the background. Successful imports become portable `attachments/...` references; failed imports remain remote and produce a non-blocking message.
+
 ## Troubleshooting
 
 If a preview does not render, open the file in the default app to confirm the file is valid, then check whether the file is inside the active vault and not blocked by operating-system permissions.
+
+If a pasted web image stays remote, the host may have rejected the download, the response may not be a supported image, or the URL may have failed Tolaria's local-network and size safety checks.
+
+---
+
+# Use The Rich Editor
+
+Source: guides/use-rich-editor.md
+URL: /guides/use-rich-editor
+
+# Use The Rich Editor
+
+Tolaria's rich editor gives you block-based editing while keeping the note as portable Markdown. Use these workflows to move quickly without losing access to the underlying file.
+
+## Insert Common Blocks
+
+Type `/` on an empty line to open the slash menu. Useful commands include:
+
+- headings, lists, quotes, and dividers
+- todo blocks
+- code blocks
+- tables
+- the current date
+- the current time
+
+Use `Cmd+T` on macOS or `Ctrl+T` on Windows and Linux to toggle the current block between a paragraph and a todo.
+
+## Select And Move Whole Blocks
+
+Press `Esc` while editing to select the current block. While block selection is active:
+
+- `Up` and `Down` move the selection.
+- `Shift+Up` and `Shift+Down` extend it.
+- `Enter` returns to text editing.
+- `Cmd+Shift+Up` and `Cmd+Shift+Down` move selected blocks on macOS. Use `Ctrl+Shift+Up` and `Ctrl+Shift+Down` on Windows and Linux.
+- Copy, cut, paste, and delete operate on the selected blocks.
+
+Collapsed heading content travels with its heading when you copy, cut, delete, or move the selected section.
+
+## Collapse Long Sections
+
+Headings can hide the content below them until the next heading at the same or higher level. Use the disclosure control beside a heading, or select the heading block and press `Cmd+Enter` on macOS or `Ctrl+Enter` on Windows and Linux.
+
+Collapsing a section changes only the editor presentation. Tolaria does not add private folding syntax to the Markdown file.
+
+## Write Code
+
+Create a code block from the slash menu, type a triple-backtick fence and press `Enter`, or use `Cmd+Shift+Backtick` on macOS and `Ctrl+Shift+Backtick` on Windows and Linux.
+
+Choose the language from the code block control to enable syntax highlighting. Line numbers are presentation-only and are not written into the note.
+
+## Add Callouts
+
+Tolaria renders Obsidian-style callouts and GitHub alert syntax as editable blocks while preserving the Markdown:
+
+```md
+> [!NOTE] Local-first
+> This note stays readable outside Tolaria.
+```
+
+Use `+` or `-` after the callout type to choose its initial fold state:
+
+```md
+> [!TIP]- Optional details
+> This callout starts collapsed.
+```
+
+The callout body remains editable in rich mode. Change the callout type, title, or initial fold marker in raw mode.
+
+## Highlight Text
+
+Select text and use the formatting toolbar, or press `Cmd+Shift+M` on macOS and `Ctrl+Shift+M` on Windows and Linux. Tolaria saves highlights as `==highlighted text==`.
+
+## Check The Markdown
+
+Toggle raw mode with `Cmd+\` on macOS or `Ctrl+\` on Windows and Linux. Raw mode is useful for:
+
+- checking the exact Markdown representation
+- editing YAML frontmatter
+- changing callout markers
+- repairing unusual pasted content
+
+Invalid YAML frontmatter is highlighted so you can find structural problems without guessing where parsing failed.
+
+For web capture and file previews, continue with [Use Media Previews](/guides/use-media-previews). For longer notes, see [Use The Table Of Contents](/guides/use-table-of-contents).
 
 ---
 

@@ -9,12 +9,29 @@ Tolaria has two AI paths: coding agents that can use tools to inspect and edit a
 
 ## Coding Agents
 
-The AI panel can stream supported local CLI agents through Tolaria's normalized event layer. Current targets include Claude Code, Codex, OpenCode, Pi, and Antigravity CLI when they are installed on the machine.
+The AI panel can stream supported local CLI agents through Tolaria's normalized event layer. Current targets include:
+
+- Claude Code
+- Codex
+- GitHub Copilot
+- OpenCode
+- Pi
+- Antigravity CLI
+- Kiro
+- Hermes Agent
+
+Tolaria detects agents installed on the machine. Each agent still owns its authentication, available tools, and runtime behavior.
 
 Coding agents can run in:
 
 - **Vault Safe** mode, limited to file, search, and edit tools.
 - **Power User** mode, which can allow local shell commands scoped to the active vault for agents that support shell access.
+
+## Agent Models
+
+Agents that expose a reliable model catalog can show a model selector in the AI workspace. Tolaria currently discovers Codex models and exposes Claude Code's documented aliases. Other agents continue to use their own default model.
+
+Model preferences are stored per agent on the current device. Switching agents restores that agent's previous choice, and selecting **Agent default** lets the CLI decide.
 
 ## Direct Models
 
@@ -31,6 +48,8 @@ Supported provider shapes include:
 Tolaria exposes an MCP server for external tools. The setup flow can write Tolaria's MCP entry into Claude Code, Antigravity CLI, Cursor, and a generic MCP config path, and it can also copy the exact JSON snippet for manual setup.
 
 MCP setup is explicit. Closing the dialog leaves third-party config files untouched.
+
+The MCP server can search and read vault content, create notes, update a complete note, or append content to an existing note. `update_note` supports an optional modification-time guard for safer read-modify-write workflows, and both write operations refresh Tolaria after the file changes.
 
 ## Why Git Matters For AI
 
@@ -49,9 +68,13 @@ Tolaria offers a rich editor for daily writing and a raw Markdown mode for exact
 
 ## Rich Editing
 
-The rich editor supports blocks, slash commands, wikilinks, tables, code blocks, images, Mermaid diagrams, LaTeX-style math, sandboxed HTML blocks, and markdown-backed whiteboards.
+The rich editor supports blocks, slash commands, wikilinks, tables, code blocks, editable callouts, images, Mermaid diagrams, LaTeX-style math, sandboxed HTML blocks, and markdown-backed whiteboards.
 
 Use it when you want to write and reorganize quickly without thinking about Markdown syntax.
+
+Headings and list items can collapse long sections without changing the Markdown file. Block selection lets you move, copy, cut, paste, or delete whole blocks—including the hidden content inside a collapsed section.
+
+See [Use The Rich Editor](/guides/use-rich-editor) for date and time commands, block selection, collapsible sections, callouts, code blocks, highlights, and their shortcuts.
 
 ## HTML Blocks
 
@@ -68,6 +91,8 @@ See [Use HTML Blocks](/guides/use-html-blocks) for the workflow and [Vault Expre
 Raw mode shows the Markdown source directly. Use it when you need to edit YAML frontmatter, repair unusual Markdown, or make an exact text change.
 
 Toggle raw mode with `Cmd+\` on macOS or `Ctrl+\` on Windows and Linux.
+
+Tolaria highlights invalid YAML frontmatter in raw mode so malformed metadata is easier to locate and repair.
 
 ## Table Of Contents
 
@@ -105,11 +130,19 @@ Tolaria renders Mermaid diagrams in the editor while keeping the source in Markd
 
 Images pasted into the editor are saved into the vault as normal files. They remain portable and can be opened by other tools.
 
+When pasted web content contains eligible remote images, Tolaria imports those images into `attachments/` in the background and rewrites the pasted references to local paths. Text appears immediately. If an image cannot be imported safely, its original remote reference remains editable instead of blocking the paste.
+
 ## Previews
 
 Tolaria can preview common image files, PDFs, and supported media files in the app. Files without an in-app preview can still be opened in the default system app.
 
 Settings control whether PDFs, images, and unsupported files appear in All Notes. Folder browsing still shows files in their folders.
+
+## HTML Files
+
+Standalone `.html` and `.htm` files can open in a sanitized in-app preview. Local images, styles, fonts, and media work when their paths stay inside the vault.
+
+Preview mode removes scripts, forms, nested frames, and remote resources. Use raw mode to edit the source, or open the file in the default browser when it needs interactive browser behavior.
 
 ## Whiteboards
 
@@ -155,6 +188,16 @@ You can commit changes inside Tolaria without leaving the app. This gives you us
 ## Remotes
 
 Connect a compatible Git remote when you want sync or backup. Tolaria relies on your system Git authentication, so GitHub CLI, SSH keys, credential helpers, and existing Git configuration can continue to work.
+
+## Vaults Inside A Parent Repository
+
+A vault can be a folder inside a larger Git repository. Tolaria discovers the nearest parent work tree but keeps the selected vault as the content boundary:
+
+- status, diffs, history, and app-created commits include only vault files
+- files elsewhere in the repository do not appear as Tolaria notes
+- pull, push, branch, merge, and rebase state still belong to the whole repository
+
+The resolved Git root is visible in Settings when it differs from the vault root.
 
 ---
 

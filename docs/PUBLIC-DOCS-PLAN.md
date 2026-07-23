@@ -27,15 +27,19 @@ The GitHub Pages output should reserve the root for public docs and mount releas
 
 ## Current Coverage
 
-The phase 1 site now covers post-branch features added after the original April docs snapshot:
+The site covers stable behavior through v2026-07-22, including:
 
 - Windows and Linux release artifacts.
 - Stable and Alpha updater channels.
 - Direct AI model providers and local/API model setup.
-- Claude Code, Codex, OpenCode, Pi, and Antigravity CLI agent targets.
-- Explicit MCP setup for external AI tools.
-- Table of contents, note width, raw mode, and paste-without-formatting workflows.
-- Media/PDF previews, image attachments, All Notes visibility, and Markdown whiteboards.
+- Claude Code, Codex, GitHub Copilot, OpenCode, Pi, Antigravity CLI, Kiro, and Hermes agent targets.
+- Per-agent model selection and explicit MCP setup for external AI tools.
+- MCP note creation, full-note update, and append workflows.
+- Rich-editor block selection, collapsible sections, callouts, code blocks, date/time commands, highlights, and todos.
+- Table of contents, note width, raw mode, and invalid-frontmatter feedback.
+- Media/PDF/HTML previews, durable web-image imports, All Notes visibility, and Markdown whiteboards.
+- Parent Git repository support, AutoGit, manual commits, and remote sync.
+- Spreadsheet notes, cross-note formulas, HTML blocks, and vault expressions.
 - System theme mode and sidebar pluralization settings.
 
 Every user-visible app change should answer:
@@ -43,5 +47,9 @@ Every user-visible app change should answer:
 ```text
 Public docs impact:
 - updated: <pages>
+- not needed because: <reason>
+
+Getting Started vault impact:
+- updated: <examples>
 - not needed because: <reason>
 ```

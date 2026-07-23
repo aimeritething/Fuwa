@@ -19,11 +19,19 @@ Tolaria renders Mermaid diagrams in the editor while keeping the source in Markd
 
 Images pasted into the editor are saved into the vault as normal files. They remain portable and can be opened by other tools.
 
+When pasted web content contains eligible remote images, Tolaria imports those images into `attachments/` in the background and rewrites the pasted references to local paths. Text appears immediately. If an image cannot be imported safely, its original remote reference remains editable instead of blocking the paste.
+
 ## Previews
 
 Tolaria can preview common image files, PDFs, and supported media files in the app. Files without an in-app preview can still be opened in the default system app.
 
 Settings control whether PDFs, images, and unsupported files appear in All Notes. Folder browsing still shows files in their folders.
+
+## HTML Files
+
+Standalone `.html` and `.htm` files can open in a sanitized in-app preview. Local images, styles, fonts, and media work when their paths stay inside the vault.
+
+Preview mode removes scripts, forms, nested frames, and remote resources. Use raw mode to edit the source, or open the file in the default browser when it needs interactive browser behavior.
 
 ## Whiteboards
 

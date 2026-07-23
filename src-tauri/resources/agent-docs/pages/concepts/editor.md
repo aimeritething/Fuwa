@@ -9,9 +9,13 @@ Tolaria offers a rich editor for daily writing and a raw Markdown mode for exact
 
 ## Rich Editing
 
-The rich editor supports blocks, slash commands, wikilinks, tables, code blocks, images, Mermaid diagrams, LaTeX-style math, sandboxed HTML blocks, and markdown-backed whiteboards.
+The rich editor supports blocks, slash commands, wikilinks, tables, code blocks, editable callouts, images, Mermaid diagrams, LaTeX-style math, sandboxed HTML blocks, and markdown-backed whiteboards.
 
 Use it when you want to write and reorganize quickly without thinking about Markdown syntax.
+
+Headings and list items can collapse long sections without changing the Markdown file. Block selection lets you move, copy, cut, paste, or delete whole blocks—including the hidden content inside a collapsed section.
+
+See [Use The Rich Editor](/guides/use-rich-editor) for date and time commands, block selection, collapsible sections, callouts, code blocks, highlights, and their shortcuts.
 
 ## HTML Blocks
 
@@ -28,6 +32,8 @@ See [Use HTML Blocks](/guides/use-html-blocks) for the workflow and [Vault Expre
 Raw mode shows the Markdown source directly. Use it when you need to edit YAML frontmatter, repair unusual Markdown, or make an exact text change.
 
 Toggle raw mode with `Cmd+\` on macOS or `Ctrl+\` on Windows and Linux.
+
+Tolaria highlights invalid YAML frontmatter in raw mode so malformed metadata is easier to locate and repair.
 
 ## Table Of Contents
 
