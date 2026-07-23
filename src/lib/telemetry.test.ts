@@ -17,6 +17,7 @@ import {
   teardownSentry,
   trackEvent,
 } from './telemetry'
+import { markRecoveredBlockNoteRenderError } from '../components/blockNoteRenderRecovery'
 import { retainWhiteboardPlatformPermissionGuard } from '../utils/whiteboardPlatformPermissionRejection'
 
 afterEach(() => {
@@ -231,6 +232,35 @@ describe('initSentry', () => {
       originalException: new Error('Block with ID 15e8eb56-0947-4d4a-85c2-1611a864465a not found'),
     })).toBeNull()
     expect(beforeSend(unrelatedNotFoundEvent)).toBe(unrelatedNotFoundEvent)
+  })
+
+  it('drops only BlockNote update-depth errors that the render boundary recovered', () => {
+    const beforeSend = initSentryBeforeSend()
+    const recoveredError = new Error(
+      'Maximum update depth exceeded. This can happen when a component repeatedly calls setState.'
+    )
+    const recoveredEvent = {
+      exception: {
+        values: [{
+          type: 'Error',
+          value: recoveredError.message,
+        }],
+      },
+    }
+    const unrecoveredError = new Error(recoveredError.message)
+    const unrecoveredEvent = {
+      exception: {
+        values: [{
+          type: 'Error',
+          value: unrecoveredError.message,
+        }],
+      },
+    }
+
+    markRecoveredBlockNoteRenderError(recoveredError)
+
+    expect(beforeSend(recoveredEvent, { originalException: recoveredError })).toBeNull()
+    expect(beforeSend(unrecoveredEvent, { originalException: unrecoveredError })).toBe(unrecoveredEvent)
   })
 
   it('drops recovered WebKit DOM NotFoundError events before sending them to Sentry', () => {

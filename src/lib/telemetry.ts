@@ -6,6 +6,7 @@ import {
   isWhiteboardPlatformPermissionRejection,
 } from '../utils/whiteboardPlatformPermissionRejection'
 import { classifyRichEditorRecoveryError } from '../components/richEditorRecoveryClassifier'
+import { isRecoveredBlockNoteRenderError } from '../components/blockNoteRenderRecovery'
 
 type SensitiveTelemetryText = string
 type AnonymousTelemetryId = string
@@ -140,6 +141,10 @@ function shouldDropBlockNoteStaleBlockReferenceEvent(
   return matchesBenignSentryEventText(event, hint, isBlockNoteStaleBlockReferenceText)
 }
 
+function shouldDropRecoveredBlockNoteRenderEvent(hint?: Sentry.EventHint): boolean {
+  return isRecoveredBlockNoteRenderError(hint?.originalException, '')
+}
+
 function shouldDropRichEditorDomNotFoundEvent(
   event: Sentry.ErrorEvent,
   hint?: Sentry.EventHint,
@@ -176,6 +181,7 @@ function shouldDropSentryEvent(event: Sentry.ErrorEvent, hint?: Sentry.EventHint
   return shouldDropWhiteboardPlatformPermissionEvent(event, hint)
     || shouldDropStaleTauriListenerCleanupEvent(event, hint)
     || shouldDropBlockNoteStaleBlockReferenceEvent(event, hint)
+    || shouldDropRecoveredBlockNoteRenderEvent(hint)
     || shouldDropRichEditorDomNotFoundEvent(event, hint)
     || shouldDropResizeObserverLoopEvent(event, hint)
     || shouldDropMissingFilePromiseRejectionEvent(event, hint)
