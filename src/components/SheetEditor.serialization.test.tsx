@@ -1,12 +1,13 @@
 import {
   activateWorkbookRoot,
+  deferred,
   getIronCalcMock,
   markWorkbookDirtyForTest,
   resetSheetEditorTestState,
 } from './SheetEditor.testUtils'
 import { init as initIronCalc } from '@ironcalc/workbook'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import { Suspense, type ComponentProps } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SheetEditor } from './SheetEditor'
 
@@ -160,6 +161,57 @@ describe('SheetEditor serialization', () => {
 
     expect(ironCalcMock.state.freedModels.has(firstModel!)).toBe(true)
     expect(() => firstModel?.getSelectedSheet()).toThrow('null pointer passed to rust')
+  })
+
+  it('keeps the displayed workbook model alive while its replacement is suspended', async () => {
+    const onContentChange = vi.fn()
+    const replacementCommit = deferred<void>()
+    const rendered = render(
+      <Suspense fallback={<div>Replacing workbook</div>}>
+        <SheetEditor
+          content={'---\n_display: sheet\n---\nMetric,January'}
+          path="/vault/budget.md"
+          onContentChange={onContentChange}
+        />
+      </Suspense>,
+    )
+    await screen.findByTestId('ironcalc-workbook')
+    const firstModel = ironCalcMock.state.lastModel
+    expect(firstModel).not.toBeNull()
+    if (!firstModel) throw new Error('Expected the initial workbook model')
+
+    vi.useFakeTimers()
+    ironCalcMock.state.workbookRenderGate = replacementCommit.promise
+    rendered.rerender(
+      <Suspense fallback={<div>Replacing workbook</div>}>
+        <SheetEditor
+          content={'---\n_display: sheet\n---\nMetric,February'}
+          path="/vault/budget.md"
+          onContentChange={onContentChange}
+        />
+      </Suspense>,
+    )
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(ironCalcMock.state.modelConstructs).toBe(2)
+    expect(screen.getByTestId('ironcalc-workbook')).toBeInTheDocument()
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+
+    expect(firstModel.getSelectedSheet()).toBe(0)
+
+    ironCalcMock.state.workbookRenderGate = null
+    await act(async () => {
+      replacementCommit.resolve()
+    })
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+    expect(ironCalcMock.state.freedModels.has(firstModel)).toBe(true)
   })
 
   it('does not surface workbook release failures when a stale model is already freed', async () => {

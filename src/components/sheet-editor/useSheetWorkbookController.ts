@@ -86,6 +86,14 @@ function releaseWorkbookModel(model: Model | null | undefined): void {
   }, 0)
 }
 
+function releaseQueuedWorkbookModels(
+  replacedWorkbookModelsRef: MutableRefObject<Model[]>,
+): void {
+  const replacedModels = replacedWorkbookModelsRef.current
+  replacedWorkbookModelsRef.current = []
+  for (const model of replacedModels) releaseWorkbookModel(model)
+}
+
 function buildCurrentSheetContent({
   current,
   dirtyBodyRowsRef,
@@ -277,6 +285,7 @@ function publishWorkbook({
   dirtyWorkbookGenerationRef,
   generation,
   path,
+  replacedWorkbookModelsRef,
   setWorkbook,
   workbookRef,
 }: {
@@ -285,11 +294,13 @@ function publishWorkbook({
   dirtyWorkbookGenerationRef: MutableRefObject<number | null>
   generation: number
   path: string
+  replacedWorkbookModelsRef: MutableRefObject<Model[]>
   setWorkbook: (workbook: SheetWorkbookState | null) => void
   workbookRef: MutableRefObject<SheetWorkbookState | null>
 }) {
   const nextWorkbook = nextWorkbookState({ build, generation, path })
-  releaseWorkbookModel(workbookRef.current?.model)
+  const replacedModel = workbookRef.current?.model
+  if (replacedModel) replacedWorkbookModelsRef.current.push(replacedModel)
   workbookRef.current = nextWorkbook
   resetDirtyTracking(dirtyWorkbookGenerationRef, dirtyBodyRowsRef)
   setWorkbook(nextWorkbook)
@@ -360,6 +371,7 @@ interface WorkbookBuildLifecycleOptions extends UseSheetWorkbookControllerOption
   lastEmittedPathRef: MutableRefObject<string | null>
   latestContentPathRef: MutableRefObject<string>
   latestContentRef: MutableRefObject<string>
+  replacedWorkbookModelsRef: MutableRefObject<Model[]>
   serializeCurrentWorkbook: (expectedGeneration?: number) => boolean
   setError: (error: string | null) => void
   setWorkbook: (workbook: SheetWorkbookState | null) => void
@@ -419,6 +431,7 @@ function runWorkbookBuildLifecycle({
   nativeExternalFormulaInputsForBuild,
   path,
   pendingExternalFormulaCommitRef,
+  replacedWorkbookModelsRef,
   serializeCurrentWorkbook,
   setError,
   setWorkbook,
@@ -460,7 +473,10 @@ function runWorkbookBuildLifecycle({
       const build = buildWorkbook(content, path, externalFormulaContextForBuild, nativeExternalFormulaInputsForBuild)
       pendingModel = build.model
       trackSheetOpenIfNeeded(content, path, trackedOpenPathRef)
-      publishWorkbook({ build, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, generation, path, setWorkbook, workbookRef })
+      publishWorkbook({
+        build, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, generation, path,
+        replacedWorkbookModelsRef, setWorkbook, workbookRef,
+      })
       pendingModel = null
     })
     .catch((caught: unknown) => {
@@ -477,21 +493,31 @@ function useWorkbookBuildLifecycle(options: WorkbookBuildLifecycleOptions) {
   const {
     cancelScheduledSerialize, content, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, externalFormulaContextForBuild,
     lastEmittedContentRef, lastEmittedPathRef, latestContentPathRef, latestContentRef, nativeExternalFormulaInputsForBuild,
-    onContentChange, path, pendingExternalFormulaCommitRef, serializeCurrentWorkbook, setError, setWorkbook,
+    onContentChange, path, pendingExternalFormulaCommitRef, replacedWorkbookModelsRef, serializeCurrentWorkbook, setError, setWorkbook,
     shouldWaitForInitialExternalFormulaResolution, trackedOpenPathRef, workbookGenerationRef, workbookPathRef, workbookRef,
   } = options
 
   useEffect(() => runWorkbookBuildLifecycle({
     cancelScheduledSerialize, content, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, externalFormulaContextForBuild,
     lastEmittedContentRef, lastEmittedPathRef, latestContentPathRef, latestContentRef, nativeExternalFormulaInputsForBuild,
-    onContentChange, path, pendingExternalFormulaCommitRef, serializeCurrentWorkbook, setError, setWorkbook,
+    onContentChange, path, pendingExternalFormulaCommitRef, replacedWorkbookModelsRef, serializeCurrentWorkbook, setError, setWorkbook,
     shouldWaitForInitialExternalFormulaResolution, trackedOpenPathRef, workbookGenerationRef, workbookPathRef, workbookRef,
   }), [
     cancelScheduledSerialize, content, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, externalFormulaContextForBuild,
     lastEmittedContentRef, lastEmittedPathRef, latestContentPathRef, latestContentRef, nativeExternalFormulaInputsForBuild,
-    onContentChange, path, pendingExternalFormulaCommitRef, serializeCurrentWorkbook, setError, setWorkbook,
+    onContentChange, path, pendingExternalFormulaCommitRef, replacedWorkbookModelsRef, serializeCurrentWorkbook, setError, setWorkbook,
     shouldWaitForInitialExternalFormulaResolution, trackedOpenPathRef, workbookGenerationRef, workbookPathRef, workbookRef,
   ])
+}
+
+function useReplacedWorkbookRelease(
+  workbook: SheetWorkbookState | null,
+  replacedWorkbookModelsRef: MutableRefObject<Model[]>,
+) {
+  useEffect(() => {
+    if (!workbook) return
+    releaseQueuedWorkbookModels(replacedWorkbookModelsRef)
+  }, [replacedWorkbookModelsRef, workbook])
 }
 
 function useWorkbookCleanup({
@@ -499,6 +525,7 @@ function useWorkbookCleanup({
   dirtyBodyRowsRef,
   dirtyWorkbookGenerationRef,
   pendingExternalFormulaCommitRef,
+  replacedWorkbookModelsRef,
   serializeCurrentWorkbook,
   workbookGenerationRef,
   workbookRef,
@@ -507,6 +534,7 @@ function useWorkbookCleanup({
   dirtyBodyRowsRef: MutableRefObject<SheetBodyDirtyRows>
   dirtyWorkbookGenerationRef: MutableRefObject<number | null>
   pendingExternalFormulaCommitRef: MutableRefObject<number>
+  replacedWorkbookModelsRef: MutableRefObject<Model[]>
   serializeCurrentWorkbook: (expectedGeneration?: number) => boolean
   workbookGenerationRef: MutableRefObject<number>
   workbookRef: MutableRefObject<SheetWorkbookState | null>
@@ -515,6 +543,7 @@ function useWorkbookCleanup({
     pendingExternalFormulaCommitRef.current += 1
     serializeCurrentWorkbook(workbookRef.current?.generation)
     cancelScheduledSerialize()
+    releaseQueuedWorkbookModels(replacedWorkbookModelsRef)
     releaseWorkbookModel(workbookRef.current?.model)
     workbookRef.current = null
     resetDirtyTracking(dirtyWorkbookGenerationRef, dirtyBodyRowsRef)
@@ -524,6 +553,7 @@ function useWorkbookCleanup({
     dirtyBodyRowsRef,
     dirtyWorkbookGenerationRef,
     pendingExternalFormulaCommitRef,
+    replacedWorkbookModelsRef,
     serializeCurrentWorkbook,
     workbookGenerationRef,
     workbookRef,
@@ -570,6 +600,7 @@ export function useSheetWorkbookController({
   const lastEmittedContentRef = useRef<string | null>(null), lastEmittedPathRef = useRef<string | null>(null)
   const latestContentPathRef = useRef(path), latestContentRef = useRef(content), onContentChangeRef = useRef(onContentChange)
   const refreshSequenceRef = useRef(0), trackedOpenPathRef = useRef<string | null>(null), workbookGenerationRef = useRef(0)
+  const replacedWorkbookModelsRef = useRef<Model[]>([])
   const workbookPathRef = useRef(path), workbookRef = useRef<SheetWorkbookState | null>(null)
 
   useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
@@ -586,13 +617,15 @@ export function useSheetWorkbookController({
   useWorkbookBuildLifecycle({
     cancelScheduledSerialize, content, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, externalFormulaContextForBuild,
     lastEmittedContentRef, lastEmittedPathRef, latestContentPathRef, latestContentRef, nativeExternalFormulaInputsForBuild,
-    onContentChange, path, pendingExternalFormulaCommitRef, serializeCurrentWorkbook, setError, setWorkbook,
+    onContentChange, path, pendingExternalFormulaCommitRef, replacedWorkbookModelsRef, serializeCurrentWorkbook, setError, setWorkbook,
     shouldWaitForInitialExternalFormulaResolution, trackedOpenPathRef, workbookGenerationRef, workbookPathRef, workbookRef,
   })
 
+  useReplacedWorkbookRelease(workbook, replacedWorkbookModelsRef)
+
   useWorkbookCleanup({
     cancelScheduledSerialize, dirtyBodyRowsRef, dirtyWorkbookGenerationRef, pendingExternalFormulaCommitRef,
-    serializeCurrentWorkbook, workbookGenerationRef, workbookRef,
+    replacedWorkbookModelsRef, serializeCurrentWorkbook, workbookGenerationRef, workbookRef,
   })
 
   const refreshWorkbook = useWorkbookRefresh({ refreshSequenceRef, setWorkbook, workbookRef })
