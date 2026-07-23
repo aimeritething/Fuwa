@@ -9,7 +9,14 @@ interface PersistedState {
   active_vault: string | null
   availablePaths: string[]
   hidden_defaults: string[]
-  vaults: Array<{ label: string; path: string }>
+  vaults: Array<{
+    alias: string | null
+    color: string | null
+    icon: string | null
+    label: string
+    mounted: boolean
+    path: string
+  }>
 }
 
 const GETTING_STARTED_PATH = '/Users/mock/Documents/Getting Started'
@@ -167,7 +174,14 @@ test('opening an existing vault from onboarding persists the selection and survi
   await expect(page.getByTestId('status-vault-trigger')).toContainText('Work')
 
   await expect.poll(() => readPersistedState(page)).toEqual({
-    vaults: [{ label: 'Work', path: vaultPath }],
+    vaults: [{
+      alias: null,
+      color: null,
+      icon: null,
+      label: 'Work',
+      mounted: true,
+      path: vaultPath,
+    }],
     active_vault: vaultPath,
     hidden_defaults: [],
     availablePaths: [vaultPath],
