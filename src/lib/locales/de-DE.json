@@ -939,6 +939,7 @@
   "status.vault.reloading": "Vault wird neu geladen …",
   "status.vault.reloadingTooltip": "Vault von der Festplatte neu laden",
   "status.vault.remove": "{label} aus der Liste entfernen",
+  "status.vault.openInNewWindow": "{label} in einem neuen Fenster öffnen",
   "status.vault.removeConfirmTitle": "Vault entfernen?",
   "status.vault.removeConfirmMessage": "Dadurch wird {label} aus der Tolaria-Vault-Liste entfernt. Dateien auf der Festplatte werden nicht gelöscht.",
   "status.vault.removeConfirmAction": "Vault entfernen",

@@ -939,6 +939,7 @@
   "status.vault.reloading": "Перезавантаження сховища...",
   "status.vault.reloadingTooltip": "Перезавантаження сховища з диска",
   "status.vault.remove": "Вилучити {label} зі списку",
+  "status.vault.openInNewWindow": "Відкрити {label} у новому вікні",
   "status.vault.removeConfirmTitle": "Вилучити сховище?",
   "status.vault.removeConfirmMessage": "Це вилучає {label} зі списку сховищ Tolaria. Файли на диску не видаляються.",
   "status.vault.removeConfirmAction": "Вилучити сховище",

@@ -939,6 +939,7 @@
   "status.vault.reloading": "Läser in valvet på nytt...",
   "status.vault.reloadingTooltip": "Läser in valvet från disk på nytt",
   "status.vault.remove": "Ta bort {label} från listan",
+  "status.vault.openInNewWindow": "Öppna {label} i ett nytt fönster",
   "status.vault.removeConfirmTitle": "Ta bort valv?",
   "status.vault.removeConfirmMessage": "Detta tar bort {label} från Tolarias valvlista. Filer på disk raderas inte.",
   "status.vault.removeConfirmAction": "Ta bort valv",

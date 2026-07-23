@@ -939,6 +939,7 @@
   "status.vault.reloading": "Rechargement du coffre-fort…",
   "status.vault.reloadingTooltip": "Rechargement du coffre à partir du disque",
   "status.vault.remove": "Supprimer {label} de la liste",
+  "status.vault.openInNewWindow": "Ouvrir {label} dans une nouvelle fenêtre",
   "status.vault.removeConfirmTitle": "Supprimer le coffre ?",
   "status.vault.removeConfirmMessage": "Cette action supprime {label} de la liste des coffres de Tolaria. Les fichiers présents sur le disque ne sont pas supprimés.",
   "status.vault.removeConfirmAction": "Supprimer le coffre",

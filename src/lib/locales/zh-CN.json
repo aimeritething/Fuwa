@@ -939,6 +939,7 @@
   "status.vault.reloading": "正在重新加载 Vault...",
   "status.vault.reloadingTooltip": "正在从磁盘重新加载 Vault",
   "status.vault.remove": "从列表移除 {label}",
+  "status.vault.openInNewWindow": "在新窗口中打开{label}",
   "status.vault.removeConfirmTitle": "要删除保管库吗？",
   "status.vault.removeConfirmMessage": "此操作会将{label}从 Tolaria 的 Vault 列表中删除。磁盘上的文件不会被删除。",
   "status.vault.removeConfirmAction": "移除保管库",

@@ -889,6 +889,7 @@
   "status.vault.notFound": "Schovišča nie znojdziena: {path}",
   "status.vault.reloading": "Pierazahruzka...",
   "status.vault.reloadingTooltip": "Pierazahruzka schovišča z dyska",
+  "status.vault.openInNewWindow": "Adkryć {label} u novym aknie",
   "status.vault.remove": "Vydalić {label} sa spisu",
   "status.vault.removeConfirmTitle": "Vydalić schovišča?",
   "status.vault.removeConfirmMessage": "Heta vydalić {label} sa spisu schoviščaŭ Tolaria. Fajly na dysku nie buduć vydalieny.",

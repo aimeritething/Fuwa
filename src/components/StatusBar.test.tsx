@@ -261,7 +261,7 @@ describe('StatusBar', () => {
     expect(activeCheckbox).not.toBeDisabled()
   })
 
-  it('uses the expanded multi-workspace vault picker layout', () => {
+  it('uses readable bottom-bar typography in the expanded multi-workspace vault picker', () => {
     const onOpenVaultSettings = vi.fn()
     render(
       <StatusBar
@@ -281,7 +281,7 @@ describe('StatusBar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
 
-    expect(screen.getByTestId('vault-menu-popover')).toHaveStyle({ minWidth: '320px' })
+    expect(screen.getByTestId('vault-menu-popover')).toHaveStyle({ minWidth: '340px' })
     expect(screen.getByText('Available vaults')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Manage vaults' }))
     expect(onOpenVaultSettings).toHaveBeenCalledOnce()
@@ -290,7 +290,7 @@ describe('StatusBar', () => {
     const activeItem = screen.getByTestId('vault-menu-item-Main Vault')
     const defaultLabel = within(activeItem).getByTestId('vault-menu-default-label')
     const activeBadge = within(activeItem).getByTestId('vault-menu-workspace-badge-Main Vault')
-    expect(within(activeItem).getByTestId('vault-menu-item-label-Main Vault').className).toContain('text-[12px]')
+    expect(within(activeItem).getByTestId('vault-menu-item-label-Main Vault').className).toContain('text-sm')
     expect(within(activeItem).getByTestId('vault-menu-item-label-Main Vault').getAttribute('style')).toContain('background: transparent')
     expect(defaultLabel).toHaveTextContent('Default')
     expect(activeBadge).toHaveTextContent('MV')
@@ -301,7 +301,7 @@ describe('StatusBar', () => {
     expect(workBadge.getAttribute('style')).toContain('border-color: var(--accent-green)')
 
     const createAction = screen.getByTestId('vault-menu-create-empty')
-    expect(createAction.className).toContain('text-[12px]')
+    expect(createAction.className).toContain('text-sm')
     expect(createAction.getAttribute('style')).toContain('color: var(--muted-foreground)')
   })
 
@@ -475,7 +475,7 @@ describe('StatusBar', () => {
     expect(onCloneGettingStarted).toHaveBeenCalledOnce()
   })
 
-  it('exposes an in-row, hover-revealed remove action for non-active vaults', () => {
+  it('keeps the hover-revealed remove action at the far right of each removable vault', () => {
     render(
       <StatusBar
         noteCount={100}
@@ -490,15 +490,46 @@ describe('StatusBar', () => {
 
     const item = screen.getByTestId('vault-menu-item-Work Vault')
     const removeAction = screen.getByTestId('vault-menu-remove-Work Vault')
+    const openAction = screen.getByRole('button', { name: 'Open Work Vault in a new window' })
 
     expect(item.className).toContain('hover:bg-[var(--hover)]')
-    expect(removeAction.compareDocumentPosition(within(item).getByText('Work Vault')) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect(openAction.compareDocumentPosition(removeAction) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(item.lastElementChild).toBe(removeAction)
     expect(removeAction.className).not.toContain('absolute')
     expect(removeAction.className).not.toContain('right-1')
     expect(removeAction.className).toContain('group-hover:opacity-100')
     expect(removeAction.className).toContain('group-focus-within:opacity-100')
     expect(removeAction.className).toContain('pointer-events-none')
     expect(screen.getByRole('button', { name: 'Remove Work Vault from list' })).toBeInTheDocument()
+  })
+
+  it('opens a vault in a separate app window with its configured accent color', async () => {
+    const openVaultWindow = vi.fn()
+    window.__mockHandlers = {
+      ...window.__mockHandlers,
+      open_vault_in_new_window: openVaultWindow,
+    }
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={[
+          vaults[0],
+          { ...vaults[1], color: 'red' },
+        ]}
+        onSwitchVault={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Work Vault in a new window' }))
+
+    await vi.waitFor(() => {
+      expect(openVaultWindow).toHaveBeenCalledWith({
+        vaultPath: '/Users/luca/Work',
+        vaultColor: 'red',
+      })
+    })
   })
 
   it('confirms before removing a vault from the vault menu', () => {

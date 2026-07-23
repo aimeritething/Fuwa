@@ -939,6 +939,7 @@
   "status.vault.reloading": "Przeładowywanie sejfu...",
   "status.vault.reloadingTooltip": "Przeładowywanie sejfu z dysku",
   "status.vault.remove": "Usuń {label} z listy",
+  "status.vault.openInNewWindow": "Otwórz {label} w nowym oknie",
   "status.vault.removeConfirmTitle": "Usunąć skarbiec?",
   "status.vault.removeConfirmMessage": "Spowoduje to usunięcie {label} z listy skarbców Tolarii. Pliki na dysku nie zostaną usunięte.",
   "status.vault.removeConfirmAction": "Usuń skarbiec",

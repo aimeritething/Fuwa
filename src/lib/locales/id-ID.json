@@ -939,6 +939,7 @@
   "status.vault.reloading": "Memuat ulang brankas...",
   "status.vault.reloadingTooltip": "Memuat ulang brankas dari disk",
   "status.vault.remove": "Hapus {label} dari daftar",
+  "status.vault.openInNewWindow": "Buka {label} di jendela baru",
   "status.vault.removeConfirmTitle": "Hapus brankas?",
   "status.vault.removeConfirmMessage": "Ini menghapus {label} dari daftar brankas Tolaria. File di disk tidak dihapus.",
   "status.vault.removeConfirmAction": "Hapus brankas",

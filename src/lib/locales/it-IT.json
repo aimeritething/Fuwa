@@ -939,6 +939,7 @@
   "status.vault.reloading": "Ricaricamento del vault in corso...",
   "status.vault.reloadingTooltip": "Ricaricamento del vault dal disco in corso...",
   "status.vault.remove": "Rimuovi {label} dall'elenco",
+  "status.vault.openInNewWindow": "Apri {label} in una nuova finestra",
   "status.vault.removeConfirmTitle": "Rimuovere il vault?",
   "status.vault.removeConfirmMessage": "Questa operazione rimuove {label} dall'elenco dei vault di Tolaria. I file presenti sul disco non vengono eliminati.",
   "status.vault.removeConfirmAction": "Rimuovi vault",

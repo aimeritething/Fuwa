@@ -939,6 +939,7 @@
   "status.vault.reloading": "Recarregando o cofre...",
   "status.vault.reloadingTooltip": "Recarregando o vault a partir do disco",
   "status.vault.remove": "Remover {label} da lista",
+  "status.vault.openInNewWindow": "Abrir {label} em uma nova janela",
   "status.vault.removeConfirmTitle": "Remover cofre?",
   "status.vault.removeConfirmMessage": "Isso remove {label} da lista de cofres do Tolaria. Os arquivos no disco não são excluídos.",
   "status.vault.removeConfirmAction": "Remover cofre",

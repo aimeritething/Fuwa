@@ -941,6 +941,7 @@ files:
     status.vault.reloading: 893da50ef3a9e01d8a99ff5d3ceb55e9
     status.vault.reloadingTooltip: 4a884bd7d113797ad16f905f70742da8
     status.vault.remove: 7f3b4f76df23626170940dbc55c70728
+    status.vault.openInNewWindow: 68d716685ef7a28eeb184fe0bc60c967
     status.vault.removeConfirmTitle: 713713c6d8c4eb8b75cf12ebaca44f96
     status.vault.removeConfirmMessage: 854744291c28ea9e18bed1110b0737d9
     status.vault.removeConfirmAction: 8b064b07e2f4f1e63d1d5087aead2648

@@ -939,6 +939,7 @@
   "status.vault.reloading": "Перезагрузка хранилища...",
   "status.vault.reloadingTooltip": "Перезагрузка хранилища с диска",
   "status.vault.remove": "Удалить {label} из списка",
+  "status.vault.openInNewWindow": "Открыть {label} в новом окне",
   "status.vault.removeConfirmTitle": "Удалить хранилище?",
   "status.vault.removeConfirmMessage": "Это приведет к удалению {label} из списка хранилищ Tolaria. Файлы на диске не удаляются.",
   "status.vault.removeConfirmAction": "Удалить хранилище",

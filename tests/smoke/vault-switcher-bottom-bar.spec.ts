@@ -39,6 +39,11 @@ interface InstallVaultSwitcherMocksOptions {
   defaultVaultExists?: boolean
 }
 
+interface OpenedVaultWindow {
+  vaultPath: string
+  vaultColor: string | null
+}
+
 function createVaultSwitcherPaths(): VaultSwitcherPaths {
   return {
     gettingStartedPath: '/Users/mock/Documents/Getting Started',
@@ -108,6 +113,8 @@ async function installVaultSwitcherMocks(
   await page.addInitScript((data: VaultSwitcherInitData) => {
     localStorage.clear()
     localStorage.setItem('tolaria:claude-code-onboarding-dismissed', '1')
+    const openedVaultWindows: OpenedVaultWindow[] = []
+    Object.assign(window, { __openedVaultWindows: openedVaultWindows })
 
     let ref: Record<string, unknown> | null = null
 
@@ -144,6 +151,9 @@ async function installVaultSwitcherMocks(
         ref.get_note_content = (args: { path?: string }) => data.allContent[args?.path ?? ''] ?? ''
         ref.get_modified_files = () => []
         ref.get_file_history = () => []
+        ref.open_vault_in_new_window = (args: OpenedVaultWindow) => {
+          openedVaultWindows.push(args)
+        }
       },
       get() {
         return ref
@@ -167,9 +177,9 @@ test('bottom bar vault switching works with keyboard and mouse @smoke', async ({
   await expect(trigger).toBeFocused()
   await page.keyboard.press('Enter')
   await page.keyboard.press('Tab')
-  await expect(page.getByTestId('vault-menu-item-Getting Started')).toBeFocused()
-  await page.getByTestId('vault-menu-item-Personal Vault').focus()
-  await expect(page.getByTestId('vault-menu-item-Personal Vault')).toBeFocused()
+  await expect(page.getByTestId('vault-menu-item-label-Getting Started')).toBeFocused()
+  await page.getByTestId('vault-menu-item-label-Personal Vault').focus()
+  await expect(page.getByTestId('vault-menu-item-label-Personal Vault')).toBeFocused()
   await page.keyboard.press('Enter')
 
   await expect(trigger).toContainText('Personal Vault')
@@ -177,11 +187,24 @@ test('bottom bar vault switching works with keyboard and mouse @smoke', async ({
   await expect(noteList.getByText('Work Home', { exact: true })).toHaveCount(0)
 
   await trigger.click()
-  await page.getByTestId('vault-menu-item-Work Vault').click()
+  await page.getByTestId('vault-menu-item-label-Work Vault').click()
 
   await expect(trigger).toContainText('Work Vault')
   await expect(noteList.getByText('Work Home', { exact: true })).toBeVisible()
   await expect(noteList.getByText('Personal Home', { exact: true })).toHaveCount(0)
+
+  await trigger.click()
+  const openPersonalWindow = page.getByRole('button', { name: 'Open Personal Vault in a new window' })
+  await page.getByTestId('vault-menu-item-Personal Vault').hover()
+  await expect(openPersonalWindow).toHaveCSS('opacity', '1')
+  await openPersonalWindow.click()
+  await expect.poll(() => page.evaluate(() => (
+    (window as typeof window & { __openedVaultWindows?: OpenedVaultWindow[] })
+      .__openedVaultWindows ?? []
+  ))).toEqual([{
+    vaultPath: '/Users/mock/Personal',
+    vaultColor: null,
+  }])
 })
 
 test('missing Getting Started vault stays hidden while remove actions still work @smoke', async ({ page }) => {
@@ -213,6 +236,7 @@ test('missing Getting Started vault stays hidden while remove actions still work
   expect(removeBounds!.y + removeBounds!.height).toBeLessThanOrEqual(itemBounds!.y + itemBounds!.height + 1)
 
   await removeButton.click()
+  await page.getByRole('button', { name: 'Remove vault', exact: true }).click()
 
   await trigger.click()
   await expect(page.getByTestId('vault-menu-item-Personal Vault')).toHaveCount(0)

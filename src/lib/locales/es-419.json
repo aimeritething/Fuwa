@@ -939,6 +939,7 @@
   "status.vault.reloading": "Volviendo a cargar el vault...",
   "status.vault.reloadingTooltip": "Volviendo a cargar el repositorio desde el disco",
   "status.vault.remove": "Eliminar {label} de la lista",
+  "status.vault.openInNewWindow": "Abrir {label} en una nueva ventana",
   "status.vault.removeConfirmTitle": "¿Eliminar el repositorio?",
   "status.vault.removeConfirmMessage": "Esto elimina {label} de la lista de vaults de Tolaria. Los archivos en el disco no se eliminan.",
   "status.vault.removeConfirmAction": "Eliminar caja fuerte",

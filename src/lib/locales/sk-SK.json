@@ -939,6 +939,7 @@
   "status.vault.reloading": "Prebieha opätovné načítanie trezora...",
   "status.vault.reloadingTooltip": "Opätovné načítanie trezora z disku",
   "status.vault.remove": "Odstrániť {label} zo zoznamu",
+  "status.vault.openInNewWindow": "Otvoriť {label} v novom okne",
   "status.vault.removeConfirmTitle": "Odstrániť trezor?",
   "status.vault.removeConfirmMessage": "Týmto sa {label} odstráni zo zoznamu trezorov v aplikácii Tolaria. Súbory na disku sa neodstránia.",
   "status.vault.removeConfirmAction": "Odstrániť trezor",

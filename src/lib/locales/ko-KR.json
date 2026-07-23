@@ -939,6 +939,7 @@
   "status.vault.reloading": "Vault 다시 로드 중...",
   "status.vault.reloadingTooltip": "디스크에서 Vault 다시 로드 중",
   "status.vault.remove": "목록에서 {label} 제거",
+  "status.vault.openInNewWindow": "새 창에서 {label} 열기",
   "status.vault.removeConfirmTitle": "보관함을 제거하시겠습니까?",
   "status.vault.removeConfirmMessage": "이렇게 하면 Tolaria의 보관함 목록에서 {label}이(가) 제거됩니다. 디스크에 있는 파일은 삭제되지 않습니다.",
   "status.vault.removeConfirmAction": "Vault 제거",

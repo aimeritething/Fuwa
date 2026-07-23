@@ -939,6 +939,7 @@
   "status.vault.reloading": "正在重新載入 Vault……",
   "status.vault.reloadingTooltip": "正在從磁碟重新載入 Vault",
   "status.vault.remove": "從列表移除 {label}",
+  "status.vault.openInNewWindow": "在新視窗中開啟 {label}",
   "status.vault.removeConfirmTitle": "要移除密室嗎？",
   "status.vault.removeConfirmMessage": "此操作會將 {label} 從 Tolaria 的密室清單中移除。磁碟上的檔案不會被刪除。",
   "status.vault.removeConfirmAction": "移除 Vault",

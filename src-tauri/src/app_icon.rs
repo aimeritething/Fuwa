@@ -1,7 +1,9 @@
-use tauri::Manager;
-
 const LIGHT_ICON_BYTES: &[u8] = include_bytes!("../icons/512x512.png");
 const DARK_ICON_BYTES: &[u8] = include_bytes!("../icons/512x512-dark.png");
+const DEFAULT_BLUE: Rgb = Rgb::new(21, 93, 255);
+
+#[cfg(target_os = "macos")]
+use objc2::MainThreadMarker;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum AppIconMode {
@@ -26,25 +28,186 @@ impl AppIconMode {
     }
 }
 
-pub fn update_app_icon_for_theme(
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct Rgb {
+    red: u8,
+    green: u8,
+    blue: u8,
+}
+
+impl Rgb {
+    const fn new(red: u8, green: u8, blue: u8) -> Self {
+        Self { red, green, blue }
+    }
+
+    fn for_vault_color(value: Option<&str>, mode: AppIconMode) -> Self {
+        let color = value.unwrap_or("blue").trim().to_ascii_lowercase();
+        match (color.as_str(), mode) {
+            ("green", AppIconMode::Light) => Self::new(56, 161, 105),
+            ("orange", AppIconMode::Light) => Self::new(217, 115, 13),
+            ("purple", AppIconMode::Light) => Self::new(128, 90, 213),
+            ("red", AppIconMode::Light) => Self::new(229, 62, 62),
+            ("yellow", AppIconMode::Light) => Self::new(214, 158, 46),
+            ("green", AppIconMode::Dark) => Self::new(121, 216, 157),
+            ("orange", AppIconMode::Dark) => Self::new(243, 161, 91),
+            ("purple", AppIconMode::Dark) => Self::new(182, 156, 255),
+            ("red", AppIconMode::Dark) => Self::new(255, 138, 134),
+            ("yellow", AppIconMode::Dark) => Self::new(242, 200, 107),
+            ("blue", AppIconMode::Dark) => Self::new(120, 164, 255),
+            _ => DEFAULT_BLUE,
+        }
+    }
+}
+
+fn is_droplet_pixel(pixel: &[u8]) -> bool {
+    let [red, green, blue, alpha] = pixel else {
+        return false;
+    };
+    *alpha > 0
+        && *blue > 100
+        && u16::from(*blue) * 4 > u16::from(*red) * 5
+        && u16::from(*blue) * 6 > u16::from(*green) * 7
+}
+
+fn tint_channel(channel: u8, brightness: u8) -> u8 {
+    let base = u16::from(channel);
+    let value = u16::from(brightness);
+    ((base * value + 127) / 255).min(255) as u8
+}
+
+fn recolor_icon(image: tauri::image::Image<'_>, accent: Rgb) -> tauri::image::Image<'static> {
+    let width = image.width();
+    let height = image.height();
+    let mut rgba = image.rgba().to_vec();
+
+    for pixel in rgba.chunks_exact_mut(4) {
+        if !is_droplet_pixel(pixel) {
+            continue;
+        }
+        let brightness = pixel[0].max(pixel[1]).max(pixel[2]);
+        pixel[0] = tint_channel(accent.red, brightness);
+        pixel[1] = tint_channel(accent.green, brightness);
+        pixel[2] = tint_channel(accent.blue, brightness);
+    }
+
+    tauri::image::Image::new_owned(rgba, width, height)
+}
+
+fn active_vault_color(list: &crate::vault_list::VaultList) -> Option<&str> {
+    let active_path = list.active_vault.as_deref()?;
+    list.vaults
+        .iter()
+        .find(|vault| vault.path == active_path)
+        .and_then(|vault| vault.color.as_deref())
+}
+
+fn vault_accent_color(mode: AppIconMode) -> Rgb {
+    let launch_color =
+        crate::vault_instance::current_launch().and_then(|launch| launch.vault_color);
+    let registry = crate::vault_list::load_vault_list().ok();
+    let vault_color = launch_color
+        .as_deref()
+        .or_else(|| registry.as_ref().and_then(active_vault_color));
+    Rgb::for_vault_color(vault_color, mode)
+}
+
+#[cfg(target_os = "macos")]
+objc2::extern_class!(
+    #[unsafe(super(objc2_app_kit::NSResponder, objc2_foundation::NSObject))]
+    #[name = "NSApplication"]
+    struct TolariaApplication;
+);
+
+#[cfg(target_os = "macos")]
+impl TolariaApplication {
+    objc2::extern_methods!(
+        #[unsafe(method(sharedApplication))]
+        #[unsafe(method_family = none)]
+        fn shared_application(marker: MainThreadMarker) -> objc2::rc::Retained<TolariaApplication>;
+
+        #[unsafe(method(setApplicationIconImage:))]
+        #[unsafe(method_family = none)]
+        fn set_tolaria_application_icon(&self, image: &objc2_app_kit::NSImage);
+    );
+}
+
+#[cfg(target_os = "macos")]
+fn encode_png(image: &tauri::image::Image<'_>) -> Result<Vec<u8>, String> {
+    let mut bytes = Vec::new();
+    let mut encoder = png::Encoder::new(&mut bytes, image.width(), image.height());
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    let mut writer = encoder
+        .write_header()
+        .map_err(|error| format!("Failed to encode macOS app icon: {error}"))?;
+    writer
+        .write_image_data(image.rgba())
+        .map_err(|error| format!("Failed to encode macOS app icon: {error}"))?;
+    drop(writer);
+    Ok(bytes)
+}
+
+#[cfg(target_os = "macos")]
+fn set_native_app_icon(image: tauri::image::Image<'static>) -> Result<(), String> {
+    use objc2::AllocAnyThread;
+    use objc2_app_kit::NSImage;
+    use objc2_foundation::NSData;
+
+    let marker = MainThreadMarker::new()
+        .ok_or_else(|| "App icon update must run on the main thread".to_string())?;
+    let data = NSData::from_vec(encode_png(&image)?);
+    let image = NSImage::initWithData(NSImage::alloc(), &data)
+        .ok_or_else(|| "Failed to create macOS app icon image".to_string())?;
+    let app = TolariaApplication::shared_application(marker);
+    app.set_tolaria_application_icon(&image);
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn set_window_icons(
     app_handle: &tauri::AppHandle,
-    theme_mode: &str,
+    image: tauri::image::Image<'static>,
 ) -> Result<(), String> {
-    let icon_bytes = AppIconMode::parse(theme_mode)?.png_bytes();
-    let image = tauri::image::Image::from_bytes(icon_bytes)
-        .map_err(|err| format!("Failed to decode app icon: {err}"))?;
+    use tauri::Manager;
 
     for window in app_handle.webview_windows().into_values() {
         window
             .set_icon(image.clone())
-            .map_err(|err| format!("Failed to update window icon: {err}"))?;
+            .map_err(|error| format!("Failed to update window icon: {error}"))?;
     }
+    Ok(())
+}
+
+pub fn update_app_icon_for_theme(
+    app_handle: &tauri::AppHandle,
+    theme_mode: &str,
+) -> Result<(), String> {
+    let mode = AppIconMode::parse(theme_mode)?;
+    let source = tauri::image::Image::from_bytes(mode.png_bytes())
+        .map_err(|error| format!("Failed to decode app icon: {error}"))?;
+    let image = recolor_icon(source, vault_accent_color(mode));
+
+    #[cfg(target_os = "macos")]
+    {
+        app_handle
+            .run_on_main_thread(move || {
+                if let Err(error) = set_native_app_icon(image) {
+                    log::warn!("{error}");
+                }
+            })
+            .map_err(|error| format!("Failed to schedule app icon update: {error}"))?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    set_window_icons(app_handle, image)?;
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::AppIconMode;
+    use super::{active_vault_color, is_droplet_pixel, recolor_icon, AppIconMode, Rgb};
+    use crate::vault_list::{VaultEntry, VaultList};
 
     #[test]
     fn parses_supported_icon_modes() {
@@ -55,5 +218,48 @@ mod tests {
     #[test]
     fn rejects_unknown_icon_modes() {
         assert!(AppIconMode::parse("system").is_err());
+    }
+
+    #[test]
+    fn maps_vault_colors_to_light_and_dark_interface_accents() {
+        assert_eq!(
+            Rgb::for_vault_color(Some("red"), AppIconMode::Light),
+            Rgb::new(229, 62, 62)
+        );
+        assert_eq!(
+            Rgb::for_vault_color(Some("red"), AppIconMode::Dark),
+            Rgb::new(255, 138, 134)
+        );
+        assert_eq!(
+            Rgb::for_vault_color(None, AppIconMode::Light),
+            Rgb::new(21, 93, 255)
+        );
+    }
+
+    #[test]
+    fn resolves_the_active_vault_color_from_the_registry() {
+        let list = VaultList {
+            vaults: vec![VaultEntry {
+                label: "Laputa".to_string(),
+                path: "/vaults/laputa".to_string(),
+                color: Some("red".to_string()),
+                ..Default::default()
+            }],
+            active_vault: Some("/vaults/laputa".to_string()),
+            ..Default::default()
+        };
+
+        assert_eq!(active_vault_color(&list), Some("red"));
+    }
+
+    #[test]
+    fn recolors_blue_droplet_pixels_without_touching_neutral_background_pixels() {
+        let source = tauri::image::Image::new(&[21, 93, 255, 255, 21, 25, 35, 255], 2, 1);
+        let recolored = recolor_icon(source, Rgb::new(229, 62, 62));
+
+        assert_eq!(&recolored.rgba()[..4], &[229, 62, 62, 255]);
+        assert_eq!(&recolored.rgba()[4..], &[21, 25, 35, 255]);
+        assert!(is_droplet_pixel(&[21, 93, 255, 255]));
+        assert!(!is_droplet_pixel(&[21, 25, 35, 255]));
     }
 }

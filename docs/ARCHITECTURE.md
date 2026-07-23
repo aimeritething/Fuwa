@@ -114,6 +114,8 @@ Large-vault reproduction and keyboard QA steps live in [LARGE-VAULT-LOADING-QA.m
 
 The registered vault list can act as a mounted-workspace set. `useVaultSwitcher` persists each workspace's installation-local identity (`label`, stable `alias`, color, mount flag) and the default destination for newly created notes in `vaults.json` under Tolaria's app config directory (`$XDG_CONFIG_HOME/com.tolaria.app/`, defaulting to `$HOME/.config/com.tolaria.app/` on Unix platforms). `useVaultLoader` scans every available mounted workspace and annotates each `VaultEntry` with provenance before React consumes the combined graph. The default workspace is the write target for new notes and Type documents; it is not the only active vault when multiple workspaces are enabled.
 
+The status-bar vault menu can open a registered vault as an independent desktop application instance. Ordinary launches still register the single-instance plugin, while an explicit vault-instance launch bypasses it and scopes that process's active vault without changing the shared registry's ordinary startup selection. Packaged macOS builds use Launch Services `open -n` so each vault receives its own Dock tile and Command-Tab entry. Each process's AppKit icon is generated from the bundled light/dark Tolaria icon by recoloring its droplet with the launched or active vault's allowlisted accent color; missing or unsupported colors remain blue. See [ADR-0171](./adr/0171-separate-vault-application-instances.md).
+
 Vault item deep links use the registered vault list as their resolver namespace. `src/utils/deepLinks.ts` builds `tolaria://<vault-slug>/<relative-path-with-extension>` URLs from workspace aliases, labels, and paths, appending a short stable hash when generated slugs would collide. `useDeepLinks` validates incoming links, switches vaults when required, reloads the vault index once for recently changed files, and opens the matching `VaultEntry` through the normal note-selection path.
 
 Saved Views participate in that mounted graph as source-scoped chrome. `useVaultLoader` loads view definitions from every mounted vault, annotates each `ViewFile` with its owning `rootPath` and workspace identity, and keeps sidebar selection/persistence keyed by `(rootPath, filename)` so same-named view files from different vaults stay independent.
@@ -558,7 +560,7 @@ Persisted at `~/.config/com.tolaria.app/vaults.json` (reads legacy `com.laputa.a
 }
 ```
 
-Managed by `useVaultSwitcher` hook. Switching vaults resets sidebar and clears the active note.
+Managed by `useVaultSwitcher` hook. Switching vaults resets sidebar and clears the active note. `open_vault_in_new_window` starts an explicitly scoped auxiliary application process; that process loads the requested vault as active while preserving the shared registry's ordinary startup selection when it saves.
 
 ### Vault Config
 

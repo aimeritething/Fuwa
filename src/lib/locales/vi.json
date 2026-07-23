@@ -939,6 +939,7 @@
   "status.vault.reloading": "Đang tải lại kho...",
   "status.vault.reloadingTooltip": "Đang tải lại kho từ đĩa",
   "status.vault.remove": "Xóa {label} khỏi danh sách",
+  "status.vault.openInNewWindow": "Mở {label} trong cửa sổ mới",
   "status.vault.removeConfirmTitle": "Xóa khóa?",
   "status.vault.removeConfirmMessage": "Thao tác này sẽ xóa {label} khỏi danh sách vault của Tolaria. Các tệp trên ổ đĩa sẽ không bị xóa.",
   "status.vault.removeConfirmAction": "Xóa kho lưu trữ",

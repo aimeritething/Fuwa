@@ -922,6 +922,7 @@ No indexing step required — search runs directly against the filesystem.
 - Switching closes all tabs and resets sidebar
 - Supports adding, removing, hiding/restoring vaults
 - Persists workspace aliases, colors, mount state, and the default new-note destination for the unified graph
+- Opens a vault in a separate application process through `open_vault_in_new_window`; on macOS this produces an independent Dock and Command-Tab identity whose droplet icon uses the vault accent color, with blue as the fallback
 - Default vault: public Getting Started starter vault cloned on demand
 
 Mounted workspaces are loaded together by `useVaultLoader` for note-list, quick-open, keyword search, wikilink navigation, and saved View discovery. Workspace switching remains a focus operation for per-vault capabilities (Git status, folders, AutoGit, watchers, and repair commands), not a graph isolation boundary.

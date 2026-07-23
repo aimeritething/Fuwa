@@ -939,6 +939,7 @@
   "status.vault.reloading": "Volviendo a cargar el repositorio...",
   "status.vault.reloadingTooltip": "Recargando el repositorio desde el disco",
   "status.vault.remove": "Eliminar {label} de la lista",
+  "status.vault.openInNewWindow": "Abrir {label} en una nueva ventana",
   "status.vault.removeConfirmTitle": "¿Eliminar el almacén?",
   "status.vault.removeConfirmMessage": "Esta acción eliminará {label} de la lista de almacenes de Tolaria. Los archivos del disco no se eliminan.",
   "status.vault.removeConfirmAction": "Eliminar almacén",

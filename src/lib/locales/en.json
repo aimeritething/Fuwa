@@ -939,6 +939,7 @@
   "status.vault.reloading": "Reloading vault...",
   "status.vault.reloadingTooltip": "Reloading vault from disk",
   "status.vault.remove": "Remove {label} from list",
+  "status.vault.openInNewWindow": "Open {label} in a new window",
   "status.vault.removeConfirmTitle": "Remove vault?",
   "status.vault.removeConfirmMessage": "This removes {label} from Tolaria's vault list. Files on disk are not deleted.",
   "status.vault.removeConfirmAction": "Remove vault",
