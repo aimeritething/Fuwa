@@ -162,6 +162,17 @@ async function openOverflowMenu() {
   return screen.findByRole('menu')
 }
 
+async function expectOverflowMenuWaitsForClick() {
+  const trigger = screen.getByRole('button', { name: 'More note actions' })
+
+  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' })
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+
+  fireEvent.pointerUp(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' })
+  fireEvent.click(trigger, { button: 0, ctrlKey: false, detail: 1 })
+  return screen.findByRole('menu')
+}
+
 function mockCollapsedBreadcrumbOverflow() {
   const requestFrame = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback) => {
     callback(0)
@@ -236,6 +247,27 @@ describe('BreadcrumbBar — drag region', () => {
 })
 
 describe('BreadcrumbBar — delete', () => {
+  it('waits for a completed pointer click before opening the overflow menu', async () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={vi.fn()} />)
+
+    const menu = await expectOverflowMenuWaitsForClick()
+
+    expect(within(menu).getByRole('menuitem', { name: 'Delete this note' })).toBeInTheDocument()
+  })
+
+  it('opens from the keyboard and dismisses with Escape', async () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={vi.fn()} />)
+    const trigger = screen.getByRole('button', { name: 'More note actions' })
+
+    fireEvent.keyDown(trigger, { key: 'Enter' })
+    const menu = await screen.findByRole('menu')
+    fireEvent.keyDown(menu, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
+  })
+
   it('shows delete in the overflow menu', async () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={vi.fn()} />)
     const menu = await openOverflowMenu()

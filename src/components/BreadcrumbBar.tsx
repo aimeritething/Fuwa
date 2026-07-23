@@ -30,7 +30,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
   GitBranch,
@@ -50,10 +49,13 @@ import {
   ArrowsClockwise,
   ArrowsInLineHorizontal,
   ArrowsOutLineHorizontal,
-  DotsThree,
 } from '@phosphor-icons/react'
 import { slugify } from '../hooks/useNoteCreation'
 import { useDragRegion } from '../hooks/useDragRegion'
+import {
+  BreadcrumbOverflowMenuTrigger,
+  type BreadcrumbOverflowMenuTooltipControl as BreadcrumbTooltipControl,
+} from './BreadcrumbOverflowMenuTrigger'
 
 interface BreadcrumbBarProps {
   entry: VaultEntry
@@ -99,15 +101,6 @@ const TITLE_ACTION_GAP_PX = 24
 interface BreadcrumbTooltipController {
   activeTooltipLabel: string | null
   setActiveTooltipLabel: Dispatch<SetStateAction<string | null>>
-}
-
-interface BreadcrumbTooltipControl {
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  onPointerEnter?: () => void
-  onPointerLeave?: () => void
-  onFocus?: () => void
-  onBlur?: () => void
 }
 
 const BreadcrumbTooltipContext = createContext<BreadcrumbTooltipController | null>(null)
@@ -1059,10 +1052,12 @@ function BreadcrumbOverflowMenu({
   const tableOfContentsLabel = translate(locale, showTableOfContents ? 'editor.toolbar.closeTableOfContents' : 'editor.toolbar.openTableOfContents')
   const neighborhoodLabel = translate(locale, 'editor.toolbar.openNeighborhood')
   const moreActionsLabel = translate(locale, 'editor.toolbar.moreActions')
+  const tooltipControl = useBreadcrumbTooltipControl(moreActionsLabel)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <DropdownMenu>
-      <BreadcrumbOverflowMenuTrigger label={moreActionsLabel} />
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <BreadcrumbOverflowMenuTrigger label={moreActionsLabel} setMenuOpen={setMenuOpen} tooltipControl={tooltipControl} />
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuItem disabled={!runDiffAction} onSelect={runDiffAction}>
           <GitBranch size={16} />
@@ -1117,37 +1112,6 @@ function BreadcrumbOverflowMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
-
-function BreadcrumbOverflowMenuTrigger({ label }: { label: string }) {
-  const tooltipControl = useBreadcrumbTooltipControl(label)
-
-  return (
-    <ActionTooltip
-      copy={{ label }}
-      side="bottom"
-      align="end"
-      open={tooltipControl.open}
-      onOpenChange={tooltipControl.onOpenChange}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          className="breadcrumb-bar__overflow-menu text-muted-foreground hover:text-foreground"
-          aria-label={label}
-          data-testid="breadcrumb-overflow-menu-trigger"
-          onPointerEnter={tooltipControl.onPointerEnter}
-          onPointerLeave={tooltipControl.onPointerLeave}
-          onFocus={tooltipControl.onFocus}
-          onBlur={tooltipControl.onBlur}
-        >
-          <DotsThree size={18} weight="bold" className={BREADCRUMB_ICON_CLASS} />
-        </Button>
-      </DropdownMenuTrigger>
-    </ActionTooltip>
   )
 }
 
