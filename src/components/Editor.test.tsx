@@ -194,10 +194,7 @@ describe('Editor', () => {
         vaultPath: '/vault',
       })
 
-      fireEvent.pointerDown(screen.getByRole('button', { name: 'More note actions' }), {
-        button: 0,
-        ctrlKey: false,
-      })
+      fireEvent.click(screen.getByRole('button', { name: 'More note actions' }))
       fireEvent.click(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Export note as PDF' }))
 
       await waitFor(() => expect(print).toHaveBeenCalledOnce())
@@ -382,10 +379,7 @@ describe('Editor', () => {
     })
 
     expect(screen.getByRole('button', { name: 'Open the raw editor' })).toBeInTheDocument()
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'More note actions' }), {
-      button: 0,
-      ctrlKey: false,
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'More note actions' }))
     expect(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Delete this note' })).toBeInTheDocument()
   })
 
@@ -443,10 +437,7 @@ describe('Editor', () => {
         onLoadDiff={async () => '+ added line'}
       />
     )
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'More note actions' }), {
-      button: 0,
-      ctrlKey: false,
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'More note actions' }))
     expect(within(await screen.findByRole('menu')).getByRole('menuitem', { name: 'Git diff' })).toBeInTheDocument()
   })
 
