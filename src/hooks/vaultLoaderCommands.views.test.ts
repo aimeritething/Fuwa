@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadMountedVaultFolders, loadMountedVaultViews } from './vaultLoaderCommands'
 import type { ViewDefinition } from '../types'
+import type { VaultOption } from '../components/status-bar/types'
 
 const mockInvoke = vi.fn()
 
@@ -112,6 +113,31 @@ describe('loadMountedVaultViews', () => {
       ['Mounted View', '/mounted'],
       ['Active View', '/active'],
     ])
+  })
+
+  it('ignores configured vaults with null paths instead of crashing during native loading', async () => {
+    mockInvoke.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      if (command !== 'list_views') return Promise.resolve([])
+      if (args?.vaultPath === '/active') {
+        return Promise.resolve([{ filename: 'active.yml', definition: viewDefinition('Active View') }])
+      }
+      throw new Error(`Unexpected vaultPath ${String(args?.vaultPath)}`)
+    })
+
+    const malformedVault = {
+      label: 'Unavailable',
+      path: null,
+      mounted: true,
+      available: false,
+    } as unknown as VaultOption
+
+    const views = await loadMountedVaultViews({
+      defaultWorkspacePath: '/active',
+      vaultPath: '/active',
+      vaults: [malformedVault],
+    })
+
+    expect(views.map((view) => view.definition.name)).toEqual(['Active View'])
   })
 })
 

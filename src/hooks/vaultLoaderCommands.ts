@@ -3,6 +3,11 @@ import { isTauri, mockInvoke } from '../mock-tauri'
 import type { FolderNode, GitPushResult, VaultEntry, ViewFile } from '../types'
 import type { VaultOption } from '../components/status-bar/types'
 import { normalizeVaultEntries, normalizeViewFiles } from '../utils/vaultMetadataNormalization'
+import {
+  isNonBlankWorkspacePath,
+  uniqueNonBlankWorkspacePaths,
+  workspacePathOrEmpty,
+} from '../utils/workspacePaths'
 import { workspaceIdentityFromVault } from '../utils/workspaces'
 
 interface TauriCallOptions {
@@ -52,7 +57,7 @@ interface LoadedVaultChrome {
 }
 
 export function hasVaultPath({ vaultPath }: VaultPathOptions): boolean {
-  return vaultPath.trim().length > 0
+  return isNonBlankWorkspacePath(vaultPath)
 }
 
 export function tauriCall<T>({ command, tauriArgs, mockArgs }: TauriCallOptions): Promise<T> {
@@ -77,23 +82,23 @@ function loadVaultEntriesWithCommand({ vaultPath, command }: VaultPathOptions & 
     .then((entries) => normalizeVaultEntries(entries, vaultPath))
 }
 
-function shouldIncludeVault(vault: VaultOption, primaryPaths: Set<string>): boolean {
-  if (!vault.path.trim() || vault.available === false) return false
-  return vault.mounted !== false || primaryPaths.has(vault.path)
+function mountedVaultPath(vault: VaultOption, primaryPaths: Set<string>): string | null {
+  const path = workspacePathOrEmpty(vault.path)
+  if (!path || vault.available === false) return null
+  return vault.mounted !== false || primaryPaths.has(path) ? path : null
 }
 
 function shouldReloadEmptyResult(entries: VaultEntry[], options: EmptyResultReloadOptions): boolean {
   return entries.length === 0 && options.reloadIfEmpty === true && !options.forceReload && isTauri()
 }
 
-function shouldIncludeFallbackVault(
+function shouldAddFallbackVault(
   byPath: Map<string, VaultOption>,
-  vaultPath: string,
+  fallbackPath: string,
   includeFallbackVault: boolean,
 ): boolean {
-  if (!includeFallbackVault) return false
-  if (!vaultPath.trim()) return false
-  return !byPath.has(vaultPath)
+  if (!includeFallbackVault || !fallbackPath) return false
+  return !byPath.has(fallbackPath)
 }
 
 function loadWorkspaceEntriesWithCommand(
@@ -120,13 +125,15 @@ export function loadWorkspaceEntries(
 
 function uniqueMountedVaults({ defaultWorkspacePath, vaultPath, vaults = [], includeFallbackVault = true }: MountedVaultEntriesOptions): VaultOption[] {
   const byPath = new Map<string, VaultOption>()
-  const primaryPaths = new Set([vaultPath, defaultWorkspacePath ?? ''].filter((path) => path.trim()))
+  const primaryPaths = new Set(uniqueNonBlankWorkspacePaths([vaultPath, defaultWorkspacePath]))
   for (const vault of vaults) {
-    if (!shouldIncludeVault(vault, primaryPaths)) continue
-    byPath.set(vault.path, vault)
+    const path = mountedVaultPath(vault, primaryPaths)
+    if (!path) continue
+    byPath.set(path, { ...vault, path })
   }
-  if (shouldIncludeFallbackVault(byPath, vaultPath, includeFallbackVault)) {
-    byPath.set(vaultPath, { label: vaultPath.split('/').filter(Boolean).pop() || 'Workspace', path: vaultPath, mounted: true, available: true })
+  const fallbackPath = workspacePathOrEmpty(vaultPath)
+  if (shouldAddFallbackVault(byPath, fallbackPath, includeFallbackVault)) {
+    byPath.set(fallbackPath, { label: fallbackPath.split('/').filter(Boolean).pop() || 'Workspace', path: fallbackPath, mounted: true, available: true })
   }
   return [...byPath.values()]
 }
