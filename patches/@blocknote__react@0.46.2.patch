@@ -1,5 +1,5 @@
 diff --git a/dist/blocknote-react.js b/dist/blocknote-react.js
-index d4d36cd..79dd4f0 100644
+index d4d36cd..c493121 100644
 --- a/dist/blocknote-react.js
 +++ b/dist/blocknote-react.js
 @@ -154,8 +154,26 @@ const co = (e) => {
@@ -101,6 +101,15 @@ index d4d36cd..79dd4f0 100644
      return p instanceof Element ? (d.cellReference = { element: p }, d.rowReference = {
        element: f,
        getBoundingClientRect: () => {
+@@ -3796,7 +3828,7 @@ function Ee(e) {
+         ...Object.fromEntries(
+           Object.entries(e.blockProps).filter(([n, o]) => {
+             const r = e.propSchema[n];
+-            return o !== r.default;
++            return r !== void 0 && o !== r.default;
+           }).map(([n, o]) => [xt(n), o])
+         ),
+         "data-file-block": e.isFileBlock === !0 || void 0,
 @@ -4371,7 +4403,7 @@ const zi = (e) => {
      const a = Ue(t, c.prosemirrorState.doc);
      if (!a)

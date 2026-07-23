@@ -59,6 +59,23 @@ describe('editor callout schema', () => {
     expect(injectCalloutBlocks(parsed).at(0)).toMatchObject({ type: 'quote' })
   })
 
+  it('ignores legacy props that are absent from the current callout schema', async () => {
+    const editor = BlockNoteEditor.create({ schema })
+    const parsed = await editor.tryParseMarkdownToBlocks('> [!note] Legacy')
+    const [callout] = injectCalloutBlocks(parsed)
+    const toExternalHTML = schema.blockSpecs.calloutBlock.implementation.toExternalHTML
+    const legacyCallout = {
+      ...callout,
+      props: {
+        ...callout.props,
+        fold: '-',
+      },
+    }
+
+    expect(toExternalHTML).toBeTypeOf('function')
+    expect(() => toExternalHTML?.(legacyCallout, editor, { nestingLevel: 0 })).not.toThrow()
+  })
+
   it('round-trips multiline callout bodies without appending backslashes', async () => {
     const markdown = [
       '> [!note] Clean source',
