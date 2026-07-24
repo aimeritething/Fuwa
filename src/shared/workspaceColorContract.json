@@ -1,0 +1,47 @@
+{
+  "default": "blue",
+  "colors": {
+    "red": {
+      "nativeIcon": {
+        "light": [229, 62, 62],
+        "dark": [255, 138, 134]
+      }
+    },
+    "orange": {
+      "nativeIcon": {
+        "light": [217, 115, 13],
+        "dark": [243, 161, 91]
+      }
+    },
+    "yellow": {
+      "nativeIcon": {
+        "light": [214, 158, 46],
+        "dark": [242, 200, 107]
+      }
+    },
+    "green": {
+      "nativeIcon": {
+        "light": [56, 161, 105],
+        "dark": [121, 216, 157]
+      }
+    },
+    "blue": {
+      "nativeIcon": {
+        "light": [21, 93, 255],
+        "dark": [120, 164, 255]
+      }
+    },
+    "purple": {
+      "nativeIcon": {
+        "light": [128, 90, 213],
+        "dark": [182, 156, 255]
+      }
+    },
+    "pink": {
+      "nativeIcon": null
+    },
+    "gray": {
+      "nativeIcon": null
+    }
+  }
+}

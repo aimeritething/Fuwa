@@ -59,6 +59,16 @@ fn expand_optional_tilde_path(path: Option<String>) -> Option<String> {
     path.map(|value| expand_tilde(&value).into_owned())
 }
 
+fn normalize_vault_colors(mut list: VaultList) -> VaultList {
+    for vault in &mut list.vaults {
+        vault.color = vault
+            .color
+            .as_deref()
+            .and_then(crate::workspace_colors::normalize);
+    }
+    list
+}
+
 fn expand_vault_list_paths(mut list: VaultList) -> VaultList {
     for vault in &mut list.vaults {
         vault.path = expand_tilde(&vault.path).into_owned();
@@ -98,6 +108,7 @@ pub fn load_vault_list() -> Result<VaultList, String> {
     let launch = crate::vault_instance::current_launch();
     load_at(&vault_list_path()?)
         .map(expand_vault_list_paths)
+        .map(normalize_vault_colors)
         .map(|list| apply_instance_launch(list, launch.as_ref()))
 }
 
@@ -105,7 +116,10 @@ pub fn save_vault_list(list: &VaultList) -> Result<(), String> {
     let separate_instance = crate::vault_instance::is_separate_vault_instance();
     let current = load_at(&vault_list_path()?)?;
     let next = preserve_shared_active_vault(list.clone(), &current, separate_instance);
-    save_at(&preferred_app_config_path("vaults.json")?, &next)
+    save_at(
+        &preferred_app_config_path("vaults.json")?,
+        &normalize_vault_colors(next),
+    )
 }
 
 #[cfg(test)]
@@ -288,6 +302,32 @@ mod tests {
             expected_vault.to_str()
         );
         assert_eq!(loaded.hidden_defaults[0], expected_hidden.to_string_lossy());
+    }
+
+    #[test]
+    fn loaded_vault_list_normalizes_workspace_colors() {
+        let list = VaultList {
+            vaults: vec![
+                VaultEntry {
+                    label: "Supported".to_string(),
+                    path: "/supported".to_string(),
+                    color: Some(" Pink ".to_string()),
+                    ..Default::default()
+                },
+                VaultEntry {
+                    label: "Unknown".to_string(),
+                    path: "/unknown".to_string(),
+                    color: Some("cyan".to_string()),
+                    ..Default::default()
+                },
+            ],
+            ..VaultList::default()
+        };
+
+        let loaded = normalize_vault_colors(list);
+
+        assert_eq!(loaded.vaults[0].color.as_deref(), Some("pink"));
+        assert_eq!(loaded.vaults[1].color, None);
     }
 
     #[test]

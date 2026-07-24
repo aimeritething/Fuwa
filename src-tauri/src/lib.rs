@@ -47,6 +47,7 @@ pub mod vault_list;
 pub mod vault_watcher;
 #[cfg(desktop)]
 mod window_state;
+mod workspace_colors;
 
 #[cfg(desktop)]
 pub(crate) use asset_scope::sync_vault_asset_scope;

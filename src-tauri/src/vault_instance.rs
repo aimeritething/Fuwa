@@ -17,15 +17,6 @@ struct LaunchPlan {
     args: Vec<OsString>,
 }
 
-fn supported_vault_color(value: &str) -> Option<String> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "blue" | "green" | "orange" | "purple" | "red" | "yellow" => {
-            Some(value.trim().to_ascii_lowercase())
-        }
-        _ => None,
-    }
-}
-
 fn parse_launch_args<I, S>(args: I) -> Option<VaultInstanceLaunch>
 where
     I: IntoIterator<Item = S>,
@@ -45,7 +36,7 @@ where
         .position(|argument| argument == OsStr::new(VAULT_COLOR_FLAG))
         .and_then(|index| args.get(index + 1))
         .and_then(|value| value.to_str())
-        .and_then(supported_vault_color);
+        .and_then(crate::workspace_colors::normalize);
 
     Some(VaultInstanceLaunch {
         vault_path,
@@ -79,7 +70,7 @@ fn vault_launch_arguments(vault_path: &Path, vault_color: Option<&str>) -> Vec<O
         OsString::from(VAULT_INSTANCE_FLAG),
         vault_path.as_os_str().to_owned(),
     ];
-    if let Some(color) = vault_color.and_then(supported_vault_color) {
+    if let Some(color) = vault_color.and_then(crate::workspace_colors::normalize) {
         args.push(OsString::from(VAULT_COLOR_FLAG));
         args.push(OsString::from(color));
     }
@@ -217,6 +208,16 @@ mod tests {
         assert_eq!(
             plan.args,
             [VAULT_INSTANCE_FLAG, "/tmp/vault"].map(OsString::from)
+        );
+    }
+
+    #[test]
+    fn passes_renderer_only_workspace_colors_to_new_instances() {
+        let args = vault_launch_arguments(Path::new("/tmp/vault"), Some("Pink"));
+
+        assert_eq!(
+            args,
+            [VAULT_INSTANCE_FLAG, "/tmp/vault", VAULT_COLOR_FLAG, "pink",].map(OsString::from)
         );
     }
 }

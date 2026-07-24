@@ -5,6 +5,7 @@
 
 import type { VaultEntry } from '../types'
 import { isValidCssColor } from './colorUtils'
+import { WORKSPACE_COLORS } from './workspaceColors'
 
 /** Builds a map from type name → Type document entry (for custom color/icon lookup).
  *  Stores both original title and lowercase version so lookups work regardless
@@ -59,7 +60,7 @@ export const ACCENT_COLORS: { key: string; label: string; css: string; cssLight:
   { key: 'gray', label: 'Gray', css: 'var(--accent-gray)', cssLight: 'var(--accent-gray-light)' },
 ]
 
-export const ACCENT_COLOR_PICKER_KEYS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'] as const
+export const ACCENT_COLOR_PICKER_KEYS = WORKSPACE_COLORS
 export const ACCENT_COLOR_PICKER_COLORS = ACCENT_COLOR_PICKER_KEYS
   .map((key) => ACCENT_COLORS.find((color) => color.key === key) ?? null)
   .filter((color): color is typeof ACCENT_COLORS[number] => color !== null)

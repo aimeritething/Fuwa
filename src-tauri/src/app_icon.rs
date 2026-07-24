@@ -1,6 +1,5 @@
 const LIGHT_ICON_BYTES: &[u8] = include_bytes!("../icons/512x512.png");
 const DARK_ICON_BYTES: &[u8] = include_bytes!("../icons/512x512-dark.png");
-const DEFAULT_BLUE: Rgb = Rgb::new(21, 93, 255);
 
 #[cfg(target_os = "macos")]
 use objc2::MainThreadMarker;
@@ -41,21 +40,9 @@ impl Rgb {
     }
 
     fn for_vault_color(value: Option<&str>, mode: AppIconMode) -> Self {
-        let color = value.unwrap_or("blue").trim().to_ascii_lowercase();
-        match (color.as_str(), mode) {
-            ("green", AppIconMode::Light) => Self::new(56, 161, 105),
-            ("orange", AppIconMode::Light) => Self::new(217, 115, 13),
-            ("purple", AppIconMode::Light) => Self::new(128, 90, 213),
-            ("red", AppIconMode::Light) => Self::new(229, 62, 62),
-            ("yellow", AppIconMode::Light) => Self::new(214, 158, 46),
-            ("green", AppIconMode::Dark) => Self::new(121, 216, 157),
-            ("orange", AppIconMode::Dark) => Self::new(243, 161, 91),
-            ("purple", AppIconMode::Dark) => Self::new(182, 156, 255),
-            ("red", AppIconMode::Dark) => Self::new(255, 138, 134),
-            ("yellow", AppIconMode::Dark) => Self::new(242, 200, 107),
-            ("blue", AppIconMode::Dark) => Self::new(120, 164, 255),
-            _ => DEFAULT_BLUE,
-        }
+        let [red, green, blue] =
+            crate::workspace_colors::app_icon_rgb(value, mode == AppIconMode::Dark);
+        Self::new(red, green, blue)
     }
 }
 
@@ -233,6 +220,10 @@ mod tests {
         assert_eq!(
             Rgb::for_vault_color(None, AppIconMode::Light),
             Rgb::new(21, 93, 255)
+        );
+        assert_eq!(
+            Rgb::for_vault_color(Some("pink"), AppIconMode::Dark),
+            Rgb::new(120, 164, 255)
         );
     }
 

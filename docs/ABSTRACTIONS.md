@@ -921,8 +921,8 @@ No indexing step required — search runs directly against the filesystem.
 - Persists vault list to `$XDG_CONFIG_HOME/com.tolaria.app/vaults.json`, defaulting to `$HOME/.config/com.tolaria.app/vaults.json` on Unix platforms. App config path policy is declared once in `mcp-server/app-config-policy.json` and consumed by both the Rust app helper and Node MCP server: reads check the current Tolaria namespace, then legacy `com.laputa.app`, first in the preferred config root and then in the platform config root when it differs; writes target the current namespace in the preferred root.
 - Switching closes all tabs and resets sidebar
 - Supports adding, removing, hiding/restoring vaults
-- Persists workspace aliases, colors, mount state, and the default new-note destination for the unified graph
-- Opens a vault in a separate application process through `open_vault_in_new_window`; on macOS this produces an independent Dock and Command-Tab identity whose droplet icon uses the vault accent color, with blue as the fallback
+- Persists workspace aliases, colors, mount state, and the default new-note destination for the unified graph. `src/shared/workspaceColorContract.json` owns the ordered renderer color keys and the optional light/dark native icon tint for each key; Rust uses the same contract to normalize persisted colors and launch arguments, so these boundaries cannot drift from the picker.
+- Opens a vault in a separate application process through `open_vault_in_new_window`; on macOS this produces an independent Dock and Command-Tab identity whose droplet icon uses the vault accent color. Contract colors without a native tint (`pink` and `gray`) explicitly use the contract's default blue tint.
 - Default vault: public Getting Started starter vault cloned on demand
 
 Mounted workspaces are loaded together by `useVaultLoader` for note-list, quick-open, keyword search, wikilink navigation, and saved View discovery. Workspace switching remains a focus operation for per-vault capabilities (Git status, folders, AutoGit, watchers, and repair commands), not a graph isolation boundary.
