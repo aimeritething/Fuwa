@@ -115,6 +115,20 @@ Set `LAPUTA_PREPUSH_LOCAL=1` to force the local fallback path. If CircleCI has d
 
 The sidecar is Linux-based, so keep native macOS Tauri QA and app-focus screenshot checks on the host machine. The Chunk config is intended for portable frontend, Rust, coverage, and Playwright smoke checks. Avoid starting multiple `chunk validate --remote ...` processes against the same sidecar at once; each validate run syncs the checkout, so concurrent validates can race.
 
+## CircleCI
+
+CircleCI is the authoritative outer-loop CI/CD system. `.circleci/config.yml` runs the same
+frontend, Rust, and Playwright lane scripts used by Chunk, then owns native macOS, Linux, and
+Windows release builds, GitHub Release publication, and documentation deployment.
+
+Validate configuration changes before pushing:
+
+```bash
+circleci config validate .circleci/config.yml
+```
+
+See `.circleci/README.md` for required contexts, secrets, branch checks, and release behavior.
+
 ## Starter Vaults And Remotes
 
 `create_getting_started_vault` clones the public starter repo and then removes every git remote from the new local copy. That means Getting Started vaults open local-only by default. Users connect a compatible remote later through the bottom-bar `No remote` chip or the command palette, both of which feed the same `AddRemoteModal` and `git_add_remote` backend flow.

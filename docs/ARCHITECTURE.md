@@ -1000,7 +1000,7 @@ Shortcut routing is explicit:
 
 ### Release Pipeline
 
-Every push to `main` triggers `.github/workflows/release.yml`:
+Every qualifying push to `main` triggers the `alpha-release` workflow in `.circleci/config.yml`:
 
 ```
 push to main
@@ -1008,7 +1008,7 @@ push to main
     and a GitHub-sorted tag alpha-vYYYY.M.D-alpha.NNNN
       → use today's UTC date unless the latest stable-vYYYY.M.D tag already uses today
       → if stable already uses today, advance alpha to the next calendar day so semver still increases
-  → build-artifacts job, via `.github/workflows/release-build-artifacts.yml`:
+  → four parameterized CircleCI build jobs fan out in parallel:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin --bundles app
       → upload signed Apple Silicon and Intel .app.tar.gz + .sig updater artifacts named Tolaria_<version>_macOS_Silicon and Tolaria_<version>_macOS_Intel
@@ -1023,21 +1023,21 @@ push to main
   → release job:
       → generate alpha-latest.json with darwin-aarch64, darwin-x86_64, Linux, and Windows updater URLs
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
-  → pages job:
+  → publish-main-docs job:
       → build VitePress public docs into the GitHub Pages root
       → build static HTML release history page at /releases/
       → publish alpha/latest.json
       → refresh latest.json + latest-canary.json as compatibility aliases to alpha
       → preserve stable/latest.json
-      → deploy to gh-pages
+      → commit the generated site to `gh-pages` for GitHub's managed Pages deployment
 ```
 
-Stable promotions trigger `.github/workflows/release-stable.yml`:
+Stable promotions trigger the `stable-release` workflow in `.circleci/config.yml`:
 
 ```
 push stable-vYYYY.M.D tag
   → version job: validate YYYY.M.D from the tag
-  → build-artifacts job, via `.github/workflows/release-build-artifacts.yml`:
+  → four parameterized CircleCI build jobs fan out in parallel:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin
       → upload signed Apple Silicon and Intel .app.tar.gz + .sig and .dmg artifacts named Tolaria_<version>_macOS_Silicon and Tolaria_<version>_macOS_Intel
@@ -1052,13 +1052,13 @@ push stable-vYYYY.M.D tag
   → release job:
       → generate stable-latest.json with macOS Apple Silicon, macOS Intel, Linux, and Windows updater URLs plus platform-specific manual download URLs
       → publish GitHub release Tolaria YYYY.M.D
-  → pages job:
+  → publish-stable-docs job:
       → build VitePress public docs into the GitHub Pages root
       → build static HTML release history page at /releases/
       → publish stable/latest.json
       → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts, default Linux visitors to AppImage, require an explicit Windows installer click with managed-device guidance, and expose RPM as a manual Linux option when the stable release includes one
       → preserve alpha/latest.json
-      → deploy to gh-pages
+      → commit the generated site to `gh-pages` for GitHub's managed Pages deployment
 ```
 
 Linux AppImage release jobs use Tauri's stock linuxdeploy AppImage output plugin. `scripts/appimage-launcher-tools.mjs` remains available for local experiments with symlink-safe AppRun patching and fcitx module bundling, but release packaging does not pre-seed that shim because linuxdeploy currently exits before sealing the AppImage when the shim replaces the stock output plugin in Tauri's tools cache.
