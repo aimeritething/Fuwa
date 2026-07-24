@@ -226,3 +226,5 @@ proposed → active → superseded
 | [0167](0167-non-collapsible-callout-scope.md) | Non-collapsible callout scope | active |
 | [0168](0168-sandboxed-standalone-html-file-previews.md) | Sandboxed standalone HTML file previews | active |
 | [0170](0170-measurable-crash-safe-startup.md) | Measurable, crash-safe startup | active |
+| [0171](0171-separate-vault-application-instances.md) | Separate vault application instances | active |
+| [0172](0172-local-codescene-change-safeguards.md) | Local CodeScene safeguards before commits and direct-to-main pushes | active |

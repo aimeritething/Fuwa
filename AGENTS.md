@@ -4,7 +4,7 @@
 
 ### Start working on a task
 
-**Before writing a single line of code:** run `mcp__codescene__code_health_score` to check the current codebase health against `.codescene-thresholds`. If the score is already below the threshold, **stop and refactor first** — find the worst files with the MCP, improve them, commit, then start the task. Never start feature work on a codebase that is already below the gate.
+**Before writing a single line of code:** inspect the configured CodeScene project's current Hotspot and Average Code Health and compare them with `.codescene-thresholds`. Then capture the file-level Code Health score for every existing code file you intend to edit. If the project is already below the threshold, **stop and refactor first** — find the worst files with the MCP, improve them, commit, then start the task. Never start feature work on a codebase that is already below the gate.
 
 - Read task description and all comments fully
 - For To Rework: the ❌ QA failed comment tells you exactly what to fix
@@ -57,7 +57,9 @@ Pre-push enforces **Hotspot Code Health** and **Average Code Health** ≥ thresh
 
 **New files:** every new **scorable code file** must reach CodeScene score `10.0` before commit. If CodeScene reports `null` / "no scorable code" for a new file, it must still have zero CodeScene findings/warnings.
 
-**Before every commit:** run CodeScene file-level review on every touched or newly created code file and verify the rule above. **Boy Scout Rule:** every file you touch must leave with a higher score, unless it was already `10.0`, in which case it must stay `10.0`.
+**Before every commit:** run CodeScene file-level review on every touched or newly created code file and verify the rule above. Then run `mcp__codescene__pre_commit_code_health_safeguard` for the repository and do not commit unless its quality gates pass. **Boy Scout Rule:** every file you touch must leave with a higher score, unless it was already `10.0`, in which case it must stay `10.0`.
+
+**Before the final direct-to-main push:** run `mcp__codescene__analyze_change_set` with `base_ref=origin/main`. This is Tolaria's PR-preflight equivalent: every affected file must be improved or stable, and the overall quality gate must pass. Refactor and repeat if any file is degraded.
 
 **If CodeScene gate blocks your push:** use `mcp__codescene__code_health_score` to find the worst file, refactor it, commit, push again. Do NOT stop or wait for laputa-refactor — that is a background loop, not a substitute for fixing your own regressions.
 
@@ -117,7 +119,7 @@ Before pushing or moving a task to In Review, verify the release gates and add a
 - What was implemented (a few lines covering logic and UX/UI).
 - QA: what was tested and how (Playwright / native screenshot / osascript).
 - Tests/coverage: commands run and final coverage result.
-- CodeScene: before/after touched-file checks plus final Hotspot and Average scores after push; final scores must pass `.codescene-thresholds`.
+- CodeScene: before/after touched-file checks, the pre-commit safeguard verdict, the final `origin/main` change-set verdict, plus final Hotspot and Average scores after push; every gate must pass `.codescene-thresholds`.
 - Coverage commands passed (`pnpm test:coverage` and `cargo llvm-cov ... --fail-under-lines 85`) or the change is docs-only.
 - Codacy: before/after findings for every touched file; confirm fewer findings (or zero stayed zero), zero findings in new files, and no new findings at any severity.
 - Localization: any user-facing copy lives in `src/lib/locales/en.json`, `pnpm l10n:translate` was run, and `pnpm l10n:validate` passes. If no copy changed, say “Localization: no UI copy changes”.
