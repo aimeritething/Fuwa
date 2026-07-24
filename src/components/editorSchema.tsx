@@ -236,7 +236,12 @@ export function MathBlockEditor({ block, editor }: MathBlockEditorProps) {
   }
 
   return (
-    <Button type="button" variant="ghost" className="math-block-shell" onDoubleClick={startEditing}>
+    <Button
+      type="button"
+      variant="ghost"
+      className="math-block-shell h-auto min-h-9"
+      onDoubleClick={startEditing}
+    >
       <MathRender latex={currentLatex} displayMode />
     </Button>
   )

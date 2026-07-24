@@ -27,6 +27,14 @@ describe('MathBlockEditor', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
+  it('lets tall display math expand beyond the default button height', () => {
+    renderMathBlockEditor('\\frac{\\partial L}{\\partial z_t}')
+
+    const shell = screen.getByRole('button')
+    expect(shell).toHaveClass('h-auto', 'min-h-9')
+    expect(shell).not.toHaveClass('h-9')
+  })
+
   it('edits the math block latex prop instead of inserting Markdown source', () => {
     const { editor } = renderMathBlockEditor()
     const onExternalChange = vi.fn()
@@ -107,6 +115,7 @@ describe('MathBlockEditor', () => {
 
     expect(editorThemeCss).toContain('.editor__blocknote-container .math-block-shell {')
     expect(editorThemeCss).toContain('max-width: 100%;')
+    expect(editorThemeCss).toContain('overflow-x: auto;')
     expect(editorThemeCss).toContain('.editor__blocknote-container .math-block-shell:not(.math-block-shell--editing) {')
     expect(editorThemeCss).toContain('width: fit-content;')
     expect(editorThemeCss).toContain('margin-inline: auto;')
