@@ -2,7 +2,7 @@ import console from 'node:console'
 import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 
-const thresholdDescription = 'Ratcheted editor performance budgets for synthetic small and large note opens. Lower is better; maxMs values should only move down unless intentionally rebaselined.'
+const thresholdDescription = 'Ratcheted perceived-latency budgets for stable synthetic Tolaria flows. Lower is better; maxMs values only move down unless a reviewer explicitly changes the threshold file.'
 
 export async function readThresholds(thresholdsPath) {
   if (!existsSync(thresholdsPath)) {
@@ -21,7 +21,7 @@ export function updateThresholds(thresholds, summaries) {
     description: thresholdDescription,
     scenarios: { ...thresholds.scenarios },
     updatedAt: new Date().toISOString(),
-    version: 1,
+    version: 2,
   }
 
   for (const [scenarioName, summary] of Object.entries(summaries)) {
@@ -39,11 +39,12 @@ export function thresholdFailures(thresholds, summaries) {
 
 export function printSummary({ metricLabels, summaries, thresholds, writeLine = console.log }) {
   for (const [scenarioName, summary] of Object.entries(summaries)) {
-    writeLine(`\n${scenarioName} (${summary.contentBytes} bytes, ${summary.sectionCount} sections)`)
-    for (const [metricName, value] of currentMetricEntries(summary)) {
+    writeLine(`\n${scenarioName} (${summary.fixtureLabel})`)
+    for (const [metricName, value] of Object.entries(summary.medians)) {
       writeLine(summaryMetricLine({
         label: metricLabels[metricName] ?? metricName,
         maxMs: thresholds.scenarios?.[scenarioName]?.metrics?.[metricName]?.maxMs,
+        p90: summary.p90s?.[metricName],
         value,
       }))
     }
@@ -54,16 +55,15 @@ export function printThresholdFailures({ failures, metricLabels, writeLine = con
   writeLine('\nEditor performance thresholds failed:')
   for (const failure of failures) {
     const label = metricLabels[failure.metricName] ?? failure.metricName
-    writeLine(`  ${failure.scenarioName} ${label}: ${failure.value}ms > ${failure.maxMs}ms`)
+    writeLine(thresholdFailureLine(failure, label))
   }
 }
 
 function updatedScenarioThreshold(thresholds, scenarioName, summary) {
   const previousScenario = thresholds.scenarios?.[scenarioName] ?? {}
   return {
-    contentBytes: summary.contentBytes,
+    fixtureLabel: summary.fixtureLabel,
     metrics: updatedMetricThresholds(previousScenario.metrics ?? {}, summary),
-    sectionCount: summary.sectionCount,
   }
 }
 
@@ -73,6 +73,7 @@ function updatedMetricThresholds(previousMetrics, summary) {
     {
       baselineMs: value,
       maxMs: ratchetedMax(metricName, previousMetrics[metricName], value),
+      p90Ms: summary.p90s?.[metricName] ?? null,
     },
   ]))
 }
@@ -91,23 +92,53 @@ function ratchetedMax(metricName, existingMetric, value) {
 }
 
 function scenarioThresholdFailures(thresholds, scenarioName, summary) {
-  return currentMetricEntries(summary)
+  return Object.entries(summary.medians)
     .map(([metricName, value]) => metricFailure(thresholds, scenarioName, metricName, value))
     .filter(Boolean)
 }
 
 function metricFailure(thresholds, scenarioName, metricName, value) {
   const maxMs = thresholds.scenarios?.[scenarioName]?.metrics?.[metricName]?.maxMs
-  if (typeof maxMs !== 'number' || value <= maxMs) return null
+  if (typeof maxMs !== 'number') {
+    return {
+      metricName,
+      reason: 'missing-threshold',
+      scenarioName,
+      value,
+    }
+  }
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return {
+      maxMs,
+      metricName,
+      reason: 'missing-measurement',
+      scenarioName,
+      value,
+    }
+  }
+  if (value <= maxMs) return null
   return {
     maxMs,
     metricName,
+    reason: 'over-budget',
     scenarioName,
     value,
   }
 }
 
-function summaryMetricLine({ label, maxMs, value }) {
+function summaryMetricLine({ label, maxMs, p90, value }) {
   const suffix = typeof maxMs === 'number' ? ` / max ${maxMs}ms` : ''
-  return `  ${label.padEnd(24)} ${String(value).padStart(6)}ms${suffix}`
+  const medianText = typeof value === 'number' ? `${value}ms` : 'missing'
+  const p90Text = typeof p90 === 'number' ? `${p90}ms` : 'missing'
+  return `  ${label.padEnd(24)} median ${medianText.padStart(9)}  p90 ${p90Text.padStart(9)}${suffix}`
+}
+
+function thresholdFailureLine(failure, label) {
+  if (failure.reason === 'missing-threshold') {
+    return `  ${failure.scenarioName} ${label}: no maxMs budget is defined`
+  }
+  if (failure.reason === 'missing-measurement') {
+    return `  ${failure.scenarioName} ${label}: measurement was not produced`
+  }
+  return `  ${failure.scenarioName} ${label}: ${failure.value}ms > ${failure.maxMs}ms`
 }
