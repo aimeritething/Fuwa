@@ -25,7 +25,7 @@ export function updateThresholds(thresholds, summaries) {
   }
 
   for (const [scenarioName, summary] of Object.entries(summaries)) {
-    next.scenarios[scenarioName] = updatedScenarioThreshold(thresholds, scenarioName, summary)
+    Reflect.set(next.scenarios, scenarioName, updatedScenarioThreshold(thresholds, scenarioName, summary))
   }
 
   return next
@@ -42,9 +42,9 @@ export function printSummary({ metricLabels, summaries, thresholds, writeLine = 
     writeLine(`\n${scenarioName} (${summary.fixtureLabel})`)
     for (const [metricName, value] of Object.entries(summary.medians)) {
       writeLine(summaryMetricLine({
-        label: metricLabels[metricName] ?? metricName,
-        maxMs: thresholds.scenarios?.[scenarioName]?.metrics?.[metricName]?.maxMs,
-        p90: summary.p90s?.[metricName],
+        label: Reflect.get(metricLabels, metricName) ?? metricName,
+        maxMs: metricThreshold(thresholds, scenarioName, metricName)?.maxMs,
+        p90: Reflect.get(summary.p90s ?? {}, metricName),
         value,
       }))
     }
@@ -54,13 +54,13 @@ export function printSummary({ metricLabels, summaries, thresholds, writeLine = 
 export function printThresholdFailures({ failures, metricLabels, writeLine = console.error }) {
   writeLine('\nEditor performance thresholds failed:')
   for (const failure of failures) {
-    const label = metricLabels[failure.metricName] ?? failure.metricName
+    const label = Reflect.get(metricLabels, failure.metricName) ?? failure.metricName
     writeLine(thresholdFailureLine(failure, label))
   }
 }
 
 function updatedScenarioThreshold(thresholds, scenarioName, summary) {
-  const previousScenario = thresholds.scenarios?.[scenarioName] ?? {}
+  const previousScenario = Reflect.get(thresholds.scenarios ?? {}, scenarioName) ?? {}
   return {
     fixtureLabel: summary.fixtureLabel,
     metrics: updatedMetricThresholds(previousScenario.metrics ?? {}, summary),
@@ -72,8 +72,8 @@ function updatedMetricThresholds(previousMetrics, summary) {
     metricName,
     {
       baselineMs: value,
-      maxMs: ratchetedMax(metricName, previousMetrics[metricName], value),
-      p90Ms: summary.p90s?.[metricName] ?? null,
+      maxMs: ratchetedMax(metricName, Reflect.get(previousMetrics, metricName), value),
+      p90Ms: Reflect.get(summary.p90s ?? {}, metricName) ?? null,
     },
   ]))
 }
@@ -98,7 +98,7 @@ function scenarioThresholdFailures(thresholds, scenarioName, summary) {
 }
 
 function metricFailure(thresholds, scenarioName, metricName, value) {
-  const maxMs = thresholds.scenarios?.[scenarioName]?.metrics?.[metricName]?.maxMs
+  const maxMs = metricThreshold(thresholds, scenarioName, metricName)?.maxMs
   if (typeof maxMs !== 'number') {
     return {
       metricName,
@@ -124,6 +124,11 @@ function metricFailure(thresholds, scenarioName, metricName, value) {
     scenarioName,
     value,
   }
+}
+
+function metricThreshold(thresholds, scenarioName, metricName) {
+  const scenario = Reflect.get(thresholds.scenarios ?? {}, scenarioName)
+  return Reflect.get(scenario?.metrics ?? {}, metricName)
 }
 
 function summaryMetricLine({ label, maxMs, p90, value }) {

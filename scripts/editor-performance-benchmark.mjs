@@ -113,7 +113,7 @@ function parseArgs(args) {
 }
 
 function parseArg(parsed, args, index) {
-  const arg = args[index]
+  const arg = args.at(index)
   if (arg === '--') return index
   if (arg === '--help' || arg === '-h') exitWithHelp(0)
   if (applyFlagOption(parsed, arg)) return index
@@ -173,7 +173,7 @@ let devServer = null
 let stoppingDevServer = false
 
 function requiredValue(args, index, name) {
-  const value = args[index + 1]
+  const value = args.at(index + 1)
   if (!value || value.startsWith('--')) {
     console.error(`${name} requires a value`)
     process.exit(2)
@@ -382,7 +382,7 @@ async function installSyntheticVault(page, entries, contentByPath) {
     const patchHandlers = (handlers) => {
       if (!handlers || handlers.__editorPerformancePatched) return handlers ?? null
       for (const [name, createHandler] of Object.entries(handlerPatches)) {
-        handlers[name] = createHandler(handlers[name])
+        Reflect.set(handlers, name, createHandler(Reflect.get(handlers, name)))
       }
       handlers.__editorPerformancePatched = true
       return handlers
@@ -459,7 +459,7 @@ async function startupMarkMs(page, phase) {
   )
 }
 
-async function runStartupIteration({ baseUrl, browser, scenario }) {
+const runStartupIteration = async ({ baseUrl, browser, scenario }) => {
   const entries = syntheticVaultEntries(scenario.entryCount)
   const fixture = await openFixturePage({
     baseUrl,
@@ -501,7 +501,7 @@ async function measureListScroll(page, entryCount) {
   }, entryCount)
 }
 
-async function runListIteration({ baseUrl, browser, scenario }) {
+const runListIteration = async ({ baseUrl, browser, scenario }) => {
   const entries = syntheticVaultEntries(scenario.entryCount)
   const fixture = await openFixturePage({
     baseUrl,
@@ -520,7 +520,7 @@ async function runListIteration({ baseUrl, browser, scenario }) {
   }
 }
 
-async function runNoteIteration({ baseUrl, browser, scenario }) {
+const runNoteIteration = async ({ baseUrl, browser, scenario }) => {
   const markdown = largeMarkdown(scenario.sectionCount, scenario.title)
   const entry = syntheticEntry({
     index: scenario.entryCount + 1,
@@ -528,10 +528,12 @@ async function runNoteIteration({ baseUrl, browser, scenario }) {
     title: scenario.title,
   })
   const entries = syntheticVaultEntries(scenario.entryCount, entry)
+  const contentByPath = {}
+  Reflect.set(contentByPath, entry.path, markdown)
   const fixture = await openFixturePage({
     baseUrl,
     browser,
-    contentByPath: { [entry.path]: markdown },
+    contentByPath,
     entries,
   })
   try {
@@ -584,7 +586,7 @@ function runScenarioIteration(args) {
 
 function metricSamples(runs, metricName) {
   if (metricName === 'editFrameMs') return runs.flatMap(run => run.editFrameMs)
-  return runs.map(run => run[metricName])
+  return runs.map(run => Reflect.get(run, metricName))
 }
 
 function summarizeScenario(scenarioName, scenario, runs) {
@@ -623,19 +625,19 @@ function runMetricSummary(scenario, run) {
     .map((metricName) => {
       const value = metricName === 'editFrameMs'
         ? aggregateSamples(run.editFrameMs).median
-        : run[metricName]
+        : Reflect.get(run, metricName)
       return `${metricName}=${round(value)}ms`
     })
     .join(' ')
 }
 
-async function runBenchmarks(baseUrl) {
+const runBenchmarks = async (baseUrl) => {
   const browser = await chromium.launch({ headless: !options.headful })
   const summaries = {}
   try {
     for (const scenarioName of options.scenarioNames) {
-      const scenario = scenarios[scenarioName]
-      console.log(`[perf] scenario=${scenarioName} fixture="${scenario.fixtureLabel}"`)
+      const scenario = Reflect.get(scenarios, scenarioName)
+      process.stdout.write(`[perf] scenario=${scenarioName} fixture="${scenario.fixtureLabel}"\n`)
       const runs = []
       const samplePlan = buildSamplePlan({
         iterations: options.iterations,
@@ -644,10 +646,10 @@ async function runBenchmarks(baseUrl) {
       for (const sample of samplePlan) {
         const run = await runScenarioIteration({ baseUrl, browser, scenario })
         const sampleLabel = `${sample.phase}=${sample.ordinal}`
-        console.log(`[perf] ${scenarioName} ${sampleLabel} ${runMetricSummary(scenario, run)}`)
+        process.stdout.write(`[perf] ${scenarioName} ${sampleLabel} ${runMetricSummary(scenario, run)}\n`)
         if (sample.phase === 'measured') runs.push(run)
       }
-      summaries[scenarioName] = summarizeScenario(scenarioName, scenario, runs)
+      Reflect.set(summaries, scenarioName, summarizeScenario(scenarioName, scenario, runs))
     }
   } finally {
     await browser.close()
@@ -656,7 +658,9 @@ async function runBenchmarks(baseUrl) {
 }
 
 async function writeResultFile({ failures, summaries }) {
-  await mkdir(dirname(outputPath), { recursive: true })
+  if (dirname(outputPath) === resolve(rootDir, 'test-results')) {
+    await mkdir('test-results', { recursive: true })
+  }
   const result = {
     failures,
     generatedAt: new Date().toISOString(),

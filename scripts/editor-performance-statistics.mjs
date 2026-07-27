@@ -9,8 +9,8 @@ function percentile(sortedValues, quantile) {
   const position = (sortedValues.length - 1) * quantile
   const lowerIndex = Math.floor(position)
   const upperIndex = Math.ceil(position)
-  const lower = sortedValues[lowerIndex]
-  const upper = sortedValues[upperIndex]
+  const lower = sortedValues.at(lowerIndex)
+  const upper = sortedValues.at(upperIndex)
   return lower + ((upper - lower) * (position - lowerIndex))
 }
 
