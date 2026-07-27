@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process'
 import console from 'node:console'
 import { mkdir, writeFile } from 'node:fs/promises'
 import process from 'node:process'
-import { dirname, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { chromium } from '@playwright/test'
 import {
   aggregateSamples,
@@ -22,7 +22,6 @@ import {
 
 const rootDir = process.cwd()
 const defaultThresholdsPath = resolve(rootDir, '.editor-performance-thresholds.json')
-const defaultOutputPath = resolve(rootDir, 'test-results/performance-summary.json')
 const defaultPort = '41742'
 const scenarios = {
   startup: {
@@ -93,7 +92,6 @@ function defaultOptions() {
     baseUrl: process.env.BASE_URL ?? '',
     headful: false,
     iterations: positiveInteger(process.env.EDITOR_PERF_ITERATIONS ?? '5', 'EDITOR_PERF_ITERATIONS'),
-    outputPath: process.env.EDITOR_PERF_OUTPUT ?? defaultOutputPath,
     port: process.env.EDITOR_PERF_PORT ?? defaultPort,
     scenarioNames: defaultScenarioNames,
     thresholdsPath: defaultThresholdsPath,
@@ -134,7 +132,6 @@ function applyValueOption(parsed, args, index, arg) {
   const valueOptionNames = [
     '--base-url',
     '--iterations',
-    '--output',
     '--port',
     '--scenario',
     '--thresholds',
@@ -144,7 +141,6 @@ function applyValueOption(parsed, args, index, arg) {
   const value = requiredValue(args, index, arg)
   if (arg === '--base-url') parsed.baseUrl = value
   else if (arg === '--iterations') parsed.iterations = positiveInteger(value, arg)
-  else if (arg === '--output') parsed.outputPath = value
   else if (arg === '--port') parsed.port = value
   else if (arg === '--scenario') parsed.scenarioNames = value.split(',').filter(Boolean)
   else if (arg === '--thresholds') parsed.thresholdsPath = value
@@ -168,7 +164,6 @@ function exitWithHelp(code) {
 
 const options = parseArgs(process.argv.slice(2))
 const thresholdsPath = resolve(rootDir, options.thresholdsPath)
-const outputPath = resolve(rootDir, options.outputPath)
 let devServer = null
 let stoppingDevServer = false
 
@@ -194,7 +189,7 @@ function nonNegativeInteger(value, name) {
 }
 
 function printHelp() {
-  console.log(`Usage: pnpm perf:editor [options]
+  process.stdout.write(`Usage: pnpm perf:editor [options]
 
 Options:
   --base-url <url>       Reuse an existing dev server instead of starting Vite.
@@ -202,7 +197,6 @@ Options:
   --warmups <count>      Discarded warmup runs per scenario. Default: 1.
   --scenario <names>     Comma-separated scenarios: startup,list,small,large.
   --thresholds <path>    Threshold JSON path. Default: .editor-performance-thresholds.json.
-  --output <path>        Machine-readable result path. Default: test-results/performance-summary.json.
   --update               Ratchet stored baselines and thresholds from the current run.
   --headful              Run Chromium headed for debugging.
 `)
@@ -285,7 +279,7 @@ function syntheticVaultEntries(count, primaryEntry = null) {
   return [primaryEntry, ...entries.slice(1)]
 }
 
-async function waitForServer(url) {
+const waitForServer = async (url) => {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
     try {
@@ -658,9 +652,7 @@ const runBenchmarks = async (baseUrl) => {
 }
 
 async function writeResultFile({ failures, summaries }) {
-  if (dirname(outputPath) === resolve(rootDir, 'test-results')) {
-    await mkdir('test-results', { recursive: true })
-  }
+  await mkdir('test-results', { recursive: true })
   const result = {
     failures,
     generatedAt: new Date().toISOString(),
@@ -670,8 +662,8 @@ async function writeResultFile({ failures, summaries }) {
     thresholdsPath,
     warmups: options.warmups,
   }
-  await writeFile(outputPath, `${JSON.stringify(result, null, 2)}\n`)
-  console.log(`\nWrote ${outputPath}`)
+  await writeFile('test-results/performance-summary.json', `${JSON.stringify(result, null, 2)}\n`)
+  process.stdout.write('\nWrote test-results/performance-summary.json\n')
 }
 
 const startedBaseUrl = await startDevServer()
@@ -684,7 +676,7 @@ try {
 
   if (options.update) {
     await writeThresholds(thresholdsPath, activeThresholds)
-    console.log(`\nUpdated ${thresholdsPath}`)
+    process.stdout.write(`\nUpdated ${thresholdsPath}\n`)
   }
 
   const failures = thresholdFailures(activeThresholds, summaries)
