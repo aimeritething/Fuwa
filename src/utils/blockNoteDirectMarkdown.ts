@@ -34,7 +34,7 @@ interface TableContentLike {
 
 interface BlockLike {
   type?: string
-  content?: InlineItem[] | TableContentLike | unknown
+  content?: unknown
   props?: Record<string, string | number | boolean | undefined>
   children?: BlockLike[]
   [key: string]: unknown
@@ -89,7 +89,7 @@ const MEDIA_BLOCK_TYPES = new Set(['audio', 'file', 'image', 'video'])
 
 
 function now(): number {
-  return globalThis.performance?.now?.() ?? Date.now()
+  return globalThis.performance.now()
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -223,7 +223,8 @@ function codeBlockMarkdown(block: BlockLike): string {
 }
 
 function mediaLabel(name: string, url: string): string {
-  return name || url.split('/').pop() || url
+  if (name) return name
+  return url.split('/').pop() ?? url
 }
 
 function mediaUrl(block: BlockLike): string {

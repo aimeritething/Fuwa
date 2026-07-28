@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BlockNoteEditor } from '@blocknote/core'
 import { schema } from '../components/editorSchema'
 import {
@@ -7,6 +7,22 @@ import {
   serializeRichEditorDocumentToMarkdown,
 } from '../utils/richEditorMarkdown'
 import { resolveBlocksForTarget } from './editorBlockResolution'
+
+const tauriMode = vi.hoisted(() => ({ enabled: false }))
+
+vi.mock('../mock-tauri', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../mock-tauri')>(),
+  isTauri: () => tauriMode.enabled,
+}))
+
+vi.mock('@tauri-apps/api/core', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@tauri-apps/api/core')>(),
+  convertFileSrc: (path: string) => `asset://localhost/${encodeURIComponent(path)}`,
+}))
+
+afterEach(() => {
+  tauriMode.enabled = false
+})
 
 describe('preProcessRichEditorMarkdown', () => {
   it('normalizes bare image paths for BlockNote parsing while preserving fenced code', () => {
@@ -160,28 +176,34 @@ describe('preProcessRichEditorMarkdown', () => {
   })
 
   it('keeps empty-alt image embeds as editable image blocks', async () => {
+    tauriMode.enabled = true
     const editor = BlockNoteEditor.create({ schema })
     installRichEditorMarkdownSerializer(editor)
     const content = '![](attachments/photo2.png)'
+    const targetPath = '/vault/empty-alt-image.md'
+    const imageUrl = `asset://localhost/${encodeURIComponent('/vault/attachments/photo2.png')}`
 
     const resolved = await resolveBlocksForTarget({
       cache: new Map(),
       content,
       editor,
-      targetPath: 'empty-alt-image.md',
+      targetPath,
+      vaultPath: '/vault',
     })
 
     expect(resolved.blocks).toContainEqual(expect.objectContaining({
       type: 'image',
       props: expect.objectContaining({
         name: '',
-        url: './attachments/photo2.png',
+        url: imageUrl,
       }),
     }))
     expect(serializeRichEditorDocumentToMarkdown({
       blocks: resolved.blocks,
       editor,
+      notePath: targetPath,
       tabContent: content,
-    })).toBe('![](./attachments/photo2.png)\n')
+      vaultPath: '/vault',
+    })).toBe(`${content}\n`)
   })
 })
