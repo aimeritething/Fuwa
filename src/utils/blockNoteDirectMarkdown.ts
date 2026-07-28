@@ -1,3 +1,5 @@
+import { restoreWikilinksInBlocks } from './wikilinks'
+
 interface TextStyles {
   [style: string]: string | boolean | undefined
 }
@@ -232,7 +234,7 @@ function mediaMarkdown(block: BlockLike): string {
   const url = mediaUrl(block)
   const name = typeof block.props?.name === 'string' ? block.props.name : ''
   if (!url) return name
-  const label = mediaLabel(name, url)
+  const label = block.type === 'image' ? name : mediaLabel(name, url)
   return block.type === 'image'
     ? `![${escapeText(label)}](${escapeLinkTarget(url)})`
     : `[${escapeText(label)}](${escapeLinkTarget(url)})`
@@ -425,5 +427,5 @@ export function serializeBlockNoteMarkdown(
 ): string {
   const direct = editor.blocksToMarkdownDirect?.(blocks)
   if (direct?.supported) return direct.markdown
-  return editor.blocksToMarkdownLossy(blocks)
+  return editor.blocksToMarkdownLossy(restoreWikilinksInBlocks(blocks))
 }

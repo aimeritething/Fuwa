@@ -124,4 +124,64 @@ describe('preProcessRichEditorMarkdown', () => {
       tabContent: content,
     })).toBe(`${content}\n`)
   })
+
+  it('keeps underscored wikilinks stable across repeated rich-editor reloads', async () => {
+    const editor = BlockNoteEditor.create({ schema })
+    installRichEditorMarkdownSerializer(editor)
+    const content = [
+      '# Wikilink reload',
+      '',
+      'Keep [[a_b]], [[2026-05-29_meeting_notes]], and [[path\\target_under_score]] stable.',
+    ].join('\n')
+
+    const firstResolution = await resolveBlocksForTarget({
+      cache: new Map(),
+      content,
+      editor,
+      targetPath: 'wikilink-reload.md',
+    })
+    const firstSave = serializeRichEditorDocumentToMarkdown({
+      blocks: firstResolution.blocks,
+      editor,
+      tabContent: content,
+    })
+    const secondResolution = await resolveBlocksForTarget({
+      cache: new Map(),
+      content: firstSave,
+      editor,
+      targetPath: 'wikilink-reload.md',
+    })
+
+    expect(serializeRichEditorDocumentToMarkdown({
+      blocks: secondResolution.blocks,
+      editor,
+      tabContent: firstSave,
+    })).toBe(`${content}\n`)
+  })
+
+  it('keeps empty-alt image embeds as editable image blocks', async () => {
+    const editor = BlockNoteEditor.create({ schema })
+    installRichEditorMarkdownSerializer(editor)
+    const content = '![](attachments/photo2.png)'
+
+    const resolved = await resolveBlocksForTarget({
+      cache: new Map(),
+      content,
+      editor,
+      targetPath: 'empty-alt-image.md',
+    })
+
+    expect(resolved.blocks).toContainEqual(expect.objectContaining({
+      type: 'image',
+      props: expect.objectContaining({
+        name: '',
+        url: './attachments/photo2.png',
+      }),
+    }))
+    expect(serializeRichEditorDocumentToMarkdown({
+      blocks: resolved.blocks,
+      editor,
+      tabContent: content,
+    })).toBe('![](./attachments/photo2.png)\n')
+  })
 })
