@@ -434,8 +434,8 @@ function resolveAssetUrl(resolve: () => MarkdownImageUrl): MarkdownImageUrl | nu
 
 function resolveImageUrl(request: ImageUrlRequest): MarkdownImageUrl | null {
   return resolveLegacyAttachmentAssetUrl(request)
-    ?? resolveAbsoluteFilesystemUrl({ url: request.url })
     ?? resolvePortableAttachmentUrl(request)
+    ?? resolveAbsoluteFilesystemUrl({ url: request.url })
     ?? resolveNoteRelativeUrl(request)
 }
 

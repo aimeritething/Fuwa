@@ -151,6 +151,9 @@ describe('resolveImageUrls', () => {
     expect(resolveImageUrls('![shot](./attachments/shot.png)', '/vault', notePath)).toBe(
       `![shot](${assetUrl('/vault/attachments/shot.png')})`,
     )
+    expect(resolveImageUrls('![shot](/attachments/Team%20截图.png)', '/vault', notePath)).toBe(
+      `![shot](${assetUrl('/vault/attachments/Team 截图.png')})`,
+    )
   })
 
   it('resolves image wikilink embeds through vault attachments', () => {
