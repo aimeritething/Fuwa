@@ -120,11 +120,14 @@ function shellQuote(value) {
 }
 
 function printReleaseEnv(release, skipRelease) {
-  console.log(`VERSION=${shellQuote(release.version)}`)
-  console.log(`DISPLAY_VERSION=${shellQuote(release.displayVersion)}`)
-  console.log(`TAG=${shellQuote(release.tag)}`)
-  console.log(`CHANNEL=${shellQuote(release.channel)}`)
-  console.log(`SKIP_RELEASE=${skipRelease ? 'true' : 'false'}`)
+  const lines = [
+    `VERSION=${shellQuote(release.version)}`,
+    `DISPLAY_VERSION=${shellQuote(release.displayVersion)}`,
+    `TAG=${shellQuote(release.tag)}`,
+    `CHANNEL=${shellQuote(release.channel)}`,
+    `SKIP_RELEASE=${skipRelease ? 'true' : 'false'}`,
+  ]
+  process.stdout.write(`${lines.join('\n')}\n`)
 }
 
 function runCli() {
