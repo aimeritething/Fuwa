@@ -1010,7 +1010,8 @@ push to main
       → if stable already uses today, advance alpha to the next calendar day so semver still increases
       → ignore future stable dates for normal numbering
       → if historical future tags poisoned semver ordering, publish one recovery bridge before
-        returning the next alpha release to the real UTC calendar series
+        returning the next qualifying main push to the real UTC calendar series; the bridge and
+        corrected release are intentionally separate publications so updater ordering remains monotonic
   → four parameterized CircleCI build jobs fan out in parallel:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin --bundles app
