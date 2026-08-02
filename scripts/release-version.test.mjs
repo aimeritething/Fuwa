@@ -1,10 +1,33 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { computeAlphaRelease, computeStableRelease } from './release-version.mjs'
+import { computeAlphaRelease, computeStableRelease, formatReleaseEnv } from './release-version.mjs'
 
 const today = '2026-08-02'
 
 describe('release version computation', () => {
+  it('formats the shared release result for GitHub Actions outputs', () => {
+    assert.equal(
+      formatReleaseEnv(
+        {
+          channel: 'alpha',
+          displayVersion: 'Alpha 2026.8.2.1',
+          tag: 'alpha-v2026.8.2-alpha.0001',
+          version: '2026.8.2-alpha.1',
+        },
+        false,
+        'github',
+      ),
+      [
+        'version=2026.8.2-alpha.1',
+        'display_version=Alpha 2026.8.2.1',
+        'tag=alpha-v2026.8.2-alpha.0001',
+        'channel=alpha',
+        'skip_release=false',
+        '',
+      ].join('\n'),
+    )
+  })
+
   it('rejects future-dated stable tags', () => {
     assert.throws(
       () => computeStableRelease({ tag: 'v2027-07-31', today }),

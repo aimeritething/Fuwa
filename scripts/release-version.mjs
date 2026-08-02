@@ -119,22 +119,44 @@ function shellQuote(value) {
   return `'${String(value).replaceAll("'", `'"'"'`)}'`
 }
 
-function printReleaseEnv(release, skipRelease) {
-  const lines = [
+function shellReleaseEnv(release, skipRelease) {
+  return [
     `VERSION=${shellQuote(release.version)}`,
     `DISPLAY_VERSION=${shellQuote(release.displayVersion)}`,
     `TAG=${shellQuote(release.tag)}`,
     `CHANNEL=${shellQuote(release.channel)}`,
     `SKIP_RELEASE=${skipRelease ? 'true' : 'false'}`,
   ]
-  process.stdout.write(`${lines.join('\n')}\n`)
+}
+
+function githubReleaseEnv(release, skipRelease) {
+  return [
+    `version=${release.version}`,
+    `display_version=${release.displayVersion}`,
+    `tag=${release.tag}`,
+    `channel=${release.channel}`,
+    `skip_release=${skipRelease ? 'true' : 'false'}`,
+  ]
+}
+
+export function formatReleaseEnv(release, skipRelease, format = 'shell') {
+  const lines = format === 'github'
+    ? githubReleaseEnv(release, skipRelease)
+    : shellReleaseEnv(release, skipRelease)
+  return `${lines.join('\n')}\n`
+}
+
+function printReleaseEnv(release, skipRelease, format) {
+  process.stdout.write(formatReleaseEnv(release, skipRelease, format))
 }
 
 function runCli() {
   const channel = process.argv[2]
+  const format = process.argv[3] ?? 'shell'
   const today = process.env.RELEASE_TODAY ?? new Date().toISOString().slice(0, 10)
   if (channel === 'stable') {
-    printReleaseEnv(computeStableRelease({ tag: process.env.CIRCLE_TAG_VALUE ?? '', today }), false)
+    const tag = process.env.RELEASE_TAG ?? process.env.CIRCLE_TAG_VALUE ?? ''
+    printReleaseEnv(computeStableRelease({ tag, today }), false, format)
     return
   }
   if (channel !== 'alpha') throw new Error('Usage: node scripts/release-version.mjs alpha|stable')
@@ -154,7 +176,7 @@ function runCli() {
   const ignored = changed.every(
     (path) => path.startsWith('site/') || path.startsWith('.circleci/') || path === '.github/workflows/README.md',
   )
-  printReleaseEnv(release, changed.length > 0 && ignored)
+  printReleaseEnv(release, changed.length > 0 && ignored, format)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) runCli()
