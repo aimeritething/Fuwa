@@ -38,12 +38,8 @@ function convertBlocks(
   return converter ? converter(blocks) : fallback
 }
 
-function convertBlocksToSafeMarkup(
-  converter: ((blocks: unknown[]) => string) | undefined,
-  blocks: unknown[],
-  fallback = '',
-): string {
-  return sanitizeMarkup(convertBlocks(converter, blocks, fallback))
+function emptySerializedBlocks(): string {
+  return ''
 }
 
 export function writeSelectedBlocksToClipboard(
@@ -54,8 +50,11 @@ export function writeSelectedBlocksToClipboard(
   const blocks = selectedDocumentBlocks(editor.document, selectedBlockIds)
   if (blocks.length === 0) return false
 
-  const fullMarkup = convertBlocksToSafeMarkup(editor.blocksToFullHTML, blocks)
-  const externalMarkup = convertBlocksToSafeMarkup(editor.blocksToHTMLLossy, blocks, fullMarkup)
+  const { blocksToFullHTML = emptySerializedBlocks } = editor
+  const fullMarkup = sanitizeMarkup(blocksToFullHTML(blocks))
+  const externalMarkup = editor.blocksToHTMLLossy
+    ? sanitizeMarkup(editor.blocksToHTMLLossy(blocks))
+    : fullMarkup
   const markdown = convertBlocks(editor.blocksToMarkdownLossy, blocks)
 
   clipboardData.clearData()
