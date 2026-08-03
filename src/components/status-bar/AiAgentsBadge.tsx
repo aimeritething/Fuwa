@@ -54,7 +54,7 @@ function resolvedGuidance(status?: VaultAiGuidanceStatus) {
   return { status, summary: getVaultAiGuidanceSummary(status) }
 }
 
-function agentVersionSuffix(version?: string): string {
+function agentVersionSuffix(version: string | null | undefined): string {
   return version ? ` ${version}` : ''
 }
 
