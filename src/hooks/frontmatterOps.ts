@@ -239,9 +239,13 @@ async function executeMockFrontmatterOp(
   value?: FrontmatterValue,
 ): Promise<MarkdownContent> {
   seedMockContent(path, await loadMockContent(path))
-  const content = op === 'update'
-    ? applyMockFrontmatterUpdate(path, key, value!)
-    : applyMockFrontmatterDelete(path, key)
+  let content: MarkdownContent
+  if (op === 'update') {
+    if (value === undefined) throw new Error('A frontmatter update requires a value')
+    content = applyMockFrontmatterUpdate(path, key, value)
+  } else {
+    content = applyMockFrontmatterDelete(path, key)
+  }
   await persistMockContent(path, content)
   return content
 }
