@@ -67,6 +67,7 @@ describe('richEditorRecoveryClassifier', () => {
     expect(classifyRichEditorRecoveryError(new Error("Block doesn't have id"), 'render')).toBe('block_missing_id')
     expect(classifyRichEditorRecoveryError(new Error("Block doesn't have id"), 'transform')).toBe('block_missing_id')
     expect(richEditorRecoveryErrorNeedsDocumentRepair(new Error("Block doesn't have id"))).toBe(true)
+    expect(classifyRichEditorRecoveryError(new Error("Block doesn't have identifier"), 'render')).toBeNull()
   })
 
   it('classifies DOM NotFoundError across editor recovery surfaces', () => {

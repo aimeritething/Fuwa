@@ -133,7 +133,7 @@ const RECOVERY_ERROR_MATCHERS: RecoveryErrorMatcher[] = [
     surfaces: ['render', 'transform'],
   },
   {
-    matches: (error) => messageIncludes(error, BLOCKNOTE_MISSING_ID_ERROR),
+    matches: (error) => isMessage(error, BLOCKNOTE_MISSING_ID_ERROR),
     reason: 'block_missing_id',
     repairsDocument: true,
     surfaces: ['render', 'transform'],
