@@ -104,7 +104,7 @@ fn validate_remote_url_protocol(url: &Url) -> Result<(), String> {
     if !matches!(url.scheme(), "http" | "https") {
         return Err(remote_image_error(FailureReason("unsupported URL scheme")));
     }
-    if has_disallowed_credentials(&url) {
+    if has_disallowed_credentials(url) {
         return Err(remote_image_error(FailureReason(
             "URL credentials are not allowed",
         )));
@@ -279,7 +279,7 @@ fn save_downloaded_image(
     extension: ImageExtension,
     bytes: Vec<u8>,
 ) -> Result<String, String> {
-    let filename = downloaded_filename(&final_url, extension);
+    let filename = downloaded_filename(final_url, extension);
     let target_path = prepare_attachment_path(vault_path, &filename)?;
     fs::write(&target_path, bytes)
         .map_err(|_| remote_image_error(FailureReason("attachment could not be written")))?;
