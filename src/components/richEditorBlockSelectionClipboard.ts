@@ -38,6 +38,14 @@ function convertBlocks(
   return converter ? converter(blocks) : fallback
 }
 
+function convertBlocksToSafeMarkup(
+  converter: ((blocks: unknown[]) => string) | undefined,
+  blocks: unknown[],
+  fallback = '',
+): string {
+  return sanitizeMarkup(convertBlocks(converter, blocks, fallback))
+}
+
 export function writeSelectedBlocksToClipboard(
   editor: RichEditorBlockSelectionEditor,
   clipboardData: ClipboardDataLike,
@@ -46,8 +54,8 @@ export function writeSelectedBlocksToClipboard(
   const blocks = selectedDocumentBlocks(editor.document, selectedBlockIds)
   if (blocks.length === 0) return false
 
-  const fullMarkup = sanitizeMarkup(convertBlocks(editor.blocksToFullHTML, blocks))
-  const externalMarkup = sanitizeMarkup(convertBlocks(editor.blocksToHTMLLossy, blocks, fullMarkup))
+  const fullMarkup = convertBlocksToSafeMarkup(editor.blocksToFullHTML, blocks)
+  const externalMarkup = convertBlocksToSafeMarkup(editor.blocksToHTMLLossy, blocks, fullMarkup)
   const markdown = convertBlocks(editor.blocksToMarkdownLossy, blocks)
 
   clipboardData.clearData()
