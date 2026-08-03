@@ -41,7 +41,7 @@ function resolveMockHandler(command: string) {
   const windowHandler = typeof window === 'undefined' || !window.__mockHandlers
     ? undefined
     : Reflect.get(window.__mockHandlers, command) as MockHandler | undefined
-  return windowHandler ?? registeredMockHandlers[command]
+  return windowHandler ?? Reflect.get(registeredMockHandlers, command) as MockHandler | undefined
 }
 
 export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {

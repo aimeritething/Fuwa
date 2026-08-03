@@ -913,7 +913,7 @@ function useAiWorkspaceModel(workspace: ResolvedAiWorkspaceProps): AiWorkspaceMo
   })
   useActiveConversationSync(activeConversation, activeId, setActiveId)
   const handleStatusChange = useCallback((id: string, status: AgentStatus) => {
-    setStatuses((current) => (current[id] === status ? current : { ...current, [id]: status }))
+    setStatuses((current) => (Reflect.get(current, id) === status ? current : { ...current, [id]: status }))
   }, [])
   const forkConversationUntilMessage = useCallback(
     (sourceId: string, messageId: string) => {

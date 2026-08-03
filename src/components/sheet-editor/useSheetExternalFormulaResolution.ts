@@ -60,7 +60,7 @@ function retainResolvedDependencyContents(
   }
 
   return Object.keys(next).length === Object.keys(current).length &&
-    Object.keys(next).every((path) => current[path] === next[path])
+    Object.keys(next).every((path) => Reflect.get(current, path) === Reflect.get(next, path))
     ? current
     : next
 }

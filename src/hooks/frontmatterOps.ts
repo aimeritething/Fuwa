@@ -216,10 +216,13 @@ async function loadMockContent(path: VaultPath): Promise<MarkdownContent> {
 async function persistMockContent(path: VaultPath, content: MarkdownContent): Promise<void> {
   try {
     await mockInvoke('save_note_content', { path, content })
-  } finally {
+  } catch (error) {
     updateMockContent(path, content)
     trackMockChange(path)
+    throw error
   }
+  updateMockContent(path, content)
+  trackMockChange(path)
 }
 
 function applyMockFrontmatterUpdate(path: VaultPath, key: FrontmatterKey, value: FrontmatterValue): MarkdownContent {

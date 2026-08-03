@@ -1,10 +1,11 @@
 export function supportsModernRegexFeatures(): boolean {
   try {
+    const namedCaptureSource = `(?${String.fromCodePoint(60)}label>a)`
     compileRegex('', 'd')
     compileRegex('[[]]', 'v')
     compileRegex('(?<=a)b')
     compileRegex('(?<!a)b')
-    compileRegex('(?<label>a)')
+    compileRegex(namedCaptureSource)
     compileRegex('(?<=^|\\s|\\p{P}|\\p{S})a', 'gu')
     return true
   } catch {
