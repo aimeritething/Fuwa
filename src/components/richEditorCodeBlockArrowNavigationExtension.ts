@@ -163,7 +163,7 @@ function moveCodeBlockCaret(
 ): boolean {
   if (view && moveVisuallyWithinCodeBlock(view, key)) return true
 
-  return editor.transact((tr) => {
+  return editor.transact((tr: Transaction) => {
     const movedWithinCode = setAdjacentCodeLineSelection(tr, key)
     if (movedWithinCode !== null) return movedWithinCode
     return moveAcrossCodeBlockBoundary(editor, key)
