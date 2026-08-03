@@ -155,7 +155,8 @@ describe('createRichEditorCodeBlockArrowNavigationExtension', () => {
     fixture.view.dom.appendChild(codeBlock)
     document.body.appendChild(fixture.view.dom)
 
-    const selection = document.getSelection()!
+    const selection = document.getSelection()
+    if (!selection) throw new Error('Expected a document selection')
     const initialRange = document.createRange()
     initialRange.setStart(source, 1)
     initialRange.collapse(true)

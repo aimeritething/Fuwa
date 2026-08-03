@@ -135,11 +135,14 @@ async function placeCaretAtTextOffset(locator: Locator, offset: number) {
 }
 
 function readCaretBlockContext() {
-  const anchorNode = document.getSelection()!.anchorNode!
-  const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode.parentElement!
-  const block = anchorElement.closest<HTMLElement>('[data-content-type]')!
+  const selection = document.getSelection() as Selection
+  const anchorNode = selection.anchorNode as Node
+  const anchorElement = anchorNode instanceof Element
+    ? anchorNode
+    : anchorNode.parentElement as Element
+  const block = anchorElement.closest<HTMLElement>('[data-content-type]') as HTMLElement
   const textElement = block.dataset.contentType === 'codeBlock'
-    ? block.querySelector('pre code')!
+    ? block.querySelector('pre code') as Element
     : block
   return {
     text: textElement.textContent,
@@ -153,10 +156,10 @@ async function caretBlockContext(page: Page) {
 
 async function caretTextOffset(locator: Locator) {
   return locator.evaluate((element) => {
-    const selection = element.ownerDocument.getSelection()!
+    const selection = element.ownerDocument.getSelection() as Selection
     const range = element.ownerDocument.createRange()
     range.selectNodeContents(element)
-    range.setEnd(selection.anchorNode!, selection.anchorOffset)
+    range.setEnd(selection.anchorNode as Node, selection.anchorOffset)
     return range.toString().length
   })
 }
