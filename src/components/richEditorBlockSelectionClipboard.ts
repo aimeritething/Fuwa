@@ -30,16 +30,8 @@ export function blocksWithoutIds(blocks: readonly unknown[]): unknown[] {
   return blocks.map(blockWithoutId)
 }
 
-function convertBlocks(
-  converter: ((blocks: unknown[]) => string) | undefined,
-  blocks: unknown[],
-  fallback = '',
-): string {
-  return converter ? converter(blocks) : fallback
-}
-
-function emptySerializedBlocks(): string {
-  return ''
+function blocksToMarkdown(editor: RichEditorBlockSelectionEditor, blocks: unknown[]): string {
+  return editor.blocksToMarkdownLossy?.(blocks) ?? ''
 }
 
 export function writeSelectedBlocksToClipboard(
@@ -50,12 +42,13 @@ export function writeSelectedBlocksToClipboard(
   const blocks = selectedDocumentBlocks(editor.document, selectedBlockIds)
   if (blocks.length === 0) return false
 
-  const { blocksToFullHTML = emptySerializedBlocks } = editor
-  const fullMarkup = sanitizeMarkup(blocksToFullHTML(blocks))
+  const fullMarkup = editor.blocksToFullHTML
+    ? sanitizeMarkup(editor.blocksToFullHTML(blocks))
+    : ''
   const externalMarkup = editor.blocksToHTMLLossy
     ? sanitizeMarkup(editor.blocksToHTMLLossy(blocks))
     : fullMarkup
-  const markdown = convertBlocks(editor.blocksToMarkdownLossy, blocks)
+  const markdown = blocksToMarkdown(editor, blocks)
 
   clipboardData.clearData()
   clipboardData.setData(TOLARIA_BLOCK_CLIPBOARD_MIME, JSON.stringify(blocks))
@@ -86,7 +79,7 @@ function emptyParsedBlocks(): unknown[] {
 
 function parseHtmlBlocks(editor: RichEditorBlockSelectionEditor, markup: string): unknown[] {
   const { tryParseHTMLToBlocks = emptyParsedBlocks } = editor
-  return tryParseHTMLToBlocks(markup)
+  return tryParseHTMLToBlocks.call(editor, markup)
 }
 
 function parseMarkupClipboardBlocks(
