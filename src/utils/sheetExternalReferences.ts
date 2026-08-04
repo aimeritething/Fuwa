@@ -133,22 +133,32 @@ export function isExternalFormulaInput(value: SheetFormulaText): boolean {
     )
 }
 
+function matchedReferencePart(match: RegExpMatchArray, index: number): string {
+  return match[index] ?? ''
+}
+
+function externalCellReferenceFromMatch(match: RegExpMatchArray): SheetExternalCellReference | null {
+  const rawTarget = match[1]
+  if (!rawTarget) return null
+  const parsed = parseExternalCellReferenceParts({
+    columnAbsolute: matchedReferencePart(match, 2),
+    rawColumn: matchedReferencePart(match, 3),
+    rawRow: matchedReferencePart(match, 5),
+    rowAbsolute: matchedReferencePart(match, 4),
+  })
+  if (!parsed) return null
+  return {
+    address: metadataCellAddress(parsed.row, parsed.column),
+    target: wikilinkTarget(`[[${rawTarget}]]`),
+  }
+}
+
 export function extractSheetExternalCellReferences(value: SheetFormulaText): SheetExternalCellReference[] {
   const references: SheetExternalCellReference[] = []
   SHEET_EXTERNAL_CELL_REFERENCE_PATTERN.lastIndex = 0
   for (const match of value.matchAll(SHEET_EXTERNAL_CELL_REFERENCE_PATTERN)) {
-    const rawTarget = match[1]
-    const parsed = parseExternalCellReferenceParts({
-      columnAbsolute: match[2] ?? '',
-      rawColumn: match[3] ?? '',
-      rawRow: match[5] ?? '',
-      rowAbsolute: match[4] ?? '',
-    })
-    if (!rawTarget || !parsed) continue
-    references.push({
-      address: metadataCellAddress(parsed.row, parsed.column),
-      target: wikilinkTarget(`[[${rawTarget}]]`),
-    })
+    const reference = externalCellReferenceFromMatch(match)
+    if (reference) references.push(reference)
   }
   return references
 }
