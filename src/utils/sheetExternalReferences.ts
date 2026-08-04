@@ -133,18 +133,14 @@ export function isExternalFormulaInput(value: SheetFormulaText): boolean {
     )
 }
 
-function matchedReferencePart(match: RegExpMatchArray, index: number): string {
-  return match[index] ?? ''
-}
-
 function externalCellReferenceFromMatch(match: RegExpMatchArray): SheetExternalCellReference | null {
-  const rawTarget = match[1]
+  const [, rawTarget, columnAbsolute = '', rawColumn = '', rowAbsolute = '', rawRow = ''] = match
   if (!rawTarget) return null
   const parsed = parseExternalCellReferenceParts({
-    columnAbsolute: matchedReferencePart(match, 2),
-    rawColumn: matchedReferencePart(match, 3),
-    rawRow: matchedReferencePart(match, 5),
-    rowAbsolute: matchedReferencePart(match, 4),
+    columnAbsolute,
+    rawColumn,
+    rawRow,
+    rowAbsolute,
   })
   if (!parsed) return null
   return {
