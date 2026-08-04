@@ -257,7 +257,7 @@ export function moveSelectedDocumentBlocks(
   if (!placement) return true
   if (isNoOpMove(operationBlockIds, selectedBlockIds, placement)) return false
 
-  editor.transact(() => {
+  editor.transact?.(() => {
     editor.removeBlocks?.(operationBlockIds)
     editor.insertBlocks?.(blocks, placement.referenceBlockId, placement.placement)
   })
