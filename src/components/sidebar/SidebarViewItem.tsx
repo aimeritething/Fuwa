@@ -102,7 +102,7 @@ function ViewCountChip({ count, isActive, accent }: { count: number; isActive: b
   )
 }
 
-function SidebarViewRow(options: SidebarViewRowProps) {
+function renderSidebarViewRow(options: SidebarViewRowProps) {
   const { view, isActive, onSelect, dragHandleProps, count, locale, accent, rowRef, isRenaming, setIsRenaming, handleRenameSubmit, handleContextMenu, startRename, handleRowKeyDown } = options
   const showCount = count > 0
   const rowClassName = `flex cursor-pointer select-none items-center gap-2 rounded transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent'}`
@@ -207,7 +207,7 @@ export function SidebarViewItem(options: SidebarViewItemProps) {
 
   return (
     <div className="relative">
-      <SidebarViewRow {...{ view, isActive, onSelect, dragHandleProps, count, locale, accent, rowRef, isRenaming, setIsRenaming, handleRenameSubmit, handleContextMenu, startRename, handleRowKeyDown }} />
+      {renderSidebarViewRow({ view, isActive, onSelect, dragHandleProps, count, locale, accent, rowRef, isRenaming, setIsRenaming, handleRenameSubmit, handleContextMenu, startRename, handleRowKeyDown })}
       <SidebarViewMenus {...{ view, locale, onEditView, onDeleteView, onUpdateViewDefinition, contextMenuPos, contextMenuRef, customizePos, customizeRef, closeCustomize, handleCustomize, handleDelete, handleEdit }} />
     </div>
   )

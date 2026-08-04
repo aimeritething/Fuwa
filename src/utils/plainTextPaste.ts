@@ -61,9 +61,10 @@ function isPlainTextInput(element: HTMLInputElement): boolean {
   return plainTextTypes.has(element.type)
 }
 
-function canInsertIntoTextControl(element: HTMLInputElement | HTMLTextAreaElement): boolean {
+function isWritableTextControl(element: HTMLInputElement | HTMLTextAreaElement): boolean {
   if (element.readOnly || element.disabled) return false
-  return !(element instanceof HTMLInputElement) || isPlainTextInput(element)
+  if (element instanceof HTMLTextAreaElement) return true
+  return isPlainTextInput(element)
 }
 
 function textControlSelection(element: HTMLInputElement | HTMLTextAreaElement): [number, number] {
@@ -72,7 +73,7 @@ function textControlSelection(element: HTMLInputElement | HTMLTextAreaElement): 
 }
 
 function insertIntoTextControl(element: HTMLInputElement | HTMLTextAreaElement, text: string): boolean {
-  if (!canInsertIntoTextControl(element)) return false
+  if (!isWritableTextControl(element)) return false
   const [start, end] = textControlSelection(element)
   element.setRangeText(text, start, end, 'end')
   element.dispatchEvent(inputEvent(text))
