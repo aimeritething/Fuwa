@@ -1,4 +1,4 @@
-import appCommandManifest from '../shared/appCommandManifest.json'
+import appCommandManifest from '../shared/appCommandManifest.json' with { type: 'json' }
 import type { SidebarFilter } from '../types'
 import { isMac } from '../utils/platform'
 import type { ViewMode } from './useViewMode'
