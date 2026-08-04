@@ -19,6 +19,8 @@ interface InitialPulseLoadOptions {
 export function useInitialPulseLoad(options: InitialPulseLoadOptions): void {
   const { loadCommits, locale, pageSize, refreshKey, retryCount, setCommits, setError, setHasMore, setLoading, setSkip } = options
   useEffect(() => {
+    void refreshKey
+    void retryCount
     let active = true
     void Promise.resolve()
       .then(() => {
