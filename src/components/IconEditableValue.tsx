@@ -8,12 +8,14 @@ const MAX_ICON_RESULTS = 24
 
 type IconValue = string
 
-enum IconKeyAction {
-  Cancel,
-  Commit,
-  Next,
-  Previous,
-}
+const IconKeyAction = {
+  Cancel: 0,
+  Commit: 1,
+  Next: 2,
+  Previous: 3,
+} as const
+type IconKeyAction = typeof IconKeyAction[keyof typeof IconKeyAction]
+type IconNavigationAction = typeof IconKeyAction.Next | typeof IconKeyAction.Previous
 
 const ICON_KEY_ACTIONS: Partial<Record<string, IconKeyAction>> = {
   ArrowDown: IconKeyAction.Next,
@@ -60,7 +62,7 @@ function shouldSelectIconSuggestion(value: IconValue, suggestionCount: number): 
 
 function nextHighlightedIcon(
   current: number,
-  action: IconKeyAction.Next | IconKeyAction.Previous,
+  action: IconNavigationAction,
   iconCount: number,
 ): number {
   const offset = action === IconKeyAction.Next ? 1 : -1
@@ -91,7 +93,7 @@ function IconEditableInput({
     onSave(iconName)
   }
 
-  const navigateIcons = (action: IconKeyAction.Next | IconKeyAction.Previous) => {
+  const navigateIcons = (action: IconNavigationAction) => {
     if (filteredIcons.length === 0) return
     setHighlightedIndex((current) => nextHighlightedIcon(current, action, filteredIcons.length))
   }
