@@ -5,6 +5,8 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
+mod package_args;
+
 pub(crate) fn build_command(
     binary: &Path,
     request: &AgentStreamRequest,
@@ -23,7 +25,10 @@ pub(crate) fn build_command(
     crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
     command.args(&target.prefix_args);
     command
-        .args(build_args())
+        .args(package_args::build_args(
+            agent_dir,
+            Path::new(&request.vault_path),
+        ))
         .arg(build_prompt(request))
         .env("PI_CODING_AGENT_DIR", agent_dir)
         .current_dir(&request.vault_path)
@@ -137,16 +142,6 @@ fn copy_agent_file(
             target.display()
         )
     })
-}
-
-fn build_args() -> Vec<String> {
-    vec![
-        "--mode".into(),
-        "json".into(),
-        "--no-session".into(),
-        "--extension".into(),
-        "npm:pi-mcp-adapter".into(),
-    ]
 }
 
 fn build_prompt(request: &AgentStreamRequest) -> String {
@@ -294,27 +289,6 @@ mod tests {
     }
 
     #[test]
-    fn args_use_documented_json_mode_with_mcp_adapter() {
-        let args = build_args();
-
-        assert_pi_json_mode_args(&args);
-        assert!(args.contains(&"npm:pi-mcp-adapter".to_string()));
-        assert!(!args.contains(&"--no-tools".to_string()));
-    }
-
-    fn assert_pi_json_mode_args(args: &[String]) {
-        assert_eq!(
-            (
-                args.first().map(String::as_str),
-                args.get(1).map(String::as_str),
-                args.iter().any(|arg| arg == "--no-session"),
-                args.iter().any(|arg| arg == "--extension"),
-            ),
-            (Some("--mode"), Some("json"), true, true)
-        );
-    }
-
-    #[test]
     fn command_sets_vault_cwd_closed_stdin_and_config_dir() {
         let _env_lock = PI_AGENT_ENV_LOCK.lock().unwrap();
         let source_agent_dir = tempfile::tempdir().unwrap();
@@ -411,6 +385,7 @@ mod tests {
         let _guard = EnvGuard::set("PI_CODING_AGENT_DIR", source_agent_dir.path());
 
         let command = build_command(&PathBuf::from("pi"), &request(), agent_dir.path()).unwrap();
+        let command_args = command.get_args().collect::<Vec<_>>();
         let config_dir = command
             .get_envs()
             .find(|(key, _)| *key == OsStr::new("PI_CODING_AGENT_DIR"))
@@ -418,6 +393,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(config_dir, agent_dir.path().as_os_str());
+        assert!(!command_args.contains(&OsStr::new("--extension")));
         assert_seeded_pi_config_files(agent_dir.path());
         assert_seeded_pi_mcp_config(read_mcp_config_value(agent_dir.path()));
     }
@@ -430,7 +406,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             source_agent_dir.join("settings.json"),
-            r#"{"defaultProvider":"openai","defaultModel":"gpt-5.1","settingsOnly":true}"#,
+            r#"{"defaultProvider":"openai","defaultModel":"gpt-5.1","packages":["npm:pi-mcp-adapter"],"settingsOnly":true}"#,
         )
         .unwrap();
         std::fs::write(
@@ -447,7 +423,7 @@ mod tests {
         );
         assert_eq!(
             std::fs::read_to_string(agent_dir.join("settings.json")).unwrap(),
-            r#"{"defaultProvider":"openai","defaultModel":"gpt-5.1","settingsOnly":true}"#
+            r#"{"defaultProvider":"openai","defaultModel":"gpt-5.1","packages":["npm:pi-mcp-adapter"],"settingsOnly":true}"#
         );
     }
 
