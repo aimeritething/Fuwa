@@ -1,5 +1,9 @@
 import { createExtension } from '@blocknote/core'
-import { activeRichEditorView, isComposingKeyboardEvent } from './richEditorKeyboard'
+import {
+  activeRichEditorView,
+  isComposingKeyboardEvent,
+  type ComposingEditorView,
+} from './richEditorKeyboard'
 
 const COMPOSITION_SETTLE_WINDOW_MS = 500
 
@@ -26,7 +30,7 @@ function isParagraphInput(event: InputEvent): boolean {
 
 export function shouldStopComposingEditorShortcutKey(
   event: KeyboardEvent,
-  view?: { composing?: boolean } | null,
+  view?: ComposingEditorView | null,
 ): boolean {
   return isCompositionEditorShortcutKey(event) && isComposingKeyboardEvent(event, view)
 }

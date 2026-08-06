@@ -14,6 +14,10 @@ type KeyboardMountContext = {
 
 type ComposingKeyboardEvent = Pick<KeyboardEvent, 'isComposing' | 'keyCode'>
 
+export type ComposingEditorView = {
+  composing?: boolean
+}
+
 type ConsumableKeyboardEvent = Pick<KeyboardEvent, 'preventDefault'> & Partial<
   Pick<KeyboardEvent, 'stopImmediatePropagation' | 'stopPropagation'>
 >
@@ -24,7 +28,7 @@ export function activeRichEditorView(editor: RichEditorViewOwner): RichEditorVie
 
 export function isComposingKeyboardEvent(
   event: ComposingKeyboardEvent,
-  view?: Pick<RichEditorView, 'composing'> | null,
+  view?: ComposingEditorView | null,
 ): boolean {
   return event.isComposing || event.keyCode === 229 || Boolean(view?.composing)
 }
