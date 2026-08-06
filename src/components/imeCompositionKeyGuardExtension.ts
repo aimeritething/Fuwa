@@ -1,16 +1,7 @@
 import { createExtension } from '@blocknote/core'
-
-interface ComposingEditorView {
-  composing?: boolean
-}
+import { activeRichEditorView, isComposingKeyboardEvent } from './richEditorKeyboard'
 
 const COMPOSITION_SETTLE_WINDOW_MS = 500
-
-function isComposingKeyEvent(event: KeyboardEvent, view?: ComposingEditorView | null): boolean {
-  if (event.isComposing) return true
-  if (event.keyCode === 229) return true
-  return Boolean(view?.composing)
-}
 
 function isEnterKey(event: KeyboardEvent): boolean {
   return event.key === 'Enter'
@@ -35,9 +26,9 @@ function isParagraphInput(event: InputEvent): boolean {
 
 export function shouldStopComposingEditorShortcutKey(
   event: KeyboardEvent,
-  view?: ComposingEditorView | null,
+  view?: { composing?: boolean } | null,
 ): boolean {
-  return isCompositionEditorShortcutKey(event) && isComposingKeyEvent(event, view)
+  return isCompositionEditorShortcutKey(event) && isComposingKeyboardEvent(event, view)
 }
 
 export function shouldStopComposingParagraphInput(
@@ -54,7 +45,7 @@ export function shouldStopComposingParagraphInput(
 }
 
 export const createImeCompositionKeyGuardExtension = createExtension(({ editor }) => {
-  const readView = () => editor._tiptapEditor?.view ?? editor.prosemirrorView
+  const readView = () => activeRichEditorView(editor)
   let composingEnterAt: number | null = null
 
   const handleKeyDown = (event: KeyboardEvent) => {
