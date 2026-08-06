@@ -41,6 +41,7 @@ interface IconSectionProps {
   locale: AppLocale
   onSearchChange: (query: string) => void
   onSelectIcon: (name: string) => void
+  onLoadMore: () => void
 }
 
 interface TemplateSectionProps {
@@ -51,6 +52,24 @@ interface TemplateSectionProps {
 
 const ICON_PICKER_ICON_SIZE = 18
 const ICON_PICKER_ICON_CLASS_NAME = 'size-[18px]'
+const ICON_PICKER_BATCH_SIZE = 120
+
+function useProgressiveIconSearch() {
+  const [search, setSearch] = useState('')
+  const [visibleIconCount, setVisibleIconCount] = useState(ICON_PICKER_BATCH_SIZE)
+  const matchingIcons = useMemo(() => filterIcons(ICON_OPTIONS, search), [search])
+  const filteredIcons = useMemo(() => matchingIcons.slice(0, visibleIconCount), [matchingIcons, visibleIconCount])
+
+  const handleSearchChange = (query: string) => {
+    setSearch(query)
+    setVisibleIconCount(ICON_PICKER_BATCH_SIZE)
+  }
+  const handleLoadMore = () => {
+    setVisibleIconCount((count) => Math.min(count + ICON_PICKER_BATCH_SIZE, matchingIcons.length))
+  }
+
+  return { filteredIcons, handleLoadMore, handleSearchChange, search }
+}
 
 interface DebouncedCallback {
   flush: () => void
@@ -78,9 +97,9 @@ function useDebouncedCallback(fn: (v: string) => void, delay: number): Debounced
 
   const run = useCallback(
     (value: string) => {
-    clearTimeout(timerRef.current)
-    pendingValueRef.current = value
-    timerRef.current = setTimeout(flush, delay)
+      clearTimeout(timerRef.current)
+      pendingValueRef.current = value
+      timerRef.current = setTimeout(flush, delay)
     },
     [delay, flush],
   )
@@ -104,13 +123,23 @@ function ColorSection({ selectedColor, locale, onSelectColor }: ColorSectionProp
   )
 }
 
-function IconSection({ selectedIcon, search, filteredIcons, locale, onSearchChange, onSelectIcon }: IconSectionProps) {
+function IconSection({
+  selectedIcon,
+  search,
+  filteredIcons,
+  locale,
+  onSearchChange,
+  onSelectIcon,
+  onLoadMore,
+}: IconSectionProps) {
   return (
     <>
       <div className="font-mono-overline mb-2 text-muted-foreground">{translate(locale, 'customize.icon')}</div>
       <div className="relative mb-2">
-        <MagnifyingGlass size={14}
-          className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <MagnifyingGlass
+          size={14}
+          className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+        />
         <Input
           type="text"
           value={search}
@@ -121,6 +150,11 @@ function IconSection({ selectedIcon, search, filteredIcons, locale, onSearchChan
       </div>
       <div
         className="grid gap-1 overflow-y-auto"
+        data-testid="icon-picker-grid"
+        onScroll={(event) => {
+          const grid = event.currentTarget
+          if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 24) onLoadMore()
+        }}
         style={{
           gridTemplateColumns: 'repeat(auto-fit, minmax(30px, 1fr))',
           maxHeight: 160,
@@ -205,10 +239,8 @@ export function TypeCustomizePopover(options: TypeCustomizePopoverProps) {
   } = options
   const [selectedColor, setSelectedColor] = useState(currentColor)
   const [selectedIcon, setSelectedIcon] = useState(currentIcon)
-  const [search, setSearch] = useState('')
+  const { filteredIcons, handleLoadMore, handleSearchChange, search } = useProgressiveIconSearch()
   const [templateText, setTemplateText] = useState(currentTemplate ?? '')
-
-  const filteredIcons = useMemo(() => filterIcons(ICON_OPTIONS, search), [search])
   const debouncedSaveTemplate = useDebouncedCallback(onChangeTemplate, 500)
 
   const handleColorClick = (key: string) => {
@@ -242,8 +274,9 @@ export function TypeCustomizePopover(options: TypeCustomizePopoverProps) {
         search={search}
         filteredIcons={filteredIcons}
         locale={locale}
-        onSearchChange={setSearch}
+        onSearchChange={handleSearchChange}
         onSelectIcon={handleIconClick}
+        onLoadMore={handleLoadMore}
       />
       {showTemplate && (
         <TemplateSection templateText={templateText} locale={locale} onTemplateChange={handleTemplateChange} />

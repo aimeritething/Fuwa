@@ -287,7 +287,7 @@ Each entity type can have a corresponding **type document**: any markdown note w
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `icon` | string | Type icon as a Phosphor name (kebab-case, e.g., "cooking-pot") |
+| `icon` | string | Type icon from the full lazily loaded Phosphor catalog, stored as a kebab-case name (e.g., "cooking-pot") |
 | `color` | string | Accent palette key (`red`, `purple`, `blue`, `green`, `yellow`, `orange`, `teal`, `pink`, `gray`) or a valid CSS color value such as `cyan`, `#22d3ee`, or `rgb(34, 211, 238)` |
 | `order` | number | Sidebar display order (lower = higher priority) |
 | `sidebar_label` | string | Custom label overriding auto-pluralization |

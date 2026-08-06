@@ -156,7 +156,7 @@ Core perceived latency is protected by a synthetic production-browser benchmark.
 | Spreadsheet editor | IronCalc workbook + WASM | 0.5.x |
 | Styling | Tailwind CSS v4 + CSS variables | 4.1.18 |
 | UI primitives | Radix UI + shadcn/ui | - |
-| Icons | Phosphor Icons | - |
+| Icons | Phosphor Icons | Full catalog; per-icon modules load on demand |
 | Build | Vite | 7.3.1 |
 | Backend language | Rust (edition 2021) | 1.77.2 |
 | Frontmatter parsing | gray_matter | 0.2 |
@@ -167,6 +167,12 @@ Core perceived latency is protected by a synthetic production-browser benchmark.
 | MCP | @modelcontextprotocol/sdk | 1.0 |
 | Tests | Vitest (unit), Playwright (E2E/smoke), cargo test (Rust) | - |
 | Package manager | pnpm | - |
+
+The icon registry derives its stable kebab-case catalog from the Phosphor CSR
+module filenames at build time. Each icon remains a separate Vite dynamic
+import, so resolving an uncommon vault icon loads only that SVG component.
+The type customization grid renders the catalog in progressive batches while
+preserving search across every registered icon. See [ADR-0174](./adr/0174-lazy-full-phosphor-icon-catalog.md).
 
 ## System Overview
 

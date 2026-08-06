@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { TypeCustomizePopover } from './TypeCustomizePopover'
 import { resolveIcon, ICON_OPTIONS } from '../utils/iconRegistry'
 import { ACCENT_COLOR_PICKER_COLORS } from '../utils/typeColors'
@@ -120,17 +120,39 @@ describe('TypeCustomizePopover', () => {
   it('calls onChangeIcon when an icon is clicked', () => {
     renderPopover()
 
+    fireEvent.change(screen.getByPlaceholderText('Search icons…'), { target: { value: 'wrench' } })
     fireEvent.click(screen.getByTitle('wrench'))
     expect(onChangeIcon).toHaveBeenCalledWith('wrench')
   })
 
-  it('renders picker icons slightly larger than the sidebar icon size', () => {
+  it('renders picker icons slightly larger than the sidebar icon size', async () => {
     renderPopover()
 
-    const icon = screen.getByTitle('wrench').querySelector('svg')
+    fireEvent.change(screen.getByPlaceholderText('Search icons…'), { target: { value: 'wrench' } })
+    const icon = await waitFor(() => {
+      const renderedIcon = screen.getByTitle('wrench').querySelector('svg')
+      expect(renderedIcon).not.toBeNull()
+      return renderedIcon
+    })
     expect(icon).toHaveAttribute('width', '18')
     expect(icon).toHaveAttribute('height', '18')
     expect(icon).toHaveClass('size-[18px]')
+  })
+
+  it('renders the full catalog progressively while scrolling', () => {
+    renderPopover()
+    const grid = screen.getByTestId('icon-picker-grid')
+
+    expect(grid.querySelectorAll('button')).toHaveLength(120)
+
+    Object.defineProperties(grid, {
+      clientHeight: { configurable: true, value: 160 },
+      scrollHeight: { configurable: true, value: 320 },
+      scrollTop: { configurable: true, value: 160 },
+    })
+    fireEvent.scroll(grid)
+
+    expect(grid.querySelectorAll('button')).toHaveLength(240)
   })
 
   it('orders color swatches by hue before neutral gray', () => {

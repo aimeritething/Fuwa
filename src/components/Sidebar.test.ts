@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildSectionGroup, buildDynamicSections, collectActiveTypes } from '../utils/sidebarSections'
 import { resolveIcon } from '../utils/iconRegistry'
 import type { VaultEntry } from '../types'
-import { GearSix, CookingPot, FileText } from '@phosphor-icons/react'
+import { FileText } from '@phosphor-icons/react'
 
 const baseEntry: VaultEntry = {
   path: '', filename: '', title: '', isA: null, aliases: [], belongsTo: [], relatedTo: [],
@@ -21,7 +21,7 @@ describe('buildSectionGroup', () => {
     const group = buildSectionGroup('Config', typeEntryMap)
     expect(group.label).toBe('Config')
     expect(group.customColor).toBe('blue')
-    expect(group.Icon).toBe(GearSix)
+    expect(group.Icon).toBe(resolveIcon('gear-six'))
   })
 
   it('uses type entry icon/color for custom type with custom icon', () => {
@@ -31,7 +31,7 @@ describe('buildSectionGroup', () => {
     const group = buildSectionGroup('Recipe', typeEntryMap)
     expect(group.label).toBe('Recipes')
     expect(group.customColor).toBe('orange')
-    expect(group.Icon).toBe(CookingPot)
+    expect(group.Icon).toBe(resolveIcon('cooking-pot'))
   })
 
   it('falls back to pluralized name and FileText when no type entry', () => {
@@ -73,7 +73,7 @@ describe('buildSectionGroup', () => {
     const group = buildSectionGroup('config', typeEntryMap)
     expect(group.label).toBe('Config')
     expect(group.customColor).toBe('gray')
-    expect(group.Icon).toBe(GearSix)
+    expect(group.Icon).toBe(resolveIcon('gear-six'))
   })
 })
 
