@@ -144,7 +144,16 @@
         "key": "\\",
         "code": "Backslash",
         "display": "⌘\\",
-        "accelerator": "CmdOrCtrl+\\"
+        "accelerator": "CmdOrCtrl+\\",
+        "macosAlternateEvents": [
+          {
+            "key": "\\",
+            "altKey": true,
+            "ctrlKey": false,
+            "metaKey": true,
+            "shiftKey": true
+          }
+        ]
       }
     },
     "editToggleDiff": {

@@ -257,18 +257,18 @@ test.describe('keyboard command routing', () => {
     await expect(page.getByRole('button', { name: 'Set note as not organized' })).toBeVisible({ timeout: 5_000 })
   })
 
-  test('renderer shortcut bridge toggles the raw editor through the shared keyboard handler', async ({ page }) => {
+  test('renderer accepts a layout-produced backslash for the raw editor shortcut', async ({ page }) => {
     const runtimeStyleCspSignals = collectRuntimeStyleCspSignals(page)
 
     await openAlphaProjectInEditor(page)
 
     await dispatchShortcutEvent(page, {
-      key: '§',
-      code: 'Backslash',
+      key: '\\',
+      code: 'Digit7',
       ctrlKey: false,
       metaKey: true,
-      shiftKey: false,
-      altKey: false,
+      shiftKey: true,
+      altKey: true,
       bubbles: true,
       cancelable: true,
     })

@@ -25,6 +25,14 @@ export interface AppCommandShortcutEventOptions {
   preferControl?: boolean
 }
 
+interface AppCommandShortcutAlternateEvent {
+  key: string
+  altKey: boolean
+  ctrlKey: boolean
+  metaKey: boolean
+  shiftKey: boolean
+}
+
 export type AppCommandShortcutEventInit = Pick<
   KeyboardEventInit,
   'altKey' | 'bubbles' | 'cancelable' | 'code' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'
@@ -87,6 +95,7 @@ interface AppCommandShortcutDefinition {
   aliases?: string[]
   code?: string
   display: string
+  macosAlternateEvents?: AppCommandShortcutAlternateEvent[]
 }
 
 interface AppCommandManifestShortcutDefinition extends AppCommandShortcutDefinition {
@@ -246,6 +255,7 @@ function toShortcutDefinition(
     aliases: shortcut.aliases,
     code: shortcut.code,
     display: shortcut.display,
+    macosAlternateEvents: shortcut.macosAlternateEvents,
   }
 }
 
@@ -375,6 +385,8 @@ const shortcutCodeMaps = {
   'command-shift': new Map<string, AppCommandId>(),
 } satisfies Record<AppCommandShortcutCombo, Map<string, AppCommandId>>
 
+const macosAlternateShortcutMap = new Map<string, AppCommandId>()
+
 const COMMAND_ONLY_COMBOS: readonly AppCommandShortcutCombo[] = ['command-or-ctrl']
 const COMMAND_SHIFT_COMBOS: readonly AppCommandShortcutCombo[] = ['command-shift', 'command-or-ctrl-shift']
 const COMMAND_OR_CTRL_SHIFT_COMBOS: readonly AppCommandShortcutCombo[] = ['command-or-ctrl-shift']
@@ -385,15 +397,16 @@ function normalizeShortcutKey(key: string): string {
   return key
 }
 
-function isPlatformRedoAlternate(event: ShortcutEventLike): boolean {
-  const blocked = [isMac(), event.altKey, event.metaKey, event.shiftKey, !event.ctrlKey]
-  if (blocked.includes(true)) return false
-  return normalizeShortcutKey(event.key) === 'y'
+function alternateShortcutSignature(event: AppCommandShortcutAlternateEvent): string {
+  return [event.altKey, event.ctrlKey, event.metaKey, event.shiftKey, normalizeShortcutKey(event.key)].join(':')
 }
 
-for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<[AppCommandId, AppCommandDefinition]>) {
-  const shortcut = definition.shortcut
-  if (!shortcut) continue
+function isPlatformRedoAlternate(event: ShortcutEventLike): boolean {
+  const signature = `${isMac()}:${event.altKey}:${event.ctrlKey}:${event.metaKey}:${event.shiftKey}:${normalizeShortcutKey(event.key)}`
+  return signature === 'false:false:true:false:false:y'
+}
+
+function registerShortcutDefinition(id: AppCommandId, shortcut: AppCommandShortcutDefinition): void {
   const shortcutKeyMap = Reflect.get(shortcutKeyMaps, shortcut.combo) as Map<string, AppCommandId>
   shortcutKeyMap.set(normalizeShortcutKey(shortcut.key), id)
   for (const alias of shortcut.aliases ?? []) {
@@ -403,7 +416,20 @@ for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<
     const shortcutCodeMap = Reflect.get(shortcutCodeMaps, shortcut.combo) as Map<string, AppCommandId>
     shortcutCodeMap.set(shortcut.code, id)
   }
+  for (const event of shortcut.macosAlternateEvents ?? []) {
+    macosAlternateShortcutMap.set(alternateShortcutSignature(event), id)
+  }
 }
+
+function registerShortcutDefinitions(): void {
+  for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<[AppCommandId, AppCommandDefinition]>) {
+    if (definition.shortcut) {
+      registerShortcutDefinition(id, definition.shortcut)
+    }
+  }
+}
+
+registerShortcutDefinitions()
 
 export function isAppCommandId(value: string): value is AppCommandId {
   return APP_COMMAND_SET.has(value)
@@ -494,6 +520,11 @@ export function findShortcutCommandId(
 
 export function findShortcutCommandIdForEvent(event: ShortcutEventLike): AppCommandId | null {
   if (isPlatformRedoAlternate(event)) return APP_COMMAND_IDS.editRedo
+
+  if (isMac()) {
+    const alternateCommandId = macosAlternateShortcutMap.get(alternateShortcutSignature(event))
+    if (alternateCommandId) return alternateCommandId
+  }
 
   for (const combo of shortcutCombosForEvent(event)) {
     const commandId = findShortcutCommandId(combo, event.key, event.code)
