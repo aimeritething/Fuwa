@@ -50,9 +50,16 @@ impl RenameWorkspace {
         RenameOperation {
             old_path,
             old_file,
+            transaction_dir: self.dir.clone(),
             backup_path: self.dir.join(format!("{}.bak", Uuid::new_v4())),
             manifest_path: self.dir.join(format!("{}.json", Uuid::new_v4())),
         }
+    }
+}
+
+impl Drop for RenameWorkspace {
+    fn drop(&mut self) {
+        remove_empty_transaction_dir(&self.dir);
     }
 }
 
@@ -60,6 +67,7 @@ pub(super) struct CommittedRename {
     new_file: PathBuf,
     manifest_path: PathBuf,
     backup_path: PathBuf,
+    transaction_dir: PathBuf,
 }
 
 impl CommittedRename {
@@ -72,12 +80,14 @@ impl Drop for CommittedRename {
     fn drop(&mut self) {
         let _ = fs::remove_file(&self.backup_path);
         let _ = fs::remove_file(&self.manifest_path);
+        remove_empty_transaction_dir(&self.transaction_dir);
     }
 }
 
 pub(super) struct RenameOperation<'a> {
     old_path: &'a str,
     old_file: &'a Path,
+    transaction_dir: PathBuf,
     backup_path: PathBuf,
     manifest_path: PathBuf,
 }
@@ -185,6 +195,7 @@ impl<'a> RenameOperation<'a> {
             })?;
         }
         let _ = fs::remove_file(&self.manifest_path);
+        remove_empty_transaction_dir(&self.transaction_dir);
         Ok(())
     }
 
@@ -193,6 +204,7 @@ impl<'a> RenameOperation<'a> {
             new_file,
             manifest_path: self.manifest_path.clone(),
             backup_path: self.backup_path.clone(),
+            transaction_dir: self.transaction_dir.clone(),
         }
     }
 }
@@ -214,6 +226,10 @@ fn candidate_filename(filename: &str, attempt: usize) -> String {
 
 fn transaction_dir(vault: &Path) -> PathBuf {
     vault.join(".tolaria-rename-txn")
+}
+
+fn remove_empty_transaction_dir(dir: &Path) {
+    let _ = fs::remove_dir(dir);
 }
 
 pub(super) fn recover_pending_rename_transactions(vault: &Path) -> Result<(), String> {
@@ -249,6 +265,7 @@ pub(super) fn recover_pending_rename_transactions(vault: &Path) -> Result<(), St
         recover_rename_transaction(&path, transaction)?;
     }
 
+    remove_empty_transaction_dir(&txn_dir);
     Ok(())
 }
 
@@ -284,4 +301,48 @@ fn recover_rename_transaction(
     })?;
     let _ = fs::remove_file(manifest_path);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn committed_rename_removes_empty_transaction_directory() {
+        let vault = TempDir::new().unwrap();
+        let old_file = vault.path().join("old.md");
+        let new_file = vault.path().join("new.md");
+        fs::write(&old_file, "# Old\n").unwrap();
+
+        let workspace = RenameWorkspace::new(vault.path()).unwrap();
+        let staged = workspace.stage_note_content("# New\n").unwrap();
+        let operation = workspace.operation("old.md", &old_file);
+        let committed = operation.rename_exact(staged, &new_file).unwrap();
+        drop(committed);
+
+        assert!(!transaction_dir(vault.path()).exists());
+    }
+
+    #[test]
+    fn recovery_removes_empty_transaction_directory() {
+        let vault = TempDir::new().unwrap();
+        let txn_dir = transaction_dir(vault.path());
+        fs::create_dir(&txn_dir).unwrap();
+
+        recover_pending_rename_transactions(vault.path()).unwrap();
+
+        assert!(!txn_dir.exists());
+    }
+
+    #[test]
+    fn unused_workspace_removes_empty_transaction_directory() {
+        let vault = TempDir::new().unwrap();
+        let txn_dir = transaction_dir(vault.path());
+
+        let workspace = RenameWorkspace::new(vault.path()).unwrap();
+        drop(workspace);
+
+        assert!(!txn_dir.exists());
+    }
 }

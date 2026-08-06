@@ -1,5 +1,6 @@
 import { useRef, useLayoutEffect, useCallback, useState } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
+import { useEditorContentPathSignal } from '../hooks/useEditorContentPathSignal'
 import { useRawMode } from '../hooks/useRawMode'
 import { clearTableResizeState } from './tableResizeState'
 import {
@@ -153,6 +154,7 @@ function useHandleFlushPending(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   activeTabPath: string | null
   activeTabContent: string | null
+  editorContentPath: string | null
   rawInitialContentRef: React.MutableRefObject<string | null>
   rawLatestContentRef: React.MutableRefObject<string | null>
   rawSourceContentRef: React.MutableRefObject<string | null>
@@ -165,6 +167,7 @@ function useHandleFlushPending(options: {
     editor,
     activeTabPath,
     activeTabContent,
+    editorContentPath,
     rawInitialContentRef,
     rawLatestContentRef,
     rawSourceContentRef,
@@ -180,6 +183,7 @@ function useHandleFlushPending(options: {
       editor,
       activeTabPath,
       activeTabContent,
+      editorContentPath,
       rawLatestContentRef,
       serializeRichEditorContent,
       vaultPath,
@@ -201,6 +205,7 @@ function useHandleFlushPending(options: {
     activeTabContent,
     activeTabPath,
     editor,
+    editorContentPath,
     flushPendingEditorChangeRef,
     restoreTransitionRef,
     rawInitialContentRef,
@@ -302,6 +307,7 @@ export function useRawModeWithFlush(
   vaultPath?: string,
   flushPendingEditorChangeRef?: React.MutableRefObject<(() => boolean) | null>,
 ) {
+  const { path: editorContentPath } = useEditorContentPathSignal()
   const rawLatestContentRef = useRef<string | null>(null)
   const rawInitialContentRef = useRef<string | null>(null)
   const rawBufferPathRef = useRef<string | null>(null)
@@ -344,6 +350,7 @@ export function useRawModeWithFlush(
     editor,
     activeTabPath,
     activeTabContent: effectiveActiveTabContent,
+    editorContentPath,
     rawInitialContentRef,
     rawLatestContentRef,
     rawSourceContentRef,

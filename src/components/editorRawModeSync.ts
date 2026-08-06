@@ -113,6 +113,7 @@ export function syncActiveTabIntoRawBuffer(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   activeTabPath: string | null
   activeTabContent: string | null
+  editorContentPath?: string | null
   rawLatestContentRef: MutableRefObject<string | null>
   serializeRichEditorContent?: boolean
   vaultPath?: string
@@ -121,11 +122,19 @@ export function syncActiveTabIntoRawBuffer(options: {
     editor,
     activeTabPath,
     activeTabContent,
+    editorContentPath,
     rawLatestContentRef,
     serializeRichEditorContent = true,
     vaultPath,
   } = options
   if (!activeTabPath || activeTabContent === null) return null
+
+  // Sheets never enter the shared rich editor. Preserve their source instead of
+  // serializing whichever note the editor still owns into the active sheet.
+  if (editorContentPath !== undefined && editorContentPath !== activeTabPath) {
+    rawLatestContentRef.current = activeTabContent
+    return activeTabContent
+  }
 
   const shouldSerializeRichEditorContent = serializeRichEditorContent || hasRichEditorDurableBlocks(editor.document)
   const syncedContent = shouldSerializeRichEditorContent
