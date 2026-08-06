@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { resolveEffectiveLocale, translate, type AppLocale } from '../lib/i18n'
-import type { MarkdownHighlightColor } from '../utils/markdownHighlightMarkdown'
+import {
+  markdownHighlightColorOption,
+  type MarkdownHighlightColor,
+} from '../utils/markdownHighlightMarkdown'
 import type { HighlightEditor, MarkdownHighlightRange } from './markdownHighlightModel'
 import { readMarkdownHighlightRange } from './markdownHighlightRange'
 
@@ -20,18 +23,7 @@ function currentLocale(): AppLocale {
 }
 
 export function colorLabel(locale: AppLocale, color: MarkdownHighlightColor): string {
-  switch (color) {
-    case 'yellow':
-      return translate(locale, 'editor.formatting.highlightYellow')
-    case 'green':
-      return translate(locale, 'editor.formatting.highlightGreen')
-    case 'red':
-      return translate(locale, 'editor.formatting.highlightRed')
-    case 'blue':
-      return translate(locale, 'editor.formatting.highlightBlue')
-    case 'purple':
-      return translate(locale, 'editor.formatting.highlightPurple')
-  }
+  return translate(locale, markdownHighlightColorOption(color).localeKey)
 }
 
 export function useEditorRevision(editor: HighlightEditor) {

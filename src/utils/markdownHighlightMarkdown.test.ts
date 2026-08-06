@@ -1,10 +1,43 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   injectMarkdownHighlightsInBlocks,
+  MARKDOWN_HIGHLIGHT_COLOR_OPTIONS,
   MARKDOWN_HIGHLIGHT_STYLE,
   restoreMarkdownHighlightsInBlocks,
   serializeMarkdownHighlightAwareBlocks,
 } from './markdownHighlightMarkdown'
+
+describe('markdown highlight color metadata', () => {
+  it('keeps color ids, markdown prefixes, and locale keys together', () => {
+    expect(MARKDOWN_HIGHLIGHT_COLOR_OPTIONS).toEqual([
+      {
+        color: 'yellow',
+        localeKey: 'editor.formatting.highlightYellow',
+        markdownPrefix: '',
+      },
+      {
+        color: 'green',
+        localeKey: 'editor.formatting.highlightGreen',
+        markdownPrefix: '🟢',
+      },
+      {
+        color: 'red',
+        localeKey: 'editor.formatting.highlightRed',
+        markdownPrefix: '🔴',
+      },
+      {
+        color: 'blue',
+        localeKey: 'editor.formatting.highlightBlue',
+        markdownPrefix: '🔵',
+      },
+      {
+        color: 'purple',
+        localeKey: 'editor.formatting.highlightPurple',
+        markdownPrefix: '🟣',
+      },
+    ])
+  })
+})
 
 describe('markdown highlight round-trip', () => {
   it('marks ==highlight== spans in parsed rich-editor inline content', () => {

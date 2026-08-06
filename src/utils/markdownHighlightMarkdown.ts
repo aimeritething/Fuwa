@@ -4,26 +4,18 @@ import {
 } from './blockNoteDirectMarkdown'
 
 export const MARKDOWN_HIGHLIGHT_STYLE = 'highlight' as const
-export const DEFAULT_MARKDOWN_HIGHLIGHT_COLOR = 'yellow' as const
-export const MARKDOWN_HIGHLIGHT_COLORS = [
-  DEFAULT_MARKDOWN_HIGHLIGHT_COLOR,
-  'green',
-  'red',
-  'blue',
-  'purple',
+export const MARKDOWN_HIGHLIGHT_COLOR_OPTIONS = [
+  { color: 'yellow', localeKey: 'editor.formatting.highlightYellow', markdownPrefix: '' },
+  { color: 'green', localeKey: 'editor.formatting.highlightGreen', markdownPrefix: '🟢' },
+  { color: 'red', localeKey: 'editor.formatting.highlightRed', markdownPrefix: '🔴' },
+  { color: 'blue', localeKey: 'editor.formatting.highlightBlue', markdownPrefix: '🔵' },
+  { color: 'purple', localeKey: 'editor.formatting.highlightPurple', markdownPrefix: '🟣' },
 ] as const
 
-export type MarkdownHighlightColor = typeof MARKDOWN_HIGHLIGHT_COLORS[number]
+export type MarkdownHighlightColor = typeof MARKDOWN_HIGHLIGHT_COLOR_OPTIONS[number]['color']
 
-const CUSTOM_MARKDOWN_HIGHLIGHT_PREFIXES = [
-  { color: 'green', prefix: '🟢' },
-  { color: 'red', prefix: '🔴' },
-  { color: 'blue', prefix: '🔵' },
-  { color: 'purple', prefix: '🟣' },
-] as const satisfies ReadonlyArray<{
-  color: Exclude<MarkdownHighlightColor, 'yellow'>
-  prefix: string
-}>
+export const DEFAULT_MARKDOWN_HIGHLIGHT_COLOR = MARKDOWN_HIGHLIGHT_COLOR_OPTIONS[0].color
+export const MARKDOWN_HIGHLIGHT_COLORS = MARKDOWN_HIGHLIGHT_COLOR_OPTIONS.map(({ color }) => color)
 
 interface TextStyles {
   [style: string]: string | boolean | undefined
@@ -86,21 +78,26 @@ function textItemWithText(item: InlineItem, text: string): InlineItem {
 }
 
 export function markdownHighlightPrefix(color: MarkdownHighlightColor): string {
-  return CUSTOM_MARKDOWN_HIGHLIGHT_PREFIXES.find(option => option.color === color)?.prefix ?? ''
+  return markdownHighlightColorOption(color).markdownPrefix
+}
+
+export function markdownHighlightColorOption(color: MarkdownHighlightColor) {
+  return MARKDOWN_HIGHLIGHT_COLOR_OPTIONS.find(option => option.color === color)
+    ?? MARKDOWN_HIGHLIGHT_COLOR_OPTIONS[0]
 }
 
 export function readMarkdownHighlightPrefix(text: string): {
   color: MarkdownHighlightColor
   text: string
 } {
-  const option = CUSTOM_MARKDOWN_HIGHLIGHT_PREFIXES.find(candidate => (
-    text.startsWith(candidate.prefix)
+  const option = MARKDOWN_HIGHLIGHT_COLOR_OPTIONS.find(candidate => (
+    candidate.markdownPrefix.length > 0 && text.startsWith(candidate.markdownPrefix)
   ))
   if (!option) return { color: DEFAULT_MARKDOWN_HIGHLIGHT_COLOR, text }
 
   return {
     color: option.color,
-    text: text.slice(option.prefix.length),
+    text: text.slice(option.markdownPrefix.length),
   }
 }
 
@@ -110,8 +107,9 @@ export function markdownHighlightColorFromStyles(styles: {
 } | undefined): MarkdownHighlightColor | null {
   if (styles?.highlight !== true) return null
 
-  const customColor = CUSTOM_MARKDOWN_HIGHLIGHT_PREFIXES.find(option => (
-    option.color === styles.backgroundColor
+  const customColor = MARKDOWN_HIGHLIGHT_COLOR_OPTIONS.find(option => (
+    option.color !== DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
+      && option.color === styles.backgroundColor
   ))
   return customColor?.color ?? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
 }
@@ -228,6 +226,29 @@ function restoreHighlightedTextItem(item: InlineItem): InlineItem {
   }
 }
 
+function appendRestoredHighlightedItem(
+  restored: InlineItem[],
+  item: InlineItem,
+  activeColor: MarkdownHighlightColor | null,
+): MarkdownHighlightColor {
+  const color = markdownHighlightColorFromStyles(item.styles) ?? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
+  if (activeColor !== color) {
+    if (activeColor !== null) restored.push(highlightMarker())
+    restored.push(highlightMarker(markdownHighlightPrefix(color)))
+  }
+  restored.push(restoreHighlightedTextItem(item))
+  return color
+}
+
+function appendRestoredPlainItem(
+  restored: InlineItem[],
+  item: InlineItem,
+  activeColor: MarkdownHighlightColor | null,
+): void {
+  if (activeColor !== null) restored.push(highlightMarker())
+  restored.push(item)
+}
+
 function restoreMarkdownHighlights(content: InlineItem[]): InlineItem[] {
   const restored: InlineItem[] = []
   let activeColor: MarkdownHighlightColor | null = null
@@ -235,19 +256,12 @@ function restoreMarkdownHighlights(content: InlineItem[]): InlineItem[] {
 
   for (const item of content) {
     if (isHighlightedTextItem(item)) {
-      const color = markdownHighlightColorFromStyles(item.styles) ?? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
-      if (activeColor !== color) {
-        if (activeColor !== null) restored.push(highlightMarker())
-        restored.push(highlightMarker(markdownHighlightPrefix(color)))
-      }
-      restored.push(restoreHighlightedTextItem(item))
-      activeColor = color
+      activeColor = appendRestoredHighlightedItem(restored, item, activeColor)
       changed = true
       continue
     }
 
-    if (activeColor !== null) restored.push(highlightMarker())
-    restored.push(item)
+    appendRestoredPlainItem(restored, item, activeColor)
     activeColor = null
   }
 
