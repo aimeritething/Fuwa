@@ -381,7 +381,7 @@ describe('useNoteCreation hook', () => {
     const createdPath = '/Users/luca/Team/Projects/2026 Planning/untitled-note-1700000000.md'
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
       path: createdPath,
-      content: expect.stringContaining('type: Note'),
+      content: '---\ntype: Note\n---\n\n# \n\n',
       vaultPath: '/Users/luca/Team',
     })
     expect(addEntry).toHaveBeenCalledWith(expect.objectContaining({
@@ -405,12 +405,12 @@ describe('useNoteCreation hook', () => {
     const createdPath = '/Users/luca/Team/Projects/2026 Planning/untitled-note-1700000000.md'
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
       path: createdPath,
-      content: expect.stringContaining('type: Note'),
+      content: '---\ntype: Note\n---\n\n# \n\n',
       vaultPath: '/Users/luca/Team',
     })
     expect(openTabWithContent).toHaveBeenCalledWith(
       expect.objectContaining({ path: createdPath }),
-      expect.stringContaining('type: Note'),
+      '---\ntype: Note\n---\n\n# \n\n',
     )
     expect(addEntry).toHaveBeenCalledWith(expect.objectContaining({ path: createdPath }))
     vi.restoreAllMocks()
