@@ -48,8 +48,11 @@ interface RichEditorBlockSerializationOptions {
 const EMPTY_CHECKLIST_ITEM_FILLER = '\u200B'
 const EMPTY_CHECKLIST_ITEM_LINE_RE = /^([ \t]*[-*+][ \t]+\[[ xX]\])[ \t]*$/u
 const BLANK_PARAGRAPH_PLACEHOLDER = '\u200B'
-const BLOCKQUOTE_SOURCE_LINE_RE = /^([ \t]{0,3}(?:>[ \t]?)+)(.*)$/u
-const BLANK_BLOCKQUOTE_GAP_RE = /\n\n([ \t]{0,3}(?:>[ \t]?)+)\n\n/gu
+
+interface ParsedBlockquoteSourceLine {
+  content: string
+  marker: string
+}
 
 interface MarkdownSourceLine {
   content: string
@@ -176,14 +179,14 @@ function preProcessEmptyChecklistLine(line: MarkdownBody): MarkdownBody {
 function preProcessBlankBlockquoteParagraphs(markdown: MarkdownBody): MarkdownBody {
   const lines = splitMarkdownSourceLines(markdown)
   return lines.map((line, index) => {
-    const match = BLOCKQUOTE_SOURCE_LINE_RE.exec(line.content)
-    if (!match || match[2].trim() !== '') return markdownSourceLineText(line)
+    const parsed = parseBlockquoteSourceLine(line.content)
+    if (!parsed || parsed.content.trim() !== '') return markdownSourceLineText(line)
     if (!hasQuotedContentNeighbor(lines, index - 1) || !hasQuotedContentNeighbor(lines, index + 1)) {
       return markdownSourceLineText(line)
     }
 
     const newline = line.newline || '\n'
-    const marker = match[1].trimEnd()
+    const marker = parsed.marker.trimEnd()
     return `${newline}${marker} ${BLANK_PARAGRAPH_PLACEHOLDER}${newline}${newline}`
   }).join('')
 }
@@ -191,14 +194,55 @@ function preProcessBlankBlockquoteParagraphs(markdown: MarkdownBody): MarkdownBo
 function hasQuotedContentNeighbor(lines: MarkdownSourceLine[], index: number): boolean {
   const content = lines.at(index)?.content
   if (content === undefined) return false
-  const match = BLOCKQUOTE_SOURCE_LINE_RE.exec(content)
-  return match !== null && match[2].trim() !== ''
+  const parsed = parseBlockquoteSourceLine(content)
+  return parsed !== null && parsed.content.trim() !== ''
 }
 
 function restoreBlankBlockquoteParagraphs(markdown: MarkdownBody): MarkdownBody {
-  return markdown.replace(BLANK_BLOCKQUOTE_GAP_RE, (_match, marker: string) => (
-    `\n${marker.trimEnd()}\n`
-  ))
+  const lines = markdown.split('\n')
+  const restored: string[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const parsed = parseBlockquoteSourceLine(lines[index])
+    if (!isBlankSerializedBlockquoteGap(parsed, restored.at(-1), lines[index + 1])) {
+      restored.push(lines[index])
+      continue
+    }
+
+    restored.pop()
+    restored.push(parsed.marker.trimEnd())
+    index += 1
+  }
+
+  return restored.join('\n')
+}
+
+function isBlankSerializedBlockquoteGap(
+  parsed: ParsedBlockquoteSourceLine | null,
+  previous: string | undefined,
+  next: string | undefined,
+): parsed is ParsedBlockquoteSourceLine {
+  if (!parsed) return false
+  if (parsed.content.trim() !== '') return false
+  if (previous !== '') return false
+  return next === ''
+}
+
+function parseBlockquoteSourceLine(line: string): ParsedBlockquoteSourceLine | null {
+  let cursor = 0
+  while (cursor < 3 && isHorizontalWhitespace(line[cursor])) cursor += 1
+  if (line[cursor] !== '>') return null
+
+  do {
+    cursor += 1
+    if (isHorizontalWhitespace(line[cursor])) cursor += 1
+  } while (line[cursor] === '>')
+
+  return { content: line.slice(cursor), marker: line.slice(0, cursor) }
+}
+
+function isHorizontalWhitespace(character: string | undefined): boolean {
+  return character === ' ' || character === '\t'
 }
 
 function preProcessBlankParagraphs(markdown: MarkdownBody): MarkdownBody {
