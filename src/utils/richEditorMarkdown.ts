@@ -48,6 +48,8 @@ interface RichEditorBlockSerializationOptions {
 const EMPTY_CHECKLIST_ITEM_FILLER = '\u200B'
 const EMPTY_CHECKLIST_ITEM_LINE_RE = /^([ \t]*[-*+][ \t]+\[[ xX]\])[ \t]*$/u
 const BLANK_PARAGRAPH_PLACEHOLDER = '\u200B'
+const BLOCKQUOTE_SOURCE_LINE_RE = /^([ \t]{0,3}(?:>[ \t]?)+)(.*)$/u
+const BLANK_BLOCKQUOTE_GAP_RE = /\n\n([ \t]{0,3}(?:>[ \t]?)+)\n\n/gu
 
 interface MarkdownSourceLine {
   content: string
@@ -94,7 +96,8 @@ export function preProcessRichEditorMarkdown(
 ): PreprocessedMarkdown {
   const withDurableBlocks = preProcessDurableEditorMarkdown({ markdown })
   const withEmptyChecklists = preProcessEmptyChecklistItems(withDurableBlocks)
-  const withBlankParagraphs = preProcessBlankParagraphs(withEmptyChecklists)
+  const withBlankQuotes = preProcessBlankBlockquoteParagraphs(withEmptyChecklists)
+  const withBlankParagraphs = preProcessBlankParagraphs(withBlankQuotes)
   const withBareImages = normalizeBareImageUrls(withBlankParagraphs)
   const withImages = vaultPath ? resolveImageUrls(withBareImages, vaultPath, notePath) : withBareImages
   const withWikilinks = preProcessWikilinks(withImages)
@@ -141,8 +144,9 @@ function serializeRichEditorBodyToMarkdownWithTrace(
   const directEditor = editor as DirectMarkdownCapableSerializer
   delete directEditor.__tolariaLastDirectMarkdownMetrics
   const document = blocks
+  const serialized = serializeDurableEditorBlocks(editor, document, vaultPath)
   const body = compactMarkdown(
-    serializeDurableEditorBlocks(editor, document, vaultPath),
+    restoreBlankBlockquoteParagraphs(serialized),
     { preserveConsecutiveBlankLines: true },
   )
   const metrics = readDirectMarkdownMetrics(directEditor)
@@ -167,6 +171,34 @@ function preProcessEmptyChecklistItems(markdown: MarkdownBody): MarkdownBody {
 function preProcessEmptyChecklistLine(line: MarkdownBody): MarkdownBody {
   const match = EMPTY_CHECKLIST_ITEM_LINE_RE.exec(line)
   return match ? `${match[1]} ${EMPTY_CHECKLIST_ITEM_FILLER}` : line
+}
+
+function preProcessBlankBlockquoteParagraphs(markdown: MarkdownBody): MarkdownBody {
+  const lines = splitMarkdownSourceLines(markdown)
+  return lines.map((line, index) => {
+    const match = BLOCKQUOTE_SOURCE_LINE_RE.exec(line.content)
+    if (!match || match[2].trim() !== '') return markdownSourceLineText(line)
+    if (!hasQuotedContentNeighbor(lines, index - 1) || !hasQuotedContentNeighbor(lines, index + 1)) {
+      return markdownSourceLineText(line)
+    }
+
+    const newline = line.newline || '\n'
+    const marker = match[1].trimEnd()
+    return `${newline}${marker} ${BLANK_PARAGRAPH_PLACEHOLDER}${newline}${newline}`
+  }).join('')
+}
+
+function hasQuotedContentNeighbor(lines: MarkdownSourceLine[], index: number): boolean {
+  const content = lines.at(index)?.content
+  if (content === undefined) return false
+  const match = BLOCKQUOTE_SOURCE_LINE_RE.exec(content)
+  return match !== null && match[2].trim() !== ''
+}
+
+function restoreBlankBlockquoteParagraphs(markdown: MarkdownBody): MarkdownBody {
+  return markdown.replace(BLANK_BLOCKQUOTE_GAP_RE, (_match, marker: string) => (
+    `\n${marker.trimEnd()}\n`
+  ))
 }
 
 function preProcessBlankParagraphs(markdown: MarkdownBody): MarkdownBody {
@@ -300,7 +332,8 @@ function injectBlankParagraphBlock(block: unknown): unknown {
 }
 
 function isBlankParagraphPlaceholderBlock(block: Record<string, unknown>): boolean {
-  return block.type === 'paragraph' && isBlankParagraphPlaceholderContent(block.content)
+  return (block.type === 'paragraph' || block.type === 'quote')
+    && isBlankParagraphPlaceholderContent(block.content)
 }
 
 function isBlankParagraphPlaceholderContent(content: unknown): boolean {
