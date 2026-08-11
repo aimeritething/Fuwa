@@ -199,19 +199,20 @@ function hasQuotedContentNeighbor(lines: MarkdownSourceLine[], index: number): b
 }
 
 function restoreBlankBlockquoteParagraphs(markdown: MarkdownBody): MarkdownBody {
-  const lines = markdown.split('\n')
+  const pendingLines = markdown.split('\n')
   const restored: string[] = []
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const parsed = parseBlockquoteSourceLine(lines[index])
-    if (!isBlankSerializedBlockquoteGap(parsed, restored.at(-1), lines[index + 1])) {
-      restored.push(lines[index])
+  while (pendingLines.length > 0) {
+    const line = pendingLines.shift() ?? ''
+    const parsed = parseBlockquoteSourceLine(line)
+    if (!isBlankSerializedBlockquoteGap(parsed, restored.at(-1), pendingLines.at(0))) {
+      restored.push(line)
       continue
     }
 
     restored.pop()
     restored.push(parsed.marker.trimEnd())
-    index += 1
+    pendingLines.shift()
   }
 
   return restored.join('\n')
@@ -230,18 +231,18 @@ function isBlankSerializedBlockquoteGap(
 
 function parseBlockquoteSourceLine(line: string): ParsedBlockquoteSourceLine | null {
   let cursor = 0
-  while (cursor < 3 && isHorizontalWhitespace(line[cursor])) cursor += 1
-  if (line[cursor] !== '>') return null
+  while (cursor < 3 && isHorizontalWhitespace(line.charAt(cursor))) cursor += 1
+  if (line.charAt(cursor) !== '>') return null
 
   do {
     cursor += 1
-    if (isHorizontalWhitespace(line[cursor])) cursor += 1
-  } while (line[cursor] === '>')
+    if (isHorizontalWhitespace(line.charAt(cursor))) cursor += 1
+  } while (line.charAt(cursor) === '>')
 
   return { content: line.slice(cursor), marker: line.slice(0, cursor) }
 }
 
-function isHorizontalWhitespace(character: string | undefined): boolean {
+function isHorizontalWhitespace(character: string): boolean {
   return character === ' ' || character === '\t'
 }
 
