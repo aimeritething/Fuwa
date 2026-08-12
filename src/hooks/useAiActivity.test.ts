@@ -41,7 +41,7 @@ describe('useAiActivity', () => {
   it('connects to ws://localhost:9711', () => {
     renderHook(() => useAiActivity())
     expect(MockWebSocket.latest).not.toBeNull()
-    expect(MockWebSocket.latest!.url).toBe('ws://localhost:9711')
+    expect(MockWebSocket.latest?.url).toBe('ws://localhost:9711')
   })
 
   it('sets highlight on ui_action highlight message', () => {
@@ -101,7 +101,7 @@ describe('useAiActivity', () => {
   it('closes WebSocket on unmount', () => {
     const { unmount } = renderHook(() => useAiActivity())
     unmount()
-    expect(MockWebSocket.latest!.close).toHaveBeenCalled()
+    expect(MockWebSocket.latest?.close).toHaveBeenCalled()
   })
 
   it('handles highlight with no path', () => {
