@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
+import { BlockNoteEditor } from '@blocknote/core'
 import {
   createRichEditorPasteHandler,
   handleRichEditorPaste,
   type RichEditorPasteContext,
 } from './richEditorPaste'
+import { schema } from './editorSchema'
 
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://localhost/${encodeURIComponent(path)}`,
@@ -75,6 +77,23 @@ describe('handleRichEditorPaste', () => {
 
     expect(context.defaultPasteHandler).toHaveBeenCalledWith()
     expect(context.editor.pasteText).not.toHaveBeenCalled()
+  })
+
+  it('preserves linked inline-code Markdown pasted as plain text', () => {
+    const context = pasteContext({
+      'text/plain': '[`some-symbol`](https://example.com)',
+    })
+    const editor = BlockNoteEditor.create({ schema })
+    context.editor = editor as unknown as RichEditorPasteContext['editor']
+
+    expect(handleRichEditorPaste(context)).toBe(true)
+
+    expect(editor.document[0].content).toEqual([{
+      content: [{ styles: { code: true }, text: 'some-symbol', type: 'text' }],
+      href: 'https://example.com',
+      type: 'link',
+    }])
+    expect(context.defaultPasteHandler).not.toHaveBeenCalled()
   })
 
   it.each([

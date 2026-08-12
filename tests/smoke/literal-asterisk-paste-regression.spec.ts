@@ -7,6 +7,7 @@ let tempVaultDir: string
 let notePath: string
 
 const sqlSnippet = 'SELECT * FROM OPENQUERY'
+const linkedCodeMarkdown = '[`some-symbol`](https://example.com)'
 
 function writePasteNote(vaultPath: string): string {
   const targetPath = path.join(vaultPath, 'note', 'literal-asterisk-paste.md')
@@ -60,4 +61,21 @@ test('rich editor paste preserves literal SQL wildcard asterisks', async ({ page
   await expect(page.locator('.bn-editor')).toContainText(sqlSnippet, { timeout: 5_000 })
   await expect.poll(() => fs.readFileSync(notePath, 'utf8'), { timeout: 10_000 }).toContain(sqlSnippet)
   expect(fs.readFileSync(notePath, 'utf8')).not.toContain('SELECT  FROM OPENQUERY')
+})
+
+test('rich editor paste preserves Markdown links with inline-code labels @smoke', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+  await openNote(page, 'Literal Asterisk Paste')
+
+  const targetParagraph = page.locator('.bn-editor [data-content-type="paragraph"]').filter({ hasText: 'Paste target' }).first()
+  await targetParagraph.click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await pasteText(page, linkedCodeMarkdown)
+  expect(pageErrors).toEqual([])
+
+  const linkedCode = page.locator('.bn-editor a[href="https://example.com"] code', { hasText: 'some-symbol' })
+  await expect(linkedCode).toBeVisible({ timeout: 5_000 })
+  await expect.poll(() => fs.readFileSync(notePath, 'utf8'), { timeout: 10_000 }).toContain(linkedCodeMarkdown)
 })
