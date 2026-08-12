@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "赤",
   "editor.formatting.highlightBlue": "青",
   "editor.formatting.highlightPurple": "パープル",
+  "editor.wikilink.createNote": "「{title}」という名前の新しいノートを作成する",
   "editor.whiteboard.enterFullscreen": "ホワイトボードを展開",
   "editor.whiteboard.exitFullscreen": "フルスクリーンホワイトボードを終了",
   "editor.whiteboard.permissionDeniedTitle": "ホワイトボードのアクセスがブロックされました",

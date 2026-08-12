@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Rot",
   "editor.formatting.highlightBlue": "Blau",
   "editor.formatting.highlightPurple": "Lila",
+  "editor.wikilink.createNote": "Erstelle eine neue Notiz mit dem Namen „{title}“",
   "editor.whiteboard.enterFullscreen": "Whiteboard erweitern",
   "editor.whiteboard.exitFullscreen": "Vollbild-Whiteboard verlassen",
   "editor.whiteboard.permissionDeniedTitle": "Whiteboard-Berechtigung blockiert",

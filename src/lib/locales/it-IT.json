@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Rosso",
   "editor.formatting.highlightBlue": "Blu",
   "editor.formatting.highlightPurple": "Viola",
+  "editor.wikilink.createNote": "Crea una nuova nota chiamata “{title}”",
   "editor.whiteboard.enterFullscreen": "Espandi la lavagna",
   "editor.whiteboard.exitFullscreen": "Esci dalla lavagna a schermo intero",
   "editor.whiteboard.permissionDeniedTitle": "Autorizzazione per la lavagna bloccata",

@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Rouge",
   "editor.formatting.highlightBlue": "Bleu",
   "editor.formatting.highlightPurple": "Violet",
+  "editor.wikilink.createNote": "Créez une nouvelle note intitulée « {title} »",
   "editor.whiteboard.enterFullscreen": "Agrandir le tableau blanc",
   "editor.whiteboard.exitFullscreen": "Quitter le tableau blanc en plein écran",
   "editor.whiteboard.permissionDeniedTitle": "Autorisation du tableau blanc bloquée",

@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Czerwony",
   "editor.formatting.highlightBlue": "Niebieski",
   "editor.formatting.highlightPurple": "Fioletowy",
+  "editor.wikilink.createNote": "Utwórz nową notatkę o nazwie „{title}”",
   "editor.whiteboard.enterFullscreen": "Rozwiń tablicę",
   "editor.whiteboard.exitFullscreen": "Wyjdź z tablicy pełnoekranowej",
   "editor.whiteboard.permissionDeniedTitle": "Zablokowano uprawnienie do tablicy",

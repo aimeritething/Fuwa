@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Vermelho",
   "editor.formatting.highlightBlue": "Azul",
   "editor.formatting.highlightPurple": "Roxo",
+  "editor.wikilink.createNote": "Crie uma nova nota chamada “{title}”",
   "editor.whiteboard.enterFullscreen": "Expandir quadro branco",
   "editor.whiteboard.exitFullscreen": "Sair do quadro branco em ecrã inteiro",
   "editor.whiteboard.permissionDeniedTitle": "Permissão de quadro branco bloqueada",

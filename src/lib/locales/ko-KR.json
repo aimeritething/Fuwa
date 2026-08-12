@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "빨간색",
   "editor.formatting.highlightBlue": "파란색",
   "editor.formatting.highlightPurple": "퍼플",
+  "editor.wikilink.createNote": "“{title}”이라는 제목의 새 노트 만들기",
   "editor.whiteboard.enterFullscreen": "화이트보드 펼치기",
   "editor.whiteboard.exitFullscreen": "전체 화면 화이트보드에서 나가기",
   "editor.whiteboard.permissionDeniedTitle": "화이트보드 권한 차단됨",

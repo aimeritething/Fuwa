@@ -1072,6 +1072,13 @@ describe('@ wikilink autocomplete', () => {
   let getAtItems: TriggerItems | null = null
   let getBracketItems: TriggerItems | null = null
 
+  function autocompleteWorkspace(alias: string, label: string, shortLabel: string, defaultForNewNotes: boolean) {
+    return {
+      id: alias, label, alias, path: `/${alias}`, shortLabel, color: null, icon: null,
+      mounted: true, available: true, defaultForNewNotes,
+    }
+  }
+
   function renderForAtAutocomplete() {
     mockFilterSuggestionItems.mockClear()
     mockFilterSuggestionItems.mockImplementation((items: unknown[]) => items)
@@ -1087,13 +1094,14 @@ describe('@ wikilink autocomplete', () => {
     getBracketItems = capturedSuggestionState.getItemsByTrigger['[['] ?? null
   }
 
-  it('returns the same generic note suggestions as [[ without limiting @ to people', async () => {
+  it('keeps @ limited to generic note suggestions while [[ adds unresolved creation', async () => {
     renderForAtAutocomplete()
     const atItems = await getAtItems!('Lap')
     const bracketItems = await getBracketItems!('Lap')
 
     expect(getAtItems).toBeTruthy()
-    expect(atItems.map(item => item.title)).toEqual(bracketItems.map(item => item.title))
+    expect(atItems.map(item => item.title)).toEqual(bracketItems.slice(0, -1).map(item => item.title))
+    expect(bracketItems.at(-1)?.title).toBe('Create a new note called “Lap”')
     expect(atItems).toHaveLength(1)
     expect(atItems[0].title).toBe('Build Laputa App')
     expect(await getAtItems!('Mat')).toEqual([
@@ -1124,30 +1132,8 @@ describe('@ wikilink autocomplete', () => {
   })
 
   it('preserves cross-workspace wikilink targets when an @ item is clicked', async () => {
-    const personalWorkspace = {
-      id: 'personal',
-      label: 'Personal',
-      alias: 'personal',
-      path: '/personal',
-      shortLabel: 'PE',
-      color: null,
-      icon: null,
-      mounted: true,
-      available: true,
-      defaultForNewNotes: true,
-    }
-    const teamWorkspace = {
-      id: 'team',
-      label: 'Team',
-      alias: 'team',
-      path: '/team',
-      shortLabel: 'TE',
-      color: null,
-      icon: null,
-      mounted: true,
-      available: true,
-      defaultForNewNotes: false,
-    }
+    const personalWorkspace = autocompleteWorkspace('personal', 'Personal', 'PE', true)
+    const teamWorkspace = autocompleteWorkspace('team', 'Team', 'TE', false)
     const source = {
       ...mockEntry,
       path: '/personal/source.md',

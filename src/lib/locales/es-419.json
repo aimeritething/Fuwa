@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Rojo",
   "editor.formatting.highlightBlue": "Azul",
   "editor.formatting.highlightPurple": "Morado",
+  "editor.wikilink.createNote": "Crea una nueva nota llamada “{title}”",
   "editor.whiteboard.enterFullscreen": "Expandir pizarra",
   "editor.whiteboard.exitFullscreen": "Salir de la pizarra en pantalla completa",
   "editor.whiteboard.permissionDeniedTitle": "Permiso de pizarra bloqueado",

@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "紅色",
   "editor.formatting.highlightBlue": "藍色",
   "editor.formatting.highlightPurple": "紫色",
+  "editor.wikilink.createNote": "建立名為「{title}」的新筆記",
   "editor.whiteboard.enterFullscreen": "展開白板",
   "editor.whiteboard.exitFullscreen": "退出全螢幕白板",
   "editor.whiteboard.permissionDeniedTitle": "白板權限遭封鎖",

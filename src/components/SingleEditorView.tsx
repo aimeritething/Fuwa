@@ -1,4 +1,4 @@
-import { ArrowSquareOut as ExternalLink, Copy } from '@phosphor-icons/react'
+import { ArrowSquareOut as ExternalLink, Copy, Plus } from '@phosphor-icons/react'
 import { Component, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   GridSuggestionMenuController,
@@ -29,6 +29,7 @@ import { writeClipboardText } from '../utils/clipboardText'
 import { buildTypeEntryMap } from '../utils/typeColors'
 import { searchEmojis, type EmojiEntry } from '../utils/emoji'
 import { preFilterWikilinks, deduplicateByPath, MIN_QUERY_LENGTH } from '../utils/wikilinkSuggestions'
+import { resolveEntry } from '../utils/wikilink'
 import {
   attachClickHandlers,
   enrichSuggestionItems,
@@ -117,6 +118,7 @@ const TOOLBAR_MOUSE_DOWN_ALLOW_SELECTOR = [
 ].join(', ')
 const MAX_BLOCKNOTE_RENDER_RECOVERY_RETRIES = 1
 const EMOJI_SHORTCODE_RESULT_LIMIT = 80
+const WIKILINK_AUTOCOMPLETE_RESULT_LIMIT = 20
 
 type TestTableBlock = {
   type?: string
@@ -437,6 +439,15 @@ function sameCopyTarget(left: CodeBlockCopyTarget | null, right: CodeBlockCopyTa
   return Boolean(left && left.codeBlock === right.codeBlock && left.left === right.left && left.top === right.top)
 }
 
+function stopCopyButtonEvent(event: React.MouseEvent<HTMLButtonElement>): void {
+  event.preventDefault()
+  event.stopPropagation()
+}
+
+function reportCopyFailure(error: unknown): void {
+  console.warn('[editor] Failed to copy code block:', error)
+}
+
 function useCodeBlockCopyTarget(containerRef: React.RefObject<HTMLDivElement | null>) {
   const [copyTarget, setCopyTarget] = useState<CodeBlockCopyTarget | null>(null)
 
@@ -493,17 +504,13 @@ function CodeBlockCopyButton({ copyTarget, locale }: { copyTarget: CodeBlockCopy
   const t = useMemo(() => createTranslator(locale), [locale])
   const label = t('editor.codeBlock.copy')
 
-  useEffect(
-    () => () => {
+  useEffect(() => () => {
     if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current)
-    },
-    [],
-  )
+  }, [])
 
   const handleCopy = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
+    stopCopyButtonEvent(event)
 
     void writeClipboardText(codeBlockText(copyTarget.codeBlock))
       .then(() => {
@@ -515,9 +522,7 @@ function CodeBlockCopyButton({ copyTarget, locale }: { copyTarget: CodeBlockCopy
           resetTimerRef.current = null
         }, CODE_BLOCK_COPY_RESET_MS)
       })
-      .catch((error) => {
-        console.warn('[editor] Failed to copy code block:', error)
-      })
+      .catch(reportCopyFailure)
     },
     [copyTarget],
   )
@@ -947,17 +952,32 @@ function useInsertWikilink(
   )
 }
 
+function unresolvedWikilinkCreationItem(
+  query: string,
+  label: string,
+  onCreate: () => void,
+): WikilinkSuggestionItem {
+  return {
+    title: label,
+    path: `__create__:${query}`,
+    TypeIcon: Plus,
+    onItemClick: onCreate,
+  }
+}
+
 function useSuggestionMenuItems(options: {
   baseItems: ReturnType<typeof buildBaseSuggestionItems>
   editor: ReturnType<typeof useCreateBlockNote>
+  entries: VaultEntry[]
   insertWikilink: (target: string, triggerCharacter: WikilinkAutocompleteTrigger) => void
   locale: AppLocale
+  onNavigateWikilink: (target: string) => void
   runEditorAction: (action: SuggestionAction) => void
   sourceEntry?: VaultEntry
   typeEntryMap: Record<string, VaultEntry>
   vaultPath?: string
 }) {
-  const { baseItems, editor, insertWikilink, locale, runEditorAction, sourceEntry, typeEntryMap, vaultPath } = options
+  const { baseItems, editor, entries, insertWikilink, locale, onNavigateWikilink, runEditorAction, sourceEntry, typeEntryMap, vaultPath } = options
   const t = useMemo(() => createTranslator(locale), [locale])
 
   const buildItems = useCallback(
@@ -972,25 +992,29 @@ function useSuggestionMenuItems(options: {
       vaultPath ?? '',
       sourceEntry,
     )
-    return guardSuggestionMenuItems(
+    const matchedItems = guardSuggestionMenuItems(
       enrichSuggestionItems(items, normalizedQuery, typeEntryMap, {
         showWorkspace: hasMultipleSuggestionWorkspaces(baseItems),
       }),
       runEditorAction,
     )
+    if (!sourceEntry || triggerCharacter !== '[[' || resolveEntry(entries, normalizedQuery, sourceEntry)) return matchedItems
+
+    return [...matchedItems.slice(0, WIKILINK_AUTOCOMPLETE_RESULT_LIMIT - 1), unresolvedWikilinkCreationItem(
+      normalizedQuery,
+      t('editor.wikilink.createNote', { title: normalizedQuery }),
+      () => {
+        insertWikilink(normalizedQuery, triggerCharacter)
+        onNavigateWikilink(normalizedQuery)
+      },
+    )]
     },
-    [baseItems, insertWikilink, runEditorAction, sourceEntry, typeEntryMap, vaultPath],
+    [baseItems, entries, insertWikilink, onNavigateWikilink, runEditorAction, sourceEntry, t, typeEntryMap, vaultPath],
   )
 
-  const getWikilinkItems = useCallback(
-    async (query: string): Promise<WikilinkSuggestionItem[]> => buildItems(query, '[[') ?? [],
-    [buildItems],
-  )
+  const getWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => buildItems(query, '[[') ?? [], [buildItems])
 
-  const getAtWikilinkItems = useCallback(
-    async (query: string): Promise<WikilinkSuggestionItem[]> => buildItems(query, '@') ?? [],
-    [buildItems],
-  )
+  const getAtWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => buildItems(query, '@') ?? [], [buildItems])
 
   const getEmojiItems = useCallback(
     async (query: string): Promise<EmojiSuggestionItem[]> => {
@@ -1212,14 +1236,14 @@ function clearCodeBlockHighlightCache(view: CodeBlockHighlightRefreshView) {
   )
   if (!pluginKey) return
 
-  const pluginState = (view.state as Record<string, unknown>)[pluginKey]
-  if (typeof pluginState !== 'object' || pluginState === null) return
-
-  const decorationCache = (pluginState as { cache?: unknown }).cache
-  if (typeof decorationCache !== 'object' || decorationCache === null) return
-
-  const cacheMap = (decorationCache as { cache?: unknown }).cache
+  const pluginState = recordValue(Reflect.get(view.state, pluginKey))
+  const decorationCache = recordValue(pluginState?.cache)
+  const cacheMap = decorationCache?.cache
   if (cacheMap instanceof Map) cacheMap.clear()
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null
 }
 
 function codeBlockHighlightRefreshView(editor: ReturnType<typeof useCreateBlockNote>) {
@@ -1370,8 +1394,10 @@ export function SingleEditorView(options: {
   const suggestionMenuItems = useSuggestionMenuItems({
     baseItems,
     editor,
+    entries,
     insertWikilink,
     locale,
+    onNavigateWikilink,
     runEditorAction,
     sourceEntry: sourceEntry ?? undefined,
     typeEntryMap,

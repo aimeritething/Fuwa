@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Merah",
   "editor.formatting.highlightBlue": "Biru",
   "editor.formatting.highlightPurple": "Ungu",
+  "editor.wikilink.createNote": "Buat catatan baru bernama “{title}”",
   "editor.whiteboard.enterFullscreen": "Perluas papan tulis",
   "editor.whiteboard.exitFullscreen": "Keluar dari papan tulis layar penuh",
   "editor.whiteboard.permissionDeniedTitle": "Izin papan tulis diblokir",

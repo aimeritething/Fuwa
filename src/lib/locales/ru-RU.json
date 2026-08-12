@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Красный",
   "editor.formatting.highlightBlue": "Синий",
   "editor.formatting.highlightPurple": "Фиолетовый",
+  "editor.wikilink.createNote": "Создайте новую заметку под названием «{title}»",
   "editor.whiteboard.enterFullscreen": "Развернуть доску",
   "editor.whiteboard.exitFullscreen": "Выйти из полноэкранной доски",
   "editor.whiteboard.permissionDeniedTitle": "Разрешение для доски заблокировано",

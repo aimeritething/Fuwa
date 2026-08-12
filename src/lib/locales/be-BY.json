@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Чырвоны",
   "editor.formatting.highlightBlue": "Сіні",
   "editor.formatting.highlightPurple": "Фіялетавы",
+  "editor.wikilink.createNote": "Стварыце новую нататку пад назвай «{title}»",
   "editor.whiteboard.enterFullscreen": "Разгарнуць дошку",
   "editor.whiteboard.exitFullscreen": "Выйсці з поўнаэкраннай дошкі",
   "editor.whiteboard.permissionDeniedTitle": "Дазвол на выкарыстанне дошкі заблакіраваны",

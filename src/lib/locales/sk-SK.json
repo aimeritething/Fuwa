@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Červená",
   "editor.formatting.highlightBlue": "Modrá",
   "editor.formatting.highlightPurple": "Fialová",
+  "editor.wikilink.createNote": "Vytvorte novú poznámku s názvom „{title}“",
   "editor.whiteboard.enterFullscreen": "Rozbaliť tabuľu",
   "editor.whiteboard.exitFullscreen": "Ukončiť zobrazenie tabule na celú obrazovku",
   "editor.whiteboard.permissionDeniedTitle": "Povolenie pre tabuľu bolo zablokované",

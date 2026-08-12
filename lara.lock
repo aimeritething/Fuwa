@@ -795,6 +795,7 @@ files:
     editor.formatting.highlightRed: ee38e4d5dd68c4e440825018d549cb47
     editor.formatting.highlightBlue: 9594eec95be70e7b1710f730fdda33d9
     editor.formatting.highlightPurple: b9ba865fec061c9706d2fd7ce49c0cc7
+    editor.wikilink.createNote: 25aabcecfee9ad6c2847aa43a8239195
     editor.whiteboard.enterFullscreen: 606bf766125ecff4b33ca98122222c72
     editor.whiteboard.exitFullscreen: afd0a0414d79d047f00319921e4d4944
     editor.whiteboard.permissionDeniedTitle: f40def4c1928438aa4ac86421fed9fd9

@@ -768,6 +768,7 @@
   "editor.formatting.highlightRed": "Čyrvony",
   "editor.formatting.highlightBlue": "Sini",
   "editor.formatting.highlightPurple": "Fijaletavy",
+  "editor.wikilink.createNote": "Stvarycie novuju natatku pad nazvaj «{title}»",
   "editor.whiteboard.enterFullscreen": "Pašyryć došku",
   "editor.whiteboard.exitFullscreen": "Vyjsci z poŭnaekrannaj doški",
   "editor.whiteboard.permissionDeniedTitle": "Dostup da doški zablakavany",

@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Đỏ",
   "editor.formatting.highlightBlue": "Xanh dương",
   "editor.formatting.highlightPurple": "Màu tím",
+  "editor.wikilink.createNote": "Tạo một ghi chú mới có tên “{title}”",
   "editor.whiteboard.enterFullscreen": "Mở rộng bảng trắng",
   "editor.whiteboard.exitFullscreen": "Thoát chế độ bảng trắng toàn màn hình",
   "editor.whiteboard.permissionDeniedTitle": "Quyền truy cập bảng trắng bị chặn",

@@ -793,6 +793,7 @@
   "editor.formatting.highlightRed": "Червоний",
   "editor.formatting.highlightBlue": "Синій",
   "editor.formatting.highlightPurple": "Фіолетовий",
+  "editor.wikilink.createNote": "Створіть нову нотатку під назвою «{title}»",
   "editor.whiteboard.enterFullscreen": "Розгорнути дошку",
   "editor.whiteboard.exitFullscreen": "Вийти з повноекранної дошки",
   "editor.whiteboard.permissionDeniedTitle": "Дозвіл на доступ до дошки заблоковано",

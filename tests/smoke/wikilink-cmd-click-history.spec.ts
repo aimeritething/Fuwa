@@ -154,6 +154,32 @@ Use [regular link](https://example.com) beside [[Note B]] after reload.
 ` })
 }
 
+async function typeWikilinkQueryInNewParagraph(page: Page, target: string): Promise<Locator> {
+  await page.locator('.bn-editor p').last().click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type(`[[${target}`)
+  return page.locator('.wikilink-menu')
+}
+
+async function createFromWikilinkAutocomplete(
+  page: Page,
+  target: string,
+  activation: 'keyboard' | 'pointer',
+  expectSoleAction = false,
+): Promise<void> {
+  const menu = await typeWikilinkQueryInNewParagraph(page, target)
+  const createAction = menu.getByText(`Create a new note called “${target}”`, { exact: true })
+  if (expectSoleAction) await expect(menu.locator('button')).toHaveCount(1)
+  await expect(createAction).toBeVisible()
+
+  if (activation === 'pointer') {
+    await createAction.click()
+  } else {
+    await page.keyboard.press('Enter')
+  }
+}
+
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(90_000)
   tempVaultDir = createFixtureVaultCopy()
@@ -238,6 +264,7 @@ test('Cmd-clicking an inline URL after a vault reload does not dispatch through 
 test('@smoke unresolved wikilinks create beside the source and preserve keyboard history', async ({ page }) => {
   const sourcePath = path.join(tempVaultDir, 'project', 'unresolved-source.md')
   const createdPath = path.join(tempVaultDir, 'project', 'new-note-topic.md')
+  const keyboardCreatedPath = path.join(tempVaultDir, 'project', 'keyboard-note-topic.md')
   await writeFixtureNote({
     filePath: sourcePath,
     page,
@@ -247,19 +274,14 @@ type: Note
 
 # Unresolved Source
 
-Follow [[new-note-topic]] from here.
+Follow new topics from here.
 `,
   })
   await reloadVault(page)
   await openNote(page, 'Unresolved Source')
   await expectActiveHeading(page, 'Unresolved Source')
 
-  const wikilink = page.locator('.bn-editor .wikilink').filter({ hasText: 'New Note Topic' }).first()
-  await expect(wikilink).toHaveClass(/wikilink--broken/u)
-  await expect(wikilink).toHaveAttribute('role', 'link')
-  await expect(wikilink).toHaveAttribute('tabindex', '0')
-  await wikilink.focus()
-  await page.keyboard.press('Enter')
+  await createFromWikilinkAutocomplete(page, 'new-note-topic', 'pointer', true)
 
   await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText('new-note-topic')
   await expect.poll(() => readFixtureNoteIfExists(page, createdPath)).toContain('title: New Note Topic')
@@ -272,7 +294,27 @@ Follow [[new-note-topic]] from here.
   await page.keyboard.press('Enter')
   await expectActiveHeading(page, 'Unresolved Source')
 
-  await wikilink.click({ modifiers: ['Meta'] })
+  const wikilink = page.locator('.bn-editor .wikilink').filter({ hasText: 'New Note Topic' }).first()
+  await expect(wikilink).toHaveAttribute('role', 'link')
+  await expect(wikilink).toHaveAttribute('tabindex', '0')
+
+  const menu = await typeWikilinkQueryInNewParagraph(page, 'new-note-topic')
+  await expect(menu).toContainText('New Note Topic')
+  await expect(menu).not.toContainText('Create a new note called')
+  await page.keyboard.press('Enter')
+
+  await page.locator('.bn-editor .wikilink').filter({ hasText: 'New Note Topic' }).last().focus()
+  await page.keyboard.press('Enter')
   await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText('new-note-topic')
   expect(await readFixtureNote(page, createdPath)).toContain('title: New Note Topic')
+
+  await page.keyboard.press('Meta+k')
+  await page.getByPlaceholder('Type a command...').fill('Go Back')
+  await page.keyboard.press('Enter')
+  await expectActiveHeading(page, 'Unresolved Source')
+
+  await createFromWikilinkAutocomplete(page, 'keyboard-note-topic', 'keyboard')
+
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText('keyboard-note-topic')
+  await expect.poll(() => readFixtureNoteIfExists(page, keyboardCreatedPath)).toContain('title: Keyboard Note Topic')
 })
