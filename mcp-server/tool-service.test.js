@@ -30,6 +30,45 @@ afterEach(async () => {
 })
 
 describe('createMcpToolService', () => {
+  it('attaches a vault and exposes it to the same MCP service immediately', async () => {
+    const emittedActions = []
+    const attachedVault = path.join(tmpDir, 'Attached Vault')
+    await mkdir(attachedVault, { recursive: true })
+    const service = makeService({
+      emittedActions,
+      attachVault: async () => ({ label: 'Attached', path: attachedVault, mounted: true }),
+    })
+
+    const entry = await service.attachVault({ path: attachedVault, label: 'Attached' })
+
+    assert.deepEqual(entry, { label: 'Attached', path: attachedVault, mounted: true })
+    assert.deepEqual(service.activeVaultPaths(), [firstVault, secondVault, attachedVault])
+    assert.deepEqual(emittedActions, [
+      { action: 'vault_registry_changed', payload: { path: attachedVault, registrationType: 'attach' } },
+    ])
+  })
+
+  it('clones and registers a vault without reconnecting the MCP service', async () => {
+    const emittedActions = []
+    const clonedVault = path.join(tmpDir, 'Cloned Vault')
+    const service = makeService({
+      emittedActions,
+      cloneVault: async () => ({ label: 'Cloned', path: clonedVault, mounted: true }),
+    })
+
+    const entry = await service.cloneVault({
+      remoteUrl: 'https://example.com/team/vault.git',
+      destinationPath: clonedVault,
+      label: 'Cloned',
+    })
+
+    assert.equal(entry.path, clonedVault)
+    assert.deepEqual(service.activeVaultPaths(), [firstVault, secondVault, clonedVault])
+    assert.deepEqual(emittedActions, [
+      { action: 'vault_registry_changed', payload: { path: clonedVault, registrationType: 'clone' } },
+    ])
+  })
+
   it('requires vaultPath when reading an ambiguous note path', async () => {
     const service = makeService()
 
@@ -210,9 +249,11 @@ describe('createMcpToolService', () => {
   })
 })
 
-function makeService({ emittedActions = [] } = {}) {
+function makeService({ emittedActions = [], attachVault, cloneVault } = {}) {
   return createMcpToolService({
     resolveVaultPaths: () => [firstVault, secondVault],
+    attachVault,
+    cloneVault,
     emitUiAction: (action, payload) => {
       emittedActions.push({ action, payload })
     },

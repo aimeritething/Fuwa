@@ -71,6 +71,13 @@ function preferredAppConfigPath(configDir, fileName) {
   return join(configDir, APP_CONFIG_DIR, fileName)
 }
 
+export function preferredVaultsJsonPath({
+  configDir,
+  configDirs = configDir ? [configDir] : appConfigBaseDirs(),
+} = {}) {
+  return preferredAppConfigPath(configDirs[0], APP_CONFIG_FILES.vaults)
+}
+
 function existingOrPreferredAppConfigPath(configDirs, fileName) {
   for (const configDir of configDirs) {
     for (const namespace of appConfigPolicy.namespace_read_order) {

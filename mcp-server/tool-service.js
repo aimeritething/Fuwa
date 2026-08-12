@@ -12,9 +12,29 @@ import { readAgentInstructions, vaultContextWithInstructions } from './agent-ins
 export function createMcpToolService({
   resolveVaultPaths = () => requireVaultPaths(),
   emitUiAction = () => {},
+  attachVault: attachVaultOperation,
+  cloneVault: cloneVaultOperation,
 } = {}) {
+  const sessionVaultPaths = []
+
   function activeVaultPaths() {
-    return resolveVaultPaths()
+    return [...new Set([...resolveVaultPaths(), ...sessionVaultPaths])]
+  }
+
+  async function registerVault(operation, args, registrationType) {
+    if (!operation) throw new Error('Vault lifecycle operation is unavailable')
+    const entry = await operation(args)
+    if (!sessionVaultPaths.includes(entry.path)) sessionVaultPaths.push(entry.path)
+    emitUiAction('vault_registry_changed', { path: entry.path, registrationType })
+    return entry
+  }
+
+  function attachVault(args = {}) {
+    return registerVault(attachVaultOperation, args, 'attach')
+  }
+
+  function cloneVault(args = {}) {
+    return registerVault(cloneVaultOperation, args, 'clone')
   }
 
   function requestedVaultPath(args = {}) {
@@ -171,6 +191,8 @@ export function createMcpToolService({
   return {
     activeVaultPaths,
     appendToNote,
+    attachVault,
+    cloneVault,
     createNote,
     highlightEditor,
     listVaults,

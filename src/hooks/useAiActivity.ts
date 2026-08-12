@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { trackEvent } from '../lib/telemetry'
 
 export type HighlightElement = 'editor' | 'tab' | 'properties' | 'notelist' | null
 
@@ -12,6 +13,7 @@ export interface AiActivityCallbacks {
   onOpenTab?: (path: string) => void
   onSetFilter?: (type: string) => void
   onVaultChanged?: (path?: string) => void
+  onVaultRegistryChanged?: (path?: string) => void
 }
 
 const WS_UI_URL = 'ws://localhost:9711'
@@ -103,6 +105,17 @@ function stringPayloadValue(message: UiActionMessage): unknown {
   return message.action === 'set_filter' ? message.filterType : message.path
 }
 
+function dispatchVaultRegistryChanged(
+  message: UiActionMessage,
+  callbacksRef: ReturnType<typeof useLatestAiActivityCallbacks>,
+): void {
+  const path = optionalString(message.path)
+  const registrationType = message.registrationType === 'clone' ? 'clone' : 'attach'
+  trackEvent('mcp_vault_registered', { registration_type: registrationType })
+  callbacksRef.current?.onVaultRegistryChanged?.(path)
+  window.dispatchEvent(new CustomEvent('tolaria:vault-registry-changed', { detail: { path } }))
+}
+
 function dispatchUiActionMessage(
   message: UiActionMessage,
   callbacksRef: ReturnType<typeof useLatestAiActivityCallbacks>,
@@ -114,6 +127,10 @@ function dispatchUiActionMessage(
   }
   if (message.action === 'vault_changed') {
     callbacksRef.current?.onVaultChanged?.(optionalString(message.path))
+    return
+  }
+  if (message.action === 'vault_registry_changed') {
+    dispatchVaultRegistryChanged(message, callbacksRef)
     return
   }
   if (!isStringPayloadAction(message.action)) return

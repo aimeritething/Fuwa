@@ -10,6 +10,7 @@ import { buildAllVaults } from '../utils/vaultCollections'
 import { useVaultReorderAction } from './useVaultReorderAction'
 import { useWorkspaceIdentityActions } from './useWorkspaceIdentityActions'
 import { sanitizeDefaultWorkspacePath } from './vaultSwitcherSanitization'
+import { serializePersistedVaultSnapshot, useVaultRegistryRefresh } from './useVaultRegistryRefresh'
 
 export type { PersistedVaultList } from '../utils/vaultListStore'
 
@@ -28,6 +29,16 @@ interface UseVaultSwitcherOptions {
   onToast: (msg: string) => void
 }
 
+function useLatestVaultSwitcherCallbacks(onSwitch: () => void, onToast: (message: string) => void) {
+  const onSwitchRef = useRef(onSwitch)
+  const onToastRef = useRef(onToast)
+  useEffect(() => {
+    onSwitchRef.current = onSwitch
+    onToastRef.current = onToast
+  })
+  return { onSwitchRef, onToastRef }
+}
+
 interface PersistedVaultState {
   defaultAvailable: boolean
   defaultPath: string
@@ -38,9 +49,11 @@ interface PersistedVaultState {
   loaded: boolean
   selectedVaultPath: string | null
   setDefaultAvailable: Dispatch<SetStateAction<boolean>>
+  setDefaultPath: Dispatch<SetStateAction<string>>
   setDefaultWorkspacePath: Dispatch<SetStateAction<string | null>>
   setExtraVaults: Dispatch<SetStateAction<VaultOption[]>>
   setHiddenDefaults: Dispatch<SetStateAction<string[]>>
+  setLoaded: Dispatch<SetStateAction<boolean>>
   setSelectedVaultPath: Dispatch<SetStateAction<string | null>>
   setVaultPath: Dispatch<SetStateAction<string>>
   vaultPath: string
@@ -142,28 +155,6 @@ function labelFromPath({ path }: VaultPathInput): string {
 
 function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T> {
   return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
-}
-
-function serializePersistedVaultSnapshot(
-  vaults: VaultOption[],
-  activeVault: string | null,
-  hiddenDefaults: string[],
-  defaultWorkspacePath: string | null,
-): string {
-  return JSON.stringify({
-    activeVault,
-    defaultWorkspacePath,
-    hiddenDefaults,
-    vaults: vaults.map(({ label, path, alias, shortLabel, color, icon, mounted }) => ({
-      label,
-      path,
-      alias: alias ?? null,
-      shortLabel: shortLabel ?? null,
-      color: color ?? null,
-      icon: icon ?? null,
-      mounted: mounted !== false,
-    })),
-  })
 }
 
 async function resolveDefaultPath(): Promise<string> {
@@ -585,15 +576,17 @@ function useLoadPersistedVaultState(store: PersistedVaultStore, onSwitchRef: Mut
         selectedVaultPath,
         setDefaultWorkspacePath,
         setDefaultAvailable,
+        setDefaultPath,
         setExtraVaults,
         setHiddenDefaults,
+        setLoaded,
         setSelectedVaultPath,
         setVaultPath,
         vaultPath,
       }
     }
 
-    function useMcpBridgeVaultSync(loaded: boolean, selectedVaultPath: string | null) {
+function useMcpBridgeVaultSync(loaded: boolean, selectedVaultPath: string | null) {
       useEffect(() => {
         if (!loaded) return
 
@@ -1199,14 +1192,9 @@ async function restoreGettingStartedVault({
 /** Manages vault path, extra vaults, switching, cloning, and local folder opening.
  *  Vault list and active vault are persisted via Tauri backend to survive app updates. */
 export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions) {
-  const onSwitchRef = useRef(onSwitch)
-  const onToastRef = useRef(onToast)
-  useEffect(() => {
-    onSwitchRef.current = onSwitch
-    onToastRef.current = onToast
-  })
-
+  const { onSwitchRef, onToastRef } = useLatestVaultSwitcherCallbacks(onSwitch, onToast)
   const persistedState = usePersistedVaultState(onSwitchRef)
+  const refreshVaultRegistry = useVaultRegistryRefresh({ lastPersistedSnapshotRef: persistedState.lastPersistedSnapshotRef, setExtraVaults: persistedState.setExtraVaults })
   const {
     defaultAvailable,
     defaultPath,
@@ -1255,6 +1243,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     isGettingStartedHidden,
     loaded,
     registerVaultSelection,
+    refreshVaultRegistry,
     removeVault,
     reorderVaults,
     restoreGettingStarted,

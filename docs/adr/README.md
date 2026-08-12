@@ -228,4 +228,5 @@ proposed → active → superseded
 | [0170](0170-measurable-crash-safe-startup.md) | Measurable, crash-safe startup | active |
 | [0171](0171-separate-vault-application-instances.md) | Separate vault application instances | active |
 | [0172](0172-local-codescene-change-safeguards.md) | Local CodeScene safeguards before commits and direct-to-main pushes | active |
+| [0175](0175-mcp-vault-lifecycle-uses-app-registry.md) | MCP vault lifecycle uses the app registry | active |
 | [0173](0173-future-calendar-version-recovery.md) | Future calendar version rejection and recovery | active |

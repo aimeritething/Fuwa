@@ -23,6 +23,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import WebSocket from 'ws'
 import { createMcpToolService } from './tool-service.js'
+import { attachVault, cloneVault } from './vault-lifecycle.js'
 
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
 const WS_UI_URL = `ws://localhost:${WS_UI_PORT}`
@@ -39,6 +40,10 @@ const LOCAL_CREATE_TOOL_ANNOTATIONS = Object.freeze({
   openWorldHint: false,
 })
 const LOCAL_UPDATE_TOOL_ANNOTATIONS = LOCAL_CREATE_TOOL_ANNOTATIONS
+const LOCAL_OPEN_WORLD_CREATE_TOOL_ANNOTATIONS = Object.freeze({
+  ...LOCAL_CREATE_TOOL_ANNOTATIONS,
+  openWorldHint: true,
+})
 
 // Connect as a WebSocket CLIENT to the UI bridge (run by ws-bridge.js).
 // The bridge relays messages to all other clients (the React frontend).
@@ -112,7 +117,7 @@ function broadcastUiAction(action, payload) {
   uiSocket.send(JSON.stringify({ type: 'ui_action', action, ...payload }))
 }
 
-const toolService = createMcpToolService({ emitUiAction: broadcastUiAction })
+const toolService = createMcpToolService({ emitUiAction: broadcastUiAction, attachVault, cloneVault })
 
 const TOOLS = [
   {
@@ -146,6 +151,33 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {},
+    },
+  },
+  {
+    name: 'attach_vault',
+    description: 'Register an existing accessible local folder as a mounted Tolaria vault. This does not initialize Git or change the active vault.',
+    annotations: LOCAL_CREATE_TOOL_ANNOTATIONS,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to an existing local folder.' },
+        label: { type: 'string', description: 'Optional display label. Defaults to the folder name.' },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'clone_vault',
+    description: 'Clone a Git repository with the system Git configuration, then register the resulting folder as a mounted Tolaria vault. Existing destinations are rejected.',
+    annotations: LOCAL_OPEN_WORLD_CREATE_TOOL_ANNOTATIONS,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        remoteUrl: { type: 'string', description: 'Git remote URL understood by the system Git client.' },
+        destinationPath: { type: 'string', description: 'Absolute path for the new clone. It must not already exist.' },
+        label: { type: 'string', description: 'Optional display label. Defaults to the destination folder name.' },
+      },
+      required: ['remoteUrl', 'destinationPath'],
     },
   },
   {
@@ -264,6 +296,14 @@ async function handleListVaults() {
   return { content: [{ type: 'text', text: JSON.stringify(await toolService.listVaults(), null, 2) }] }
 }
 
+async function handleAttachVault(args = {}) {
+  return { content: [{ type: 'text', text: JSON.stringify(await toolService.attachVault(args), null, 2) }] }
+}
+
+async function handleCloneVault(args = {}) {
+  return { content: [{ type: 'text', text: JSON.stringify(await toolService.cloneVault(args), null, 2) }] }
+}
+
 async function handleGetNote(args) {
   const note = await toolService.readNote(args)
   return { content: [{ type: 'text', text: JSON.stringify(note, null, 2) }] }
@@ -320,6 +360,8 @@ const TOOL_HANDLERS = new Map([
   ['search_notes', handleSearchNotes],
   ['get_vault_context', handleVaultContext],
   ['list_vaults', handleListVaults],
+  ['attach_vault', handleAttachVault],
+  ['clone_vault', handleCloneVault],
   ['get_note', handleGetNote],
   ['create_note', handleCreateNote],
   ['update_note', handleUpdateNote],
