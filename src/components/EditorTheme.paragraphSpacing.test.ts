@@ -30,4 +30,21 @@ describe('editor paragraph spacing theme', () => {
     expect(spacingValues).toHaveLength(2)
     expect(spacingValues.every(isNonZeroLength)).toBe(true)
   })
+
+  it('joins adjacent blockquote blocks into one continuous visual quote', () => {
+    const editorThemeCss = readCss('components/EditorTheme.css').replace(/\s+/gu, ' ')
+
+    expect(editorThemeCss).toContain(
+      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has( + .bn-block-outer > .bn-block > [data-content-type="quote"] ) > .bn-block > [data-content-type="quote"] { padding-bottom: 0;',
+    )
+    expect(editorThemeCss).toContain(
+      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has( + .bn-block-outer > .bn-block > [data-content-type="quote"] ) blockquote { margin-bottom: 0;',
+    )
+    expect(editorThemeCss).toContain(
+      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]) + .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) > .bn-block > [data-content-type="quote"] { padding-top: 0;',
+    )
+    expect(editorThemeCss).toContain(
+      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]) + .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) blockquote { margin-top: 0;',
+    )
+  })
 })

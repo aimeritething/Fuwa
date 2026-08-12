@@ -951,6 +951,40 @@ body.tldraw-whiteboard-fullscreen-open {
   font-style: var(--blockquote-font-style);
 }
 
+/* BlockNote models Markdown blockquote paragraphs as sibling blocks. Join
+   consecutive siblings so their rails read as one quote with paragraph gaps. */
+.editor__blocknote-container
+  .bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has(
+    + .bn-block-outer > .bn-block > [data-content-type="quote"]
+  )
+  > .bn-block
+  > [data-content-type="quote"] {
+  padding-bottom: 0;
+}
+
+.editor__blocknote-container
+  .bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has(
+    + .bn-block-outer > .bn-block > [data-content-type="quote"]
+  )
+  blockquote {
+  margin-bottom: 0;
+}
+
+.editor__blocknote-container
+  .bn-block-outer:has(> .bn-block > [data-content-type="quote"])
+  + .bn-block-outer:has(> .bn-block > [data-content-type="quote"])
+  > .bn-block
+  > [data-content-type="quote"] {
+  padding-top: 0;
+}
+
+.editor__blocknote-container
+  .bn-block-outer:has(> .bn-block > [data-content-type="quote"])
+  + .bn-block-outer:has(> .bn-block > [data-content-type="quote"])
+  blockquote {
+  margin-top: 0;
+}
+
 /* --- Table --- */
 .editor__blocknote-container [data-content-type="table"] table {
   border-color: var(--table-border-color);
