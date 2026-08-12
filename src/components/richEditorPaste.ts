@@ -59,7 +59,7 @@ type MarkupTagBoundary = {
 type RichPasteEditor = {
   document?: PasteBlock[]
   getTextCursorPosition?: () => { block?: PasteBlock | null }
-  insertInlineContent?: (content: unknown[], options?: { updateSelection?: boolean }) => void
+  insertInlineContent?: (content: never, options?: { updateSelection?: boolean }) => void
   insertBlocks?: (
     blocksToInsert: PasteCodeBlockInsert[],
     referenceBlock: string,
@@ -348,12 +348,19 @@ function linkedCodeInlineContent(
   return injectedBlocks === parsedBlocks ? null : singleParagraphInlineContent(injectedBlocks)
 }
 
-function insertLinkedCodeMarkdown(editor: RichPasteEditor, clipboardData: DataTransfer | null): boolean {
+function insertLinkedCodeMarkdown(
+  editor: RichPasteEditor,
+  clipboardData: DataTransfer | null,
+): boolean {
   if (!editor.insertInlineContent) return false
   const content = linkedCodeInlineContent(clipboardData, editor)
   if (!content) return false
 
-  editor.insertInlineContent(content, { updateSelection: true })
+  const insertInlineContent = editor.insertInlineContent as unknown as (
+    content: unknown[],
+    options?: { updateSelection?: boolean },
+  ) => void
+  insertInlineContent.call(editor, content, { updateSelection: true })
   return true
 }
 
