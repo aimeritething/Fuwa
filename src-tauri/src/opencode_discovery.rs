@@ -173,7 +173,6 @@ struct OpencodeEnvCandidateRoots {
     pnpm_home: Option<PathBuf>,
     appdata: Option<PathBuf>,
     localappdata: Option<PathBuf>,
-    program_files: Option<PathBuf>,
 }
 
 impl OpencodeEnvCandidateRoots {
@@ -186,7 +185,6 @@ impl OpencodeEnvCandidateRoots {
             pnpm_home: std::env::var_os("PNPM_HOME").map(PathBuf::from),
             appdata: std::env::var_os("APPDATA").map(PathBuf::from),
             localappdata: std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
-            program_files: std::env::var_os("ProgramFiles").map(PathBuf::from),
         }
     }
 }
@@ -209,15 +207,8 @@ fn opencode_binary_candidates_from_env_values(paths: OpencodeEnvCandidateRoots) 
         opencode_npm_prefix_candidates(&path.join("npm"))
     });
     extend_from_optional_path(&mut candidates, paths.localappdata, |path| {
-        let mut local_candidates = opencode_executable_names(&path.join("pnpm"));
-        local_candidates.extend(opencode_desktop_candidates_for_root(&path.join("Programs")));
-        local_candidates
+        opencode_executable_names(&path.join("pnpm"))
     });
-    extend_from_optional_path(
-        &mut candidates,
-        paths.program_files,
-        opencode_desktop_candidates_for_root,
-    );
 
     candidates
 }
@@ -261,14 +252,6 @@ fn opencode_npm_prefix_candidates(prefix: &Path) -> Vec<PathBuf> {
         prefix.join("lib/node_modules/opencode-ai/bin/opencode"),
     ]);
     candidates
-}
-
-fn opencode_desktop_candidates_for_root(root: &Path) -> Vec<PathBuf> {
-    vec![
-        root.join("@opencode-aidesktop/OpenCode.exe"),
-        root.join("OpenCode/opencode.exe"),
-        root.join("opencode/opencode.exe"),
-    ]
 }
 
 #[cfg(test)]
@@ -425,17 +408,15 @@ mod tests {
     }
 
     #[test]
-    fn env_candidates_accept_opencode_path_directory_and_desktop_roots() {
+    fn env_candidates_accept_opencode_path_directory_and_cli_roots() {
         let configured_dir = PathBuf::from(r"C:\Tools\opencode");
         let appdata = PathBuf::from(r"C:\Users\alex\AppData\Roaming");
         let localappdata = PathBuf::from(r"C:\Users\alex\AppData\Local");
-        let program_files = PathBuf::from(r"C:\Program Files");
 
         let candidates = opencode_binary_candidates_from_env_values(OpencodeEnvCandidateRoots {
             opencode_path: Some(configured_dir.clone()),
             appdata: Some(appdata.clone()),
             localappdata: Some(localappdata.clone()),
-            program_files: Some(program_files.clone()),
             ..OpencodeEnvCandidateRoots::default()
         });
 
@@ -443,8 +424,6 @@ mod tests {
             configured_dir.join("opencode.exe"),
             appdata.join("npm/opencode.cmd"),
             localappdata.join("pnpm/opencode.exe"),
-            localappdata.join("Programs/OpenCode/opencode.exe"),
-            program_files.join("OpenCode/opencode.exe"),
         ];
 
         for candidate in expected {
@@ -457,7 +436,7 @@ mod tests {
     }
 
     #[test]
-    fn env_candidates_include_current_windows_desktop_install() {
+    fn env_candidates_exclude_windows_desktop_installs() {
         let localappdata = PathBuf::from(r"C:\Users\alex\AppData\Local");
 
         let candidates = opencode_binary_candidates_from_env_values(OpencodeEnvCandidateRoots {
@@ -465,8 +444,18 @@ mod tests {
             ..OpencodeEnvCandidateRoots::default()
         });
 
-        assert!(
-            candidates.contains(&localappdata.join("Programs/@opencode-aidesktop/OpenCode.exe"))
-        );
+        let desktop_binaries = [
+            localappdata.join("Programs/@opencode-aidesktop/OpenCode.exe"),
+            localappdata.join("Programs/OpenCode/opencode.exe"),
+            localappdata.join("Programs/opencode/opencode.exe"),
+        ];
+
+        for binary in desktop_binaries {
+            assert!(
+                !candidates.contains(&binary),
+                "included {}",
+                binary.display()
+            );
+        }
     }
 }
