@@ -12,7 +12,9 @@ function inlineScriptsFromIndex(): string[] {
 }
 
 function startupRootContentFromIndex(): string {
-  const match = indexHtml().match(/<div id="root">([\s\S]*?)<\/div>\s*<script>\s*\(function \(\) \{\s*var bootShell/)
+  const match = indexHtml().match(
+    /<div id="root">([\s\S]*?)<\/div>\s*<script>[\s\S]*?__tolariaStartupShellFallbackNode/,
+  )
   if (!match) throw new Error('index.html startup shell root was not found')
   return match[1]
 }

@@ -8,9 +8,32 @@ describe('Tauri Content Security Policy', () => {
     expect(csp['style-src']).toContain("'unsafe-inline'")
     expect(csp['style-src-elem']).not.toContain("'nonce-")
     expect(csp['style-src-elem']).toContain("'unsafe-inline'")
-    expect(csp['style-src-elem']).toContain('https://fonts.googleapis.com')
     expect(csp['style-src-attr']).toBe("'unsafe-inline'")
     expect(config.app.security.dangerousDisableAssetCspModification).toContain('style-src')
+  })
+
+  it('keeps startup font loading local and network independent', () => {
+    const config = JSON.parse(readFileSync('src-tauri/tauri.conf.json', 'utf8'))
+    const appDocumentSource = readFileSync('index.html', 'utf8')
+    const mainEntry = readFileSync('src/main.tsx', 'utf8')
+    const packageJson = JSON.parse(readFileSync('package.json', 'utf8'))
+    const csp = config.app.security.csp as Record<string, string>
+    const devCsp = config.app.security.devCsp as string
+    const hasRemoteFontEndpoint = /https:\/\/fonts\.(?:googleapis|gstatic)\.com/.test(appDocumentSource)
+
+    expect(hasRemoteFontEndpoint).toBe(false)
+    expect(packageJson.dependencies).toMatchObject({
+      '@fontsource-variable/inter': expect.any(String),
+      '@fontsource-variable/jetbrains-mono': expect.any(String),
+      '@fontsource/ibm-plex-mono': expect.any(String),
+    })
+    expect(mainEntry).toContain("import '@fontsource-variable/inter/wght.css'")
+    expect(mainEntry).toContain("import '@fontsource-variable/jetbrains-mono/wght.css'")
+    expect(mainEntry).toContain("import '@fontsource/ibm-plex-mono/600.css'")
+    expect(csp['style-src']).not.toContain('fonts.googleapis.com')
+    expect(csp['style-src-elem']).not.toContain('fonts.googleapis.com')
+    expect(csp['font-src']).not.toContain('fonts.gstatic.com')
+    expect(devCsp).not.toMatch(/https:\/\/fonts\.(?:googleapis|gstatic)\.com/)
   })
 
   it('allows PDF object previews from scoped Tauri asset URLs', () => {

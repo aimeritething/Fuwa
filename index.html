@@ -4,30 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet" />
     <script>
-      (function () {
-        function isResizeObserverLoopMessage(message) {
-          return typeof message === 'string'
-            && (
-              message.indexOf('ResizeObserver loop completed with undelivered notifications') !== -1
-              || message.indexOf('ResizeObserver loop limit exceeded') !== -1
-            );
-        }
-        window.addEventListener('error', function (event) {
-          if (isResizeObserverLoopMessage(event.message)) {
-            event.preventDefault();
-          }
-        });
-        window.addEventListener('unhandledrejection', function (event) {
-          var reason = event.reason && (event.reason.stack || event.reason.message || String(event.reason));
-          if (isResizeObserverLoopMessage(reason)) {
-            event.preventDefault();
-          }
-        });
+      const isResizeObserverLoopMessage = (message) => (
+        typeof message === 'string'
+        && (
+          message.indexOf('ResizeObserver loop completed with undelivered notifications') !== -1
+          || message.indexOf('ResizeObserver loop limit exceeded') !== -1
+        )
+      );
 
+      const preventResizeObserverLoopError = (event) => {
+        if (isResizeObserverLoopMessage(event.message)) {
+          event.preventDefault();
+        }
+      };
+
+      const preventResizeObserverLoopRejection = (event) => {
+        const reason = event.reason && (event.reason.stack || event.reason.message || String(event.reason));
+        if (isResizeObserverLoopMessage(reason)) {
+          event.preventDefault();
+        }
+      };
+
+      const markAiWorkspaceWindow = () => {
         try {
           if (new URLSearchParams(window.location.search).get('window') === 'ai-workspace') {
             document.documentElement.classList.add('ai-workspace-native-window');
@@ -35,7 +34,11 @@
         } catch {
           // Leave the normal app chrome untouched if URL parsing is unavailable.
         }
-      })();
+      };
+
+      window.addEventListener('error', preventResizeObserverLoopError);
+      window.addEventListener('unhandledrejection', preventResizeObserverLoopRejection);
+      markAiWorkspaceWindow();
     </script>
     <style>
       /* Critical pre-bundle shell: index.html owns this structure/style so the
@@ -224,7 +227,7 @@
   </head>
   <body>
     <script>
-      (function () {
+      (() => {
         var key = 'tolaria-theme';
         var legacyKey = 'laputa-theme';
         var systemDarkQuery = '(prefers-color-scheme: dark)';
@@ -261,48 +264,48 @@
       })();
     </script>
     <script>
-      (function () {
-        var readyEventName = 'tolaria:frontend-ready';
-        var reloadAttemptKey = 'tolaria:startup-reload-attempted';
-        var startupTimeoutMs = 10000;
-        var isTauri = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+      const readyEventName = 'tolaria:frontend-ready';
+      const reloadAttemptKey = 'tolaria:startup-reload-attempted';
+      const startupTimeoutMs = 10000;
+      const isTauri = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
 
-        if (!isTauri) return;
-
-        function hasReloadAttempted() {
-          try {
-            return sessionStorage.getItem(reloadAttemptKey) === '1';
-          } catch {
-            return true;
-          }
+      const hasReloadAttempted = () => {
+        try {
+          return sessionStorage.getItem(reloadAttemptKey) === '1';
+        } catch {
+          return true;
         }
+      };
 
-        function markReloadAttempted() {
-          try {
-            sessionStorage.setItem(reloadAttemptKey, '1');
-            return true;
-          } catch {
-            return false;
-          }
+      const markReloadAttempted = () => {
+        try {
+          sessionStorage.setItem(reloadAttemptKey, '1');
+          return true;
+        } catch {
+          return false;
         }
+      };
 
-        function clearReloadAttempt() {
-          try {
-            sessionStorage.removeItem(reloadAttemptKey);
-          } catch {
-            // Storage can be unavailable in hardened WebView/privacy modes.
-          }
+      const clearReloadAttempt = () => {
+        try {
+          sessionStorage.removeItem(reloadAttemptKey);
+        } catch {
+          // Storage can be unavailable in hardened WebView/privacy modes.
         }
+      };
 
+      const reloadIfFrontendStalls = () => {
+        if (window.__tolariaFrontendReady === true) return;
+        if (hasReloadAttempted()) return;
+        if (!markReloadAttempted()) return;
+
+        window.location.reload();
+      };
+
+      if (isTauri) {
         window.addEventListener(readyEventName, clearReloadAttempt, { once: true });
-        window.setTimeout(function () {
-          if (window.__tolariaFrontendReady === true) return;
-          if (hasReloadAttempted()) return;
-          if (!markReloadAttempted()) return;
-
-          window.location.reload();
-        }, startupTimeoutMs);
-      })();
+        window.setTimeout(reloadIfFrontendStalls, startupTimeoutMs);
+      }
     </script>
     <div id="root">
       <div id="tolaria-boot-shell" class="startup-shell-fallback" data-testid="startup-shell-fallback" aria-hidden="true">
@@ -334,7 +337,7 @@
       </div>
     </div>
     <script>
-      (function () {
+      (() => {
         var bootShell = document.getElementById('tolaria-boot-shell');
         window.__tolariaStartupShellFallbackNode = bootShell ? bootShell.cloneNode(true) : null;
       })();
