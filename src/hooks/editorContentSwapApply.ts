@@ -87,6 +87,24 @@ function lastEditorBlock(editor: ReturnType<typeof useCreateBlockNote>): unknown
   return editor.document.at(-1)
 }
 
+function isNumberedListItem(block: unknown): boolean {
+  return (block as { type?: unknown } | null)?.type === 'numberedListItem'
+}
+
+function numberedListContinuesAt(blocks: EditorBlocks, index: number): boolean {
+  if (index >= blocks.length) return false
+  if (!isNumberedListItem(blocks[index - 1])) return false
+  return isNumberedListItem(blocks[index])
+}
+
+function progressiveChunkEnd(blocks: EditorBlocks, start: number, size: number): number {
+  let end = Math.min(start + size, blocks.length)
+  while (numberedListContinuesAt(blocks, end)) {
+    end += 1
+  }
+  return end
+}
+
 function applyPreparedBlocksToEditor(
   options: ApplyBlocksToEditorOptions,
   safeBlocks: EditorBlocks,
@@ -129,34 +147,35 @@ function applyInitialProgressiveChunk(
   safeBlocks: EditorBlocks,
 ): number {
   const current = editor.document
-  const firstChunk = safeBlocks.slice(0, PROGRESSIVE_INITIAL_BLOCK_APPLY_CHUNK_SIZE)
+  const chunkEnd = progressiveChunkEnd(safeBlocks, 0, PROGRESSIVE_INITIAL_BLOCK_APPLY_CHUNK_SIZE)
+  const firstChunk = safeBlocks.slice(0, chunkEnd)
   if (current.length > 0 && firstChunk.length > 0) {
     editor.replaceBlocks(current, firstChunk)
   } else if (firstChunk.length > 0) {
     editor.insertBlocks(firstChunk, current[0], 'before')
   }
-  return firstChunk.length > 0 ? 1 : 0
+  return firstChunk.length
 }
 
 async function appendRemainingProgressiveBlocks(
   editor: ReturnType<typeof useCreateBlockNote>,
   safeBlocks: EditorBlocks,
+  initialBlockCount: number,
   shouldAbort?: () => boolean,
 ): Promise<ProgressiveAppendResult> {
   let appliedChunks = 0
-  for (
-    let index = PROGRESSIVE_INITIAL_BLOCK_APPLY_CHUNK_SIZE;
-    index < safeBlocks.length;
-    index += PROGRESSIVE_BLOCK_APPLY_CHUNK_SIZE
-  ) {
+  let index = initialBlockCount
+  while (index < safeBlocks.length) {
     await requestFrame()
     if (shouldAbort?.()) return { aborted: true, appliedChunks }
 
-    const nextChunk = safeBlocks.slice(index, index + PROGRESSIVE_BLOCK_APPLY_CHUNK_SIZE)
+    const chunkEnd = progressiveChunkEnd(safeBlocks, index, PROGRESSIVE_BLOCK_APPLY_CHUNK_SIZE)
+    const nextChunk = safeBlocks.slice(index, chunkEnd)
     const reference = lastEditorBlock(editor)
     if (!reference) throw new Error('Missing progressive block insertion reference')
     editor.insertBlocks(nextChunk, reference, 'after')
     appliedChunks += 1
+    index = chunkEnd
   }
   return { aborted: false, appliedChunks }
 }
@@ -212,8 +231,14 @@ export async function applyBlocksToEditorProgressively(
   setEditorEditable(editor, false)
   try {
     resetTextSelectionBeforeContentSwap(editor)
-    appliedChunks = applyInitialProgressiveChunk(editor, safeBlocks)
-    const appendResult = await appendRemainingProgressiveBlocks(editor, safeBlocks, shouldAbort)
+    const initialBlockCount = applyInitialProgressiveChunk(editor, safeBlocks)
+    appliedChunks = initialBlockCount > 0 ? 1 : 0
+    const appendResult = await appendRemainingProgressiveBlocks(
+      editor,
+      safeBlocks,
+      initialBlockCount,
+      shouldAbort,
+    )
     if (appendResult.aborted) return abortProgressiveApply(editor, previousEditable)
     appliedChunks += appendResult.appliedChunks
   } catch (err) {

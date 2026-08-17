@@ -60,6 +60,15 @@ function makeBlocks(count: number) {
   }))
 }
 
+function makeNumberedListBlocks(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `list-item-${index}`,
+    type: 'numberedListItem',
+    content: [{ type: 'text', text: `Item ${index + 1}`, styles: {} }],
+    children: [],
+  }))
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
   vi.clearAllMocks()
@@ -131,6 +140,29 @@ describe('applyBlocksToEditor', () => {
     expect(editor.isEditable).toBe(true)
     expect(suppressChangeRef.current).toBe(false)
     expect(editorContentPathRef.current).toBe('large.md')
+  })
+
+  it('keeps one long ordered list in a single editor mutation so numbering stays continuous', async () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0)
+      return 1
+    })
+    const editor = makeEditor()
+    const blocks = makeNumberedListBlocks(PROGRESSIVE_BLOCK_APPLY_THRESHOLD + 80)
+
+    const applied = await applyBlocksToEditorProgressively({
+      blocks,
+      editor: editor as never,
+      editorContentPathRef: makeFrameRef<string | null>(null),
+      scrollTop: 0,
+      suppressChangeRef: makeFrameRef(false),
+      targetPath: 'long-ordered-list.md',
+    })
+
+    expect(applied).toBe(true)
+    expect(editor.replaceBlocks).toHaveBeenCalledWith(expect.any(Array), blocks)
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
+    expect(editor.document).toEqual(blocks)
   })
 
   it('falls back to whole-document HTML if progressive append loses its insertion reference', async () => {
