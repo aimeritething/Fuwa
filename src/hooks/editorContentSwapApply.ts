@@ -93,8 +93,8 @@ function isNumberedListItem(block: unknown): boolean {
 
 function numberedListContinuesAt(blocks: EditorBlocks, index: number): boolean {
   if (index >= blocks.length) return false
-  if (!isNumberedListItem(blocks[index - 1])) return false
-  return isNumberedListItem(blocks[index])
+  if (!isNumberedListItem(blocks.at(index - 1))) return false
+  return isNumberedListItem(blocks.at(index))
 }
 
 function progressiveChunkEnd(blocks: EditorBlocks, start: number, size: number): number {
