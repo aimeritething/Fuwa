@@ -43,6 +43,50 @@ function htmlCodeBlock(markup: string): string {
 }
 
 describe('handleRichEditorPaste', () => {
+  it('turns a selected label into a link when a URL is pasted', () => {
+    const createLink = vi.fn()
+    const context = pasteContext({
+      'text/plain': 'https://example.com/docs?section=editor&mode=rich',
+    })
+    context.editor = {
+      createLink,
+      getSelectedText: vi.fn(() => 'selected label'),
+      pasteText: vi.fn(() => true),
+    }
+
+    expect(handleRichEditorPaste(context)).toBe(true)
+
+    expect(createLink).toHaveBeenCalledWith('https://example.com/docs?section=editor&mode=rich')
+    expect(context.defaultPasteHandler).not.toHaveBeenCalled()
+    expect(context.editor.pasteText).not.toHaveBeenCalled()
+  })
+
+  it('keeps non-URL text and internal editor clips on their normal paste paths', () => {
+    const nonUrlContext = pasteContext({ 'text/plain': 'plain clipboard text' })
+    nonUrlContext.editor = {
+      createLink: vi.fn(),
+      getSelectedText: vi.fn(() => 'selected label'),
+      pasteText: vi.fn(() => true),
+    }
+    const internalContext = pasteContext({
+      'blocknote/html': '<p>https://example.com</p>',
+      'text/plain': 'https://example.com',
+    })
+    internalContext.editor = {
+      createLink: vi.fn(),
+      getSelectedText: vi.fn(() => 'selected label'),
+      pasteText: vi.fn(() => true),
+    }
+
+    expect(handleRichEditorPaste(nonUrlContext)).toBe(true)
+    expect(handleRichEditorPaste(internalContext)).toBe(true)
+
+    expect(nonUrlContext.defaultPasteHandler).toHaveBeenCalledOnce()
+    expect(internalContext.defaultPasteHandler).toHaveBeenCalledOnce()
+    expect(nonUrlContext.editor.createLink).not.toHaveBeenCalled()
+    expect(internalContext.editor.createLink).not.toHaveBeenCalled()
+  })
+
   it('prioritizes pasted web HTML when it contains images', () => {
     const context = pasteContext({
       'text/html': '<article><p>Intro</p><img src="https://example.com/photo.png" alt="Photo"></article>',

@@ -57,7 +57,9 @@ type MarkupTagBoundary = {
 }
 
 type RichPasteEditor = {
+  createLink?: (url: string) => void
   document?: PasteBlock[]
+  getSelectedText?: () => string
   getTextCursorPosition?: () => { block?: PasteBlock | null }
   insertInlineContent?: (content: never, options?: { updateSelection?: boolean }) => void
   insertBlocks?: (
@@ -88,6 +90,7 @@ const STANDALONE_CODE_FENCE_RE = /^\s*(?:`{3,}|~{3,})[^\r\n]*\r?\n[\s\S]*\r?\n\s
 const SPACED_LITERAL_ASTERISK_RE = /\S\s+\*\s+\S/u
 const PREFIX_GLOB_ASTERISK_RE = /(?:^|\s)\*(?![*\s])[\w./-]+(?=\s|$)/u
 const SUFFIX_GLOB_ASTERISK_RE = /(?:^|\s)[\w./-]+\*(?=\s|$)/u
+const LINK_PASTE_PROTOCOLS = new Set(['http:', 'https:'])
 
 type ImportRemoteImages = (request: {
   images: RemotePasteImage[]
@@ -364,11 +367,49 @@ function insertLinkedCodeMarkdown(
   return true
 }
 
+function plainHttpLinkUrl(clipboardData: DataTransfer): string | null {
+  if (hasExplicitMarkdownPayload(clipboardData) || clipboardWebMarkup(clipboardData).value) return null
+
+  const plainText = clipboardData.getData('text/plain')
+  if (!plainText || plainText !== plainText.trim()) return null
+
+  try {
+    return LINK_PASTE_PROTOCOLS.has(new URL(plainText).protocol) ? plainText : null
+  } catch {
+    return null
+  }
+}
+
+function editorHasSelectedText(editor: RichPasteEditor): boolean {
+  return typeof editor.getSelectedText === 'function' && editor.getSelectedText().length > 0
+}
+
+function selectedTextLinkUrl(
+  clipboardData: DataTransfer | null,
+  editor: RichPasteEditor,
+): string | null {
+  if (!clipboardData || !editor.createLink || !editorHasSelectedText(editor)) return null
+  return plainHttpLinkUrl(clipboardData)
+}
+
+function linkSelectedTextFromPaste(
+  clipboardData: DataTransfer | null,
+  editor: RichPasteEditor,
+): boolean {
+  const url = selectedTextLinkUrl(clipboardData, editor)
+  if (!url) return false
+
+  editor.createLink?.(url)
+  return true
+}
+
 export function handleRichEditorPaste({
   defaultPasteHandler,
   editor,
   event,
 }: RichEditorPasteContext): boolean | undefined {
+  if (linkSelectedTextFromPaste(event.clipboardData, editor)) return true
+
   const codeBlocks = [...htmlCodeBlocks(event.clipboardData), ...markdownCodeBlocks(event.clipboardData)]
   if (insertCodeBlocks(editor, codeBlocks)) return true
 

@@ -75,10 +75,52 @@ function isEditorFindScopeFocused(): boolean {
   return active.closest('[data-editor-find-scope="true"]') !== null
 }
 
+function selectionBelongsToEditor(editor: Element, selection: Selection): boolean {
+  const { anchorNode, focusNode } = selection
+  if (!anchorNode || !focusNode) return false
+  return editor.contains(anchorNode) && editor.contains(focusNode)
+}
+
+function activeRichEditor(): Element | null {
+  const active = document.activeElement
+  return active instanceof HTMLElement ? active.closest('.bn-editor') : null
+}
+
+function activeTextSelection(): Selection | null {
+  const selection = window.getSelection()
+  return selection && !selection.isCollapsed && selection.rangeCount > 0 ? selection : null
+}
+
+function hasActiveRichEditorTextSelection(): boolean {
+  const editor = activeRichEditor()
+  const selection = activeTextSelection()
+  return Boolean(editor && selection && selectionBelongsToEditor(editor, selection))
+}
+
+function activateRichEditorCreateLink(): boolean {
+  const button = document.querySelector<HTMLButtonElement>('[data-test="createLink"]')
+  if (!button) return false
+  button.click()
+  return true
+}
+
+function handleRichEditorCreateLinkShortcut(event: KeyboardEvent): boolean {
+  if (!hasActiveRichEditorTextSelection()) return false
+  if (activateRichEditorCreateLink()) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+  return true
+}
+
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
   const commandId = findShortcutCommandIdForEvent(event)
   if (commandId === null) return
   if (commandId === APP_COMMAND_IDS.editFindInNote && !isEditorFindScopeFocused()) return
+  if (
+    commandId === APP_COMMAND_IDS.viewCommandPalette
+    && handleRichEditorCreateLinkShortcut(event)
+  ) return
 
   if (handleFocusedTextCommand(event, commandId)) return
 
