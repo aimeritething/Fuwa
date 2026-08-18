@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { executeCommand, openCommandPalette } from './helpers'
+import { triggerMenuCommand } from './testBridge'
 
 type Handler = (args?: Record<string, unknown>) => unknown
 type RemoteArgs = {
@@ -32,13 +33,14 @@ function installRemoteMocksScript() {
       hasRemote: browserWindow.__remoteConnected ?? false,
     })
 
+    const remoteUrlFrom = (args?: RemoteArgs) => {
+      const request = args?.request ?? args
+      return request?.remoteUrl ?? ''
+    }
+
     handlers.git_add_remote = (args?: RemoteArgs) => {
-      const request = args?.request ?? args ?? {}
-      const remoteUrl = request.remoteUrl ?? ''
-      browserWindow.__addRemoteCalls = [
-        ...(browserWindow.__addRemoteCalls ?? []),
-        remoteUrl,
-      ]
+      const remoteUrl = remoteUrlFrom(args)
+      browserWindow.__addRemoteCalls?.push(remoteUrl)
 
       if (remoteUrl === 'https://example.com/safe.git') {
         browserWindow.__remoteConnected = true
@@ -73,16 +75,26 @@ async function installRemoteMocks(page: Page): Promise<void> {
   await page.addInitScript(installRemoteMocksScript)
 }
 
+async function expectAddRemoteModalAndClose(page: Page): Promise<void> {
+  await expect(page.getByTestId('add-remote-modal')).toBeVisible()
+  await expect(page.getByTestId('add-remote-url')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('add-remote-modal')).toHaveCount(0)
+}
+
 async function openAddRemoteFromStatusChip(page: Page): Promise<void> {
   const statusChip = page.getByTestId('status-no-remote')
   await expect(statusChip).toContainText('No remote')
   await statusChip.focus()
   await expect(statusChip).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page.getByTestId('add-remote-modal')).toBeVisible()
-  await expect(page.getByTestId('add-remote-url')).toBeFocused()
-  await page.keyboard.press('Escape')
-  await expect(page.getByTestId('add-remote-modal')).toHaveCount(0)
+  await expectAddRemoteModalAndClose(page)
+}
+
+async function openAddRemoteFromVaultMenu(page: Page): Promise<void> {
+  await expect(page.getByTestId('status-no-remote')).toContainText('No remote')
+  await triggerMenuCommand(page, 'vault-add-remote')
+  await expectAddRemoteModalAndClose(page)
 }
 
 async function connectRemoteFromCommandPalette(page: Page, remoteUrl: string): Promise<void> {
@@ -127,6 +139,7 @@ test('keyboard-only add remote flow connects a local-only vault @smoke', async (
   await page.goto('/')
   await page.waitForLoadState('networkidle')
 
+  await openAddRemoteFromVaultMenu(page)
   await openAddRemoteFromStatusChip(page)
   await connectRemoteFromCommandPalette(page, 'https://example.com/safe.git')
   await assertCommitPushDialogStillOpens(page)
