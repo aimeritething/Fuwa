@@ -1,6 +1,12 @@
 use crate::ai_agents::AiAgentAvailability;
 use std::path::{Path, PathBuf};
 
+#[cfg(windows)]
+const WINDOWS_ENVIRONMENT_KEYS: [&str; 2] = [
+    r"HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment",
+    r"HKCU\Environment",
+];
+
 pub(crate) fn check_cli() -> AiAgentAvailability {
     match find_binary() {
         Ok(binary) => AiAgentAvailability {
@@ -109,12 +115,60 @@ fn existing_path(line: &str) -> Option<PathBuf> {
 
 fn opencode_binary_candidates() -> Vec<PathBuf> {
     let mut candidates = opencode_binary_candidates_from_env();
+    candidates.extend(opencode_binary_candidates_from_registered_windows_path());
 
     if let Some(home) = dirs::home_dir() {
         candidates.extend(opencode_binary_candidates_for_home(&home));
     }
 
     candidates
+}
+
+#[cfg(windows)]
+fn opencode_binary_candidates_from_registered_windows_path() -> Vec<PathBuf> {
+    WINDOWS_ENVIRONMENT_KEYS
+        .iter()
+        .filter_map(|key| registered_windows_path(key))
+        .flat_map(|path| opencode_candidates_from_windows_path(&path))
+        .collect()
+}
+
+#[cfg(windows)]
+fn registered_windows_path(key: &str) -> Option<String> {
+    crate::hidden_command("reg.exe")
+        .args(["query", key, "/v", "Path"])
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| {
+            registered_windows_path_from_query(&String::from_utf8_lossy(&output.stdout))
+                .map(str::to_owned)
+        })
+}
+
+#[cfg(not(windows))]
+fn opencode_binary_candidates_from_registered_windows_path() -> Vec<PathBuf> {
+    Vec::new()
+}
+
+#[cfg(any(windows, test))]
+fn opencode_candidates_from_windows_path(path: &str) -> Vec<PathBuf> {
+    path.split(';')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .flat_map(|entry| opencode_executable_names(Path::new(entry)))
+        .collect()
+}
+
+#[cfg(any(windows, test))]
+fn registered_windows_path_from_query(stdout: &str) -> Option<&str> {
+    stdout.lines().find_map(|line| {
+        ["REG_EXPAND_SZ", "REG_SZ"].iter().find_map(|value_kind| {
+            line.split_once(value_kind)
+                .map(|(_, value)| value.trim())
+                .filter(|value| !value.is_empty())
+        })
+    })
 }
 
 fn opencode_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
@@ -433,6 +487,27 @@ mod tests {
                 candidate.display()
             );
         }
+    }
+
+    #[test]
+    fn registered_windows_path_candidates_include_custom_npm_prefix() {
+        let candidates = opencode_candidates_from_windows_path(
+            r"C:\Windows\System32;D:\projects\npm\npm-global",
+        );
+
+        let custom_prefix = PathBuf::from(r"D:\projects\npm\npm-global");
+        assert!(candidates.contains(&custom_prefix.join("opencode.cmd")));
+        assert!(candidates.contains(&custom_prefix.join("opencode.exe")));
+    }
+
+    #[test]
+    fn registered_windows_path_query_extracts_expandable_path_value() {
+        let output = "\nHKEY_CURRENT_USER\\Environment\n    Path    REG_EXPAND_SZ    C:\\Windows;D:\\projects\\npm\\npm-global\n";
+
+        assert_eq!(
+            registered_windows_path_from_query(output),
+            Some(r"C:\Windows;D:\projects\npm\npm-global"),
+        );
     }
 
     #[test]
