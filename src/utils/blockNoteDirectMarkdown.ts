@@ -62,6 +62,7 @@ export interface DirectMarkdownCapableSerializer {
 }
 
 type MarkdownLinePrefix = {
+  contentIndent: number
   marker: string
   indent: string
 }
@@ -71,6 +72,7 @@ interface SerializeContext {
   cacheHits: number
   cacheMisses: number
   fallbackReason: string | null
+  indentStack: number[]
   numberedStack: number[]
 }
 
@@ -199,15 +201,18 @@ function literalTextContent(content: InlineItem[] | undefined): string {
 }
 
 function blockPrefix(block: BlockLike, depth: number, context: SerializeContext): MarkdownLinePrefix | null {
-  const indent = '  '.repeat(depth)
+  const indent = ' '.repeat(context.indentStack.at(depth) ?? 0)
   if (block.type === 'numberedListItem') {
     const next = context.numberedStack.at(depth) ?? Number(block.props?.start ?? 1)
     context.numberedStack.splice(depth, 1, next + 1)
-    return { indent, marker: `${next}. ` }
+    const marker = `${next}. `
+    return { contentIndent: marker.length, indent, marker }
   }
   context.numberedStack.splice(depth, 1, 1)
-  if (block.type === 'bulletListItem') return { indent, marker: '- ' }
-  if (block.type === 'checkListItem') return { indent, marker: block.props?.checked === true ? '- [x] ' : '- [ ] ' }
+  if (block.type === 'bulletListItem') return { contentIndent: 2, indent, marker: '- ' }
+  if (block.type === 'checkListItem') {
+    return { contentIndent: 2, indent, marker: block.props?.checked === true ? '- [x] ' : '- [ ] ' }
+  }
   return null
 }
 
@@ -218,6 +223,7 @@ function advanceCachedBlockContext(block: BlockLike, depth: number, context: Ser
   } else {
     context.numberedStack.splice(depth, 1, 1)
   }
+  context.indentStack.length = depth + 1
   context.numberedStack.length = depth + 1
 }
 
@@ -226,7 +232,7 @@ function prependLinePrefix(markdown: string, prefix: MarkdownLinePrefix): string
   return lines.map((line, index) => (
     index === 0
       ? `${prefix.indent}${prefix.marker}${line}`
-      : `${prefix.indent}  ${line}`
+      : `${prefix.indent}${' '.repeat(prefix.contentIndent)}${line}`
   )).join('\n')
 }
 
@@ -318,12 +324,20 @@ function blockMarkdownWithoutChildren(block: BlockLike, context: SerializeContex
   return specialBlockMarkdown(block, context)
 }
 
-function serializeChildren(block: BlockLike, depth: number, context: SerializeContext): string {
+function serializeChildren(
+  block: BlockLike,
+  depth: number,
+  context: SerializeContext,
+  prefix: MarkdownLinePrefix | null,
+): string {
   const children = blockChildren(block)
   if (children.length === 0) return ''
   const childDepth = depth + 1
+  const parentIndent = context.indentStack.at(depth) ?? 0
+  context.indentStack.splice(childDepth, 1, parentIndent + (prefix?.contentIndent ?? 2))
   context.numberedStack.splice(childDepth, 1, 1)
   const markdown = serializeBlockList(children, childDepth, context)
+  context.indentStack.length = childDepth
   context.numberedStack.length = childDepth
   return markdown
 }
@@ -332,6 +346,7 @@ function blockCacheKey(block: BlockLike, depth: number, context: SerializeContex
   return [
     depth,
     block.type ?? '',
+    context.indentStack.at(depth) ?? '',
     context.numberedStack.at(depth) ?? '',
   ].join(':')
 }
@@ -365,7 +380,7 @@ function renderUncachedBlock(block: BlockLike, depth: number, context: Serialize
 
   const prefix = blockPrefix(block, depth, context)
   const ownWithPrefix = prefix ? prependLinePrefix(ownMarkdown, prefix) : ownMarkdown
-  const childMarkdown = serializeChildren(block, depth, context)
+  const childMarkdown = serializeChildren(block, depth, context, prefix)
   return childMarkdown ? `${ownWithPrefix}\n${childMarkdown}` : ownWithPrefix
 }
 
@@ -444,6 +459,7 @@ export function blocksToMarkdownDirect(
     cacheHits: 0,
     cacheMisses: 0,
     fallbackReason: null,
+    indentStack: [0],
     numberedStack: [],
   }
   const markdown = serializeBlockList(blocks as BlockLike[], 0, context)

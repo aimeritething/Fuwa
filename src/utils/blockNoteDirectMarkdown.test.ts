@@ -351,4 +351,32 @@ describe('BlockNote direct Markdown serialization', () => {
       '  1. Fresh child step',
     ].join('\n'))
   })
+
+  it('indents nested list items by the ordered parent marker width', () => {
+    const nestedList = (start: number) => [{
+      type: 'numberedListItem',
+      props: { start },
+      content: [{ type: 'text', text: 'Parent', styles: {} }],
+      children: [{
+        type: 'numberedListItem',
+        content: [{ type: 'text', text: 'Child', styles: {} }],
+        children: [{
+          type: 'bulletListItem',
+          content: [{ type: 'text', text: 'Grandchild', styles: {} }],
+          children: [],
+        }],
+      }],
+    }]
+
+    expect(blocksToMarkdownDirect(nestedList(1)).markdown).toBe([
+      '1. Parent',
+      '   1. Child',
+      '      - Grandchild',
+    ].join('\n'))
+    expect(blocksToMarkdownDirect(nestedList(10)).markdown).toBe([
+      '10. Parent',
+      '    1. Child',
+      '       - Grandchild',
+    ].join('\n'))
+  })
 })
