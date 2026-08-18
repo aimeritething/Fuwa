@@ -283,7 +283,7 @@ describe('main entrypoint', () => {
     })
   }, MAIN_ENTRYPOINT_IMPORT_TIMEOUT_MS)
 
-  it('cancels Escape native defaults when a dialog handles and stops the event', async () => {
+  it('leaves Escape available for an open dialog to handle', async () => {
     await importEntrypoint()
     const dialog = document.createElement('div')
     dialog.setAttribute('data-slot', 'dialog-content')
@@ -296,7 +296,7 @@ describe('main entrypoint', () => {
     const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
     dialog.dispatchEvent(event)
 
-    expect(event.defaultPrevented).toBe(true)
+    expect(event.defaultPrevented).toBe(false)
   }, MAIN_ENTRYPOINT_IMPORT_TIMEOUT_MS)
 
   it('leaves Escape native defaults available when no dialog or popover is open', async () => {
