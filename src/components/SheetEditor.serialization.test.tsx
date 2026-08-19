@@ -416,6 +416,31 @@ describe('SheetEditor serialization', () => {
     unmount()
   })
 
+  it('commits cell input to its original cell when pointer selection moves before blur', async () => {
+    const flushContentRef = { current: null as ((path: string) => void) | null }
+    const { onContentChange, unmount } = await renderLoadedSheet(
+      '---\n_display: sheet\n---\nMetric,old\nRevenue,foo',
+      { props: { flushContentRef } },
+    )
+    selectSheetCell(1, 2)
+    await activateWorkbookRoot()
+    const cellEditor = screen.getByLabelText<HTMLTextAreaElement>('Cell editor')
+    cellEditor.focus()
+
+    fireEvent.input(cellEditor, { target: { value: 'saved by pointer' } })
+    selectSheetCell(2, 2)
+    fireEvent.blur(cellEditor)
+
+    act(() => {
+      flushContentRef.current?.('/vault/budget.md')
+    })
+    expect(onContentChange).toHaveBeenCalledWith(
+      '/vault/budget.md',
+      '---\n_display: sheet\n---\nMetric,saved by pointer\nRevenue,foo',
+    )
+    unmount()
+  })
+
   it('does not serialize the workbook for pure pointer selection', async () => {
     const { onContentChange } = await renderLoadedSheet('---\ntype: Sheet\n---\nMetric,January')
     const workbook = screen.getByTestId('ironcalc-workbook')

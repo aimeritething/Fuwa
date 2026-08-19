@@ -33,6 +33,18 @@ function createIronCalcFillHandle(): HTMLDivElement {
   return handle
 }
 
+function createIronCalcTextEditor(): HTMLDivElement {
+  const editor = document.createElement('div')
+  const overlay = document.createElement('div')
+  const input = document.createElement('textarea')
+  editor.style.color = 'rgb(245, 245, 245)'
+  input.style.backgroundColor = 'transparent'
+  input.style.color = 'transparent'
+  input.spellcheck = false
+  editor.append(overlay, input)
+  return editor
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -50,5 +62,17 @@ describe('useSheetSelectionChrome', () => {
 
     expect(handle.style.visibility).toBe('hidden')
     expect(handle.style.pointerEvents).toBe('none')
+  })
+
+  it('patches IronCalc text contrast when an editor enters the workbook DOM', async () => {
+    render(<SelectionChromeHarness />)
+    const editor = createIronCalcTextEditor()
+
+    await act(async () => {
+      screen.getByTestId('sheet-container').appendChild(editor)
+      await Promise.resolve()
+    })
+
+    expect(editor.style.color).toBe('rgb(17, 24, 39)')
   })
 })

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { MutableRefObject } from 'react'
 import { cancelFrame, requestFrame } from '../../utils/sheetBrowserScheduling'
+import { patchIronCalcEditorTextContrast } from '../../utils/sheetEditorTextContrast'
 import { patchIronCalcSelectionChrome } from '../../utils/sheetSelectionChrome'
 import type { SheetWorkbookState } from './sheetEditorTypes'
 
@@ -10,6 +11,11 @@ interface UseSheetSelectionChromeOptions {
   workbook: SheetWorkbookState | null
 }
 
+function patchSheetEditorChrome(container: HTMLDivElement | null): void {
+  patchIronCalcSelectionChrome(container)
+  patchIronCalcEditorTextContrast(container)
+}
+
 function useSelectionChromePatchScheduler(sheetElementRef: MutableRefObject<HTMLDivElement | null>) {
   const selectionPatchFrameRef = useRef<number | null>(null)
 
@@ -17,7 +23,7 @@ function useSelectionChromePatchScheduler(sheetElementRef: MutableRefObject<HTML
     if (selectionPatchFrameRef.current !== null) return
     selectionPatchFrameRef.current = requestFrame(() => {
       selectionPatchFrameRef.current = null
-      patchIronCalcSelectionChrome(sheetElementRef.current)
+      patchSheetEditorChrome(sheetElementRef.current)
     })
   }, [sheetElementRef])
 
@@ -47,10 +53,10 @@ function useSelectionChromeObserver({
     if (!container || !workbook) return undefined
 
     const observer = new MutationObserver((mutations) => {
-      if (mutations.length > 0) patchIronCalcSelectionChrome(container)
+      if (mutations.length > 0) patchSheetEditorChrome(container)
     })
 
-    patchIronCalcSelectionChrome(container)
+    patchSheetEditorChrome(container)
     observer.observe(container, {
       attributeFilter: ['class', 'style'],
       attributes: true,
