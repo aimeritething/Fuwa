@@ -236,6 +236,8 @@
 }
 
 .editor__blocknote-container [data-content-type="bulletListItem"]::before {
+  /* Preserve the marker metrics used before Inter was bundled locally. */
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: var(--lists-bullet-size) !important;
   color: var(--lists-bullet-color) !important;
   min-width: var(--lists-indent-size) !important;
