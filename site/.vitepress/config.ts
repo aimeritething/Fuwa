@@ -26,6 +26,15 @@ export default defineConfig({
           "A second brain for the AI era. Free forever, local-first, Markdown-based, Git-ready, and AI-friendly.",
       },
     ],
+    ["script", { async: "true", src: "https://www.googletagmanager.com/gtag/js?id=G-0NJ6E1GH9D" }],
+    [
+      "script",
+      {},
+      `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-0NJ6E1GH9D');`,
+    ],
   ],
   themeConfig: {
     logo: { src: "/landing/tolaria-icon.png", alt: "Tolaria" },
