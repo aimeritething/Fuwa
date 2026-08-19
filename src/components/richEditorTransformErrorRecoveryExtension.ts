@@ -6,6 +6,8 @@ import {
   richEditorRecoveryErrorNeedsDocumentRepair,
   type RichEditorTransformRecoveryReason,
 } from './richEditorRecoveryClassifier'
+import { createMalformedBlockClipboardRecoveryPlugin } from './richEditorMalformedClipboardRecovery'
+import type { RichEditorPropRunner, RichEditorSomeProp } from './richEditorTransformRecoveryTypes'
 export { isStaleBlockReferenceError } from './richEditorRecoveryClassifier'
 
 const DISPATCH_RECOVERY_STATE_KEY = '__tolariaRichEditorTransformErrorRecovery'
@@ -19,8 +21,6 @@ const RECOVERABLE_EDITOR_HANDLER_PROPS = new Set([
 ])
 
 type RichEditorDispatch = (transaction: unknown) => unknown
-type RichEditorPropRunner<T> = (prop: T) => unknown
-type RichEditorSomeProp = <T>(propName: string, run?: RichEditorPropRunner<T>) => unknown
 type RecoverEditorDocument = () => void
 type RecoveryToken = symbol
 
@@ -281,6 +281,7 @@ export function installRichEditorTransformErrorRecovery(
 
 export const createRichEditorTransformErrorRecoveryExtension = createExtension(({ editor }) => ({
   key: 'richEditorTransformErrorRecovery',
+  prosemirrorPlugins: [createMalformedBlockClipboardRecoveryPlugin()],
   mount: ({ signal }) => {
     const view = recoveryViewFromEditor(editor)
     if (!view) return
