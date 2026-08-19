@@ -1107,7 +1107,10 @@ Alpha metadata discovery follows GitHub publication time rather than the highest
 version. This lets a corrected release supersede a future-dated recovery bridge. Normal updater
 checks still require a semver increase; the only exception lets an installed calendar version
 beyond tomorrow accept a candidate dated today or tomorrow, which is the bounded recovery path
-defined by ADR-0173.
+defined by ADR-0173. The already-shipped stable `2027.7.31` build has a separate durable recovery
+exception: it can accept stable calendar candidates from `2026.8.19` onward as long as the candidate
+is not dated beyond tomorrow. This prevents the recovery path from expiring after release day while
+still rejecting older or arbitrarily future-dated metadata.
 
 ### Telemetry (Opt-in)
 

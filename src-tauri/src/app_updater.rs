@@ -7,6 +7,8 @@ const ALPHA_METADATA_ASSET_NAME: &str = "alpha-latest.json";
 const GITHUB_RELEASES_API_URL: &str =
     "https://api.github.com/repos/refactoringhq/tolaria/releases?per_page=100";
 const RELEASES_BASE_URL: &str = "https://refactoringhq.github.io/tolaria";
+const POISONED_STABLE_VERSION: &str = "2027.7.31";
+const POISONED_STABLE_RECOVERY_FLOOR: &str = "2026.8.19";
 const UPDATER_HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 const UPDATER_USER_AGENT: &str = concat!("Tolaria/", env!("CARGO_PKG_VERSION"));
 
@@ -130,7 +132,23 @@ fn should_recover_poisoned_calendar_version(
     };
     let tomorrow = today.succ_opt().unwrap_or(today);
 
+    if current_version == POISONED_STABLE_VERSION {
+        let recovery_floor = calendar_version_date(POISONED_STABLE_RECOVERY_FLOOR)
+            .expect("the stable recovery floor must be a valid calendar version");
+        return remote_date >= recovery_floor && remote_date <= tomorrow;
+    }
+
     current_date > tomorrow && remote_date >= today && remote_date <= tomorrow
+}
+
+fn should_install_update(
+    current_version: &str,
+    remote_version: &str,
+    remote_is_semver_newer: bool,
+    today: chrono::NaiveDate,
+) -> bool {
+    remote_is_semver_newer
+        || should_recover_poisoned_calendar_version(current_version, remote_version, today)
 }
 
 fn latest_alpha_release_metadata_url(releases: &[GitHubRelease]) -> Option<Url> {
@@ -194,12 +212,13 @@ fn build_updater<R: Runtime>(
     app_handle
         .updater_builder()
         .version_comparator(|current, release| {
-            release.version > current
-                || should_recover_poisoned_calendar_version(
-                    &current.to_string(),
-                    &release.version.to_string(),
-                    chrono::Utc::now().date_naive(),
-                )
+            let remote_is_semver_newer = release.version > current;
+            should_install_update(
+                &current.to_string(),
+                &release.version.to_string(),
+                remote_is_semver_newer,
+                chrono::Utc::now().date_naive(),
+            )
         })
         .endpoints(vec![endpoint])
         .map_err(|e| format!("Failed to configure updater endpoint: {e}"))?
@@ -289,8 +308,9 @@ pub async fn download_and_install_app_update<R: Runtime>(
 #[cfg(test)]
 mod tests {
     use super::{
-        latest_alpha_release_metadata_url, should_recover_poisoned_calendar_version,
-        AppUpdateDownloadEvent, AppUpdateMetadata, GitHubAsset, GitHubRelease, ReleaseChannel,
+        latest_alpha_release_metadata_url, should_install_update,
+        should_recover_poisoned_calendar_version, AppUpdateDownloadEvent, AppUpdateMetadata,
+        GitHubAsset, GitHubRelease, ReleaseChannel,
     };
     use serde_json::json;
 
@@ -387,6 +407,25 @@ mod tests {
                 .as_str(),
             "https://example.com/corrected-release.json"
         );
+    }
+
+    #[test]
+    fn updater_accepts_only_the_expected_stable_version_transitions() {
+        let today = chrono::NaiveDate::from_ymd_opt(2026, 8, 20).unwrap();
+        let cases = [
+            ("2027.7.31", "2026.8.19", false, true),
+            ("2026.8.11", "2026.8.19", true, true),
+            ("2026.8.19", "2026.8.19", false, false),
+            ("2026.8.19", "2026.8.11", false, false),
+        ];
+
+        for (current, remote, remote_is_semver_newer, expected) in cases {
+            assert_eq!(
+                should_install_update(current, remote, remote_is_semver_newer, today),
+                expected,
+                "unexpected update decision for {current} -> {remote}",
+            );
+        }
     }
 
     #[test]
