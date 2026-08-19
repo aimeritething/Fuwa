@@ -110,22 +110,23 @@ describe('FeedbackDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Issues' }))
 
     const expectedActions = [
-      'newsletter_refactoring',
-      'sponsor_codacy',
-      'sponsor_codescene',
-      'sponsor_circleci',
-      'sponsor_unblocked',
-      'sponsors_development_article',
-      'feature_requests',
-      'discussions',
-      'pull_requests',
-      'contributing_guide',
-      'issues',
+      ['newsletter_refactoring', REFACTORING_HOME_URL],
+      ['sponsor_codacy', CODACY_HOME_URL],
+      ['sponsor_codescene', CODESCENE_HOME_URL],
+      ['sponsor_circleci', CIRCLECI_HOME_URL],
+      ['sponsor_unblocked', UNBLOCKED_HOME_URL],
+      ['sponsors_development_article', TOLARIA_DEVELOPMENT_ARTICLE_URL],
+      ['feature_requests', TOLARIA_PRODUCT_BOARD_URL],
+      ['discussions', TOLARIA_GITHUB_DISCUSSIONS_URL],
+      ['pull_requests', TOLARIA_GITHUB_PULL_REQUESTS_URL],
+      ['contributing_guide', TOLARIA_GITHUB_CONTRIBUTING_URL],
+      ['issues', TOLARIA_GITHUB_ISSUES_URL],
     ]
-    for (const [index, action] of expectedActions.entries()) {
+    for (const [index, [action, url]] of expectedActions.entries()) {
       expect(trackEvent).toHaveBeenNthCalledWith(index + 1, 'contribution_action_clicked', {
         action,
         surface: 'contribute_dialog',
+        url,
       })
     }
 

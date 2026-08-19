@@ -19,7 +19,7 @@ Tolaria is supported by a small panel of tools that help keep the project health
 <table>
   <tr>
     <td align="center" width="25%">
-      <a href="https://www.codacy.com/?utm_source=tolaria&utm_medium=github&utm_campaign=refactoring">
+      <a href="https://codacy.com/tolaria?utm_source=tolaria&utm_medium=github&utm_campaign=refactoring">
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/refactoringhq/tolaria/main/site/public/landing/sponsors/codacy-light.svg">
           <img src="https://raw.githubusercontent.com/refactoringhq/tolaria/main/site/public/landing/sponsors/codacy-dark.svg" alt="Codacy" height="32">

@@ -1721,7 +1721,7 @@ Tolaria is free and open source, and any kind of help is useful. Pick the path t
 
 Tolaria is supported by a panel of tools Luca uses every day to keep the project healthy, tested, and ready for AI-assisted development:
 
-- [Codacy](https://www.codacy.com/?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring)
+- [Codacy](https://codacy.com/tolaria?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring)
 - [CodeScene](https://codescene.com/?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring)
 - [CircleCI](https://circleci.com/?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring)
 - [Unblocked](https://getunblocked.com/?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring)
@@ -2261,7 +2261,7 @@ The dropdown shows a small ranked set of matches while you type. Keep typing to 
 
 `CHOOSE`, `COLUMN`, `COLUMNS`, `HLOOKUP`, `INDEX`, `INDIRECT`, `LOOKUP`, `MATCH`, `OFFSET`, `ROW`, `ROWS`, `VLOOKUP`, `XLOOKUP`
 
-### Text
+### Text Functions
 
 `CONCAT`, `CONCATENATE`, `EXACT`, `FIND`, `LEFT`, `LEN`, `LOWER`, `MID`, `REPT`, `RIGHT`, `SEARCH`, `SUBSTITUTE`, `T`, `TEXT`, `TEXTAFTER`, `TEXTBEFORE`, `TEXTJOIN`, `TRIM`, `UNICODE`, `UPPER`, `VALUE`, `VALUETOTEXT`
 

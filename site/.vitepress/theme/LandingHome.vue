@@ -181,7 +181,7 @@ const testimonials = [
 const sponsors: Sponsor[] = [
   {
     name: "Codacy",
-    url: "https://www.codacy.com/?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring",
+    url: "https://codacy.com/tolaria?utm_source=tolaria&utm_medium=website&utm_campaign=refactoring",
     logo: "sponsors/codacy-dark.svg",
     lightLogo: "sponsors/codacy-light.svg",
     text: "Quality and security checks that keep AI-assisted engineering accountable.",

@@ -16,7 +16,7 @@ function withContributionUtm(url: string): string {
 }
 
 export const REFACTORING_HOME_URL = withContributionUtm('https://refactoring.fm/')
-export const CODACY_HOME_URL = withContributionUtm('https://www.codacy.com/')
+export const CODACY_HOME_URL = withContributionUtm('https://codacy.com/tolaria')
 export const CODESCENE_HOME_URL = withContributionUtm('https://codescene.com/')
 export const CIRCLECI_HOME_URL = withContributionUtm('https://circleci.com/')
 export const UNBLOCKED_HOME_URL = withContributionUtm('https://getunblocked.com/')

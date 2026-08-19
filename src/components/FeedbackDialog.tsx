@@ -72,10 +72,11 @@ const CONTRIBUTION_BUTTON_CLASSES: Record<ContributionTone, string> = {
   red: 'border-[var(--accent-red)] hover:bg-[var(--accent-red-light)] [&_svg]:text-[var(--accent-red)]',
 }
 
-function trackContributionAction(action: ContributionAnalyticsAction): void {
+function trackContributionAction(action: ContributionAnalyticsAction, url?: string): void {
   trackEvent(CONTRIBUTION_ANALYTICS_EVENT, {
     action,
     surface: CONTRIBUTION_ANALYTICS_SURFACE,
+    ...(url ? { url } : {}),
   })
 }
 
@@ -85,7 +86,7 @@ function openTrackedContributionLink(
   url: string,
   onOpenLink: (label: string, url: string) => void,
 ): void {
-  trackContributionAction(action)
+  trackContributionAction(action, url)
   onOpenLink(label, url)
 }
 
