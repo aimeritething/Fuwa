@@ -1,5 +1,7 @@
 use serde::Deserialize;
+use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::OnceLock;
 
 const APP_CONFIG_POLICY_JSON: &str = include_str!("../../mcp-server/app-config-policy.json");
@@ -103,6 +105,60 @@ fn preferred_path_in(config_dir: &Path, file_name: &str) -> PathBuf {
         .join(file_name)
 }
 
+fn writable_path_in_dirs(
+    config_dirs: &[PathBuf],
+    file_name: &str,
+    can_write: impl Fn(&Path) -> bool,
+) -> PathBuf {
+    config_dirs
+        .iter()
+        .map(|config_dir| preferred_path_in(config_dir, file_name))
+        .find(|candidate| can_write(candidate))
+        .unwrap_or_else(|| preferred_path_in(&config_dirs[0], file_name))
+}
+
+fn config_dirs_with_write_path_first(
+    config_dirs: &[PathBuf],
+    file_name: &str,
+    write_path: &Path,
+) -> Vec<PathBuf> {
+    let mut ordered = config_dirs.to_vec();
+    if let Some(index) = ordered
+        .iter()
+        .position(|config_dir| preferred_path_in(config_dir, file_name) == write_path)
+    {
+        let write_dir = ordered.remove(index);
+        ordered.insert(0, write_dir);
+    }
+    ordered
+}
+
+fn app_config_path_is_writable(path: &Path) -> bool {
+    if path.exists() {
+        return OpenOptions::new().write(true).open(path).is_ok();
+    }
+
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    if fs::create_dir_all(parent).is_err() {
+        return false;
+    }
+
+    static PROBE_COUNTER: AtomicU64 = AtomicU64::new(0);
+    let probe = parent.join(format!(
+        ".tolaria-write-probe-{}-{}",
+        std::process::id(),
+        PROBE_COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
+    let Ok(probe_file) = OpenOptions::new().write(true).create_new(true).open(&probe) else {
+        return false;
+    };
+    drop(probe_file);
+    let _ = fs::remove_file(probe);
+    true
+}
+
 fn existing_or_preferred_path_in_dirs(config_dirs: &[PathBuf], file_name: &str) -> PathBuf {
     let policy = app_config_policy();
     for config_dir in config_dirs {
@@ -131,16 +187,21 @@ fn app_config_read_dirs() -> Result<Vec<PathBuf>, String> {
 }
 
 pub(crate) fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
-    Ok(preferred_path_in(&app_config_dir()?, file_name))
+    let config_dirs = app_config_read_dirs()?;
+    Ok(writable_path_in_dirs(
+        &config_dirs,
+        file_name,
+        app_config_path_is_writable,
+    ))
 }
 
 pub(crate) fn resolve_existing_or_preferred_app_config_path(
     file_name: &str,
 ) -> Result<PathBuf, String> {
-    Ok(existing_or_preferred_path_in_dirs(
-        &app_config_read_dirs()?,
-        file_name,
-    ))
+    let config_dirs = app_config_read_dirs()?;
+    let write_path = writable_path_in_dirs(&config_dirs, file_name, app_config_path_is_writable);
+    let read_dirs = config_dirs_with_write_path_first(&config_dirs, file_name, &write_path);
+    Ok(existing_or_preferred_path_in_dirs(&read_dirs, file_name))
 }
 
 #[cfg(test)]
@@ -209,6 +270,43 @@ mod tests {
         assert_eq!(
             path,
             config_dir.join("com.tolaria.app").join("settings.json")
+        );
+    }
+
+    #[test]
+    fn unwritable_primary_config_uses_platform_write_path() {
+        let primary = absolute_temp_dir("tolaria-unwritable-primary");
+        let platform = absolute_temp_dir("tolaria-writable-platform");
+        let config_dirs = [primary.clone(), platform.clone()];
+
+        let path = writable_path_in_dirs(&config_dirs, "settings.json", |candidate| {
+            candidate.starts_with(&platform)
+        });
+
+        assert_eq!(path, preferred_path_in(&platform, "settings.json"));
+    }
+
+    #[test]
+    fn writable_fallback_is_read_before_stale_unwritable_primary() {
+        let primary = tempfile::TempDir::new().unwrap();
+        let platform = tempfile::TempDir::new().unwrap();
+        let primary_path = preferred_path_in(primary.path(), "settings.json");
+        let platform_path = preferred_path_in(platform.path(), "settings.json");
+        std::fs::create_dir_all(primary_path.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(platform_path.parent().unwrap()).unwrap();
+        std::fs::write(&primary_path, r#"{"telemetry_consent":null}"#).unwrap();
+        std::fs::write(&platform_path, r#"{"telemetry_consent":false}"#).unwrap();
+
+        let config_dirs = [primary.path().to_path_buf(), platform.path().to_path_buf()];
+        let write_path = writable_path_in_dirs(&config_dirs, "settings.json", |candidate| {
+            candidate.starts_with(platform.path())
+        });
+        let read_dirs =
+            config_dirs_with_write_path_first(&config_dirs, "settings.json", &write_path);
+
+        assert_eq!(
+            existing_or_preferred_path_in_dirs(&read_dirs, "settings.json"),
+            platform_path
         );
     }
 

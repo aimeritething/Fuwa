@@ -255,10 +255,12 @@ describe('useSettings', () => {
 
     const newSettings = changedSettings()
 
+    const onComplete = vi.fn()
     await act(async () => {
-      await result.current.saveSettings(newSettings)
+      await result.current.saveSettings(newSettings, onComplete)
     })
 
+    expect(onComplete).toHaveBeenCalledWith(true)
     expect(mockInvokeFn).toHaveBeenCalledWith('save_settings', { settings: newSettings })
     expect(result.current.settings).toEqual(newSettings)
   })
@@ -372,11 +374,13 @@ describe('useSettings', () => {
 
     mockInvokeFn.mockImplementationOnce(() => Promise.reject(new Error('write failed')))
 
+    const onComplete = vi.fn()
     await act(async () => {
-      await result.current.saveSettings(savedSettings)
+      await result.current.saveSettings(savedSettings, onComplete)
     })
 
     // Settings should not have changed on error
+    expect(onComplete).toHaveBeenCalledWith(false)
     expect(result.current.settings).toEqual(defaultSettings)
     errorSpy.mockRestore()
   })

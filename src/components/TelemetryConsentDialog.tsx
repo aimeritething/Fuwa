@@ -1,11 +1,13 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { ShieldCheck } from '@phosphor-icons/react'
 import { OnboardingShell } from './OnboardingShell'
 import { Button } from './ui/button'
+import { DEFAULT_APP_LOCALE, translate, type AppLocale } from '../lib/i18n'
 
 interface TelemetryConsentDialogProps {
-  onAccept: () => void
-  onDecline: () => void
+  locale?: AppLocale
+  onAccept: () => Promise<boolean>
+  onDecline: () => Promise<boolean>
 }
 
 const telemetryConsentContentStyle: CSSProperties = {
@@ -17,7 +19,28 @@ const telemetryConsentContentStyle: CSSProperties = {
   alignItems: 'center',
 }
 
-export function TelemetryConsentDialog({ onAccept, onDecline }: TelemetryConsentDialogProps) {
+export function TelemetryConsentDialog({
+  locale = DEFAULT_APP_LOCALE,
+  onAccept,
+  onDecline,
+}: TelemetryConsentDialogProps) {
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  const handleChoice = async (choice: () => Promise<boolean>) => {
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      if (!await choice()) {
+        setSaveError(translate(locale, 'telemetryConsent.saveError'))
+      }
+    } catch {
+      setSaveError(translate(locale, 'telemetryConsent.saveError'))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
     <OnboardingShell
       className="fixed inset-0 z-50"
@@ -55,18 +78,29 @@ export function TelemetryConsentDialog({ onAccept, onDecline }: TelemetryConsent
         <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 4 }}>
           <Button type="button" variant="outline"
             style={{ flex: 1, fontSize: 13, padding: '10px 16px' }}
-            onClick={onDecline}
+            onClick={() => void handleChoice(onDecline)}
+            disabled={isSaving}
             data-testid="telemetry-decline"
             autoFocus>
             No thanks
           </Button>
           <Button type="button"
             style={{ flex: 1, fontSize: 13, padding: '10px 16px', fontWeight: 500 }}
-            onClick={onAccept}
+            onClick={() => void handleChoice(onAccept)}
+            disabled={isSaving}
             data-testid="telemetry-accept">
             Allow anonymous reporting
           </Button>
         </div>
+
+        {saveError && (
+          <p
+            role="alert"
+            style={{ fontSize: 12, color: 'var(--destructive)', lineHeight: 1.5, margin: 0, textAlign: 'center' }}
+          >
+            {saveError}
+          </p>
+        )}
 
         <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: 0, textAlign: 'center' }}>
           You can change this anytime in Settings.

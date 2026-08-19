@@ -1060,5 +1060,6 @@
   "locale.idID": "印尼",
   "locale.ukUA": "烏克蘭語",
   "locale.svSE": "瑞典語",
-  "locale.skSK": "斯洛伐克語"
+  "locale.skSK": "斯洛伐克語",
+  "telemetryConsent.saveError": "Tolaria 無法儲存此選項。請檢查您的帳戶是否可以寫入其應用程式設定，然後再試一次。"
 }

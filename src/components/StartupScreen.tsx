@@ -23,7 +23,10 @@ export interface StartupScreenParams {
   noteWindowParams: NoteWindowParams | null
   onboarding: OnboardingState
   runtimeMissingVaultPath: string | null
-  saveSettings: (settings: Settings) => Promise<void>
+  saveSettings: (
+    settings: Settings,
+    onComplete?: (succeeded: boolean) => void,
+  ) => Promise<void>
   settings: Settings
   settingsLoaded: boolean
   shouldResumeFreshStartOnboarding: boolean
@@ -116,25 +119,26 @@ export function StartupScreen(params: StartupScreenParams) {
   if (shouldShowTelemetryConsent(params)) {
     return (
       <TelemetryConsentDialog
-        onAccept={() => {
+        locale={params.locale}
+        onAccept={() => new Promise((resolve) => {
           const id = crypto.randomUUID()
-          params.saveSettings({
+          void params.saveSettings({
             ...params.settings,
             telemetry_consent: true,
             crash_reporting_enabled: true,
             analytics_enabled: true,
             anonymous_id: id,
-          })
-        }}
-        onDecline={() => {
-          params.saveSettings({
+          }, resolve)
+        })}
+        onDecline={() => new Promise((resolve) => {
+          void params.saveSettings({
             ...params.settings,
             telemetry_consent: false,
             crash_reporting_enabled: false,
             analytics_enabled: false,
             anonymous_id: null,
-          })
-        }}
+          }, resolve)
+        })}
       />
     )
   }

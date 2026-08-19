@@ -1060,5 +1060,6 @@
   "locale.idID": "인도네시아 공화국",
   "locale.ukUA": "우크라이나어",
   "locale.svSE": "스웨덴어",
-  "locale.skSK": "슬로바키아어"
+  "locale.skSK": "슬로바키아어",
+  "telemetryConsent.saveError": "Tolaria가 이 선택을 저장할 수 없습니다. 계정이 앱 설정을 쓸 수 있는지 확인한 다음 다시 시도하세요."
 }

@@ -19,6 +19,8 @@ import { normalizeNoteWidthMode } from '../utils/noteWidth'
 type UnknownRecord = Record<string, unknown>
 type AiWorkspaceConversationSetting = NonNullable<Settings['ai_workspace_conversations']>[number]
 
+const ignoreSaveResult = () => {}
+
 async function invokeNativeIfAvailable<T>(command: string, tauriArgs: Record<string, unknown>): Promise<T | undefined> {
   try {
     return await invoke<T>(command, tauriArgs)
@@ -176,7 +178,10 @@ export function useSettings() {
     }
   }, [])
 
-  const saveSettings = useCallback(async (newSettings: Settings) => {
+  const saveSettings = useCallback(async (
+    newSettings: Settings,
+    onComplete: (succeeded: boolean) => void = ignoreSaveResult,
+  ) => {
     const previousHideGitignored = shouldHideGitignoredFiles(settings)
     const previousThemeMode = effectiveThemeMode(settings)
     const normalizedSettings = normalizeSettings(newSettings)
@@ -191,8 +196,10 @@ export function useSettings() {
       if (previousHideGitignored !== nextHideGitignored) {
         notifyGitignoredVisibilityChanged(nextHideGitignored)
       }
+      onComplete(true)
     } catch (err) {
       console.error('Failed to save settings:', err)
+      onComplete(false)
     }
   }, [settings])
 

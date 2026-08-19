@@ -1060,5 +1060,6 @@
   "locale.idID": "Indonésio",
   "locale.ukUA": "Ucraniano",
   "locale.svSE": "Sueco",
-  "locale.skSK": "Eslovaco"
+  "locale.skSK": "Eslovaco",
+  "telemetryConsent.saveError": "Tolaria no pudo guardar esta opción. Comprueba que tu cuenta pueda escribir la configuración de la aplicación y vuelve a intentarlo."
 }

@@ -929,7 +929,7 @@ No indexing step required — search runs directly against the filesystem.
 ### Vault Switching
 
 `useVaultSwitcher` hook manages multiple vaults:
-- Persists vault list to `$XDG_CONFIG_HOME/com.tolaria.app/vaults.json`, defaulting to `$HOME/.config/com.tolaria.app/vaults.json` on Unix platforms. App config path policy is declared once in `mcp-server/app-config-policy.json` and consumed by both the Rust app helper and Node MCP server: reads check the current Tolaria namespace, then legacy `com.laputa.app`, first in the preferred config root and then in the platform config root when it differs; writes target the current namespace in the preferred root.
+- Persists vault list to `$XDG_CONFIG_HOME/com.tolaria.app/vaults.json`, defaulting to `$HOME/.config/com.tolaria.app/vaults.json` on Unix platforms. App config namespace policy is declared once in `mcp-server/app-config-policy.json` and consumed by both the Rust app helper and Node MCP server. The native helper probes the file target before use: when the XDG target is not writable by the current account, it writes to the platform config root and moves that root to the front of its read order so an older, unwritable XDG file cannot shadow the saved value.
 - Switching closes all tabs and resets sidebar
 - Supports adding, removing, hiding/restoring vaults
 - MCP `attach_vault` and `clone_vault` write through the same registry, preserve the current active vault, update the calling MCP service immediately, and notify running renderers to reload mounted-workspace metadata. Attach never initializes Git; clone stages into a temporary sibling before atomic publication and delegates authentication to system Git.
@@ -1012,7 +1012,7 @@ Tolaria delegates remote auth to the user's system git setup:
 
 ## Settings
 
-App-level settings persisted at `$XDG_CONFIG_HOME/com.tolaria.app/settings.json`, defaulting to `$HOME/.config/com.tolaria.app/settings.json` on Unix platforms. `settings.json` and `vaults.json` share the same `mcp-server/app-config-policy.json` search order used by Rust and the external MCP server, so durable agent registrations resolve mounted workspaces the same way the app resolves installation-local settings:
+App-level settings persist at `$XDG_CONFIG_HOME/com.tolaria.app/settings.json`, defaulting to `$HOME/.config/com.tolaria.app/settings.json` on Unix platforms. The native app falls back to the platform config directory when the current account cannot write the XDG target and then reads that writable location first. `settings.json` and `vaults.json` otherwise share the namespace and root policy in `mcp-server/app-config-policy.json`; see ADR-0145 and ADR-0177.
 
 ```typescript
 interface AiWorkspaceConversationSetting {

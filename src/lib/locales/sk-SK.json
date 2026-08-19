@@ -1060,5 +1060,6 @@
   "locale.idID": "Indonézština",
   "locale.ukUA": "Ukrajinčina",
   "locale.svSE": "Švédčina",
-  "locale.skSK": "Slovenčina"
+  "locale.skSK": "Slovenčina",
+  "telemetryConsent.saveError": "Tolaria nemohla uložiť tento výber. Skontrolujte, či váš účet môže zapisovať nastavenia aplikácie, a potom to skúste znova."
 }
