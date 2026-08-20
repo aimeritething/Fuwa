@@ -10,17 +10,24 @@ import matter from 'gray-matter'
 
 const ACTIVE_VAULT_ERROR = 'Note path must stay inside the active vault'
 const VAULT_CONTEXT_PREFIX_BYTES = 64 * 1024
+const EXPECTED_CHILD_SCAN_ERRORS = new Set(['EACCES', 'EPERM'])
+const SYSTEM_SCAN_DIRECTORIES = new Set([
+  '#recycle',
+  '$recycle.bin',
+  'system volume information',
+])
 
 /**
  * Recursively find all .md files under a directory.
  * @param {string} dir
+ * @param {{ openDirectory?: typeof opendir }} [options]
  * @returns {Promise<string[]>}
  */
-export async function findMarkdownFiles(dir) {
+export async function findMarkdownFiles(dir, options = {}) {
   const results = []
-  const items = await opendir(dir)
+  const items = await (options.openDirectory ?? opendir)(dir)
   for await (const item of items) {
-    await collectMarkdownFile(results, dir, item)
+    await collectMarkdownFile(results, dir, item, options)
   }
   return results
 }
@@ -49,15 +56,12 @@ async function resolveVaultNotePath(vaultPath, notePath) {
  * @returns {Promise<{path: string, frontmatter: Record<string, unknown>, content: string, mtimeMs: number}>}
  */
 export async function getNote(vaultPath, notePath) {
-  const {
-    noteRealPath,
-    relativePath,
-  } = await resolveVaultNotePath(vaultPath, notePath)
-  const raw = await readUtf8File(noteRealPath)
+  const resolvedNote = await resolveVaultNotePath(vaultPath, notePath)
+  const raw = await readUtf8File(resolvedNote.noteRealPath)
   const parsed = parseMarkdownNote(raw)
-  const stats = await statFile(noteRealPath)
+  const stats = await statFile(resolvedNote.noteRealPath)
   return {
-    path: relativePath,
+    path: resolvedNote.relativePath,
     frontmatter: parsed.data,
     content: parsed.content.trim(),
     mtimeMs: stats.mtimeMs,
@@ -165,10 +169,10 @@ export async function vaultContext(vaultPath) {
   const notesWithMtime = []
 
   for (const filePath of files) {
-    const { topFolder, note, type } = await readVaultContextNote(vaultPath, filePath)
-    if (type) typesSet.add(type)
-    if (topFolder) foldersSet.add(topFolder)
-    notesWithMtime.push(note)
+    const contextNote = await readVaultContextNote(vaultPath, filePath)
+    if (contextNote.type) typesSet.add(contextNote.type)
+    if (contextNote.topFolder) foldersSet.add(contextNote.topFolder)
+    notesWithMtime.push(contextNote.note)
   }
 
   notesWithMtime.sort((a, b) => b.mtime - a.mtime)
@@ -188,19 +192,29 @@ export async function vaultContext(vaultPath) {
 
 // --- Helpers ---
 
-async function collectMarkdownFile(results, dir, item) {
-  if (item.name.startsWith('.')) return
+async function collectMarkdownFile(results, dir, item, options) {
+  if (shouldSkipScanEntry(item.name)) return
 
   const full = resolveInside(dir, item.name)
   if (!full) return
-  if (item.isDirectory()) {
-    results.push(...await findMarkdownFiles(full))
-    return
-  }
+  if (item.isDirectory()) return collectMarkdownDirectory(results, full, options)
+  if (!item.name.endsWith('.md')) return
 
-  if (item.name.endsWith('.md')) {
-    results.push(full)
-  }
+  results.push(full)
+}
+
+async function collectMarkdownDirectory(results, directory, options) {
+  const files = await findMarkdownFiles(directory, options).catch(tolerateChildScanError)
+  results.push(...files)
+}
+
+function shouldSkipScanEntry(name) {
+  return name.startsWith('.') || SYSTEM_SCAN_DIRECTORIES.has(name.toLowerCase())
+}
+
+function tolerateChildScanError(error) {
+  if (!EXPECTED_CHILD_SCAN_ERRORS.has(error?.code)) throw error
+  return []
 }
 
 function resolveRequestedNotePath(vaultRoot, notePath) {
@@ -289,14 +303,14 @@ function contextNoteWithoutMtime(note) {
 }
 
 async function readVaultContextNote(vaultPath, filePath) {
-  const { text, truncated } = await readUtf8FilePrefix(filePath, VAULT_CONTEXT_PREFIX_BYTES)
-  const parsed = parseMarkdownNote(text)
+  const filePrefix = await readUtf8FilePrefix(filePath, VAULT_CONTEXT_PREFIX_BYTES)
+  const parsed = parseMarkdownNote(filePrefix.text)
   const rel = path.relative(vaultPath, filePath)
   const topFolder = extractTopFolder(rel)
   const stat = await statFile(filePath)
   const type = parsed.data.type || parsed.data.is_a || null
   const fallbackTitle = path.basename(filePath, '.md')
-  const title = parsed.data.title || extractTitle(text, fallbackTitle)
+  const title = parsed.data.title || extractTitle(filePrefix.text, fallbackTitle)
 
   return {
     topFolder,
@@ -307,7 +321,7 @@ async function readVaultContextNote(vaultPath, filePath) {
       title,
       type,
       mtime: stat.mtimeMs,
-      shouldHydrateTitle: truncated && title === fallbackTitle,
+      shouldHydrateTitle: filePrefix.truncated && title === fallbackTitle,
     },
   }
 }
@@ -476,11 +490,11 @@ async function readUtf8FilePrefix(filePath, byteLimit) {
   const handle = await open(filePath, 'r')
   try {
     const buffer = Buffer.allocUnsafe(byteLimit)
-    const { bytesRead } = await handle.read(buffer, 0, byteLimit, 0)
+    const readResult = await handle.read(buffer, 0, byteLimit, 0)
     const stats = await handle.stat()
     return {
-      text: buffer.subarray(0, bytesRead).toString('utf-8'),
-      truncated: stats.size > bytesRead,
+      text: buffer.subarray(0, readResult.bytesRead).toString('utf-8'),
+      truncated: stats.size > readResult.bytesRead,
     }
   } finally {
     await handle.close()

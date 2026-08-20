@@ -93,6 +93,44 @@ describe('findMarkdownFiles', () => {
     assert.ok(files.some(f => f.endsWith('second-project.md')))
     assert.ok(files.some(f => f.endsWith('hashtag-tags.md')))
   })
+
+  it('keeps scanning siblings when protected or unreadable children are encountered', async () => {
+    const root = path.resolve('synthetic-vault')
+    const sibling = path.join(root, 'sibling')
+    const entries = new Map([
+      [root, [
+        { name: '#recycle', isDirectory: () => true },
+        { name: '$RECYCLE.BIN', isDirectory: () => true },
+        { name: '.Trashes', isDirectory: () => true },
+        { name: 'denied', isDirectory: () => true },
+        { name: 'sibling', isDirectory: () => true },
+      ]],
+      [sibling, [{ name: 'kept.md', isDirectory: () => false }]],
+    ])
+    const openDirectory = async target => {
+      if (target === path.join(root, 'denied')) {
+        throw Object.assign(new Error('denied'), { code: 'EACCES' })
+      }
+      if (target !== root && target !== sibling) {
+        throw Object.assign(new Error('system folder should not be opened'), { code: 'EIO' })
+      }
+      return asyncIterator(entries.get(target))
+    }
+
+    const files = await findMarkdownFiles(root, { openDirectory })
+
+    assert.deepEqual(files, [path.join(sibling, 'kept.md')])
+  })
+
+  it('still reports an unreadable vault root', async () => {
+    const rootError = Object.assign(new Error('root denied'), { code: 'EACCES' })
+    await assert.rejects(
+      () => findMarkdownFiles(path.resolve('denied-root'), {
+        openDirectory: async () => { throw rootError },
+      }),
+      error => error === rootError,
+    )
+  })
 })
 
 describe('getNote', () => {
@@ -722,8 +760,8 @@ function toolTextJson(result) {
 }
 
 async function listMcpTools(client) {
-  const { tools } = await client.listTools()
-  return new Map(tools.map(tool => [tool.name, tool]))
+  const toolList = await client.listTools()
+  return new Map(toolList.tools.map(tool => [tool.name, tool]))
 }
 
 function assertToolsUseReadOnlyAnnotations(toolsByName, names) {
@@ -835,6 +873,10 @@ async function measureVaultContextMs(vaultDir, expectedNoteCount) {
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function* asyncIterator(entries) {
+  yield* entries
 }
 
 function waitForExit(child, timeoutMs) {
