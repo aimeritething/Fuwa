@@ -1,4 +1,6 @@
 import DOMPurify from 'dompurify'
+import { convertFileSrc } from '@tauri-apps/api/core'
+import { isTauri } from '../mock-tauri'
 import {
   HTML_BLOCK_SCRIPTS_SANDBOXED as SCRIPTS_SANDBOXED,
   normalizeHtmlBlockScripts as normalizeBlockScripts,
@@ -225,6 +227,25 @@ export function htmlBlockPreview(markup: string, options: HtmlBlockPreviewOption
 
 export function htmlBlockIframeSrcDoc(markup: string, options: HtmlBlockPreviewOptions = {}): string {
   return htmlBlockPreview(markup, options).srcDoc
+}
+
+export function htmlBlockProtocolPayload(srcDoc: string): string {
+  const bytes = new TextEncoder().encode(srcDoc)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary)
+    .replace(/\+/gu, '-')
+    .replace(/\//gu, '_')
+    .replace(/=+$/gu, '')
+}
+
+export function htmlBlockFrameSource(
+  srcDoc: string,
+  browserSource: string | undefined,
+  scripts: HtmlBlockScripts,
+): string | undefined {
+  if (scripts !== SCRIPTS_SANDBOXED || !isTauri()) return browserSource
+  return convertFileSrc(htmlBlockProtocolPayload(srcDoc), 'tolaria-html-block')
 }
 
 function escapeScriptAttributeValue(value: string): string {

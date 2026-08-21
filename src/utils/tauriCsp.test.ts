@@ -49,8 +49,13 @@ describe('Tauri Content Security Policy', () => {
     const csp = config.app.security.csp as Record<string, string>
     const devCsp = config.app.security.devCsp as string
 
-    expect(csp['frame-src']).toBe("'self' asset: http://asset.localhost data:")
-    expect(devCsp).toContain("frame-src 'self' asset: http://asset.localhost data:")
+    expect(csp['frame-src']).toBe(
+      "'self' asset: http://asset.localhost data: tolaria-html-block: http://tolaria-html-block.localhost",
+    )
+    expect(devCsp).toContain(
+      "frame-src 'self' asset: http://asset.localhost data: tolaria-html-block: http://tolaria-html-block.localhost",
+    )
+    expect(csp['script-src']).not.toContain("'unsafe-inline'")
   })
 
   it('allows audio and video media previews from scoped Tauri asset URLs', () => {

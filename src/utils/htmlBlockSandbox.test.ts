@@ -1,6 +1,11 @@
 import DOMPurify from 'dompurify'
 import { describe, expect, it, vi } from 'vitest'
-import { htmlBlockIframeSrcDoc, htmlBlockPreview, sanitizeHtmlBlockMarkup } from './htmlBlockSandbox'
+import {
+  htmlBlockIframeSrcDoc,
+  htmlBlockPreview,
+  htmlBlockProtocolPayload,
+  sanitizeHtmlBlockMarkup,
+} from './htmlBlockSandbox'
 
 describe('HTML block sandbox', () => {
   it('removes script execution surfaces and keeps static interactive markup', () => {
@@ -82,6 +87,21 @@ describe('HTML block sandbox', () => {
 
     expect(srcDoc).toContain('<script type="application/json" id="notes">[{"title":"Ready"}]</script>')
     expect(JSON.parse(documentObject.getElementById('notes')?.textContent ?? '')).toEqual([{ title: 'Ready' }])
+  })
+
+  it('encodes sanitized documents as URL-safe UTF-8 protocol payloads', () => {
+    const unicodeDocument = 'Grüße 🌳'
+    const payload = htmlBlockProtocolPayload(unicodeDocument)
+    const paddedPayload = payload
+      .replace(/-/gu, '+')
+      .replace(/_/gu, '/')
+      .padEnd(Math.ceil(payload.length / 4) * 4, '=')
+    const decoded = new TextDecoder().decode(
+      Uint8Array.from(atob(paddedPayload), character => character.charCodeAt(0)),
+    )
+
+    expect(payload).toMatch(/^[A-Za-z0-9_-]+$/u)
+    expect(decoded).toBe(unicodeDocument)
   })
 
   it('places sanitized style blocks in the iframe head so user CSS applies', () => {

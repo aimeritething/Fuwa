@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent, SyntheticEvent } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent, RefObject, SyntheticEvent } from 'react'
 import { APP_COMMAND_EVENT_NAME, APP_COMMAND_IDS } from '../hooks/appCommandDispatcher'
 import { translate } from '../lib/i18n'
 import { trackEvent } from '../lib/telemetry'
@@ -25,7 +25,7 @@ import {
   normalizeHtmlBlockScripts as normalizeBlockScripts,
   type HtmlBlockScripts,
 } from '../utils/htmlBlockMarkdown'
-import { htmlBlockPreview } from '../utils/htmlBlockSandbox'
+import { htmlBlockFrameSource, htmlBlockPreview } from '../utils/htmlBlockSandbox'
 import { dispatchRichEditorExternalChange } from './editorExternalChangeEvents'
 import { Button } from './ui/button'
 import { useResolvedVaultExpressionTemplate } from './VaultExpressionContext'
@@ -174,20 +174,8 @@ function htmlBlockSandboxAttribute(scripts: HtmlBlockScripts): string {
     : 'allow-popups allow-popups-to-escape-sandbox'
 }
 
-export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
+function useHtmlBlockFrameFocus(editor: HtmlBlockEditor) {
   const frameRef = useRef<HTMLIFrameElement | null>(null)
-  const currentMarkup = Reflect.get(block.props, 'html') as string
-  const currentScripts = normalizeBlockScripts(block.props.scripts)
-  const resolvedMarkup = useResolvedVaultExpressionTemplate(currentMarkup)
-  const currentHeight = normalizeBlockHeight(block.props.height)
-  const preview = useMemo(() => (
-    htmlBlockPreview(Reflect.get(resolvedMarkup, 'html'), { scripts: currentScripts })
-  ), [currentScripts, resolvedMarkup])
-  const sanitizedMarkup = Reflect.get(preview, 'sanitizedHtml') as string
-  const { src, srcDoc } = preview
-  const [resizingHeight, setResizingHeight] = useState<string | null>(null)
-  const displayHeight = resizingHeight ?? currentHeight
-  const blockedMarkup = currentMarkup.trim().length > 0 && sanitizedMarkup.trim().length === 0
   const releasePreviewFocus = useCallback((frame = frameRef.current) => {
     if (!frame) return
     restoreHtmlPreviewFocus(editor, frame)
@@ -202,7 +190,20 @@ export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
     return () => window.removeEventListener('blur', releaseFocusedFrame)
   }, [releasePreviewFocus])
 
-  const updateHeight = (height: string, source: HeightChangeSource) => {
+  const handlePreviewFocus = (event: SyntheticEvent<HTMLIFrameElement>) => {
+    event.stopPropagation()
+    releasePreviewFocus(event.currentTarget)
+  }
+  const handlePreviewLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
+    if (document.activeElement === event.currentTarget) releasePreviewFocus(event.currentTarget)
+  }
+  return { frameRef, handlePreviewFocus, handlePreviewLoad }
+}
+
+function useHtmlBlockHeight(block: HtmlBlockViewProps['block'], editor: HtmlBlockEditor, currentHeight: string) {
+  const [resizingHeight, setResizingHeight] = useState<string | null>(null)
+  const displayHeight = resizingHeight ?? currentHeight
+  const updateHeight = useCallback((height: string, source: HeightChangeSource) => {
     const updated = updateHtmlBlockPropsSafely(editor, block.id, props => ({
       ...props,
       height,
@@ -211,23 +212,12 @@ export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
 
     dispatchEditorChange(editor)
     trackEvent('editor_html_block_height_changed', { height: Number.parseInt(height, 10), source })
-  }
+  }, [block.id, editor])
 
   const resetHeight = (event: SyntheticEvent) => {
     event.preventDefault()
     event.stopPropagation()
     updateHeight(BLOCK_DEFAULT_HEIGHT, 'reset')
-  }
-
-  const copySource = (event: SyntheticEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-    void writeClipboardText(currentMarkup)
-      .then(() => trackEvent('editor_html_block_source_copied', { outcome: 'success' }))
-      .catch((error) => {
-        console.warn('[editor] Failed to copy HTML block source:', error)
-        trackEvent('editor_html_block_source_copied', { outcome: 'failed' })
-      })
   }
 
   const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -260,105 +250,109 @@ export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
     event.stopPropagation()
     updateHeight(nextHeight, 'keyboard')
   }
+  return { displayHeight, handleResizeKeyDown, resetHeight, startResize }
+}
 
-  const handlePreviewFocus = (event: SyntheticEvent<HTMLIFrameElement>) => {
+function useHtmlBlockSourceCopy(currentMarkup: string) {
+  return (event: SyntheticEvent) => {
+    event.preventDefault()
     event.stopPropagation()
-    releasePreviewFocus(event.currentTarget)
+    void writeClipboardText(currentMarkup)
+      .then(() => trackEvent('editor_html_block_source_copied', { outcome: 'success' }))
+      .catch((error) => {
+        console.warn('[editor] Failed to copy HTML block source:', error)
+        trackEvent('editor_html_block_source_copied', { outcome: 'failed' })
+      })
   }
+}
 
-  const handlePreviewLoad = (event: SyntheticEvent<HTMLIFrameElement>) => {
-    if (document.activeElement === event.currentTarget) releasePreviewFocus(event.currentTarget)
+interface HtmlBlockToolbarProps {
+  copySource: (event: SyntheticEvent) => void
+  resetHeight: (event: SyntheticEvent) => void
+}
+
+function HtmlBlockToolbar({ copySource, resetHeight }: HtmlBlockToolbarProps) {
+  return (
+    <div className="html-block__toolbar" aria-label={t('editor.htmlBlock.toolbar')} role="toolbar">
+      <Button aria-label={t('editor.htmlBlock.copySource')} onClick={copySource} onMouseDown={stopHtmlBlockEvent}
+        size="icon-xs" title={t('editor.htmlBlock.copySource')} type="button" variant="outline">
+        <Copy aria-hidden="true" />
+      </Button>
+      <Button aria-label={t('editor.htmlBlock.openRawEditor')} onClick={openRawEditorForHtmlSource}
+        onMouseDown={stopHtmlBlockEvent} size="icon-xs" title={t('editor.htmlBlock.openRawEditor')}
+        type="button" variant="outline">
+        <Code aria-hidden="true" />
+      </Button>
+      <Button aria-label={t('editor.htmlBlock.resetHeight')} onClick={resetHeight} onMouseDown={stopHtmlBlockEvent}
+        size="icon-xs" title={t('editor.htmlBlock.resetHeight')} type="button" variant="outline">
+        <ArrowsClockwise aria-hidden="true" />
+      </Button>
+    </div>
+  )
+}
+
+interface HtmlBlockContentProps {
+  blocked: boolean
+  frameRef: RefObject<HTMLIFrameElement | null>
+  onFocus: (event: SyntheticEvent<HTMLIFrameElement>) => void
+  onLoad: (event: SyntheticEvent<HTMLIFrameElement>) => void
+  scripts: HtmlBlockScripts
+  src: string | undefined
+  srcDoc: string
+}
+
+function HtmlBlockContent({ blocked, frameRef, onFocus, onLoad, scripts, src, srcDoc }: HtmlBlockContentProps) {
+  if (!blocked) {
+    return <iframe className="html-block__frame" onFocus={onFocus} onLoad={onLoad} referrerPolicy="no-referrer"
+      ref={frameRef} sandbox={htmlBlockSandboxAttribute(scripts)} src={src} srcDoc={src ? undefined : srcDoc}
+      tabIndex={-1} title={t('editor.htmlBlock.previewTitle')} />
   }
+  return (
+    <div className="html-block__fallback" role="alert">
+      <span>{t('editor.htmlBlock.blockedFallback')}</span>
+      <Button onClick={openRawEditorForHtmlSource} onMouseDown={stopHtmlBlockEvent} type="button" variant="outline" size="sm">
+        <Code aria-hidden="true" />
+        {t('editor.htmlBlock.openRawEditor')}
+      </Button>
+    </div>
+  )
+}
+
+function HtmlBlockResizeHandle({ onKeyDown, onPointerDown }: {
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void
+  onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void
+}) {
+  return (
+    <Button aria-label={t('editor.htmlBlock.resizeHeight')} className="html-block__resize-handle"
+      onKeyDown={onKeyDown} onMouseDown={stopHtmlBlockEvent} onPointerDown={onPointerDown}
+      size="icon-xs" title={t('editor.htmlBlock.resizeHeight')} type="button" variant="ghost">
+      <ArrowsOutLineVertical aria-hidden="true" />
+    </Button>
+  )
+}
+
+export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
+  const currentMarkup = Reflect.get(block.props, 'html') as string
+  const currentScripts = normalizeBlockScripts(block.props.scripts)
+  const resolvedMarkup = useResolvedVaultExpressionTemplate(currentMarkup)
+  const currentHeight = normalizeBlockHeight(block.props.height)
+  const preview = useMemo(() => (
+    htmlBlockPreview(Reflect.get(resolvedMarkup, 'html'), { scripts: currentScripts })
+  ), [currentScripts, resolvedMarkup])
+  const blocked = currentMarkup.trim().length > 0 && preview.sanitizedHtml.trim().length === 0
+  const src = htmlBlockFrameSource(preview.srcDoc, preview.src, currentScripts)
+  const focus = useHtmlBlockFrameFocus(editor)
+  const height = useHtmlBlockHeight(block, editor, currentHeight)
+  const copySource = useHtmlBlockSourceCopy(currentMarkup)
 
   return (
-    <section
-      className="html-block"
-      contentEditable={false}
-      data-html-block
-      aria-label={t('editor.htmlBlock.previewTitle')}
-      onMouseDown={stopHtmlBlockEvent}
-      onPointerDown={stopHtmlBlockEvent}
-      style={{ height: `${displayHeight}px` }}
-      suppressContentEditableWarning
-    >
-      <div className="html-block__toolbar" aria-label={t('editor.htmlBlock.toolbar')} role="toolbar">
-        <Button
-          aria-label={t('editor.htmlBlock.copySource')}
-          onClick={copySource}
-          onMouseDown={stopHtmlBlockEvent}
-          size="icon-xs"
-          title={t('editor.htmlBlock.copySource')}
-          type="button"
-          variant="outline"
-        >
-          <Copy aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label={t('editor.htmlBlock.openRawEditor')}
-          onClick={openRawEditorForHtmlSource}
-          onMouseDown={stopHtmlBlockEvent}
-          size="icon-xs"
-          title={t('editor.htmlBlock.openRawEditor')}
-          type="button"
-          variant="outline"
-        >
-          <Code aria-hidden="true" />
-        </Button>
-        <Button
-          aria-label={t('editor.htmlBlock.resetHeight')}
-          onClick={resetHeight}
-          onMouseDown={stopHtmlBlockEvent}
-          size="icon-xs"
-          title={t('editor.htmlBlock.resetHeight')}
-          type="button"
-          variant="outline"
-        >
-          <ArrowsClockwise aria-hidden="true" />
-        </Button>
-      </div>
-
-      {blockedMarkup ? (
-        <div className="html-block__fallback" role="alert">
-          <span>{t('editor.htmlBlock.blockedFallback')}</span>
-          <Button
-            onClick={openRawEditorForHtmlSource}
-            onMouseDown={stopHtmlBlockEvent}
-            type="button"
-            variant="outline"
-            size="sm"
-          >
-            <Code aria-hidden="true" />
-            {t('editor.htmlBlock.openRawEditor')}
-          </Button>
-        </div>
-      ) : (
-        <iframe
-          className="html-block__frame"
-          onFocus={handlePreviewFocus}
-          onLoad={handlePreviewLoad}
-          referrerPolicy="no-referrer"
-          ref={frameRef}
-          sandbox={htmlBlockSandboxAttribute(currentScripts)}
-          src={src}
-          srcDoc={src ? undefined : srcDoc}
-          tabIndex={-1}
-          title={t('editor.htmlBlock.previewTitle')}
-        />
-      )}
-
-      <Button
-        aria-label={t('editor.htmlBlock.resizeHeight')}
-        className="html-block__resize-handle"
-        onKeyDown={handleResizeKeyDown}
-        onMouseDown={stopHtmlBlockEvent}
-        onPointerDown={startResize}
-        size="icon-xs"
-        title={t('editor.htmlBlock.resizeHeight')}
-        type="button"
-        variant="ghost"
-      >
-        <ArrowsOutLineVertical aria-hidden="true" />
-      </Button>
+    <section className="html-block" contentEditable={false} data-html-block aria-label={t('editor.htmlBlock.previewTitle')}
+      onMouseDown={stopHtmlBlockEvent} onPointerDown={stopHtmlBlockEvent} style={{ height: `${height.displayHeight}px` }}
+      suppressContentEditableWarning>
+      <HtmlBlockToolbar copySource={copySource} resetHeight={height.resetHeight} />
+      <HtmlBlockContent blocked={blocked} frameRef={focus.frameRef} onFocus={focus.handlePreviewFocus}
+        onLoad={focus.handlePreviewLoad} scripts={currentScripts} src={src} srcDoc={preview.srcDoc} />
+      <HtmlBlockResizeHandle onKeyDown={height.handleResizeKeyDown} onPointerDown={height.startResize} />
     </section>
   )
 }

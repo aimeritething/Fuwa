@@ -214,7 +214,7 @@ proposed → active → superseded
 | [0154](0154-sandboxed-fenced-html-blocks.md) | Sandboxed fenced HTML blocks | active |
 | [0155](0155-html-block-source-edits-use-raw-editor.md) | HTML block source edits use the raw editor | active |
 | [0156](0156-vault-expression-html-blocks-and-line-references.md) | Vault expressions in sandboxed HTML blocks and line references | amended -> [0157](0157-opt-in-sandboxed-html-block-scripts.md) |
-| [0157](0157-opt-in-sandboxed-html-block-scripts.md) | Opt-in sandboxed scripts for HTML block dashboards | active |
+| [0157](0157-opt-in-sandboxed-html-block-scripts.md) | Opt-in sandboxed scripts for HTML block dashboards | amended -> [0178](0178-custom-protocol-for-scripted-html-blocks.md) |
 | [0158](0158-vault-write-mcp-tools-update-and-append.md) | Vault-write MCP tools: update_note and append_to_note | active |
 | [0159](0159-antigravity-permission-flags-aligned-with-cli.md) | Antigravity permission flags aligned with CLI | active |
 | [0160](0160-editable-markdown-durable-callout-blocks.md) | Editable Markdown-durable callout blocks | amended -> [0167](0167-non-collapsible-callout-scope.md) |
@@ -231,3 +231,4 @@ proposed → active → superseded
 | [0175](0175-mcp-vault-lifecycle-uses-app-registry.md) | MCP vault lifecycle uses the app registry | active |
 | [0176](0176-bundled-font-assets-for-offline-startup.md) | Bundled font assets for offline startup | active |
 | [0173](0173-future-calendar-version-recovery.md) | Future calendar version rejection and recovery | active |
+| [0178](0178-custom-protocol-for-scripted-html-blocks.md) | Custom protocol for scripted HTML blocks | active |

@@ -22,6 +22,7 @@ pub mod frontmatter;
 pub mod git;
 pub mod hermes_cli;
 mod hermes_discovery;
+mod html_block_protocol;
 pub mod kiro_cli;
 mod kiro_discovery;
 #[cfg(any(test, all(desktop, target_os = "linux")))]
@@ -411,7 +412,9 @@ pub fn run() {
     #[cfg(all(desktop, target_os = "linux"))]
     linux_appimage::apply_startup_env_overrides();
 
-    let builder = tauri::Builder::default().manage(commands::StartupTimingState::default());
+    let builder = tauri::Builder::default()
+        .register_uri_scheme_protocol("tolaria-html-block", html_block_protocol::handle_request)
+        .manage(commands::StartupTimingState::default());
 
     #[cfg(desktop)]
     let builder = with_desktop_entry_plugins(builder);
