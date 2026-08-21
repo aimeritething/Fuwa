@@ -204,13 +204,14 @@ async function checkVaultAvailability(path: string): Promise<boolean> {
 
 async function loadInitialVaultState() {
   const [vaultListResult, defaultPathResult] = await Promise.allSettled([loadVaultList(), resolveDefaultPath()])
-  const { vaults, activeVault, defaultWorkspacePath, hiddenDefaults } =
+  const { vaults, activeVault, defaultWorkspacePath, hasPersistedDefaultWorkspace, hiddenDefaults } =
     vaultListResult.status === 'fulfilled'
     ? vaultListResult.value
       : {
           vaults: [],
           activeVault: null,
           defaultWorkspacePath: null,
+          hasPersistedDefaultWorkspace: false,
           hiddenDefaults: [],
         }
   const resolvedDefaultPath = defaultPathResult.status === 'fulfilled' ? defaultPathResult.value : ''
@@ -239,6 +240,7 @@ async function loadInitialVaultState() {
   return {
     ...sanitizedState,
     defaultWorkspacePath: sanitizedDefaultWorkspacePath,
+    hasPersistedDefaultWorkspace,
     persistedSnapshot,
   }
 }
@@ -358,16 +360,19 @@ function applyResolvedDefaultPath({
   syncDefaultVaultExport(resolvedDefaultPath)
 }
 
-function normalizeInitialSelectedVaultPath(
+const normalizeInitialSelectedVaultPath = (
   activeVault: string | null,
   resolvedDefaultPath: string,
   vaults: VaultOption[],
-): string | null {
+  hasPersistedDefaultWorkspace: boolean,
+): string | null => {
   if (!activeVault) {
     return null
   }
 
-  const isRememberedDefaultOnlySelection = activeVault === resolvedDefaultPath && vaults.length === 0
+  const isRememberedDefaultOnlySelection = activeVault === resolvedDefaultPath
+    && vaults.length === 0
+    && !hasPersistedDefaultWorkspace
   return isRememberedDefaultOnlySelection ? null : activeVault
 }
 
@@ -454,6 +459,7 @@ function useLoadPersistedVaultState(store: PersistedVaultStore, onSwitchRef: Mut
               activeVault,
               defaultAvailable,
               defaultWorkspacePath,
+              hasPersistedDefaultWorkspace,
               hiddenDefaults: hidden,
               persistedSnapshot,
               resolvedDefaultPath,
@@ -472,7 +478,7 @@ function useLoadPersistedVaultState(store: PersistedVaultStore, onSwitchRef: Mut
               setDefaultPath,
             })
             applyInitialVaultTarget({
-              activeVault: normalizeInitialSelectedVaultPath(activeVault, resolvedDefaultPath, vaults),
+              activeVault: normalizeInitialSelectedVaultPath(activeVault, resolvedDefaultPath, vaults, hasPersistedDefaultWorkspace),
               resolvedDefaultPath,
               setSelectedVaultPath,
               setVaultPath,

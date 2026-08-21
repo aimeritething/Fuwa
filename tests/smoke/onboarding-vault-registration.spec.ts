@@ -8,6 +8,7 @@ interface MockConfig {
 interface PersistedState {
   active_vault: string | null
   availablePaths: string[]
+  default_workspace_path: string | null
   hidden_defaults: string[]
   vaults: Array<{
     alias: string | null
@@ -63,6 +64,7 @@ async function installOnboardingVaultMocks(page: Page, config: MockConfig) {
     const defaultState = {
       vaults: [],
       active_vault: null,
+      default_workspace_path: null,
       hidden_defaults: [],
       availablePaths: [...mockConfig.availablePaths],
     }
@@ -98,6 +100,7 @@ async function installOnboardingVaultMocks(page: Page, config: MockConfig) {
           return {
             vaults: [...state.vaults],
             active_vault: state.active_vault,
+            default_workspace_path: state.default_workspace_path,
             hidden_defaults: [...state.hidden_defaults],
           }
         }
@@ -107,6 +110,7 @@ async function installOnboardingVaultMocks(page: Page, config: MockConfig) {
             ...state,
             vaults: [...args.list.vaults],
             active_vault: args.list.active_vault,
+            default_workspace_path: args.list.default_workspace_path,
             hidden_defaults: [...(args.list.hidden_defaults ?? [])],
           })
           return null
@@ -183,6 +187,7 @@ test('opening an existing vault from onboarding persists the selection and survi
       path: vaultPath,
     }],
     active_vault: vaultPath,
+    default_workspace_path: vaultPath,
     hidden_defaults: [],
     availablePaths: [vaultPath],
   })
