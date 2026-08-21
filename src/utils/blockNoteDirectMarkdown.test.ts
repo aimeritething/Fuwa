@@ -1,4 +1,6 @@
+import { BlockNoteEditor } from '@blocknote/core'
 import { describe, expect, it, vi } from 'vitest'
+import { schema } from '../components/editorSchema'
 import {
   blocksToMarkdownDirect,
   installBlockNoteDirectMarkdown,
@@ -15,6 +17,31 @@ function makeEditor(document: unknown[]): DirectMarkdownCapableSerializer & { do
 }
 
 describe('BlockNote direct Markdown serialization', () => {
+  it('keeps fenced code and continuation paragraphs inside their ordered list item', async () => {
+    const markdown = [
+      '1. This is a multi-paragraph point in Markdown.',
+      '',
+      '   ```typescript',
+      '   "just a codeblock for illustration"',
+      '   ```',
+      '',
+      '   This continuation is still part of point 1.',
+      '',
+      '2. Second item.',
+    ].join('\n')
+    const editor = BlockNoteEditor.create({ schema })
+    const blocks = await editor.tryParseMarkdownToBlocks(markdown)
+
+    expect(blocks[0]).toMatchObject({
+      type: 'numberedListItem',
+      children: [
+        { type: 'codeBlock', props: { language: 'typescript' } },
+        { type: 'paragraph' },
+      ],
+    })
+    expect(blocksToMarkdownDirect(blocks).markdown).toBe(markdown)
+  })
+
   it('serializes common Tolaria BlockNote blocks without the HTML exporter', () => {
     const blocks = [
       {

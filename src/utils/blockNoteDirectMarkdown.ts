@@ -67,6 +67,11 @@ type MarkdownLinePrefix = {
   indent: string
 }
 
+type MarkdownBlockIndent = {
+  markdown: string
+  width: number
+}
+
 interface SerializeContext {
   cache?: WeakMap<object, Map<string, string>>
   cacheHits: number
@@ -236,6 +241,18 @@ function prependLinePrefix(markdown: string, prefix: MarkdownLinePrefix): string
   )).join('\n')
 }
 
+function prependBlockIndent({ markdown, width }: MarkdownBlockIndent): string {
+  if (width === 0) return markdown
+  const indent = ' '.repeat(width)
+  return markdown.split('\n').map(line => `${indent}${line}`).join('\n')
+}
+
+function isListItemBlock(block: BlockLike | undefined): boolean {
+  return block?.type === 'bulletListItem'
+    || block?.type === 'checkListItem'
+    || block?.type === 'numberedListItem'
+}
+
 function codeBlockMarkdown(block: BlockLike): string {
   const language = typeof block.props?.language === 'string' ? block.props.language : ''
   const code = literalTextContent(contentArray(block.content)).replace(/\n$/u, '')
@@ -379,9 +396,13 @@ function renderUncachedBlock(block: BlockLike, depth: number, context: Serialize
   if (ownMarkdown === null) return null
 
   const prefix = blockPrefix(block, depth, context)
-  const ownWithPrefix = prefix ? prependLinePrefix(ownMarkdown, prefix) : ownMarkdown
+  const ownWithPrefix = prefix
+    ? prependLinePrefix(ownMarkdown, prefix)
+    : prependBlockIndent({ markdown: ownMarkdown, width: context.indentStack.at(depth) ?? 0 })
   const childMarkdown = serializeChildren(block, depth, context, prefix)
-  return childMarkdown ? `${ownWithPrefix}\n${childMarkdown}` : ownWithPrefix
+  if (!childMarkdown) return ownWithPrefix
+  const separator = isListItemBlock(blockChildren(block).at(0)) ? '\n' : '\n\n'
+  return `${ownWithPrefix}${separator}${childMarkdown}`
 }
 
 function serializeBlock(block: BlockLike, depth: number, context: SerializeContext): string | null {
