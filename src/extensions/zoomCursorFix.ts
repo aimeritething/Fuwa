@@ -51,7 +51,8 @@ function caretPosFromPoint(
   if (!view.contentDOM.contains(range.startContainer)) return null
 
   try {
-    return view.posAtDOM(range.startContainer, range.startOffset)
+    const pos = view.posAtDOM(range.startContainer, range.startOffset)
+    return Number.isInteger(pos) && pos >= 0 && pos <= view.state.doc.length ? pos : null
   } catch {
     return null
   }

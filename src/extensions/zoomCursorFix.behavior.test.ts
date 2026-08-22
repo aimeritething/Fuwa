@@ -52,6 +52,7 @@ function createView() {
   const view = Object.assign(Object.create(prototype), {
     contentDOM,
     posAtDOM: vi.fn(() => 17),
+    state: { doc: { length: 20 } },
   })
 
   return {
@@ -154,6 +155,29 @@ describe('zoomCursorFix behavior', () => {
     pluginFactory(third.view)
     expect(third.view.posAtCoords({ x: 60, y: 80 }, false)).toBe(11)
     expect(third.origPosAtCoords).toHaveBeenCalledWith({ x: 30, y: 40 }, false)
+
+    inlineSpy.mockRestore()
+    computedSpy.mockRestore()
+  })
+
+  it('rejects stale DOM positions outside the current document before editor keymaps can use them', () => {
+    const computedSpy = mockComputedZoom('normal')
+    const inlineSpy = mockInlineZoom('150%')
+    const { view, textNode, origPosAtCoords, origPosAndSideAtCoords } = createView()
+
+    view.posAtDOM.mockReturnValue(-1)
+    Object.defineProperty(document, 'caretRangeFromPoint', {
+      configurable: true,
+      value: vi.fn(() => ({ startContainer: textNode, startOffset: 0 })),
+    })
+
+    const pluginFactory = zoomCursorFix() as unknown as (view: typeof view) => unknown
+    pluginFactory(view)
+
+    expect(view.posAtCoords({ x: 30, y: 45 }, true)).toBe(11)
+    expect(view.posAndSideAtCoords({ x: 30, y: 45 }, false)).toEqual({ pos: 13, assoc: -1 })
+    expect(origPosAtCoords).toHaveBeenCalledWith({ x: 20, y: 30 }, true)
+    expect(origPosAndSideAtCoords).toHaveBeenCalledWith({ x: 20, y: 30 }, false)
 
     inlineSpy.mockRestore()
     computedSpy.mockRestore()
