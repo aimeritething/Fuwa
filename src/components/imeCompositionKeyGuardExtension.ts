@@ -1,4 +1,5 @@
 import { createExtension } from '@blocknote/core'
+import { SuggestionMenu } from '@blocknote/core/extensions'
 import {
   activeRichEditorView,
   isComposingKeyboardEvent,
@@ -28,6 +29,22 @@ function isParagraphInput(event: InputEvent): boolean {
   return event.inputType === 'insertParagraph' || event.inputType === 'insertLineBreak'
 }
 
+function composedSlashCommandRange(data: string, view: ReturnType<typeof activeRichEditorView>) {
+  if (!view?.state.selection.empty) return null
+
+  const slashIndex = data.lastIndexOf('/')
+  if (slashIndex < 0) return null
+
+  const command = data.slice(slashIndex)
+  if (command.includes('\n')) return null
+
+  const to = view.state.selection.from
+  const from = to - command.length
+  if (from < 1 || view.state.doc.textBetween(from, to) !== command) return null
+
+  return { from, query: command.slice(1), to }
+}
+
 export function shouldStopComposingEditorShortcutKey(
   event: KeyboardEvent,
   view?: ComposingEditorView | null,
@@ -55,6 +72,23 @@ export const createImeCompositionKeyGuardExtension = createExtension(({ editor }
   let compositionActive = false
   let composingEnterAt: number | null = null
 
+  const reopenComposedSlashCommand = (data: string) => {
+    const suggestionMenu = editor.getExtension(SuggestionMenu)
+    if (!suggestionMenu || suggestionMenu.shown()) return
+
+    const view = readView()
+    const command = composedSlashCommandRange(data, view)
+    if (!view || !command) return
+
+    view.dispatch(view.state.tr.delete(command.from, command.to))
+    suggestionMenu.openSuggestionMenu('/', { deleteTriggerCharacter: true })
+
+    const updatedView = readView()
+    if (command.query && updatedView) {
+      updatedView.dispatch(updatedView.state.tr.insertText(command.query))
+    }
+  }
+
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!shouldStopComposingEditorShortcutKey(event, readView(), compositionActive)) {
       composingEnterAt = null
@@ -72,6 +106,7 @@ export const createImeCompositionKeyGuardExtension = createExtension(({ editor }
   const handleCompositionEnd = (event: CompositionEvent) => {
     compositionActive = false
     if (composingEnterAt !== null) composingEnterAt = event.timeStamp
+    if (event.data) setTimeout(() => reopenComposedSlashCommand(event.data), 0)
   }
 
   const handleBeforeInput = (event: InputEvent) => {
