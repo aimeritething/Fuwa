@@ -11,7 +11,15 @@ function ControlledComposer({ onDraftChange }: { onDraftChange: (value: string) 
     setValue(nextValue)
   }
 
-  return <WikilinkChatInput entries={[] as VaultEntry[]} value={value} onChange={handleChange} onSend={vi.fn()} />
+  return (
+    <WikilinkChatInput
+      entries={[] as VaultEntry[]}
+      value={value}
+      onChange={handleChange}
+      onSend={vi.fn()}
+      placeholder="Ask Tolaria"
+    />
+  )
 }
 
 function setSelection(editor: HTMLElement, offset: number) {
@@ -41,6 +49,19 @@ function lateCompositionCommit(editor: HTMLElement, text: string) {
 }
 
 describe('InlineWikilinkInput Korean IME settlement', () => {
+  it('hides the placeholder while composing and restores it after cancellation', () => {
+    render(<ControlledComposer onDraftChange={vi.fn()} />)
+    const editor = screen.getByTestId('agent-input')
+    const placeholder = screen.getByText('Ask Tolaria')
+
+    expect(placeholder).not.toHaveAttribute('hidden')
+    fireEvent.compositionStart(editor)
+    expect(placeholder).toHaveAttribute('hidden')
+
+    fireEvent.compositionEnd(editor)
+    expect(placeholder).not.toHaveAttribute('hidden')
+  })
+
   it('does not reconcile the composer before a late native commit reaches the original editor', async () => {
     const onDraftChange = vi.fn()
     render(<ControlledComposer onDraftChange={onDraftChange} />)
@@ -48,6 +69,7 @@ describe('InlineWikilinkInput Korean IME settlement', () => {
 
     editor.focus()
     fireEvent.compositionStart(editor)
+    expect(screen.getByText('Ask Tolaria')).toHaveAttribute('hidden')
     editor.textContent = '안녕하세'
     setSelection(editor, '안녕하세'.length)
     fireEvent.input(editor)
@@ -55,6 +77,7 @@ describe('InlineWikilinkInput Korean IME settlement', () => {
 
     await act(async () => Promise.resolve())
 
+    expect(screen.getByText('Ask Tolaria')).toHaveAttribute('hidden')
     expect(onDraftChange).not.toHaveBeenCalled()
     expect(screen.getByTestId('agent-input')).toBe(editor)
 

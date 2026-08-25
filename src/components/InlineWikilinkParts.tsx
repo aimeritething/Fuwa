@@ -200,6 +200,7 @@ export function InlineWikilinkEditorField(options: {
     typeEntryMap,
   } = options
   const editorRef = useRef<HTMLDivElement | null>(null)
+  const placeholderRef = useRef<HTMLDivElement | null>(null)
   const needsTrailingCaretAnchor = segments[segments.length - 1]?.kind === 'chip'
   useImperativeHandle(inputRef, () => editorRef.current as HTMLDivElement, [])
   useInlineWikilinkPlaceholder(editorRef, placeholder)
@@ -213,12 +214,13 @@ export function InlineWikilinkEditorField(options: {
     onKeyDown,
     onPaste,
     onSelectionChange,
-  })
+  }, placeholderRef)
 
   return (
     <div className="relative">
       {value.length === 0 && placeholder && (
         <div
+          ref={placeholderRef}
           className={cn(
             'pointer-events-none absolute inset-0 text-muted-foreground',
             placeholderClassName ?? 'flex items-center',
@@ -265,6 +267,28 @@ type InlineWikilinkEditorHandlers = Pick<
   | 'onSelectionChange'
 >
 
+function compositionPlaceholderHandlers(
+  placeholder: HTMLDivElement | null,
+  handlers: InlineWikilinkEditorHandlers,
+): InlineWikilinkEditorHandlers {
+  const setPlaceholderHidden = (hidden: boolean) => placeholder?.toggleAttribute('hidden', hidden)
+  return {
+    ...handlers,
+    onCompositionStart: () => {
+      setPlaceholderHidden(true)
+      handlers.onCompositionStart()
+    },
+    onCompositionUpdate: () => {
+      setPlaceholderHidden(true)
+      handlers.onCompositionUpdate()
+    },
+    onCompositionEnd: (editor: HTMLDivElement) => {
+      setPlaceholderHidden((editor.textContent ?? '').length > 0)
+      handlers.onCompositionEnd(editor)
+    },
+  }
+}
+
 function useInlineWikilinkPlaceholder(editorRef: React.RefObject<HTMLDivElement | null>, placeholder?: string) {
   useEffect(() => {
     const editor = editorRef.current
@@ -284,17 +308,20 @@ function syncPlaceholderAttribute(editor: HTMLDivElement, placeholder?: string) 
 function useInlineWikilinkEditorEvents(
   editorRef: React.RefObject<HTMLDivElement | null>,
   handlers: InlineWikilinkEditorHandlers,
+  placeholderRef: React.RefObject<HTMLDivElement | null>,
 ) {
   useEffect(() => {
     const editor = editorRef.current
     if (!editor) return
 
-    const listenerMap = inlineWikilinkEditorListenerMap(handlers)
+    const listenerMap = inlineWikilinkEditorListenerMap(
+      compositionPlaceholderHandlers(placeholderRef.current, handlers),
+    )
     for (const [eventName, listener] of listenerMap) editor.addEventListener(eventName, listener)
     return () => {
       for (const [eventName, listener] of listenerMap) editor.removeEventListener(eventName, listener)
     }
-  }, [editorRef, handlers])
+  }, [editorRef, handlers, placeholderRef])
 }
 
 function inlineWikilinkEditorListenerMap(
