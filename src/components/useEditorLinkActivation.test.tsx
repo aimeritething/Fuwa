@@ -98,6 +98,17 @@ describe('useEditorLinkActivation', () => {
     expect(onNavigateWikilink).toHaveBeenCalledWith('Alpha Project')
   })
 
+  it('navigates wikilinks on Windows Ctrl+click', async () => {
+    const { container, onNavigateWikilink } = renderHarness()
+    const wikilink = appendWikilink(container, 'docs/adr/0031-foo')
+
+    const modifiedClick = dispatchMouseEvent(wikilink, 'click', { ctrlKey: true })
+
+    expect(modifiedClick.defaultPrevented).toBe(true)
+    await Promise.resolve()
+    expect(onNavigateWikilink).toHaveBeenCalledWith('docs/adr/0031-foo')
+  })
+
   it('consumes plain wikilink mousedown and click events before editor internals see stale link nodes', () => {
     const { container, onNavigateWikilink } = renderHarness()
     const wikilink = appendWikilink(container, 'Alpha Project')
