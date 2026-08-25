@@ -158,6 +158,24 @@ describe('preProcessRichEditorMarkdown', () => {
     })).toBe(`${content}\n`)
   })
 
+  it('preserves infrastructure prose through a rich-editor round trip', async () => {
+    const content = [
+      '---',
+      'title: Backup reference',
+      '---',
+      'Keep STALE_SECONDS, item_key, and ALL_VERSIONS searchable.',
+      '',
+      String.raw`Path: {BackupType}\{ServerName}$\{InstanceName}\{DatabaseName}`,
+      '',
+      'Function-URL event shapes. **Cloudflare Access JWT still verified in pure stdlib**',
+      '(`jwt_verify.py`, RS256 vs team JWKS) as defense-in-depth.',
+    ].join('\n')
+
+    const resolved = await reloadRichEditorMarkdown(content, 'backup-reference.md')
+
+    expect(resolved.markdown).toBe(`${content}\n`)
+  })
+
   it('preserves linked inline code through a small-note rich-editor round trip', async () => {
     const content = 'See [`some-symbol`](https://example.com) for details.'
 

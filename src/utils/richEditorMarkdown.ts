@@ -49,6 +49,7 @@ interface RichEditorBlockSerializationOptions {
 const EMPTY_CHECKLIST_ITEM_FILLER = '\u200B'
 const EMPTY_CHECKLIST_ITEM_LINE_RE = /^([ \t]*[-*+][ \t]+\[[ xX]\])[ \t]*$/u
 const BLANK_PARAGRAPH_PLACEHOLDER = '\u200B'
+const BACKSLASH_BEFORE_BRACE_PLACEHOLDER = '\uE000TOLARIA_BACKSLASH_LBRACE\uE001'
 
 interface ParsedBlockquoteSourceLine {
   content: string
@@ -98,7 +99,8 @@ export function preProcessRichEditorMarkdown(
   vaultPath?: VaultPath,
   notePath?: NotePath,
 ): PreprocessedMarkdown {
-  const withDurableBlocks = preProcessDurableEditorMarkdown({ markdown })
+  const withLiteralBackslashes = preserveLiteralBackslashes(markdown)
+  const withDurableBlocks = preProcessDurableEditorMarkdown({ markdown: withLiteralBackslashes })
   const withEmptyChecklists = preProcessEmptyChecklistItems(withDurableBlocks)
   const withBlankQuotes = preProcessBlankBlockquoteParagraphs(withEmptyChecklists)
   const withBlankParagraphs = preProcessBlankParagraphs(withBlankQuotes)
@@ -117,7 +119,35 @@ export function injectRichEditorMarkdownBlocks(blocks: EditorBlocksSnapshot): Ed
   const withHighlights = injectMarkdownHighlightsInBlocks(withMath)
   const withDurableBlocks = injectDurableEditorMarkdownBlocks(withHighlights)
   const withCallouts = injectCalloutBlocks(withDurableBlocks)
-  return injectBlankParagraphBlocks(withCallouts)
+  const withBlankParagraphs = injectBlankParagraphBlocks(withCallouts)
+  return restoreLiteralBackslashesInBlocks(withBlankParagraphs)
+}
+
+function preserveLiteralBackslashes(markdown: MarkdownBody): MarkdownBody {
+  return markdown.replace(/\\(?=\{)/gu, BACKSLASH_BEFORE_BRACE_PLACEHOLDER)
+}
+
+function restoreLiteralBackslashesInBlocks(blocks: EditorBlocksSnapshot): EditorBlocksSnapshot {
+  return restoreLiteralBackslashes(blocks) as EditorBlocksSnapshot
+}
+
+function restoreLiteralBackslashes(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return value.replaceAll(BACKSLASH_BEFORE_BRACE_PLACEHOLDER, '\\')
+  }
+  if (Array.isArray(value)) {
+    const restored = value.map(restoreLiteralBackslashes)
+    return restored.some((item, index) => item !== value[index]) ? restored : value
+  }
+  if (!isRecord(value)) return value
+
+  let changed = false
+  const restored = Object.fromEntries(Object.entries(value).map(([key, item]) => {
+    const next = restoreLiteralBackslashes(item)
+    changed ||= next !== item
+    return [key, next]
+  }))
+  return changed ? restored : value
 }
 
 export function hasRichEditorDurableBlocks(blocks: EditorBlocksSnapshot): boolean {

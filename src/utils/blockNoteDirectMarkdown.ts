@@ -1,4 +1,5 @@
 import { restoreWikilinksInBlocks } from './wikilinks'
+import { escapeInlineMarkdownText, wrapInlineMarkdown } from './blockNoteMarkdownInline'
 
 interface TextStyles {
   [style: string]: string | boolean | undefined
@@ -86,7 +87,6 @@ type SerializedBlockListItem =
   | { kind: 'empty' }
   | { kind: 'markdown'; markdown: string }
 
-const ESCAPE_INLINE_TEXT_RE = /([\\`*_])/g
 const IMAGE_MARKER_BANG_RE = /!(?=\[)/g
 const LEADING_ATX_HEADING_RE = /^([ \t]{0,3})(#{1,6})(?=\s|$)/gm
 const LEADING_BLOCKQUOTE_RE = /^([ \t]{0,3})>/gm
@@ -133,8 +133,7 @@ function tableContent(content: unknown): TableContentLike | null {
 }
 
 function escapeText(text: string): string {
-  return text
-    .replace(ESCAPE_INLINE_TEXT_RE, '\\$1')
+  return escapeInlineMarkdownText(text)
     .replace(IMAGE_MARKER_BANG_RE, '\\!')
     .replace(LEADING_ATX_HEADING_RE, '$1\\$2')
     .replace(LEADING_BLOCKQUOTE_RE, '$1\\>')
@@ -166,19 +165,23 @@ function wikilinkMarkdown(item: InlineItem): string {
   return target ? `[[${target}]]` : ''
 }
 
-function wrapInlineMarkdown(text: string, marker: string): string {
-  if (!text) return text
-  return `${marker}${text}${marker}`
+function styledTextMarkdown(item: InlineItem): string {
+  const source = item.text ?? ''
+  const styles = item.styles ?? {}
+  if (styles.code === true) return codeSpan(source)
+  return applyInlineStyle(
+    applyInlineStyle(
+      applyInlineStyle(escapeText(source), styles.bold, '**'),
+      styles.italic,
+      '*',
+    ),
+    styles.strike,
+    '~~',
+  )
 }
 
-function styledTextMarkdown(item: InlineItem): string {
-  let text = escapeText(item.text ?? '')
-  const styles = item.styles ?? {}
-  if (styles.code === true) return codeSpan(item.text ?? '')
-  if (styles.bold === true) text = wrapInlineMarkdown(text, '**')
-  if (styles.italic === true) text = wrapInlineMarkdown(text, '*')
-  if (styles.strike === true) text = wrapInlineMarkdown(text, '~~')
-  return text
+function applyInlineStyle(text: string, enabled: string | boolean | undefined, marker: string): string {
+  return enabled === true ? wrapInlineMarkdown(text, marker) : text
 }
 
 function codeSpan(text: string): string {
@@ -207,18 +210,32 @@ function literalTextContent(content: InlineItem[] | undefined): string {
 
 function blockPrefix(block: BlockLike, depth: number, context: SerializeContext): MarkdownLinePrefix | null {
   const indent = ' '.repeat(context.indentStack.at(depth) ?? 0)
-  if (block.type === 'numberedListItem') {
-    const next = context.numberedStack.at(depth) ?? Number(block.props?.start ?? 1)
-    context.numberedStack.splice(depth, 1, next + 1)
-    const marker = `${next}. `
-    return { contentIndent: marker.length, indent, marker }
-  }
+  if (block.type === 'numberedListItem') return numberedListPrefix(block, depth, context, indent)
   context.numberedStack.splice(depth, 1, 1)
-  if (block.type === 'bulletListItem') return { contentIndent: 2, indent, marker: '- ' }
-  if (block.type === 'checkListItem') {
-    return { contentIndent: 2, indent, marker: block.props?.checked === true ? '- [x] ' : '- [ ] ' }
+  switch (block.type) {
+    case 'bulletListItem':
+      return { contentIndent: 2, indent, marker: '- ' }
+    case 'checkListItem':
+      return { contentIndent: 2, indent, marker: checklistMarker(block) }
+    default:
+      return null
   }
-  return null
+}
+
+function numberedListPrefix(
+  block: BlockLike,
+  depth: number,
+  context: SerializeContext,
+  indent: string,
+): MarkdownLinePrefix {
+  const next = context.numberedStack.at(depth) ?? Number(block.props?.start ?? 1)
+  context.numberedStack.splice(depth, 1, next + 1)
+  const marker = `${next}. `
+  return { contentIndent: marker.length, indent, marker }
+}
+
+function checklistMarker(block: BlockLike): string {
+  return block.props?.checked === true ? '- [x] ' : '- [ ] '
 }
 
 function advanceCachedBlockContext(block: BlockLike, depth: number, context: SerializeContext): void {
