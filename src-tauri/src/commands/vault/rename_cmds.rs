@@ -265,9 +265,11 @@ pub fn auto_rename_untitled(
 }
 
 #[tauri::command]
-pub fn detect_renames(args: VaultPathCommandArgs) -> Result<Vec<DetectedRename>, String> {
-    let vault_path = expand_tilde(&args.vault_path);
-    vault::detect_renames(Path::new(vault_path.as_ref()))
+pub async fn detect_renames(args: VaultPathCommandArgs) -> Result<Vec<DetectedRename>, String> {
+    let vault_path = expand_tilde(&args.vault_path).into_owned();
+    tokio::task::spawn_blocking(move || vault::detect_renames(Path::new(&vault_path)))
+        .await
+        .map_err(|error| format!("Rename detection task panicked: {error}"))?
 }
 
 #[tauri::command]
@@ -389,8 +391,8 @@ mod tests {
             .contains("[[team/Projects/draft]]"));
     }
 
-    #[test]
-    fn auto_rename_and_detected_rename_commands_route_through_vault() {
+    #[tokio::test]
+    async fn auto_rename_and_detected_rename_commands_route_through_vault() {
         let dir = TempDir::new().unwrap();
         let vault = vault_path(&dir);
         let untitled = write_note(&dir, "untitled-note-123.md", "# Project Plan\n");
@@ -416,6 +418,7 @@ mod tests {
         let renames = detect_renames(VaultPathCommandArgs {
             vault_path: vault.clone(),
         })
+        .await
         .unwrap();
         assert_eq!(renames.len(), 1);
         assert_eq!(renames[0].old_path, "project-plan.md");
