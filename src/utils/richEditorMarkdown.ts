@@ -136,8 +136,13 @@ function restoreLiteralBackslashes(value: unknown): unknown {
     return value.replaceAll(BACKSLASH_BEFORE_BRACE_PLACEHOLDER, '\\')
   }
   if (Array.isArray(value)) {
-    const restored = value.map(restoreLiteralBackslashes)
-    return restored.some((item, index) => item !== value[index]) ? restored : value
+    let changed = false
+    const restored = value.map((item) => {
+      const next = restoreLiteralBackslashes(item)
+      changed ||= next !== item
+      return next
+    })
+    return changed ? restored : value
   }
   if (!isRecord(value)) return value
 
