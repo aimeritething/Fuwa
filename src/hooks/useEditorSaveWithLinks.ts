@@ -4,6 +4,7 @@ import { extractOutgoingLinks, extractSnippet, countWords, splitFrontmatter } fr
 import { deriveRawEditorEntryState } from './rawEditorEntryState'
 import { deriveDisplayTitleState } from '../utils/noteTitle'
 import { detectFrontmatterState } from '../utils/frontmatter'
+import { notePathFilename } from '../utils/notePathIdentity'
 import type { VaultEntry } from '../types'
 import type { AppLocale } from '../lib/i18n'
 
@@ -116,7 +117,7 @@ function syncDisplayTitle(options: {
   updateEntry: UpdateEntry
 }): void {
   const { content, frontmatterTitle, path, prevTitleKeyRef, updateEntry } = options
-  const filename = path.split('/').pop() ?? path
+  const filename = notePathFilename(path)
   const titlePatch = deriveDisplayTitleState({ content, filename, frontmatterTitle })
   const titleKey = JSON.stringify(titlePatch)
   if (titleKey === prevTitleKeyRef.current) return

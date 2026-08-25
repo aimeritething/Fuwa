@@ -219,7 +219,7 @@ describe('useEditorSaveWithLinks', () => {
     flushDeferredMetadata()
     const callCount = updateEntry.mock.calls.length
 
-    act(() => { result.current.handleContentChange('/note.md', content + ' more') })
+    act(() => { result.current.handleContentChange('/note.md', `${content} more`) })
     flushDeferredMetadata()
     // Same frontmatter, only body changed — no extra updateEntry for frontmatter
     expect(updateEntry).toHaveBeenCalledTimes(callCount)
@@ -323,6 +323,22 @@ describe('useEditorSaveWithLinks', () => {
     flushDeferredMetadata()
 
     expect(updateEntry).toHaveBeenCalledWith(path, expected)
+  })
+
+  it('derives a filename fallback title from a Windows path', () => {
+    const { result } = renderHookWithLinks()
+    const path = String.raw`D:\Projects_CC\Tolaria\Tol_V1\focus-test.md`
+
+    act(() => {
+      result.current.handleContentChange(path, '---\ntype: Note\n_display: sheet\n---\nA,B\n1,2\n')
+    })
+
+    flushDeferredMetadata()
+
+    expect(updateEntry).toHaveBeenCalledWith(path, {
+      title: 'Focus Test',
+      hasH1: false,
+    })
   })
 
   it('defers H1 title sync updates in a transition so typing stays responsive', () => {
