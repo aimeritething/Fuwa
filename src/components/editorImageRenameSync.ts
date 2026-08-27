@@ -32,7 +32,7 @@ function isRecord(value: unknown): value is RecordValue {
 function samePropsExceptName(current: RecordValue, previous: RecordValue): boolean {
   const keys = new Set([...Object.keys(current), ...Object.keys(previous)])
   keys.delete('name')
-  return [...keys].every((key) => current[key] === previous[key])
+  return [...keys].every((key) => Reflect.get(current, key) === Reflect.get(previous, key))
 }
 
 function supportedChangeSource(change: RecordValue): boolean {
