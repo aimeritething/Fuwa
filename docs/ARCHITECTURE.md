@@ -575,6 +575,8 @@ Persisted at `~/.config/com.tolaria.app/vaults.json` (reads legacy `com.laputa.a
 
 Managed by `useVaultSwitcher` hook. Switching vaults resets sidebar and clears the active note. `open_vault_in_new_window` starts an explicitly scoped auxiliary application process; that process loads the requested vault as active while preserving the shared registry's ordinary startup selection when it saves.
 
+`hidden_defaults` belongs only to this vault registry and stores hidden default-vault paths. It is not a sidebar-visibility setting; settings loading removes a misplaced `hidden_defaults` key from app-level `settings.json` while preserving unrelated unknown keys for forward compatibility.
+
 ### Vault Config
 
 Per-vault UI settings stored locally per vault path (currently in browser/Tauri localStorage, not synced via git):

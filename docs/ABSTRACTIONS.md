@@ -1012,7 +1012,7 @@ Tolaria delegates remote auth to the user's system git setup:
 
 ## Settings
 
-App-level settings persist at `$XDG_CONFIG_HOME/com.tolaria.app/settings.json`, defaulting to `$HOME/.config/com.tolaria.app/settings.json` on Unix platforms. The native app falls back to the platform config directory when the current account cannot write the XDG target and then reads that writable location first. `settings.json` and `vaults.json` otherwise share the namespace and root policy in `mcp-server/app-config-policy.json`; see ADR-0145 and ADR-0177.
+App-level settings persist at `$XDG_CONFIG_HOME/com.tolaria.app/settings.json`, defaulting to `$HOME/.config/com.tolaria.app/settings.json` on Unix platforms. The native app falls back to the platform config directory when the current account cannot write the XDG target and then reads that writable location first. `settings.json` and `vaults.json` otherwise share the namespace and root policy in `mcp-server/app-config-policy.json`; see ADR-0145 and ADR-0177. The `hidden_defaults` field is reserved for hidden default-vault paths in `vaults.json`, not sidebar items in `settings.json`; settings loading removes that misplaced field without discarding other unknown settings.
 
 ```typescript
 interface AiWorkspaceConversationSetting {
