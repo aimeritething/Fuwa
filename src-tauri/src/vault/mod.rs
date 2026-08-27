@@ -1,3 +1,4 @@
+mod attachment_rename;
 mod cache;
 mod config_seed;
 mod entry;
@@ -25,6 +26,7 @@ mod view_tests;
 mod view_value_conversions;
 mod views;
 
+pub use attachment_rename::{rename_attachment, AttachmentRenameRequest, AttachmentRenameResult};
 pub use cache::{invalidate_cache, read_vault_snapshot, refresh_vault_cache, scan_vault_cached};
 pub use config_seed::{
     get_ai_guidance_status, migrate_agents_md, repair_config_files, restore_ai_guidance_files,

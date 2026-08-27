@@ -335,6 +335,7 @@ macro_rules! app_invoke_handler {
             commands::sync_note_title,
             commands::save_image,
             commands::copy_image_to_vault,
+            commands::rename_attachment,
             commands::download_remote_image_to_vault,
             commands::delete_note,
             commands::batch_delete_notes,

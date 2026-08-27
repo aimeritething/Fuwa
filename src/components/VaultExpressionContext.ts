@@ -40,6 +40,10 @@ const EMPTY_VAULT_EXPRESSION_CONTEXT: VaultExpressionContextValue = {
   vaultPath: '',
 }
 
+export function useVaultExpressionContext(): VaultExpressionContextValue {
+  return useContext(VaultExpressionContext) ?? EMPTY_VAULT_EXPRESSION_CONTEXT
+}
+
 export function VaultExpressionProvider({
   children,
   currentContent,
@@ -164,8 +168,7 @@ function useVaultExpressionDependencyContents(
 }
 
 export function useResolvedVaultExpressionTemplate(source: string): ResolvedVaultExpressionTemplate {
-  const context = useContext(VaultExpressionContext)
-  const expressionContext = context ?? EMPTY_VAULT_EXPRESSION_CONTEXT
+  const expressionContext = useVaultExpressionContext()
   const compiled = useMemo(() => compileVaultExpressionTemplate(source), [source])
   const contentsByPath = useVaultExpressionDependencyContents(compiled, expressionContext)
 
