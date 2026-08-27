@@ -85,6 +85,31 @@ describe('TableOfContentsPanel', () => {
     expect(setTextCursorPosition).toHaveBeenCalledWith('section-block', 'start')
   })
 
+  it('preserves literal tildes in headings and resolves their navigation ids', async () => {
+    const setTextCursorPosition = vi.fn()
+    render(
+      <TableOfContentsPanel
+        editor={{
+          document: [
+            { id: 'title-block', type: 'heading', props: { level: 1 }, content: [{ type: 'text', text: 'Tilde Headings' }] },
+            { id: 'tilde-block', type: 'heading', props: { level: 2 }, content: [{ type: 'text', text: 'Note~2~beta' }] },
+            { id: 'strike-block', type: 'heading', props: { level: 2 }, content: [{ type: 'text', text: 'Archived plan' }] },
+          ],
+          setTextCursorPosition,
+        }}
+        entry={{ ...entry, title: 'Tilde Headings' } as VaultEntry}
+        sourceContent={'# Tilde Headings\n\n## Note~2~beta\n\n## ~~Archived~~ plan'}
+        onClose={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /Note~2~beta/ }))
+    expect(setTextCursorPosition).toHaveBeenCalledWith('tilde-block', 'start')
+
+    fireEvent.click(screen.getByRole('button', { name: /Archived plan/ }))
+    expect(setTextCursorPosition).toHaveBeenCalledWith('strike-block', 'start')
+  })
+
   it('resolves navigation ids on click after the async TOC build starts without ids', async () => {
     const setTextCursorPosition = vi.fn()
     const editor = {
