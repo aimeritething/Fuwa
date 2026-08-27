@@ -25,7 +25,7 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 | Sidebar label overrides | Auto-sync interval |
 | Property display order | Window size / position |
 | Per-note `_width` rich-editor width override | Default rich-editor note width |
-| Vault-authored `.gitignore` patterns | Whether this installation hides Gitignored files |
+| Applicable vault or parent-repository `.gitignore` patterns | Whether this installation hides Gitignored files |
 | N/A | Whether this installation shows Git features |
 | N/A | Git executable provider (`native` vs WSL2 distribution) |
 | Per-vault All Notes note-list column overrides | All Notes PDF/image/unsupported file visibility |

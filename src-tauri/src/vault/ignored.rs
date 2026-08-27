@@ -36,14 +36,30 @@ fn has_gitignore_file(vault_path: &Path) -> bool {
         return true;
     }
 
-    WalkDir::new(vault_path)
+    let has_nested_gitignore = WalkDir::new(vault_path)
         .follow_links(false)
         .into_iter()
         .filter_entry(should_descend_for_gitignore)
         .filter_map(Result::ok)
         .any(|entry| {
             entry.file_type().is_file() && entry.file_name().to_string_lossy() == ".gitignore"
-        })
+        });
+    if has_nested_gitignore {
+        return true;
+    }
+
+    let Ok(Some(workspace)) = crate::git::GitWorkspace::resolve(vault_path) else {
+        return false;
+    };
+    let Ok(resolved_vault_path) = vault_path.canonicalize() else {
+        return false;
+    };
+
+    resolved_vault_path
+        .ancestors()
+        .skip(1)
+        .take_while(|ancestor| ancestor.starts_with(workspace.git_root()))
+        .any(|ancestor| ancestor.join(".gitignore").is_file())
 }
 
 fn run_git_check_ignore(vault_path: &Path, relative_paths: &[String]) -> Option<String> {
@@ -265,6 +281,25 @@ mod tests {
             entry_paths(dir.path(), &filtered),
             vec!["visible.md", "ignored/keep.md"]
         );
+    }
+
+    #[test]
+    fn filters_entries_ignored_by_parent_repository() {
+        let dir = TempDir::new().unwrap();
+        init_git_repo(dir.path());
+        let vault = dir.path().join("vault");
+        fs::create_dir(&vault).unwrap();
+        write_file(dir.path(), ".gitignore", "vault/ignored.md\n");
+        write_file(&vault, "visible.md", "# Visible\n");
+        write_file(&vault, "ignored.md", "# Hidden\n");
+
+        let filtered = filter_gitignored_entries(
+            &vault,
+            vec![entry(&vault, "visible.md"), entry(&vault, "ignored.md")],
+            true,
+        );
+
+        assert_eq!(entry_paths(&vault, &filtered), vec!["visible.md"]);
     }
 
     #[test]
