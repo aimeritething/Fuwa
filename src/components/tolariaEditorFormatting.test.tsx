@@ -10,7 +10,7 @@ import {
   addItemsToMediaGroup,
   createCalloutSlashMenuItem,
   createDateTimeSlashMenuItems,
-  createHtmlBlockSlashMenuItem,
+  createSandboxBlockSlashMenuItem,
   createMathSlashMenuItem,
   filterTolariaFormattingToolbarItems,
   filterTolariaSlashMenuItems,
@@ -148,60 +148,20 @@ describe('tolariaEditorFormatting', () => {
   })
 
   it('keeps custom media slash-menu commands searchable', () => {
-    type TolariaSlashMenuTestItem = {
-      key: string
-      title: string
-      aliases?: string[]
-      onItemClick: () => void
-    }
+    const expectedCommands = [
+      { key: 'mermaid', title: 'Mermaid', aliases: ['diagram', 'flowchart', 'graph', 'chart'] },
+      { key: 'math', title: 'Math', aliases: ['equation', 'latex', 'formula', 'sqrt'] },
+      { key: 'html', title: 'HTML block', aliases: ['embed', 'iframe', 'sandbox', 'html'] },
+      { key: 'whiteboard', title: 'Whiteboard', aliases: ['tldraw', 'drawing', 'canvas', 'sketch'] },
+    ]
+    const items = filterTolariaSlashMenuItems(expectedCommands.map((item) => ({
+      ...item,
+      onItemClick: () => {},
+    })))
 
-    const items = filterTolariaSlashMenuItems([
-      {
-        key: 'mermaid',
-        title: 'Mermaid',
-        aliases: ['diagram', 'flowchart', 'graph', 'chart'],
-        onItemClick: () => {},
-      },
-      {
-        key: 'math',
-        title: 'Math',
-        aliases: ['equation', 'latex', 'formula', 'sqrt'],
-        onItemClick: () => {},
-      },
-      {
-        key: 'html',
-        title: 'HTML block',
-        aliases: ['embed', 'iframe', 'sandbox', 'html'],
-        onItemClick: () => {},
-      },
-      {
-        key: 'whiteboard',
-        title: 'Whiteboard',
-        aliases: ['tldraw', 'drawing', 'canvas', 'sketch'],
-        onItemClick: () => {},
-      },
-    ] satisfies TolariaSlashMenuTestItem[])
-
-    expect(items[0]).toEqual(expect.objectContaining({
-      key: 'mermaid',
-      title: 'Mermaid',
-      aliases: ['diagram', 'flowchart', 'graph', 'chart'],
-    }))
-    expect(items[1]).toEqual(expect.objectContaining({
-      key: 'math',
-      title: 'Math',
-      aliases: ['equation', 'latex', 'formula', 'sqrt'],
-    }))
-    expect(items[2]).toEqual(expect.objectContaining({
-      key: 'html',
-      title: 'HTML block',
-      aliases: ['embed', 'iframe', 'sandbox', 'html'],
-    }))
-    expect(items[3]).toEqual(expect.objectContaining({
-      key: 'whiteboard',
-      title: 'Whiteboard',
-      aliases: ['tldraw', 'drawing', 'canvas', 'sketch'],
-    }))
+    expect(items.map(({ aliases, key, title }) => ({ aliases, key, title }))).toEqual(
+      expectedCommands,
+    )
     expect(items.map((item) => isValidElement(item.icon))).toEqual([true, true, true, true])
   })
 
@@ -271,15 +231,17 @@ describe('tolariaEditorFormatting', () => {
   it('creates an empty HTML block slash command for immediate source editing', () => {
     const { block, editor, replaceBlocks, updateBlock } = createSlashCommandEditorFixture()
 
-    const htmlItem = createHtmlBlockSlashMenuItem(editor, { htmlTitle: 'HTML block' })
+    const sandboxItem = createSandboxBlockSlashMenuItem(editor, {
+      sandboxBlockTitle: 'HTML block',
+    })
 
-    expect(htmlItem).toEqual(expect.objectContaining({
+    expect(sandboxItem).toEqual(expect.objectContaining({
       key: 'html',
       title: 'HTML block',
       aliases: ['embed', 'iframe', 'sandbox', 'html'],
     }))
 
-    htmlItem?.onItemClick()
+    sandboxItem?.onItemClick()
 
     expect(replaceBlocks).toHaveBeenCalledWith([block], [{
       type: HTML_BLOCK_TYPE,
@@ -394,7 +356,9 @@ describe('tolariaEditorFormatting', () => {
       }),
     ])
 
-    items.forEach((item) => item.onItemClick())
+    items.forEach((item) => {
+      item.onItemClick()
+    })
 
     expect(insertInlineContent).toHaveBeenNthCalledWith(1, '2026-07-19', {
       updateSelection: true,

@@ -75,7 +75,7 @@ type TolariaSlashMenuLabels = {
   calloutTypeTitles: Record<ObsidianCalloutType, string>
   dateTitle: string
   datetimeTitle: string
-  htmlTitle: string
+  sandboxBlockTitle: string
   mathTitle: string
   timeTitle: string
 }
@@ -275,13 +275,15 @@ export function createMathSlashMenuItem(
   })
 }
 
-export function createHtmlBlockSlashMenuItem(
+export function createSandboxBlockSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
-  labels: Pick<TolariaSlashMenuLabels, 'htmlTitle'> = { htmlTitle: 'HTML block' },
+  labels: Pick<TolariaSlashMenuLabels, 'sandboxBlockTitle'> = {
+    sandboxBlockTitle: 'HTML block',
+  },
 ): TolariaSlashMenuItem {
   return createBlockSlashMenuItem(editor, {
     key: 'html',
-    title: labels.htmlTitle,
+    title: labels.sandboxBlockTitle,
     aliases: ['embed', 'iframe', 'sandbox', 'html'],
     eventName: 'editor_html_block_slash_command_used',
     type: HTML_BLOCK_TYPE,
@@ -440,7 +442,7 @@ export function getTolariaSlashMenuItems(
     [
       createMermaidSlashMenuItem(editor),
       createMathSlashMenuItem(editor, labels),
-      createHtmlBlockSlashMenuItem(editor, labels),
+      createSandboxBlockSlashMenuItem(editor, labels),
       createWhiteboardSlashMenuItem(editor),
       ...dateTimeItems,
     ],
