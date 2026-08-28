@@ -3,6 +3,48 @@ import { describe, it } from 'node:test'
 import { computeAlphaRelease, computeStableRelease, formatReleaseEnv } from './release-version.mjs'
 
 const today = '2026-08-02'
+const alphaReleaseCases = [
+  {
+    name: 'same-day stable safeguard',
+    input: { alphaTags: [], stableTags: ['v2026-08-02'], tagsAtHead: [], today },
+    expected: {
+      channel: 'alpha',
+      displayVersion: 'Alpha 2026.8.3.1',
+      tag: 'alpha-v2026.8.3-alpha.0001',
+      version: '2026.8.3-alpha.1',
+    },
+  },
+  {
+    name: 'monotonic poisoned-version bridge',
+    input: {
+      alphaTags: ['alpha-v2027.8.1-alpha.0017'],
+      stableTags: ['v2027-07-31', 'v2026-07-22'],
+      tagsAtHead: [],
+      today,
+    },
+    expected: {
+      channel: 'alpha',
+      displayVersion: 'Alpha 2026.8.2.0',
+      tag: 'alpha-v2027.8.2-alpha.0001',
+      version: '2027.8.2-alpha.1',
+    },
+  },
+  {
+    name: 'return to the real calendar series',
+    input: {
+      alphaTags: ['alpha-v2027.8.1-alpha.0017', 'alpha-v2027.8.2-alpha.0001'],
+      stableTags: ['v2027-07-31', 'v2026-07-22'],
+      tagsAtHead: [],
+      today,
+    },
+    expected: {
+      channel: 'alpha',
+      displayVersion: 'Alpha 2026.8.2.1',
+      tag: 'alpha-v2026.8.2-alpha.0001',
+      version: '2026.8.2-alpha.1',
+    },
+  },
+]
 
 describe('release version computation', () => {
   it('formats the shared release result for GitHub Actions outputs', () => {
@@ -35,57 +77,32 @@ describe('release version computation', () => {
     )
   })
 
-  it('preserves the next-day alpha safeguard after a same-day stable release', () => {
+  it('allows the one-shot poisoned-stable bridge tag on its operator date', () => {
     assert.deepEqual(
-      computeAlphaRelease({
-        alphaTags: [],
-        stableTags: ['v2026-08-02'],
-        tagsAtHead: [],
-        today,
-      }),
+      computeStableRelease({ tag: 'v2027-08-28', today: '2026-08-28' }),
       {
-        channel: 'alpha',
-        displayVersion: 'Alpha 2026.8.3.1',
-        tag: 'alpha-v2026.8.3-alpha.0001',
-        version: '2026.8.3-alpha.1',
+        channel: 'stable',
+        displayVersion: 'v2027-08-28',
+        tag: 'v2027-08-28',
+        version: '2027.8.28',
       },
     )
   })
 
-  it('creates one monotonic bridge when an accepted future stable tag poisoned updater ordering', () => {
-    assert.deepEqual(
-      computeAlphaRelease({
-        alphaTags: ['alpha-v2027.8.1-alpha.0017'],
-        stableTags: ['v2027-07-31', 'v2026-07-22'],
-        tagsAtHead: [],
-        today,
-      }),
-      {
-        channel: 'alpha',
-        displayVersion: 'Alpha 2026.8.2.0',
-        tag: 'alpha-v2027.8.2-alpha.0001',
-        version: '2027.8.2-alpha.1',
-      },
+  it('rejects future stable tags other than the one-shot bridge', () => {
+    assert.throws(
+      () => computeStableRelease({ tag: 'v2027-09-01', today: '2026-08-28' }),
+      /cannot be later than the current UTC date 2026-08-28/,
+    )
+    assert.throws(
+      () => computeStableRelease({ tag: 'v2027-08-28', today: '2026-08-29' }),
+      /cannot be later than the current UTC date 2026-08-29/,
     )
   })
 
-  it('returns to the real calendar series after the recovery bridge exists', () => {
-    assert.deepEqual(
-      computeAlphaRelease({
-        alphaTags: [
-          'alpha-v2027.8.1-alpha.0017',
-          'alpha-v2027.8.2-alpha.0001',
-        ],
-        stableTags: ['v2027-07-31', 'v2026-07-22'],
-        tagsAtHead: [],
-        today,
-      }),
-      {
-        channel: 'alpha',
-        displayVersion: 'Alpha 2026.8.2.1',
-        tag: 'alpha-v2026.8.2-alpha.0001',
-        version: '2026.8.2-alpha.1',
-      },
-    )
+  it('preserves alpha sequencing and poisoned-version recovery', () => {
+    for (const { name, input, expected } of alphaReleaseCases) {
+      assert.deepEqual(computeAlphaRelease(input), expected, name)
+    }
   })
 })

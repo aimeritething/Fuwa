@@ -5,6 +5,8 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const ALPHA_TAG_PATTERN = /^alpha-v(\d{4})\.(\d{1,2})\.(\d{1,2})-alpha\.(\d+)$/
 const CALENDAR_STABLE_PATTERN = /^v(\d{4})-(\d{2})-(\d{2})$/
 const LEGACY_STABLE_PATTERN = /^stable-v(\d{4})\.(\d{1,2})\.(\d{1,2})$/
+const STABLE_BRIDGE_TAG = 'v2027-08-28'
+const STABLE_BRIDGE_OPERATOR_DATE = '2026-08-28'
 
 function parseDateParts(parts, source) {
   const [year, month, day] = parts.map(Number)
@@ -103,7 +105,8 @@ export function computeStableRelease({ tag, today }) {
   const todayDate = parseToday(today)
   const tagDate = parseStableTag(tag)
   if (!tagDate) throw new Error(`Stable tags must use vYYYY-MM-DD or stable-vYYYY.M.D, got ${tag}`)
-  if (tagDate > todayDate) {
+  const isOperatorBridge = tag === STABLE_BRIDGE_TAG && today === STABLE_BRIDGE_OPERATOR_DATE
+  if (tagDate > todayDate && !isOperatorBridge) {
     throw new Error(`Stable tag ${tag} cannot be later than the current UTC date ${today}`)
   }
   const version = calendarCore(tagDate)
@@ -150,17 +153,7 @@ function printReleaseEnv(release, skipRelease, format) {
   process.stdout.write(formatReleaseEnv(release, skipRelease, format))
 }
 
-function runCli() {
-  const channel = process.argv[2]
-  const format = process.argv[3] ?? 'shell'
-  const today = process.env.RELEASE_TODAY ?? new Date().toISOString().slice(0, 10)
-  if (channel === 'stable') {
-    const tag = process.env.RELEASE_TAG ?? process.env.CIRCLE_TAG_VALUE ?? ''
-    printReleaseEnv(computeStableRelease({ tag, today }), false, format)
-    return
-  }
-  if (channel !== 'alpha') throw new Error('Usage: node scripts/release-version.mjs alpha|stable')
-
+function alphaReleaseFromGit(today) {
   const changed = gitLines(['diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'])
   const release = computeAlphaRelease({
     alphaTags: gitLines(['tag', '--list', 'alpha-v*']),
@@ -176,7 +169,32 @@ function runCli() {
   const ignored = changed.every(
     (path) => path.startsWith('site/') || path.startsWith('.circleci/') || path === '.github/workflows/README.md',
   )
-  printReleaseEnv(release, changed.length > 0 && ignored, format)
+  return { release, skipRelease: changed.length > 0 && ignored }
+}
+
+function runStableCli(today, format) {
+  const tag = process.env.RELEASE_TAG ?? process.env.CIRCLE_TAG_VALUE ?? ''
+  printReleaseEnv(computeStableRelease({ tag, today }), false, format)
+}
+
+function runAlphaCli(today, format) {
+  const { release, skipRelease } = alphaReleaseFromGit(today)
+  printReleaseEnv(release, skipRelease, format)
+}
+
+function runCli() {
+  const channel = process.argv[2]
+  const format = process.argv[3] ?? 'shell'
+  const today = process.env.RELEASE_TODAY ?? new Date().toISOString().slice(0, 10)
+  if (channel === 'stable') {
+    runStableCli(today, format)
+    return
+  }
+  if (channel === 'alpha') {
+    runAlphaCli(today, format)
+    return
+  }
+  throw new Error('Usage: node scripts/release-version.mjs alpha|stable')
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) runCli()

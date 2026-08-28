@@ -29,6 +29,10 @@ updater changes: alpha metadata selection follows GitHub publication time, and a
 build may accept a lower technical version only when the candidate date is today or tomorrow. Once
 the bridge tag exists, the next alpha build returns to the real calendar series.
 
+As a one-shot operator exception on 2026-08-28, stable release computation accepts only
+`v2027-08-28`, and any installed `2027.*` calendar build may recover to a `2026` candidate from
+`2026.8.19` through tomorrow so that bridge does not re-poison the cohort.
+
 ## Consequences
 
 - A mistyped future stable tag fails closed instead of changing release metadata.

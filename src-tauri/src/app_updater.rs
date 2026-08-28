@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::{ipc::Channel, AppHandle, Runtime, Url};
@@ -7,7 +8,6 @@ const ALPHA_METADATA_ASSET_NAME: &str = "alpha-latest.json";
 const GITHUB_RELEASES_API_URL: &str =
     "https://api.github.com/repos/refactoringhq/tolaria/releases?per_page=100";
 const RELEASES_BASE_URL: &str = "https://refactoringhq.github.io/tolaria";
-const POISONED_STABLE_VERSION: &str = "2027.7.31";
 const POISONED_STABLE_RECOVERY_FLOOR: &str = "2026.8.19";
 const UPDATER_HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 const UPDATER_USER_AGENT: &str = concat!("Tolaria/", env!("CARGO_PKG_VERSION"));
@@ -131,14 +131,13 @@ fn should_recover_poisoned_calendar_version(
         return false;
     };
     let tomorrow = today.succ_opt().unwrap_or(today);
+    let recovery_floor = calendar_version_date(POISONED_STABLE_RECOVERY_FLOOR)
+        .expect("the stable recovery floor must be a valid calendar version");
+    let stable_recovery =
+        current_date.year() == 2027 && remote_date.year() == 2026 && remote_date >= recovery_floor;
 
-    if current_version == POISONED_STABLE_VERSION {
-        let recovery_floor = calendar_version_date(POISONED_STABLE_RECOVERY_FLOOR)
-            .expect("the stable recovery floor must be a valid calendar version");
-        return remote_date >= recovery_floor && remote_date <= tomorrow;
-    }
-
-    current_date > tomorrow && remote_date >= today && remote_date <= tomorrow
+    (stable_recovery || (current_date > tomorrow && remote_date >= today))
+        && remote_date <= tomorrow
 }
 
 fn should_install_update(
@@ -411,15 +410,17 @@ mod tests {
 
     #[test]
     fn updater_accepts_only_the_expected_stable_version_transitions() {
-        let today = chrono::NaiveDate::from_ymd_opt(2026, 8, 20).unwrap();
+        let date = |month, day| chrono::NaiveDate::from_ymd_opt(2026, month, day).unwrap();
         let cases = [
-            ("2027.7.31", "2026.8.19", false, true),
-            ("2026.8.11", "2026.8.19", true, true),
-            ("2026.8.19", "2026.8.19", false, false),
-            ("2026.8.19", "2026.8.11", false, false),
+            ("2027.7.31", "2027.8.28", true, date(8, 28), true),
+            ("2027.8.28", "2026.8.28", false, date(8, 28), true),
+            ("2027.8.28", "2026.8.11", false, date(8, 28), false),
+            ("2026.8.19", "2026.8.28", true, date(8, 28), true),
+            ("2026.8.28", "2026.8.19", false, date(8, 28), false),
+            ("2027.8.28", "2026.8.19", false, date(9, 15), true),
         ];
 
-        for (current, remote, remote_is_semver_newer, expected) in cases {
+        for (current, remote, remote_is_semver_newer, today, expected) in cases {
             assert_eq!(
                 should_install_update(current, remote, remote_is_semver_newer, today),
                 expected,
