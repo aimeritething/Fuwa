@@ -50,6 +50,8 @@ import { TolariaCollapsedHeadingsController, TolariaSideMenu } from './tolariaBl
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 import { findNearestTextCursorBlock } from './blockNoteCursorTarget'
 import { ImageLightbox } from './ImageLightbox'
+import { TolariaFilePanelController } from './TolariaFilePanel'
+import { refreshCodeBlockSyntaxHighlighting } from './editorCodeBlockHighlightRefresh'
 import { ActionTooltip } from './ui/action-tooltip'
 import { Button } from './ui/button'
 import { VaultExpressionProvider } from './VaultExpressionContext'
@@ -1129,6 +1131,7 @@ function EditorInteractionControllers({
           },
         }}
       />
+      <TolariaFilePanelController />
       <SuggestionMenuController
         triggerCharacter="/"
         getItems={getSlashMenuItems}
@@ -1204,61 +1207,6 @@ function useRichEditorPlainTextPasteTarget(options: {
       activatePlainTextPasteTarget(targetRef.current)
     }
   }, [])
-}
-
-const PROSEMIRROR_HIGHLIGHT_PLUGIN_KEY_PREFIX = 'prosemirror-highlight$'
-const PROSEMIRROR_HIGHLIGHT_REFRESH_META = 'prosemirror-highlight-refresh'
-
-type CodeBlockHighlightRefreshTransaction = {
-  setMeta: (key: string, value: boolean) => CodeBlockHighlightRefreshTransaction
-}
-
-type CodeBlockHighlightRefreshView = {
-  dispatch: (transaction: CodeBlockHighlightRefreshTransaction) => void
-  state: {
-    config?: {
-      pluginsByKey?: Record<string, unknown>
-    }
-    tr: CodeBlockHighlightRefreshTransaction
-  }
-}
-
-type EditorWithCodeBlockHighlightRefreshView = {
-  _tiptapEditor?: {
-    view?: CodeBlockHighlightRefreshView | null
-  } | null
-  prosemirrorView?: CodeBlockHighlightRefreshView | null
-}
-
-function clearCodeBlockHighlightCache(view: CodeBlockHighlightRefreshView) {
-  const pluginKey = Object.keys(view.state.config?.pluginsByKey ?? {}).find((key) =>
-    key.startsWith(PROSEMIRROR_HIGHLIGHT_PLUGIN_KEY_PREFIX),
-  )
-  if (!pluginKey) return
-
-  const pluginState = recordValue(Reflect.get(view.state, pluginKey))
-  const decorationCache = recordValue(pluginState?.cache)
-  const cacheMap = decorationCache?.cache
-  if (cacheMap instanceof Map) cacheMap.clear()
-}
-
-function recordValue(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null ? value as Record<string, unknown> : null
-}
-
-function codeBlockHighlightRefreshView(editor: ReturnType<typeof useCreateBlockNote>) {
-  const editorWithView = editor as unknown as EditorWithCodeBlockHighlightRefreshView
-  return editorWithView._tiptapEditor?.view ?? editorWithView.prosemirrorView ?? null
-}
-
-function refreshCodeBlockSyntaxHighlighting(editor: ReturnType<typeof useCreateBlockNote>) {
-  const view = codeBlockHighlightRefreshView(editor)
-  if (!view) return
-
-  clearCodeBlockHighlightCache(view)
-  const transaction = view.state.tr.setMeta(PROSEMIRROR_HIGHLIGHT_REFRESH_META, true)
-
-  view.dispatch(transaction)
 }
 
 /** Single BlockNote editor view — content is swapped via replaceBlocks */
@@ -1443,6 +1391,7 @@ export function SingleEditorView(options: {
               linkToolbar={false}
               slashMenu={false}
               sideMenu={false}
+              filePanel={false}
             >
               <EditorInteractionControllers
                 {...suggestionMenuItems}
