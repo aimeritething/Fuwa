@@ -62,4 +62,29 @@ describe('SingleEditorView wikilink creation suggestions', () => {
     expect(onNavigateWikilink).toHaveBeenCalledWith('alpha plan')
     expect(await getItems('Alpha')).toHaveLength(1)
   })
+
+  it('shows existing notes for empty and one-character bracket queries', async () => {
+    const exactEntry = makeEntry({
+      path: String.raw`C:\Users\alex\Documents\Tolaria\project\alpha.md`,
+      filename: 'alpha.md',
+      title: 'Alpha',
+    })
+
+    render(
+      <SingleEditorView
+        editor={createEditor() as never}
+        entries={[exactEntry]}
+        onNavigateWikilink={vi.fn()}
+        sourceEntry={makeEntry({ path: String.raw`C:\Users\alex\Documents\Tolaria\source.md`, title: 'Source' })}
+        vaultPath={String.raw`C:\Users\alex\Documents\Tolaria`}
+      />,
+    )
+
+    const getItems = state.capturedSuggestionProps['[['].getItems as (
+      query: string
+    ) => Promise<Array<{ title: string }>>
+
+    expect((await getItems('')).map((item) => item.title)).toEqual(['Alpha'])
+    expect((await getItems('A')).at(0)?.title).toBe('Alpha')
+  })
 })

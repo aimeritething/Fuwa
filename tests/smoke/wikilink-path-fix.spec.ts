@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
 import {
   createFixtureVaultCopy,
   openFixtureVault,
@@ -100,12 +100,12 @@ async function dispatchModifiedLinkActivation(link: ReturnType<Page['locator']>)
     target.dispatchEvent(new MouseEvent('mousedown', {
       bubbles: true,
       cancelable: true,
-      metaKey: true,
+      ctrlKey: true,
     }))
     target.dispatchEvent(new MouseEvent('click', {
       bubbles: true,
       cancelable: true,
-      metaKey: true,
+      ctrlKey: true,
     }))
   })
 }
@@ -126,7 +126,7 @@ test.describe('Wikilink insertion and navigation', () => {
   })
 
   test('[[ autocomplete inserts wikilink that is not broken', async ({ page }) => {
-    const wikilink = await insertWikilink(page)
+    const wikilink = await insertWikilink(page, '[[M')
 
     const isBroken = await wikilink.evaluate(
       el => el.classList.contains('wikilink--broken'),
@@ -167,7 +167,7 @@ test.describe('Standard markdown link navigation', () => {
     tempVaultDir = null
   })
 
-  test('@smoke Cmd+clicking standard markdown links jumps within and across notes', async ({ page }) => {
+  test('@smoke Windows Ctrl+clicking standard markdown links jumps within and across notes', async ({ page }) => {
     await openNote(page, MARKDOWN_LINK_NOTE_TITLE)
 
     const scrollArea = page.locator('.editor-scroll-area').first()
