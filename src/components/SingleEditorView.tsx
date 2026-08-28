@@ -983,17 +983,6 @@ function unresolvedWikilinkCreationItem(
   }
 }
 
-function candidateWikilinkSuggestions(
-  baseItems: ReturnType<typeof buildBaseSuggestionItems>,
-  normalizedQuery: string,
-  triggerCharacter: WikilinkAutocompleteTrigger,
-) {
-  if (normalizedQuery.length >= MIN_QUERY_LENGTH) {
-    return preFilterWikilinks(baseItems, normalizedQuery)
-  }
-  return triggerCharacter === '[[' ? baseItems : null
-}
-
 function useSuggestionMenuItems(options: {
   baseItems: ReturnType<typeof buildBaseSuggestionItems>
   editor: ReturnType<typeof useCreateBlockNote>
@@ -1119,6 +1108,17 @@ function useSuggestionMenuItems(options: {
     getEmojiItems,
     getSlashMenuItems,
   }
+}
+
+function candidateWikilinkSuggestions(
+  baseItems: ReturnType<typeof buildBaseSuggestionItems>,
+  normalizedQuery: string,
+  triggerCharacter: WikilinkAutocompleteTrigger,
+) {
+  if (normalizedQuery.length >= MIN_QUERY_LENGTH) {
+    return preFilterWikilinks(baseItems, normalizedQuery)
+  }
+  return triggerCharacter === '[[' ? baseItems : null
 }
 
 type EditorInteractionControllersProps = ReturnType<typeof useSuggestionMenuItems> & {
