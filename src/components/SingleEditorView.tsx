@@ -983,6 +983,17 @@ function unresolvedWikilinkCreationItem(
   }
 }
 
+function candidateWikilinkSuggestions(
+  baseItems: ReturnType<typeof buildBaseSuggestionItems>,
+  normalizedQuery: string,
+  triggerCharacter: WikilinkAutocompleteTrigger,
+) {
+  if (normalizedQuery.length >= MIN_QUERY_LENGTH) {
+    return preFilterWikilinks(baseItems, normalizedQuery)
+  }
+  return triggerCharacter === '[[' ? baseItems : null
+}
+
 function useSuggestionMenuItems(options: {
   baseItems: ReturnType<typeof buildBaseSuggestionItems>
   editor: ReturnType<typeof useCreateBlockNote>
@@ -1000,33 +1011,32 @@ function useSuggestionMenuItems(options: {
 
   const buildItems = useCallback(
     (query: string, triggerCharacter: WikilinkAutocompleteTrigger) => {
-    const normalizedQuery = normalizeSuggestionQuery(query, triggerCharacter)
-    const candidates = normalizedQuery.length < MIN_QUERY_LENGTH
-      ? baseItems
-      : preFilterWikilinks(baseItems, normalizedQuery)
-    const items = attachClickHandlers(
-      candidates,
-      (target) => insertWikilink(target, triggerCharacter),
-      vaultPath ?? '',
-      sourceEntry,
-    )
-    const matchedItems = guardSuggestionMenuItems(
-      enrichSuggestionItems(items, normalizedQuery, typeEntryMap, {
-        showWorkspace: hasMultipleSuggestionWorkspaces(baseItems),
-      }),
-      runEditorAction,
-    )
-    if (!normalizedQuery || !sourceEntry || triggerCharacter !== '[['
-      || resolveEntry(entries, normalizedQuery, sourceEntry)) return matchedItems
+      const normalizedQuery = normalizeSuggestionQuery(query, triggerCharacter)
+      const candidates = candidateWikilinkSuggestions(baseItems, normalizedQuery, triggerCharacter)
+      if (!candidates) return null
+      const items = attachClickHandlers(
+        candidates,
+        (target) => insertWikilink(target, triggerCharacter),
+        vaultPath ?? '',
+        sourceEntry,
+      )
+      const matchedItems = guardSuggestionMenuItems(
+        enrichSuggestionItems(items, normalizedQuery, typeEntryMap, {
+          showWorkspace: hasMultipleSuggestionWorkspaces(baseItems),
+        }),
+        runEditorAction,
+      )
+      if (!normalizedQuery || !sourceEntry || triggerCharacter !== '[['
+        || resolveEntry(entries, normalizedQuery, sourceEntry)) return matchedItems
 
-    return [...matchedItems.slice(0, WIKILINK_AUTOCOMPLETE_RESULT_LIMIT - 1), unresolvedWikilinkCreationItem(
-      normalizedQuery,
-      t('editor.wikilink.createNote', { title: normalizedQuery }),
-      () => {
-        insertWikilink(normalizedQuery, triggerCharacter)
-        onNavigateWikilink(normalizedQuery)
-      },
-    )]
+      return [...matchedItems.slice(0, WIKILINK_AUTOCOMPLETE_RESULT_LIMIT - 1), unresolvedWikilinkCreationItem(
+        normalizedQuery,
+        t('editor.wikilink.createNote', { title: normalizedQuery }),
+        () => {
+          insertWikilink(normalizedQuery, triggerCharacter)
+          onNavigateWikilink(normalizedQuery)
+        },
+      )]
     },
     [baseItems, entries, insertWikilink, onNavigateWikilink, runEditorAction, sourceEntry, t, typeEntryMap, vaultPath],
   )

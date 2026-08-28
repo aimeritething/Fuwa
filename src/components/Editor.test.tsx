@@ -821,6 +821,32 @@ describe('archived note behavior', () => {
   })
 })
 
+const personalAutocompleteWorkspace = {
+  id: 'personal',
+  label: 'Personal',
+  alias: 'personal',
+  path: '/personal',
+  shortLabel: 'PE',
+  color: null,
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: true,
+}
+
+const teamAutocompleteWorkspace = {
+  id: 'team',
+  label: 'Team',
+  alias: 'team',
+  path: '/team',
+  shortLabel: 'TE',
+  color: null,
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: false,
+}
+
 describe('wikilink autocomplete', () => {
   const entries: VaultEntry[] = [
     { ...mockEntry, title: 'Alpha Project', filename: 'alpha.md', aliases: ['al'] },
@@ -841,13 +867,23 @@ describe('wikilink autocomplete', () => {
     )
   }
 
-  it('returns empty array for query shorter than 2 characters', async () => {
+  it('returns existing notes for empty and one-character bracket queries', async () => {
     renderWithEntries()
-    expect(capturedSuggestionState.getItems).toBeTruthy()
-    expect(await capturedSuggestionState.getItems!('')).toEqual([])
-    expect(await capturedSuggestionState.getItems!('a')).toEqual([])
-    // filterSuggestionItems should NOT be called for short queries
-    expect(mockFilterSuggestionItems).not.toHaveBeenCalled()
+    const getItems = capturedSuggestionState.getItems
+    if (!getItems) throw new Error('Expected bracket autocomplete items provider')
+
+    expect((await getItems('')).map(item => item.title)).toEqual([
+      'Alpha Project',
+      'Beta Review',
+      'Gamma Notes',
+    ])
+    expect((await getItems('a')).map(item => item.title)).toEqual([
+      'Alpha Project',
+      'Beta Review',
+      'Gamma Notes',
+      'Create a new note called “a”',
+    ])
+    expect(mockFilterSuggestionItems).toHaveBeenCalledTimes(2)
   })
 
   it('returns items for query of 2+ characters', async () => {
@@ -902,43 +938,19 @@ describe('wikilink autocomplete', () => {
   })
 
   it('prefixes inserted wikilinks when the selected note is in another workspace', async () => {
-    const personalWorkspace = {
-      id: 'personal',
-      label: 'Personal',
-      alias: 'personal',
-      path: '/personal',
-      shortLabel: 'PE',
-      color: null,
-      icon: null,
-      mounted: true,
-      available: true,
-      defaultForNewNotes: true,
-    }
-    const teamWorkspace = {
-      id: 'team',
-      label: 'Team',
-      alias: 'team',
-      path: '/team',
-      shortLabel: 'TE',
-      color: null,
-      icon: null,
-      mounted: true,
-      available: true,
-      defaultForNewNotes: false,
-    }
     const source = {
       ...mockEntry,
       path: '/personal/source.md',
       filename: 'source.md',
       title: 'Source',
-      workspace: personalWorkspace,
+      workspace: personalAutocompleteWorkspace,
     }
     const target = {
       ...mockEntry,
       path: '/team/projects/alpha.md',
       filename: 'alpha.md',
       title: 'Alpha',
-      workspace: teamWorkspace,
+      workspace: teamAutocompleteWorkspace,
     }
     capturedSuggestionState.getItems = null
     mockFilterSuggestionItems.mockImplementation((items: unknown[]) => items)
@@ -954,7 +966,7 @@ describe('wikilink autocomplete', () => {
 
     mockEditor.insertInlineContent.mockClear()
     const items = await capturedSuggestionState.getItems!('Alpha')
-    expect(items[0].workspace).toBe(teamWorkspace)
+    expect(items[0].workspace).toBe(teamAutocompleteWorkspace)
     items[0].onItemClick()
 
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
