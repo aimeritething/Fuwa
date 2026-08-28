@@ -103,9 +103,28 @@ describe('resolveBlocksForTarget performance paths', () => {
     expect(JSON.stringify(resolved.blocks)).not.toContain('TOLARIA_MATH')
   })
 
+  it('keeps image-heavy large notes on the off-thread direct parser', async () => {
+    const editor = makeEditor()
+    const images = Array.from(
+      { length: 600 },
+      (_, index) => `![Screenshot ${index + 1}](attachments/screenshot-${index + 1}.png)`,
+    ).join('\n\n')
+    const content = `${longMarkdownBody()}\n\n${images}`
+
+    const resolved = await resolveBlocksForTarget({
+      editor: editor as never,
+      cache: new Map(),
+      targetPath: '/vault/image-heavy.md',
+      content,
+      vaultPath: '/vault',
+    })
+
+    expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+    expect(resolved.blocks.filter(block => block.type === 'image')).toHaveLength(600)
+  })
+
   it.each([
     ['HTML blocks', '<aside>custom html</aside>', '/vault/html.md'],
-    ['Markdown images', '![diagram](attachments/diagram.png)', '/vault/image.md'],
   ])('falls back to BlockNote parsing for large notes with %s', async (_label, unsupportedMarkdown, targetPath) => {
     const editor = makeEditor()
     const content = `${longMarkdownBody()}\n\n${unsupportedMarkdown}`

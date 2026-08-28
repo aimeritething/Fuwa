@@ -4,33 +4,35 @@ import {
   tryParseFastMarkdownBlocksOffThread,
 } from './editorFastMarkdownBlocks'
 
+function commonLongNoteMarkdown(): string {
+  return [
+    '# Project Alpha',
+    '',
+    'A paragraph with **bold**, *italic*, ~~strike~~, `code`, and [docs](https://example.com).',
+    '',
+    '- Parent',
+    '  - Child',
+    '- [x] Done',
+    '1. First',
+    '2. Second',
+    '',
+    '> Quote',
+    '',
+    '```ts',
+    'const answer = 42',
+    '```',
+    '',
+    '| Name | Status |',
+    '| --- | --- |',
+    '| Alpha | Ready |',
+    '',
+    '---',
+  ].join('\n')
+}
+
 describe('tryParseFastMarkdownBlocks', () => {
   it('parses common long-note Markdown blocks directly', () => {
-    const markdown = [
-      '# Project Alpha',
-      '',
-      'A paragraph with **bold**, *italic*, ~~strike~~, `code`, and [docs](https://example.com).',
-      '',
-      '- Parent',
-      '  - Child',
-      '- [x] Done',
-      '1. First',
-      '2. Second',
-      '',
-      '> Quote',
-      '',
-      '```ts',
-      'const answer = 42',
-      '```',
-      '',
-      '| Name | Status |',
-      '| --- | --- |',
-      '| Alpha | Ready |',
-      '',
-      '---',
-    ].join('\n')
-
-    const result = tryParseFastMarkdownBlocks(markdown)
+    const result = tryParseFastMarkdownBlocks(commonLongNoteMarkdown())
 
     expect(result.supported).toBe(true)
     expect(result.blocks).toEqual([
@@ -59,17 +61,31 @@ describe('tryParseFastMarkdownBlocks', () => {
     ])
   })
 
-  it('rejects Markdown constructs that need BlockNote parsing to preserve semantics', () => {
+  it('parses standalone Markdown images into BlockNote-compatible blocks', () => {
+    const result = tryParseFastMarkdownBlocks([
+      '![diagram](attachments/diagram.png)',
+      '',
+      '![](attachments/empty-alt.png)',
+    ].join('\n'))
+
+    expect(result.supported).toBe(true)
+    expect(result.blocks).toEqual([
+      { type: 'image', props: { name: 'diagram', url: 'attachments/diagram.png' }, children: [] },
+      { type: 'image', props: { name: '', url: 'attachments/empty-alt.png' }, children: [] },
+    ])
+  })
+
+  it('rejects ambiguous Markdown constructs that need BlockNote parsing to preserve semantics', () => {
     const html = tryParseFastMarkdownBlocks('<aside>custom html</aside>')
     const referenceLink = tryParseFastMarkdownBlocks('[docs]: https://example.com')
-    const image = tryParseFastMarkdownBlocks('![diagram](attachments/diagram.png)')
+    const inlineImage = tryParseFastMarkdownBlocks('Before ![diagram](attachments/diagram.png) after')
 
     expect(html.supported).toBe(false)
     expect(html.metrics.fallbackReason).toBe('html-block')
     expect(referenceLink.supported).toBe(false)
     expect(referenceLink.metrics.fallbackReason).toBe('reference-link')
-    expect(image.supported).toBe(false)
-    expect(image.metrics.fallbackReason).toBe('markdown-image')
+    expect(inlineImage.supported).toBe(false)
+    expect(inlineImage.metrics.fallbackReason).toBe('markdown-image')
   })
 
   it('emits BlockNote-compatible hrefs for external links in large-note blocks', () => {

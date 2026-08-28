@@ -1,3 +1,9 @@
+import {
+  fastMarkdownTextItem as textItem,
+  parseFastMarkdownInline as parseInline,
+  type FastMarkdownInlineItem as InlineItem,
+} from './editorFastMarkdownInline'
+
 export interface FastMarkdownParseMetrics {
   blockCount: number
   durationMs: number
@@ -9,21 +15,6 @@ export interface FastMarkdownParseResult {
   blocks: unknown[]
   metrics: FastMarkdownParseMetrics
   supported: boolean
-}
-
-interface TextStyles {
-  bold?: boolean
-  code?: boolean
-  italic?: boolean
-  strike?: boolean
-}
-
-interface InlineItem {
-  type: 'link' | 'text'
-  href?: string
-  text?: string
-  content?: InlineItem[]
-  styles?: TextStyles
 }
 
 interface BlockLike {
@@ -39,12 +30,9 @@ interface TableContentLike {
   headerRows?: number
 }
 
-type InlineMarkdownText = string
 type LineIndex = number
-type MarkdownHref = string
 type MarkdownLine = string
 type MarkdownSourceText = string
-type MarkdownToken = string
 
 interface ParserState {
   fallbackReason: string | null
@@ -58,12 +46,6 @@ interface ListLine {
   orderedStart?: number
   text: string
   type: 'bulletListItem' | 'checkListItem' | 'numberedListItem'
-}
-
-interface InlineLink {
-  end: number
-  href: string
-  label: string
 }
 
 interface ParsedBlockStep {
@@ -99,11 +81,9 @@ const CHECK_LIST_PREFIX_RE = /^([ \t]*)([-*+])[ \t]+\[([ xX])\]/u
 const THEMATIC_BREAK_RE = /^[ \t]{0,3}(?:-{3,}|\*{3,}|_{3,})[ \t]*$/u
 const FENCE_RE = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/u
 const MARKDOWN_IMAGE_RE = /(^|[^\\])!\[[^\]]*\]\(/u
+const STANDALONE_IMAGE_RE = /^[ \t]{0,3}!\[((?:\\.|[^\]\\])*)\]\((<[^>\r\n]+>|[^\s()\r\n]+)\)[ \t]*$/u
 const REFERENCE_LINK_RE = /^[ \t]{0,3}\[[^\]]+\]:[ \t]+/u
 const UNSUPPORTED_BLOCK_RE = /^[ \t]{0,3}(?:#{7,}|:::+|\[\^.+\]:)/u
-const DURABLE_MARKDOWN_TOKEN_PREFIX = '@@TOLARIA_'
-const DURABLE_MARKDOWN_TOKEN_RE = /^@@TOLARIA_[A-Z_]+:[^@]+@@$/u
-const TEXT_STYLE_KEYS: Array<keyof TextStyles> = ['bold', 'code', 'italic', 'strike']
 
 const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null
 
@@ -126,146 +106,23 @@ function paragraphBlock(content: InlineItem[]): BlockLike {
   return { type: 'paragraph', content, children: [] }
 }
 
-function textItem(text: InlineMarkdownText, styles: TextStyles = {}): InlineItem {
-  return { type: 'text', text, styles }
-}
-
-function stylesEqual(left?: TextStyles, right?: TextStyles): boolean {
-  return TEXT_STYLE_KEYS.every(style => Boolean(Reflect.get(left ?? {}, style)) === Boolean(Reflect.get(right ?? {}, style)))
-}
-
-function appendText(items: InlineItem[], text: string, styles: TextStyles): void {
-  if (!text) return
-  const previous = items.at(-1)
-  if (previous?.type === 'text' && stylesEqual(previous.styles, styles)) {
-    previous.text = `${previous.text ?? ''}${text}`
-    return
-  }
-  items.push(textItem(text, { ...styles }))
-}
-
-function isEscaped(text: InlineMarkdownText, index: LineIndex): boolean {
-  let slashCount = 0
-  for (let i = index - 1; i >= 0 && text.charAt(i) === '\\'; i--) slashCount += 1
-  return slashCount % 2 === 1
-}
-
-function findUnescaped(text: InlineMarkdownText, needle: MarkdownToken, from: LineIndex): LineIndex {
-  let index = text.indexOf(needle, from)
-  while (index !== -1 && isEscaped(text, index)) index = text.indexOf(needle, index + needle.length)
-  return index
-}
-
-function markdownLinkBounds(text: InlineMarkdownText, index: LineIndex): { hrefEnd: LineIndex; labelEnd: LineIndex } | null {
-  if (text.charAt(index) !== '[' || isEscaped(text, index)) return null
-  const labelEnd = findUnescaped(text, ']', index + 1)
-  if (labelEnd === -1 || text.charAt(labelEnd + 1) !== '(') return null
-  const hrefEnd = findUnescaped(text, ')', labelEnd + 2)
-  return hrefEnd === -1 ? null : { hrefEnd, labelEnd }
-}
-
-function validMarkdownLinkHref(href: MarkdownHref): boolean {
-  if (!href) return false
-  if (!/\s/u.test(href)) return true
-  return href.startsWith('<') && href.endsWith('>')
-}
-
-function normalizedMarkdownLinkHref(href: MarkdownHref): MarkdownHref {
-  return href.startsWith('<') && href.endsWith('>') ? href.slice(1, -1) : href
-}
-
-function readLinkAt(text: InlineMarkdownText, index: LineIndex): InlineLink | null {
-  const bounds = markdownLinkBounds(text, index)
-  if (!bounds) return null
-
-  const href = text.slice(bounds.labelEnd + 2, bounds.hrefEnd).trim()
-  if (!validMarkdownLinkHref(href)) return null
+function imageBlock(line: MarkdownLine): BlockLike | null {
+  const match = STANDALONE_IMAGE_RE.exec(line)
+  if (!match) return null
+  const target = match[2]
   return {
-    end: bounds.hrefEnd + 1,
-    href: normalizedMarkdownLinkHref(href),
-    label: text.slice(index + 1, bounds.labelEnd),
+    type: 'image',
+    props: {
+      name: match[1].replace(/\\([\]\\])/gu, '$1'),
+      url: target.startsWith('<') ? target.slice(1, -1) : target,
+    },
+    children: [],
   }
-}
-
-function parseInline(text: InlineMarkdownText, styles: TextStyles = {}): InlineItem[] {
-  if (isDurableMarkdownToken(text)) return [textItem(text, styles)]
-
-  const items: InlineItem[] = []
-  let index = 0
-
-  while (index < text.length) {
-    const durableToken = readDurableMarkdownTokenAt(text, index)
-    if (durableToken) {
-      appendText(items, durableToken, styles)
-      index += durableToken.length
-      continue
-    }
-
-    const link = readLinkAt(text, index)
-    if (link) {
-      items.push({
-        type: 'link',
-        href: link.href,
-        content: parseInline(link.label, styles),
-      })
-      index = link.end
-      continue
-    }
-
-    const codeEnd = text.charAt(index) === '`' && !isEscaped(text, index)
-      ? findUnescaped(text, '`', index + 1)
-      : -1
-    if (codeEnd !== -1) {
-      appendText(items, text.slice(index + 1, codeEnd), { ...styles, code: true })
-      index = codeEnd + 1
-      continue
-    }
-
-    const marker = nextStyleMarker(text, index)
-    if (marker) {
-      const end = findUnescaped(text, marker.token, index + marker.token.length)
-      if (end !== -1) {
-        const inner = text.slice(index + marker.token.length, end)
-        items.push(...parseInline(inner, { ...styles, [marker.style]: true }))
-        index = end + marker.token.length
-        continue
-      }
-    }
-
-    appendText(items, text.charAt(index) === '\\' ? text.charAt(index + 1) || '\\' : text.charAt(index), styles)
-    index += text.charAt(index) === '\\' && index + 1 < text.length ? 2 : 1
-  }
-
-  return items
-}
-
-function isDurableMarkdownToken(text: InlineMarkdownText): boolean {
-  return DURABLE_MARKDOWN_TOKEN_RE.test(text)
-}
-
-function readDurableMarkdownTokenAt(text: InlineMarkdownText, index: LineIndex): MarkdownToken | null {
-  if (!text.startsWith(DURABLE_MARKDOWN_TOKEN_PREFIX, index)) return null
-
-  const tokenEnd = text.indexOf('@@', index + DURABLE_MARKDOWN_TOKEN_PREFIX.length)
-  if (tokenEnd === -1) return null
-
-  const token = text.slice(index, tokenEnd + 2)
-  return isDurableMarkdownToken(token) ? token : null
-}
-
-function nextStyleMarker(text: InlineMarkdownText, index: LineIndex): { style: keyof TextStyles; token: MarkdownToken } | null {
-  if (isEscaped(text, index)) return null
-  if (text.startsWith('**', index)) return { style: 'bold', token: '**' }
-  if (text.startsWith('__', index)) return { style: 'bold', token: '__' }
-  if (text.startsWith('~~', index)) return { style: 'strike', token: '~~' }
-  if (text.charAt(index) === '*') return { style: 'italic', token: '*' }
-  if (text.charAt(index) === '_') return { style: 'italic', token: '_' }
-  return null
 }
 
 function unsupportedLine(line: MarkdownLine): string | null {
   if (startsHtmlBlock(line)) return 'html-block'
-  if (MARKDOWN_IMAGE_RE.test(line)) return 'markdown-image'
+  if (MARKDOWN_IMAGE_RE.test(line) && !imageBlock(line)) return 'markdown-image'
   if (REFERENCE_LINK_RE.test(line)) return 'reference-link'
   if (UNSUPPORTED_BLOCK_RE.test(line)) return 'unsupported-block-marker'
   return null
@@ -520,6 +377,7 @@ function parseParagraph(state: ParserState, start: LineIndex): { block: BlockLik
 
 function startsBlock(lines: MarkdownLine[], index: LineIndex): boolean {
   const line = lines.at(index) ?? ''
+  if (imageBlock(line)) return true
   if (headingBlock(line)) return true
   if (quoteBlock(line)) return true
   if (listLine(line)) return true
@@ -544,6 +402,9 @@ function parseMultilineBlock(state: ParserState, index: LineIndex): ParsedBlockS
 }
 
 function parseSingleLineBlock({ index, line }: SingleLineParseInput): ParsedBlockStep | null {
+  const image = imageBlock(line)
+  if (image) return blockStep({ block: image, next: index + 1 })
+
   const heading = headingBlock(line)
   if (heading) return blockStep({ block: heading, next: index + 1 })
 
