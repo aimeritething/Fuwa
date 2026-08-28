@@ -67,6 +67,7 @@
   --state-hover-subtle: #F0F0EF;
   --state-selected: #E8F4FE;
   --state-selected-strong: #D8ECFE;
+  --editor-selection: var(--state-selected);
   --state-active: #E8F4FE;
   --state-focus-ring: #155DFF;
   --state-drag-target: #155DFF18;
@@ -220,6 +221,7 @@
   --state-hover-subtle: #262520;
   --state-selected: #1E344C;
   --state-selected-strong: #25415F;
+  --editor-selection: #3A63A0;
   --state-active: #203A55;
   --state-focus-ring: #78A4FF;
   --state-drag-target: rgba(120, 164, 255, 0.2);
