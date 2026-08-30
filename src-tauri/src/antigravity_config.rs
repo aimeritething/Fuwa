@@ -13,8 +13,8 @@ pub(crate) fn build_command(
     crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
     command.args(&target.prefix_args);
     command
-        .arg("-p")
-        .arg(build_prompt(request))
+        .arg("--input-format")
+        .arg("text")
         .arg("--add-dir")
         .arg(&request.vault_path);
     apply_permission_flags(&mut command, request.permission_mode);
@@ -25,10 +25,6 @@ pub(crate) fn build_command(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     Ok(command)
-}
-
-fn build_prompt(request: &AgentStreamRequest) -> String {
-    crate::cli_agent_runtime::build_prompt(&request.message, request.system_prompt.as_deref())
 }
 
 fn apply_permission_flags(
@@ -117,7 +113,7 @@ mod tests {
     }
 
     #[test]
-    fn command_uses_one_shot_prompt_and_workspace_mcp_config() {
+    fn command_uses_stdin_prompt_transport_and_workspace_mcp_config() {
         let vault = tempfile::tempdir().unwrap();
         let request = request(
             vault.path().to_string_lossy().into_owned(),
@@ -129,7 +125,9 @@ mod tests {
         assert_eq!(command.get_program(), OsStr::new("agy"));
         assert!(args
             .windows(2)
-            .any(|pair| pair == [OsStr::new("-p"), OsStr::new("Rename the note")]));
+            .any(|pair| pair == [OsStr::new("--input-format"), OsStr::new("text")]));
+        assert!(!args.contains(&OsStr::new("-p")));
+        assert!(!args.contains(&OsStr::new("Rename the note")));
         assert!(args
             .windows(2)
             .any(|pair| pair == [OsStr::new("--add-dir"), vault.path().as_os_str()]));

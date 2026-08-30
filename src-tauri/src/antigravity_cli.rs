@@ -23,8 +23,10 @@ where
     F: FnMut(AiAgentStreamEvent),
 {
     let command = crate::antigravity_config::build_command(binary, &request)?;
+    let prompt =
+        crate::cli_agent_runtime::build_prompt(&request.message, request.system_prompt.as_deref());
     crate::cli_agent_runtime::run_ai_agent_line_stream(
-        LineStreamProcess::new(command, "agy", "antigravity"),
+        LineStreamProcess::new(command, "agy", "antigravity").with_stdin(prompt),
         emit,
         format_antigravity_error,
     )
@@ -93,7 +95,16 @@ mod tests {
         let vault = tempfile::tempdir().unwrap();
         let binary = executable_script(
             dir.path(),
-            r#"printf '%s\n' 'Hello from Antigravity'
+            r#"stdin="$(cat)"
+if [ "$stdin" != "System instructions:
+Use Tolaria conventions
+
+User request:
+Summarize" ]; then
+  printf '%s\n' "unexpected stdin: $stdin" >&2
+  exit 9
+fi
+printf '%s\n' 'Hello from Antigravity'
 printf '%s\n' 'Second line'
 "#,
         );
