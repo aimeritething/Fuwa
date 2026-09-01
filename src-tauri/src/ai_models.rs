@@ -259,7 +259,21 @@ fn normalized_base_url(request: &AiModelStreamRequest) -> Result<String, String>
     if base.is_empty() {
         return Err("Custom API providers need a base URL.".into());
     }
-    Ok(base.to_string())
+    Ok(normalize_ollama_loopback(&request.provider.kind, base))
+}
+
+fn normalize_ollama_loopback(kind: &AiModelProviderKind, base: &str) -> String {
+    const LOCALHOST_PREFIX: &str = "http://localhost";
+    if !matches!(kind, AiModelProviderKind::Ollama) {
+        return base.to_string();
+    }
+    let Some(suffix) = base.strip_prefix(LOCALHOST_PREFIX) else {
+        return base.to_string();
+    };
+    match suffix.as_bytes().first() {
+        None | Some(b':') | Some(b'/') => format!("http://127.0.0.1{suffix}"),
+        _ => base.to_string(),
+    }
 }
 
 fn send_json_request(

@@ -167,11 +167,41 @@ fn shared_provider_catalog_supplies_runtime_base_urls() {
     );
     assert_eq!(
         provider_default_base_url(&AiModelProviderKind::Ollama),
-        Some("http://localhost:11434/v1")
+        Some("http://127.0.0.1:11434/v1")
     );
     assert_eq!(
         provider_default_base_url(&AiModelProviderKind::OpenAiCompatible),
         None
+    );
+}
+
+#[test]
+fn ollama_localhost_requests_use_the_ipv4_loopback() {
+    let mut ollama = provider(AiModelProviderKind::Ollama);
+    ollama.base_url = Some("http://localhost:11434/v1/".into());
+    assert_eq!(
+        normalized_base_url(&request(ollama)).unwrap(),
+        "http://127.0.0.1:11434/v1"
+    );
+
+    let mut default_ollama = provider(AiModelProviderKind::Ollama);
+    default_ollama.base_url = None;
+    assert_eq!(
+        normalized_base_url(&request(default_ollama)).unwrap(),
+        "http://127.0.0.1:11434/v1"
+    );
+
+    let mut remote_ollama = provider(AiModelProviderKind::Ollama);
+    remote_ollama.base_url = Some("http://localhost.example/v1".into());
+    assert_eq!(
+        normalized_base_url(&request(remote_ollama)).unwrap(),
+        "http://localhost.example/v1"
+    );
+
+    let compatible = provider(AiModelProviderKind::OpenAiCompatible);
+    assert_eq!(
+        normalized_base_url(&request(compatible)).unwrap(),
+        "https://example.com/v1"
     );
 }
 
