@@ -566,17 +566,28 @@ export function countWords(content: MarkdownSource): WordCount {
   return cjkCount + [...textWithCjkBoundaries.matchAll(WORD_COUNT_WORD_RE)].length
 }
 
-type WordCountPatternName = keyof typeof wordCountContract.patterns
-
-function contractPattern(name: WordCountPatternName, expression: RegExp): RegExp {
-  if (expression.source === wordCountContract.patterns[name]) return expression
+function contractPattern(name: string, expectedSource: string, expression: RegExp): RegExp {
+  if (expression.source === expectedSource) return expression
   throw new Error(`Word-count pattern drifted from the shared contract: ${name}`)
 }
 
-const WORD_COUNT_WIKILINK_RE = contractPattern('wikilink', /\[\[[^\]]*\]\]/gu)
-const WORD_COUNT_MARKDOWN_MARKER_RE = contractPattern('markdownMarker', /[#*_`>~|]|\[|\]|-/gu)
+const WORD_COUNT_WIKILINK_RE = contractPattern(
+  'wikilink',
+  wordCountContract.patterns.wikilink,
+  /\[\[[^\]]*\]\]/gu,
+)
+const WORD_COUNT_MARKDOWN_MARKER_RE = contractPattern(
+  'markdownMarker',
+  wordCountContract.patterns.markdownMarker,
+  /[#*_`>~|]|\[|\]|-/gu,
+)
 const WORD_COUNT_UNSPACED_CJK_RE = contractPattern(
   'unspacedCjk',
+  wordCountContract.patterns.unspacedCjk,
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu,
 )
-const WORD_COUNT_WORD_RE = contractPattern('word', /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu)
+const WORD_COUNT_WORD_RE = contractPattern(
+  'word',
+  wordCountContract.patterns.word,
+  /[\p{L}\p{N}]['’\p{L}\p{N}]*/gu,
+)

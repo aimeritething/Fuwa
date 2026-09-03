@@ -3,7 +3,7 @@
     "wikilink": "\\[\\[[^\\]]*\\]\\]",
     "markdownMarker": "[#*_`>~|]|\\[|\\]|-",
     "unspacedCjk": "[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]",
-    "word": "[\\p{L}\\p{N}]+(?:['’][\\p{L}\\p{N}]+)*"
+    "word": "[\\p{L}\\p{N}]['’\\p{L}\\p{N}]*"
   },
   "fixtures": [
     {
