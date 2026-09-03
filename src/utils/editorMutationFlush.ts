@@ -5,7 +5,7 @@ interface EditorMutationFlushOptions {
   savePendingForPath?: ((path: string) => Promise<unknown>) | null
 }
 
-export async function persistEditorStateBeforeMutation({
+export function persistEditorStateBeforeMutation({
   path,
   flushPendingEditorContent,
   flushPendingRawContent,
@@ -13,5 +13,6 @@ export async function persistEditorStateBeforeMutation({
 }: EditorMutationFlushOptions): Promise<void> {
   flushPendingEditorContent?.(path)
   flushPendingRawContent?.(path)
-  await savePendingForPath?.(path)
+  const pendingSave = savePendingForPath?.(path)
+  return pendingSave ? pendingSave.then(() => undefined) : Promise.resolve()
 }
