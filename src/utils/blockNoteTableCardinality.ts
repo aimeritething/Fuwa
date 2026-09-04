@@ -33,13 +33,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function isTableRowArray(value: unknown): value is TableRowLike[] {
-  return Array.isArray(value)
+function isTableContent(value: unknown): value is TableContentLike {
+  return isRecord(value) && value.type === 'tableContent' && Array.isArray(value.rows)
 }
 
 function tableContent(value: unknown): TableContentLike | null {
-  if (!isRecord(value) || value.type !== 'tableContent' || !isTableRowArray(value.rows)) return null
-  return value
+  return isTableContent(value) ? value : null
 }
 
 function blockObject(value: unknown): BlockLike | null {
