@@ -80,7 +80,7 @@ function normalizeTableRows(rows: TableRowLike[]): TableRowLike[] {
   const normalized = rows.map((row) => {
     if (!Array.isArray(row.cells)) return row
     const cells = row.cells.map(normalizeTableCellCardinalities)
-    if (cells.every((cell, index) => cell === row.cells?.[index])) return row
+    if (cells.every((cell, index) => cell === row.cells?.at(index))) return row
     changed = true
     return { ...row, cells }
   })
@@ -124,5 +124,5 @@ function normalizeBlockTableCardinalities(value: unknown): unknown {
 
 export function normalizeUnsafeTableCardinalities(blocks: unknown[]): unknown[] {
   const normalized = blocks.map(normalizeBlockTableCardinalities)
-  return normalized.every((block, index) => block === blocks[index]) ? blocks : normalized
+  return normalized.every((block, index) => block === blocks.at(index)) ? blocks : normalized
 }
