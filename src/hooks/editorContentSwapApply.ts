@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
+import type { Transaction } from '@tiptap/pm/state'
 import { trackEvent } from '../lib/telemetry'
 import { classifyRichEditorRecoveryError } from '../components/richEditorRecoveryClassifier'
 import { blankParagraphBlocks } from './editorTabContent'
@@ -87,12 +88,11 @@ function mutateEditorWithoutHistory(
   editor: ReturnType<typeof useCreateBlockNote>,
   mutate: () => void,
 ): void {
-  const transact = editor.transact
-  if (typeof transact !== 'function') {
+  if (typeof editor.transact !== 'function') {
     mutate()
     return
   }
-  transact.call(editor, (transaction) => {
+  editor.transact((transaction: Transaction) => {
     transaction.setMeta('addToHistory', false)
     mutate()
   })
