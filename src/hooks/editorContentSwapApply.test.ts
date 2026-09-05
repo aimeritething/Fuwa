@@ -154,8 +154,9 @@ describe('applyBlocksToEditor', () => {
       reason: 'stale_block_reference',
     })
     expect(editor.blocksToHTMLLossy).toHaveBeenCalledWith(nextBlocks)
+    const recoveryMarkup = editor.blocksToHTMLLossy.mock.results[0]?.value
     expect(editor._tiptapEditor.chain).toHaveBeenCalledOnce()
-    expect(editor._tiptapEditor.chain().setContent).toHaveBeenCalledWith('<p>Recovered content</p>')
+    expect(editor._tiptapEditor.chain().setContent).toHaveBeenCalledWith(recoveryMarkup)
     expect(editor._tiptapEditor.chain().setMeta).toHaveBeenCalledWith('addToHistory', false)
     expect(editor._tiptapEditor.chain().run).toHaveBeenCalledOnce()
   })
@@ -244,7 +245,8 @@ describe('applyBlocksToEditor', () => {
     expect(applied).toBe(true)
     expect(editor.insertBlocks).not.toHaveBeenCalled()
     expect(editor.blocksToHTMLLossy).toHaveBeenCalledWith(blocks)
-    expect(editor._tiptapEditor.chain().setContent).toHaveBeenCalledWith('<p>Recovered content</p>')
+    const recoveryMarkup = editor.blocksToHTMLLossy.mock.results[0]?.value
+    expect(editor._tiptapEditor.chain().setContent).toHaveBeenCalledWith(recoveryMarkup)
     expect(editor._tiptapEditor.chain().setMeta).toHaveBeenCalledWith('addToHistory', false)
     expect(editor.isEditable).toBe(true)
     expect(suppressChangeRef.current).toBe(false)
