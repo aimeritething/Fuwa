@@ -92,8 +92,8 @@ function mutateEditorWithoutHistory(
     mutate()
     return
   }
-  editor.transact((transaction: Transaction) => {
-    transaction.setMeta('addToHistory', false)
+  editor.transact((transaction: Transaction | undefined) => {
+    transaction?.setMeta('addToHistory', false)
     mutate()
   })
 }
