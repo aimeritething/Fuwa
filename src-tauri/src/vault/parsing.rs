@@ -36,7 +36,7 @@ fn inline_markdown_patterns() -> &'static [Regex; 5] {
     static PATTERNS: OnceLock<[Regex; 5]> = OnceLock::new();
     PATTERNS.get_or_init(|| {
         [
-            r"~~(\S(?:.*?\S)?)~~",
+            r"~~(\S[^~]*\S|\S)~~",
             r"\[([^\]]+)\]\([^)]+\)",
             r"\[\[[^|\]]+\|([^\]]+)\]\]",
             r"\[\[([^\]]+)\]\]",

@@ -41,6 +41,11 @@
       "expected": "Keep obsolete history"
     },
     {
+      "name": "whitespace-padded tildes",
+      "input": "Keep ~~ not formatting ~~ literal",
+      "expected": "Keep ~~ not formatting ~~ literal"
+    },
+    {
       "name": "literal tildes",
       "input": "Note~2~beta",
       "expected": "Note~2~beta"

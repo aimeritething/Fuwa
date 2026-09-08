@@ -45,7 +45,7 @@ interface MarkdownCodeFence {
 }
 
 const inlineMarkdownPatterns = [
-  /~~(\S(?:.*?\S)?)~~/gu,
+  /~~(\S[^~]*\S|\S)~~/gu,
   /\[([^\]]+)\]\([^)]+\)/gu,
   /\[\[[^|\]]+\|([^\]]+)\]\]/gu,
   /\[\[([^\]]+)\]\]/gu,
