@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { AppCommandHandlers } from './appCommandDispatcher'
 
 export interface TabCommandDeps {
   activeTabPath: string | null
@@ -11,20 +12,13 @@ export interface TabCommandDeps {
   closeWindow: () => Promise<void>
 }
 
+/** The manifest commands this hook answers: ⌘W (close the active Tab; with zero Tabs, close the window), ⌘⇧[ / ⌘⇧], ⌘1–9. */
+export type TabCommandHandlers = Required<
+  Pick<AppCommandHandlers, 'onCloseTab' | 'onPreviousTab' | 'onNextTab' | (typeof JUMP_KEYS)[number]>
+>
+
 export interface TabCommands {
-  /** ⌘W: close the active Tab; with zero Tabs, close the window (spec section 7). */
-  onCloseTab: () => void
-  onPreviousTab: () => void
-  onNextTab: () => void
-  onJumpToTab1: () => void
-  onJumpToTab2: () => void
-  onJumpToTab3: () => void
-  onJumpToTab4: () => void
-  onJumpToTab5: () => void
-  onJumpToTab6: () => void
-  onJumpToTab7: () => void
-  onJumpToTab8: () => void
-  onJumpToTab9: () => void
+  handlers: TabCommandHandlers
   /** The tab bar's and Open Editors' click paths. */
   activateTabSettled: (path: string) => void
   closeTabSettled: (path: string) => void
@@ -61,7 +55,7 @@ export function useTabCommands(deps: TabCommandDeps): TabCommands {
         .then(action)
     }
 
-    const commands: TabCommands = {
+    const handlers: TabCommandHandlers = {
       onCloseTab: () => {
         if (activeTabPath === null) {
           closeWindow().catch((error: unknown) => {
@@ -73,12 +67,14 @@ export function useTabCommands(deps: TabCommandDeps): TabCommands {
       },
       onPreviousTab: () => afterSettling(() => activateAdjacentTab(-1)),
       onNextTab: () => afterSettling(() => activateAdjacentTab(1)),
-      activateTabSettled: (path) => afterSettling(() => activateTab(path)),
-      closeTabSettled: (path) => afterSettling(() => closeTab(path)),
       ...(Object.fromEntries(
         JUMP_KEYS.map((key, index) => [key, () => afterSettling(() => activateTabAt(index))]),
-      ) as Pick<TabCommands, (typeof JUMP_KEYS)[number]>),
+      ) as Pick<TabCommandHandlers, (typeof JUMP_KEYS)[number]>),
     }
-    return commands
+    return {
+      handlers,
+      activateTabSettled: (path) => afterSettling(() => activateTab(path)),
+      closeTabSettled: (path) => afterSettling(() => closeTab(path)),
+    }
   }, [activateAdjacentTab, activateTab, activateTabAt, activeTabPath, closeTab, closeWindow, settleActiveNote])
 }

@@ -1,0 +1,22 @@
+/* The close × shared by tabs and Open Editors rows. The row that hosts it
+   turns it on with `--close-affordance-opacity` when hovered or selected. */
+.fuwa-close-affordance {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: var(--close-affordance-opacity, 0);
+  cursor: default;
+}
+
+.fuwa-close-affordance:hover {
+  background: var(--state-hover);
+  color: var(--text-primary);
+}

@@ -115,12 +115,22 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+const MAIN_WINDOW_LABEL: &str = "main";
+
 /// The main window's frame follows it into the Session; closing flushes the file.
 fn handle_window_event(window: &tauri::Window, event: &WindowEvent) {
+    if window.label() != MAIN_WINDOW_LABEL {
+        return;
+    }
+    let Some(webview_window) = window.app_handle().get_webview_window(MAIN_WINDOW_LABEL) else {
+        return;
+    };
     match event {
-        WindowEvent::Moved(_) | WindowEvent::Resized(_) => session::note_window_frame(window),
+        WindowEvent::Moved(_) | WindowEvent::Resized(_) => {
+            session::note_window_frame(&webview_window)
+        }
         WindowEvent::CloseRequested { .. } => {
-            session::note_window_frame(window);
+            session::note_window_frame(&webview_window);
             session::flush_now(window.app_handle());
         }
         _ => {}

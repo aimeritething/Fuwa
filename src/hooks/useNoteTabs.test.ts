@@ -125,6 +125,31 @@ describe('useNoteTabs', () => {
     expect(result.current.tabs.map((tab) => tab.content)).toEqual(['# A\n', '# C\n'])
   })
 
+  it('keeps a Document opened before the restore settled, and keeps it active', async () => {
+    seedFiles({ [A]: '# A\n', [B]: '# B\n', [C]: '# C\n' })
+    const { result } = renderHook(() => useNoteTabs())
+
+    await act(async () => {
+      await result.current.openNote(C)
+      await result.current.restoreOpenEditors([{ path: A, mode: 'rich' }, { path: B, mode: 'rich' }], A)
+    })
+
+    expect(openPaths(result)).toEqual([A, B, C])
+    expect(result.current.activeTabPath).toBe(C)
+  })
+
+  it('restores Documents only: an Image file entry is left for AIM-384', async () => {
+    seedFiles({ [A]: '# A\n' })
+    const { result } = renderHook(() => useNoteTabs())
+
+    await act(async () => {
+      await result.current.restoreOpenEditors([{ path: '/n/cover.png' }, { path: A, mode: 'rich' }], A)
+    })
+
+    expect(openPaths(result)).toEqual([A])
+    expect(runtime.invoke).toHaveBeenCalledTimes(1)
+  })
+
   it('announces the opened content on the note-content bus for the active Document', async () => {
     runtime.invoke.mockResolvedValue('# Welcome\n')
     const events: NoteContentResolvedEvent[] = []

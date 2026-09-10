@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSession, restoreOpenEditors, sessionForOpenEditors } from './sessionFile'
+import { parseSession, restoreOpenEditors, sessionForOpenEditors } from './sessionSchema'
 
 const A = '/Users/x/notes/a.md'
 const B = '/Users/x/notes/b.md'

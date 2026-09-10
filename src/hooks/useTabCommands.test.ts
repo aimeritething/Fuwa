@@ -26,7 +26,7 @@ describe('useTabCommands', () => {
     const { commands, order } = renderCommands('/n/a.md')
 
     await act(async () => {
-      commands.onCloseTab()
+      commands.handlers.onCloseTab()
     })
 
     expect(order).toEqual(['settle', 'close /n/a.md'])
@@ -36,7 +36,7 @@ describe('useTabCommands', () => {
     const { commands, deps, order } = renderCommands(null)
 
     await act(async () => {
-      commands.onCloseTab()
+      commands.handlers.onCloseTab()
     })
 
     expect(order).toEqual(['close window'])
@@ -47,10 +47,10 @@ describe('useTabCommands', () => {
     const { commands, order } = renderCommands('/n/a.md')
 
     await act(async () => {
-      commands.onPreviousTab()
-      commands.onNextTab()
-      commands.onJumpToTab2()
-      commands.onJumpToTab9()
+      commands.handlers.onPreviousTab()
+      commands.handlers.onNextTab()
+      commands.handlers.onJumpToTab2()
+      commands.handlers.onJumpToTab9()
     })
 
     expect(order).toEqual(['settle', 'settle', 'settle', 'settle', 'adjacent -1', 'adjacent 1', 'jump 1', 'jump 8'])
@@ -73,7 +73,7 @@ describe('useTabCommands', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await act(async () => {
-      commands.onNextTab()
+      commands.handlers.onNextTab()
     })
 
     expect(order).toEqual(['adjacent 1'])

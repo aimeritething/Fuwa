@@ -17,10 +17,7 @@ use std::{
     sync::Mutex,
     time::Duration,
 };
-use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize,
-    Runtime, WebviewWindow, Window,
-};
+use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, Runtime, WebviewWindow};
 
 pub const SESSION_FILE_NAME: &str = "session.json";
 pub const SESSION_VERSION: u64 = 1;
@@ -30,18 +27,10 @@ const MAIN_WINDOW_LABEL: &str = "main";
 const MIN_VISIBLE_WIDTH: u32 = 64;
 const MIN_VISIBLE_HEIGHT: u32 = 32;
 
-/// The window's outer frame in logical pixels, as the schema's `window` object.
+/// The window's outer frame in logical pixels, as the schema's `window`
+/// object. Also the shape of a screen when the frame is checked against one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WindowFrame {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
-}
-
-/// A screen's area in the same units as the frame it is compared against.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ScreenRect {
     pub x: i32,
     pub y: i32,
     pub width: u32,
@@ -64,9 +53,10 @@ pub struct SessionState {
 }
 
 impl SessionState {
-    /// Seed the in-memory Session from the file (or nothing when there is none).
+    /// Seed the in-memory Session from the file, or from nothing when there is
+    /// none or its `version` is unknown (the renderer rewrites that one).
     pub fn load(path: PathBuf) -> Self {
-        let stored = read_session_file(&path);
+        let stored = read_session_file(&path).filter(is_current_version);
         let window = stored.as_ref().and_then(frame_from_session);
         Self {
             path,
@@ -149,9 +139,13 @@ pub fn merge_window(renderer: Option<&Value>, frame: Option<WindowFrame>) -> Val
     session
 }
 
+fn is_current_version(session: &Value) -> bool {
+    session.get("version").and_then(Value::as_u64) == Some(SESSION_VERSION)
+}
+
 /// The saved window frame, only from a Session in the current schema.
 pub fn frame_from_session(session: &Value) -> Option<WindowFrame> {
-    if session.get("version")?.as_u64()? != SESSION_VERSION {
+    if !is_current_version(session) {
         return None;
     }
     serde_json::from_value(session.get("window")?.clone()).ok()
@@ -194,8 +188,8 @@ pub fn write_atomically(path: &Path, session: &Value) -> io::Result<()> {
     result
 }
 
-/// Whether enough of the frame lands on one of `screens` to be worth restoring.
-pub fn frame_is_on_screen(frame: &WindowFrame, screens: &[ScreenRect]) -> bool {
+/// Whether enough of the frame lands on one of `screens` (same units) to be worth restoring.
+pub fn frame_is_on_screen(frame: &WindowFrame, screens: &[WindowFrame]) -> bool {
     screens.iter().any(|screen| {
         let left = frame.x.max(screen.x);
         let top = frame.y.max(screen.y);
@@ -248,48 +242,8 @@ pub fn update_renderer_session<R: Runtime>(app: &AppHandle<R>, session: Value) {
     schedule_write(app, generation);
 }
 
-/// The window geometry this module reads and writes, on both of Tauri's
-/// window handles: the `Window` its events carry and the `WebviewWindow` the
-/// app hands out.
-pub trait FrameWindow {
-    fn scale_factor(&self) -> tauri::Result<f64>;
-    fn outer_position(&self) -> tauri::Result<PhysicalPosition<i32>>;
-    fn outer_size(&self) -> tauri::Result<PhysicalSize<u32>>;
-    fn available_monitors(&self) -> tauri::Result<Vec<Monitor>>;
-    fn set_size(&self, size: LogicalSize<u32>) -> tauri::Result<()>;
-    fn set_position(&self, position: LogicalPosition<i32>) -> tauri::Result<()>;
-}
-
-macro_rules! impl_frame_window {
-    ($window:ident) => {
-        impl<R: Runtime> FrameWindow for $window<R> {
-            fn scale_factor(&self) -> tauri::Result<f64> {
-                $window::scale_factor(self)
-            }
-            fn outer_position(&self) -> tauri::Result<PhysicalPosition<i32>> {
-                $window::outer_position(self)
-            }
-            fn outer_size(&self) -> tauri::Result<PhysicalSize<u32>> {
-                $window::outer_size(self)
-            }
-            fn available_monitors(&self) -> tauri::Result<Vec<Monitor>> {
-                $window::available_monitors(self)
-            }
-            fn set_size(&self, size: LogicalSize<u32>) -> tauri::Result<()> {
-                $window::set_size(self, size)
-            }
-            fn set_position(&self, position: LogicalPosition<i32>) -> tauri::Result<()> {
-                $window::set_position(self, position)
-            }
-        }
-    };
-}
-
-impl_frame_window!(Window);
-impl_frame_window!(WebviewWindow);
-
 /// The window's current outer frame in logical pixels.
-pub fn current_frame(window: &impl FrameWindow) -> tauri::Result<WindowFrame> {
+pub fn current_frame<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<WindowFrame> {
     let scale = window.scale_factor()?;
     let position = window.outer_position()?.to_logical::<f64>(scale);
     let size = window.outer_size()?.to_logical::<f64>(scale);
@@ -302,10 +256,7 @@ pub fn current_frame(window: &impl FrameWindow) -> tauri::Result<WindowFrame> {
 }
 
 /// The main window moved or resized: remember its frame and schedule a write.
-pub fn note_window_frame<R: Runtime>(window: &Window<R>) {
-    if window.label() != MAIN_WINDOW_LABEL {
-        return;
-    }
+pub fn note_window_frame<R: Runtime>(window: &WebviewWindow<R>) {
     match current_frame(window) {
         Ok(frame) => {
             let app = window.app_handle();
@@ -316,33 +267,33 @@ pub fn note_window_frame<R: Runtime>(window: &Window<R>) {
     }
 }
 
-fn screens_in_physical_pixels(window: &impl FrameWindow) -> tauri::Result<Vec<ScreenRect>> {
+/// Every screen in logical pixels, each through its own scale factor.
+fn screens_in_logical_pixels<R: Runtime>(
+    window: &WebviewWindow<R>,
+) -> tauri::Result<Vec<WindowFrame>> {
     Ok(window
         .available_monitors()?
         .iter()
-        .map(|monitor| ScreenRect {
-            x: monitor.position().x,
-            y: monitor.position().y,
-            width: monitor.size().width,
-            height: monitor.size().height,
+        .map(|monitor| {
+            let scale = monitor.scale_factor();
+            let position = monitor.position().to_logical::<f64>(scale);
+            let size = monitor.size().to_logical::<f64>(scale);
+            WindowFrame {
+                x: position.x.round() as i32,
+                y: position.y.round() as i32,
+                width: size.width.round() as u32,
+                height: size.height.round() as u32,
+            }
         })
         .collect())
 }
 
-fn frame_in_physical_pixels(frame: &WindowFrame, scale: f64) -> WindowFrame {
-    WindowFrame {
-        x: (frame.x as f64 * scale).round() as i32,
-        y: (frame.y as f64 * scale).round() as i32,
-        width: (frame.width as f64 * scale).round() as u32,
-        height: (frame.height as f64 * scale).round() as u32,
-    }
-}
-
 /// Put the window back where the Session left it, unless that is off every screen.
-pub fn restore_window_frame(window: &impl FrameWindow, frame: WindowFrame) -> tauri::Result<()> {
-    let scale = window.scale_factor()?;
-    let screens = screens_in_physical_pixels(window)?;
-    if !frame_is_on_screen(&frame_in_physical_pixels(&frame, scale), &screens) {
+pub fn restore_window_frame<R: Runtime>(
+    window: &WebviewWindow<R>,
+    frame: WindowFrame,
+) -> tauri::Result<()> {
+    if !frame_is_on_screen(&frame, &screens_in_logical_pixels(window)?) {
         log::info!("Saved window frame {frame:?} is off screen; keeping the default");
         return Ok(());
     }
@@ -502,6 +453,23 @@ mod tests {
     }
 
     #[test]
+    fn session_state_does_not_carry_an_unknown_version_forward() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(SESSION_FILE_NAME);
+        write_atomically(
+            &path,
+            &json!({ "version": 99, "openEditors": [{ "path": "/x.md" }], "window": { "x": 1, "y": 1, "width": 700, "height": 500 } }),
+        )
+        .unwrap();
+
+        let state = SessionState::load(path);
+
+        assert_eq!(state.window(), None);
+        assert_eq!(state.merged()["version"], 1);
+        assert_eq!(state.merged()["openEditors"], json!([]));
+    }
+
+    #[test]
     fn session_state_starts_empty_without_a_file() {
         let directory = tempfile::tempdir().unwrap();
         let state = SessionState::load(directory.path().join(SESSION_FILE_NAME));
@@ -512,12 +480,7 @@ mod tests {
 
     #[test]
     fn frame_is_on_screen_needs_a_visible_corner() {
-        let screens = [ScreenRect {
-            x: 0,
-            y: 0,
-            width: 1440,
-            height: 900,
-        }];
+        let screens = [frame(0, 0, 1440, 900)];
 
         assert!(frame_is_on_screen(&frame(100, 100, 1200, 800), &screens));
         assert!(frame_is_on_screen(&frame(1370, 860, 1200, 800), &screens));

@@ -1,6 +1,7 @@
-import { memo, type MouseEvent } from 'react'
-import { FileText, X } from '@phosphor-icons/react'
+import { memo } from 'react'
+import { FileText } from '@phosphor-icons/react'
 import type { Tab } from '../types'
+import { CloseAffordance } from './CloseAffordance'
 import './Sidebar.css'
 
 export interface OpenEditorsProps {
@@ -49,11 +50,6 @@ interface OpenEditorRowProps {
 }
 
 function OpenEditorRow({ path, filename, active, onActivate, onClose }: OpenEditorRowProps) {
-  const close = (event: MouseEvent) => {
-    event.stopPropagation()
-    onClose(path)
-  }
-
   return (
     <div
       className="fuwa-sidebar-row"
@@ -71,15 +67,7 @@ function OpenEditorRow({ path, filename, active, onActivate, onClose }: OpenEdit
     >
       <FileText size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
       <span className="fuwa-sidebar-row__name">{filename}</span>
-      <button
-        type="button"
-        className="fuwa-sidebar-row__close"
-        aria-label={`Close ${filename}`}
-        tabIndex={-1}
-        onClick={close}
-      >
-        <X size={12} weight="bold" aria-hidden="true" />
-      </button>
+      <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )
 }
