@@ -28,8 +28,9 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
   `window.__fuwaMockVault`: call `reset(seed)` to seed files, `writeNote(path, content)` to
   add one, `queuePendingOpen(paths)` to simulate a Finder open, `queueDialogSelection(paths)`
   to decide what the next Open Document… dialog "returns" (the dialog is a plugin call with
-  no command behind it, so the fixture stands in for it too), and read `calls` to assert
-  what the app invoked. Add a case to the fixture's `answer` switch when a spec needs a
+  no command behind it, so the fixture stands in for it too), `markReadOnly(paths)` to make
+  writes to those paths fail, and read `calls` to assert what the app invoked. Shared
+  helpers live in `tests/smoke/harness.ts`. Add a case to the fixture's `answer` switch when a spec needs a
   command it does not answer yet.
 
 CI (`.github/workflows/ci.yml`) runs the type-check, ESLint, Vitest, clippy and `cargo test`

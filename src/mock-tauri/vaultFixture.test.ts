@@ -162,3 +162,18 @@ describe('the Open Document dialog stand-in', () => {
     expect(vault.takeDialogSelection()).toBeNull()
   })
 })
+
+describe('read-only paths', () => {
+  it('refuses save_note_content for a marked path and keeps the bytes, until the mark is lifted', async () => {
+    const vault = createMockVault(seed)
+    const path = `${MOCK_VAULT_PATH}/Welcome.md`
+    vault.markReadOnly([path])
+
+    await expect(vault.invoke('save_note_content', { path, content: '# Changed\n' })).rejects.toThrow('Permission denied')
+    await expect(vault.invoke('get_note_content', { path })).resolves.toBe('# Welcome\n')
+
+    vault.markReadOnly([])
+    await vault.invoke('save_note_content', { path, content: '# Changed\n' })
+    await expect(vault.invoke('get_note_content', { path })).resolves.toBe('# Changed\n')
+  })
+})
