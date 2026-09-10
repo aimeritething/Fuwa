@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Tab } from '../types'
-import { parseSession, sessionForOpenEditors, type SessionEditor } from '../utils/sessionFile'
-import { readSessionFile, updateSessionFile } from '../utils/sessionStore'
+import { readSessionFile, updateSessionFile } from '../utils/sessionFile'
+import { parseSession, sessionForOpenEditors, type SessionEditor } from '../utils/sessionSchema'
 
 interface UseSessionOptions {
   tabs: Tab[]

@@ -1,6 +1,6 @@
-import { memo, type MouseEvent } from 'react'
-import { X } from '@phosphor-icons/react'
+import { memo } from 'react'
 import type { Tab } from '../types'
+import { CloseAffordance } from './CloseAffordance'
 
 export interface TabBarProps {
   tabs: Tab[]
@@ -43,11 +43,6 @@ interface TabPillProps {
 }
 
 function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) {
-  const close = (event: MouseEvent) => {
-    event.stopPropagation()
-    onClose(path)
-  }
-
   return (
     <div
       className="fuwa-tab"
@@ -64,15 +59,7 @@ function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) 
       }}
     >
       <span className="fuwa-tab__name">{filename}</span>
-      <button
-        type="button"
-        className="fuwa-tab__close"
-        aria-label={`Close ${filename}`}
-        tabIndex={-1}
-        onClick={close}
-      >
-        <X size={12} weight="bold" aria-hidden="true" />
-      </button>
+      <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )
 }

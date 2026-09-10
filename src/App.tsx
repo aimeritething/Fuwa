@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import type { Tab } from './types'
 import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
 import { Sidebar } from './components/Sidebar'
@@ -44,6 +45,20 @@ function useAutosaveOnEditorChange(
   )
 }
 
+/**
+ * The save hook's persistence scope: the boundary root of every open
+ * Document (ADR-0002), deepest first so a Document's own directory wins.
+ * Scoping every Tab rather than the active one means a keystroke that lands
+ * while a Tab switch is still writing is not cleared with the scope change;
+ * the kernel flushes it at the path change and the write goes through.
+ */
+function useOpenNoteRoots(tabs: Tab[]): readonly string[] {
+  const rootsKey = Array.from(new Set(tabs.map((tab) => noteRootForPath(tab.entry.path))))
+    .sort((a, b) => b.length - a.length)
+    .join('\n')
+  return useMemo(() => (rootsKey === '' ? [] : rootsKey.split('\n')), [rootsKey])
+}
+
 /** When each open Document's last write landed; the path row shows the active one's. */
 function useSavedTimes() {
   const [savedAtByPath, setSavedAtByPath] = useState<Record<string, number>>({})
@@ -77,13 +92,14 @@ export default function App() {
   const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
   const vaultPath = activeTabPath ? noteRootForPath(activeTabPath) : undefined
+  const persistenceScope = useOpenNoteRoots(tabs)
 
   const { handleSave, handleContentChange, savePending } = useEditorSave({
     updateVaultContent: noVaultContentToUpdate,
     setTabs,
     setToastMessage: ignoreSaveToast,
     onNotePersisted: markSaved,
-    persistenceScope: vaultPath,
+    persistenceScope,
   })
   const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePending)
 
@@ -142,18 +158,7 @@ export default function App() {
     activeTabPath,
     onOpenNote,
     onSave,
-    onCloseTab: tabCommands.onCloseTab,
-    onPreviousTab: tabCommands.onPreviousTab,
-    onNextTab: tabCommands.onNextTab,
-    onJumpToTab1: tabCommands.onJumpToTab1,
-    onJumpToTab2: tabCommands.onJumpToTab2,
-    onJumpToTab3: tabCommands.onJumpToTab3,
-    onJumpToTab4: tabCommands.onJumpToTab4,
-    onJumpToTab5: tabCommands.onJumpToTab5,
-    onJumpToTab6: tabCommands.onJumpToTab6,
-    onJumpToTab7: tabCommands.onJumpToTab7,
-    onJumpToTab8: tabCommands.onJumpToTab8,
-    onJumpToTab9: tabCommands.onJumpToTab9,
+    ...tabCommands.handlers,
     onCreateNote: noop,
     onQuickOpen: noop,
     onPastePlainText: noop,

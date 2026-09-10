@@ -94,31 +94,10 @@
   text-overflow: ellipsis;
 }
 
-/* The close affordance: hidden until the tab is hovered or selected. */
-.fuwa-tab__close {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-muted);
-  opacity: 0;
-  cursor: default;
-}
-
-.fuwa-tab:hover .fuwa-tab__close,
-.fuwa-tab[data-active] .fuwa-tab__close {
-  opacity: 1;
-}
-
-.fuwa-tab__close:hover {
-  background: var(--state-hover);
-  color: var(--text-primary);
+/* The close affordance shows on hover and on the selected tab (the settled prototype). */
+.fuwa-tab:hover,
+.fuwa-tab[data-active] {
+  --close-affordance-opacity: 1;
 }
 
 .fuwa-path-row {

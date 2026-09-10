@@ -93,30 +93,8 @@
   text-overflow: ellipsis;
 }
 
-/* The close affordance: hidden until the row is hovered or active. */
-.fuwa-sidebar-row__close {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: auto;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-muted);
-  opacity: 0;
-  cursor: default;
-}
-
-.fuwa-sidebar-row:hover .fuwa-sidebar-row__close,
-.fuwa-sidebar-row[data-active] .fuwa-sidebar-row__close {
-  opacity: 1;
-}
-
-.fuwa-sidebar-row__close:hover {
-  background: var(--state-hover);
-  color: var(--text-primary);
+/* The close affordance shows on hover and on the active row (the settled prototype). */
+.fuwa-sidebar-row:hover,
+.fuwa-sidebar-row[data-active] {
+  --close-affordance-opacity: 1;
 }

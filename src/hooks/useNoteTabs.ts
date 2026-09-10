@@ -2,18 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction 
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { Tab } from '../types'
-import { noteEntryForPath, noteRootForPath } from '../utils/noteEntry'
-import { restoreOpenEditors as restoreSurvivingEditors, type SessionEditor } from '../utils/sessionFile'
+import { isDocumentPath, noteEntryForPath, noteRootForPath } from '../utils/noteEntry'
+import { restoreOpenEditors as restoreSurvivingEditors, type SessionEditor } from '../utils/sessionSchema'
 import { cacheNoteContent } from './noteContentCache'
-import {
-  activateAdjacentTab as activateAdjacent,
-  activateTab as activate,
-  activateTabAt as activateAt,
-  closeTab as close,
-  EMPTY_NOTE_TABS,
-  openTab,
-  type NoteTabsState,
-} from './noteTabsState'
+import * as tabsState from './noteTabsState'
+import { EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsState'
 
 /**
  * The open Documents, in the kernel's `Tab` shape, under the Tab rules of
@@ -59,29 +52,38 @@ export function useNoteTabs() {
   const openNote = useCallback(async (path: string): Promise<void> => {
     const alreadyOpen = stateRef.current.tabs.some((tab) => tab.entry.path === path)
     if (alreadyOpen) {
-      setState((prev) => activate(prev, path))
+      setState((prev) => tabsState.activateTab(prev, path))
       return
     }
     const tab = await readTab(path)
-    setState((prev) => openTab(prev, tab))
+    setState((prev) => tabsState.openTab(prev, tab))
     announceOpened(tab)
   }, [])
 
-  /** Restore rule (spec section 5): missing files are dropped, the active Tab falls to its successor. */
+  /**
+   * Restore rule (spec section 5): missing files are dropped, the active Tab
+   * falls to its successor. Documents only until AIM-384 gives Image files
+   * Tabs. A Document opened before the restore settles (a Finder launch)
+   * keeps its Tab and stays active.
+   */
   const restoreOpenEditors = useCallback(async (editors: SessionEditor[], activePath: string | null) => {
-    const survivors = await readSurvivingTabs(editors)
-    const restored = restoreSurvivingEditors({ openEditors: editors, activePath }, new Set(survivors.keys()))
+    const documents = editors.filter((editor) => isDocumentPath(editor.path))
+    const survivors = await readSurvivingTabs(documents)
+    const restored = restoreSurvivingEditors({ openEditors: documents, activePath }, new Set(survivors.keys()))
     const tabs = restored.openEditors.map((editor) => survivors.get(editor.path) as Tab)
-    setState({ tabs, activeTabPath: restored.activePath })
+    setState((prev) => {
+      const openedMeanwhile = prev.tabs.filter((tab) => !survivors.has(tab.entry.path))
+      return { tabs: [...tabs, ...openedMeanwhile], activeTabPath: prev.activeTabPath ?? restored.activePath }
+    })
     const activeTab = tabs.find((tab) => tab.entry.path === restored.activePath)
     if (activeTab) announceOpened(activeTab)
   }, [])
 
-  const closeTab = useCallback((path: string) => setState((prev) => close(prev, path)), [])
-  const activateTab = useCallback((path: string) => setState((prev) => activate(prev, path)), [])
-  const activateTabAt = useCallback((index: number) => setState((prev) => activateAt(prev, index)), [])
+  const closeTab = useCallback((path: string) => setState((prev) => tabsState.closeTab(prev, path)), [])
+  const activateTab = useCallback((path: string) => setState((prev) => tabsState.activateTab(prev, path)), [])
+  const activateTabAt = useCallback((index: number) => setState((prev) => tabsState.activateTabAt(prev, index)), [])
   const activateAdjacentTab = useCallback(
-    (direction: 1 | -1) => setState((prev) => activateAdjacent(prev, direction)),
+    (direction: 1 | -1) => setState((prev) => tabsState.activateAdjacentTab(prev, direction)),
     [],
   )
 
