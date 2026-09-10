@@ -41,7 +41,7 @@ The sidebar section that shows the Folder as a tree of Documents, sub-folders, a
 _Avoid_: File tree, folder tree, sidebar (the Explorer is one section of the sidebar)
 
 **Open Editors**:
-The sidebar section listing every Document currently open. Mirrors the tab bar.
+The sidebar section listing every Document currently open, including Documents outside the Folder. Mirrors the tab bar.
 
 **Tab**:
 One entry in the tab bar above the editor; one Tab per open Document. Clicking a Document in the Explorer always opens a real Tab (there are no preview tabs).
@@ -51,4 +51,4 @@ The Cmd+P palette that fuzzy-matches Document names within the Folder. Searches 
 _Avoid_: Command palette, search
 
 **Session**:
-The state Fuwa restores on launch: the Folder, the Open Editors, the active Document, theme, and window geometry. Stored in the app's own config directory, never in the Folder.
+The state Fuwa restores on launch: the Folder, the Open Editors (each with its Rich or Raw mode), the active Document, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.
