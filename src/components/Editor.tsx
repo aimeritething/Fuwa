@@ -220,7 +220,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
         <>
           <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
           <PathRow filename={activeTab.entry.filename} savedAt={savedAt} />
-          {writeFailure?.path === activeTab.entry.path && (
+          {writeFailure && (
             <WriteFailureBar
               path={writeFailure.path}
               message={writeFailure.message}

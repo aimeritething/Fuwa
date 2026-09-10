@@ -190,8 +190,8 @@
   margin: 0 16px 8px;
   padding: 8px 8px 8px 12px;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent-red) 2%, transparent);
-  box-shadow: 0 0 0 var(--hairline, 0.5px) color-mix(in srgb, var(--accent-red) 20%, transparent);
+  background: color-mix(in srgb, var(--chroma-red) 2%, transparent);
+  box-shadow: 0 0 0 var(--hairline, 0.5px) color-mix(in srgb, var(--chroma-red) 20%, transparent);
   font-size: 12.5px;
   letter-spacing: -0.01em;
 }
@@ -205,7 +205,7 @@
 
 .fuwa-write-failure__title {
   overflow: hidden;
-  color: var(--accent-red);
+  color: var(--chroma-red-text);
   font-weight: 510;
   text-overflow: ellipsis;
   white-space: nowrap;

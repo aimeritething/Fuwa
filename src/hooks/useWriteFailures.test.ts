@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Tab } from '../types'
 import { noteEntryForPath } from '../utils/noteEntry'
-import { useWriteFailures, type WriteFailureDeps } from './useWriteFailures'
+import { useWriteFailureRecord, useWriteFailures, type WriteFailureDeps } from './useWriteFailures'
 
 const A = '/n/a.md'
 const B = '/n/b.md'
@@ -15,14 +15,16 @@ const REFUSED = new Error('Failed to write file: Permission denied (os error 13)
  * The deps record every call in `order`; an override supplies only the
  * behaviour (resolve or throw) and the recording stays.
  */
-function renderFailures(overrides: Partial<WriteFailureDeps> = {}) {
+type Behaviours = Partial<Omit<WriteFailureDeps, 'record'>>
+
+function renderFailures(overrides: Behaviours = {}) {
   const order: string[] = []
   const recorded = <A extends unknown[]>(label: (...args: A) => string, behaviour?: (...args: A) => Promise<void>) =>
     vi.fn(async (...args: A) => {
       order.push(label(...args))
       await behaviour?.(...args)
     })
-  const deps: WriteFailureDeps = {
+  const deps: Omit<WriteFailureDeps, 'record'> = {
     tabs: overrides.tabs ?? [tab(A, '# A\n\nEdited'), tab(B, '# B\n\nEdited')],
     activeTabPath: overrides.activeTabPath ?? A,
     settleActiveNote: recorded(() => 'settle', overrides.settleActiveNote),
@@ -34,7 +36,7 @@ function renderFailures(overrides: Partial<WriteFailureDeps> = {}) {
     }),
     exitApp: recorded(() => 'exit', overrides.exitApp),
   }
-  const rendered = renderHook(() => useWriteFailures(deps))
+  const rendered = renderHook(() => useWriteFailures({ record: useWriteFailureRecord(), ...deps }))
   return { ...rendered, deps, order }
 }
 
@@ -74,7 +76,7 @@ describe('useWriteFailures', () => {
       const { result, deps } = renderFailures({ settleActiveNote: async () => { throw REFUSED } })
 
       await act(async () => {
-        await expect(result.current.settleActiveNote()).rejects.toBe(REFUSED)
+        await expect(result.current.settleAndRecord()).rejects.toBe(REFUSED)
       })
 
       expect(deps.settleActiveNote).toHaveBeenCalledOnce()
@@ -128,6 +130,23 @@ describe('useWriteFailures', () => {
       expect(deps.writeBuffer).not.toHaveBeenCalled()
       expect(result.current.failureFor(A)).toBeNull()
     })
+
+    it('Discard changes on a Document that is gone from disk closes its Tab, there being no bytes to go back to', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { result, order } = renderFailures({
+        revertToDisk: async () => { throw new Error('File does not exist') },
+      })
+      act(() => {
+        result.current.recordFailure(A, REFUSED)
+      })
+
+      await act(async () => {
+        await result.current.discard(A)
+      })
+
+      expect(order).toEqual([`revert ${A}`, `close ${A}`])
+      expect(result.current.failureFor(A)).toBeNull()
+    })
   })
 
   describe('closing a Tab', () => {
@@ -135,7 +154,7 @@ describe('useWriteFailures', () => {
       const { result, deps } = renderFailures()
 
       act(() => {
-        result.current.closeTab(A)
+        result.current.closeTabOrAsk(A)
       })
 
       expect(deps.closeTab).toHaveBeenCalledWith(A)
@@ -149,7 +168,7 @@ describe('useWriteFailures', () => {
       })
 
       act(() => {
-        result.current.closeTab(A)
+        result.current.closeTabOrAsk(A)
       })
 
       expect(deps.closeTab).not.toHaveBeenCalled()
@@ -160,7 +179,7 @@ describe('useWriteFailures', () => {
       const { result, order } = renderFailures()
       act(() => {
         result.current.recordFailure(A, REFUSED)
-        result.current.closeTab(A)
+        result.current.closeTabOrAsk(A)
       })
 
       await act(async () => {
@@ -181,7 +200,7 @@ describe('useWriteFailures', () => {
       })
       act(() => {
         result.current.recordFailure(A, REFUSED)
-        result.current.closeTab(A)
+        result.current.closeTabOrAsk(A)
       })
 
       await act(async () => {
@@ -201,7 +220,7 @@ describe('useWriteFailures', () => {
       const { result, deps } = renderFailures()
       act(() => {
         result.current.recordFailure(A, REFUSED)
-        result.current.closeTab(A)
+        result.current.closeTabOrAsk(A)
       })
 
       act(() => {
@@ -324,6 +343,17 @@ describe('useWriteFailures', () => {
 
       expect(order).toEqual(['settle', `write ${A}`, `write ${A}`, 'exit'])
       expect(result.current.failureFor(A)).toBeNull()
+    })
+
+    it('a quit that cannot exit is logged rather than thrown', async () => {
+      const { result, deps } = renderFailures({ exitApp: async () => { throw new Error('No window') } })
+
+      await act(async () => {
+        await expect(result.current.quit()).resolves.toBeUndefined()
+      })
+
+      expect(deps.exitApp).toHaveBeenCalledOnce()
+      expect(result.current.prompt).toBeNull()
     })
 
     it('dismissing the quit prompt keeps the app open', async () => {

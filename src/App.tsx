@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { Tab } from './types'
 import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
@@ -12,8 +12,7 @@ import { useNoteTabs } from './hooks/useNoteTabs'
 import { useSession } from './hooks/useSession'
 import { useTabCommands } from './hooks/useTabCommands'
 import { useThemeMode } from './hooks/useThemeMode'
-import { closeAppWindow } from './utils/appWindow'
-import { useWriteFailures, type WritePromptChoice } from './hooks/useWriteFailures'
+import { useWriteFailureRecord, useWriteFailures } from './hooks/useWriteFailures'
 import { closeAppWindow, exitApp } from './utils/appWindow'
 import { noteRootForPath } from './utils/noteEntry'
 import { pickNoteToOpen } from './utils/noteOpenDialog'
@@ -38,15 +37,15 @@ const noVaultContentToUpdate = () => {}
  */
 function useAutosaveOnEditorChange(
   handleContentChange: (path: string, content: string) => void,
-  savePending: () => Promise<boolean>,
+  savePendingForPath: (path: string) => Promise<boolean>,
   recordFailure: (path: string, error: unknown) => void,
 ) {
   return useCallback(
     (path: string, content: string) => {
       handleContentChange(path, content)
-      savePending().catch((error: unknown) => recordFailure(path, error))
+      savePendingForPath(path).catch((error: unknown) => recordFailure(path, error))
     },
-    [handleContentChange, recordFailure, savePending],
+    [handleContentChange, recordFailure, savePendingForPath],
   )
 }
 
@@ -108,15 +107,15 @@ export default function App() {
   const vaultPath = activeTabPath ? noteRootForPath(activeTabPath) : undefined
   const persistenceScope = useOpenNoteRoots(tabs)
 
-  // A write that lands clears the Document's error bar; the Write failure
-  // hook is built from the save hook's own commands, so it is reached late.
-  const clearWriteFailureRef = useRef<(path: string) => void>(noop)
+  // A write that lands, from any path, clears the Document's error bar.
+  const writeFailureRecord = useWriteFailureRecord()
+  const { clearFailure: clearWriteFailure, recordFailure: recordWriteFailure } = writeFailureRecord
   const onNotePersisted = useCallback((path: string) => {
     markSaved(path)
-    clearWriteFailureRef.current(path)
-  }, [markSaved])
+    clearWriteFailure(path)
+  }, [clearWriteFailure, markSaved])
 
-  const { handleContentChange, savePending, savePendingForPath, discardPending } = useEditorSave({
+  const { handleContentChange, savePendingForPath, discardPending } = useEditorSave({
     updateVaultContent: noVaultContentToUpdate,
     setTabs,
     setToastMessage: ignoreSaveToast,
@@ -126,20 +125,30 @@ export default function App() {
 
   /**
    * Push the rich editor's fresh keystrokes into the save buffer and write
-   * them, while the active Document's directory is still the persistence
-   * scope. Every Tab switch, close, ⌘S and ⌘Q goes through here (spec section
-   * 3 flushes a dirty Document before it closes).
+   * the active Document's pending edits, while its directory is still the
+   * persistence scope. Every Tab switch, close, ⌘S and ⌘Q goes through here
+   * (spec section 3 writes a Document's pending edits before it closes). Only
+   * the active Document's buffer: another Document's refused edits stay in
+   * the save hook's buffer and are its own bar's to retry, never this Tab's.
    */
   const settleActiveNote = useCallback(async () => {
-    if (activeTabPath) flushPendingEditorContentRef.current?.(activeTabPath)
-    await savePending()
-  }, [activeTabPath, savePending])
+    if (!activeTabPath) return
+    flushPendingEditorContentRef.current?.(activeTabPath)
+    await savePendingForPath(activeTabPath)
+  }, [activeTabPath, savePendingForPath])
 
-  /** Retry: the Tab's buffer is the latest content, written again through the save hook. */
+  /**
+   * Retry: the save hook's buffer, which kept the refused edits and, once the
+   * rich editor's fresh keystrokes are flushed into it, is the latest content.
+   * The Tab's copy stands in when the buffer has since moved to another
+   * Document.
+   */
   const writeBuffer = useCallback(async (path: string, content: string) => {
+    if (path === activeTabPath) flushPendingEditorContentRef.current?.(path)
+    if (await savePendingForPath(path)) return
     handleContentChange(path, content)
     await savePendingForPath(path)
-  }, [handleContentChange, savePendingForPath])
+  }, [activeTabPath, handleContentChange, savePendingForPath])
 
   /** Discard changes: forget the buffered edits, then read the disk bytes back into the Tab. */
   const revertToDisk = useCallback(async (path: string) => {
@@ -153,6 +162,7 @@ export default function App() {
   }, [closeTab, forgetSaved])
 
   const writeFailures = useWriteFailures({
+    record: writeFailureRecord,
     tabs,
     activeTabPath,
     settleActiveNote,
@@ -161,26 +171,13 @@ export default function App() {
     closeTab: closeTabAndForget,
     exitApp,
   })
-  const {
-    clearFailure: clearWriteFailure,
-    recordFailure: recordWriteFailure,
-    settleActiveNote: settleActiveNoteRecorded,
-    closeTab: closeTabGuarded,
-    retry: retryWrite,
-    discard: discardWrite,
-    quit,
-    answerPrompt,
-    dismissPrompt,
-  } = writeFailures
-  useEffect(() => {
-    clearWriteFailureRef.current = clearWriteFailure
-  }, [clearWriteFailure])
-  const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePending, recordWriteFailure)
+  const { settleAndRecord, closeTabOrAsk, retry, discard, quit, answerPrompt, dismissPrompt } = writeFailures
+  const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePendingForPath, recordWriteFailure)
 
   const tabCommands = useTabCommands({
     activeTabPath,
-    settleActiveNote: settleActiveNoteRecorded,
-    closeTab: closeTabGuarded,
+    settleActiveNote: settleAndRecord,
+    closeTab: closeTabOrAsk,
     activateTab,
     activateTabAt,
     activateAdjacentTab,
@@ -192,27 +189,21 @@ export default function App() {
       const path = await pickNoteToOpen()
       if (!path) return
       // A refused write is recorded against its Tab; opening goes ahead.
-      await settleActiveNoteRecorded().catch(noop)
+      await settleAndRecord().catch(noop)
       try {
         await openNote(path)
       } catch (error) {
         console.error(`Failed to open ${path}:`, error)
       }
     })()
-  }, [openNote, settleActiveNoteRecorded])
+  }, [openNote, settleAndRecord])
 
   // Save is disabled with no Document open: the native menu item through
   // update_menu_state, the ⌘S keydown here. A refusal is the error bar's.
   const onSave = useCallback(() => {
     if (!activeTabPath) return
-    settleActiveNoteRecorded().catch(noop)
-  }, [activeTabPath, settleActiveNoteRecorded])
-
-  const onQuit = useCallback(() => {
-    quit().catch((error: unknown) => {
-      console.error('Quit failed:', error)
-    })
-  }, [quit])
+    settleAndRecord().catch(noop)
+  }, [activeTabPath, settleAndRecord])
 
   // Open Document…, Save, Quit, Appearance and the Tab commands are wired;
   // the other manifest commands get their handlers with their own tickets.
@@ -220,7 +211,7 @@ export default function App() {
     activeTabPath,
     onOpenNote,
     onSave,
-    onQuit,
+    onQuit: quit,
     ...tabCommands.handlers,
     ...appearance.handlers,
     onCreateNote: noop,
@@ -230,20 +221,11 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeTabPath, appearance.handlers, onOpenNote, onQuit, onSave, tabCommands])
+  }), [activeTabPath, appearance.handlers, onOpenNote, onSave, quit, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
 
   const savedAt = activeTabPath ? savedAtByPath[activeTabPath] ?? null : null
-  const onRetryWrite = useCallback((path: string) => {
-    void retryWrite(path)
-  }, [retryWrite])
-  const onDiscardWrite = useCallback((path: string) => {
-    void discardWrite(path)
-  }, [discardWrite])
-  const onAnswerPrompt = useCallback((choice: WritePromptChoice) => {
-    void answerPrompt(choice)
-  }, [answerPrompt])
 
   return (
     <div className="fuwa-shell">
@@ -265,10 +247,10 @@ export default function App() {
         onActivateTab={tabCommands.activateTabSettled}
         onCloseTab={tabCommands.closeTabSettled}
         writeFailure={writeFailures.failureFor(activeTabPath)}
-        onRetryWrite={onRetryWrite}
-        onDiscardWrite={onDiscardWrite}
+        onRetryWrite={retry}
+        onDiscardWrite={discard}
       />
-      <WriteFailureDialog prompt={writeFailures.prompt} onAnswer={onAnswerPrompt} onDismiss={dismissPrompt} />
+      <WriteFailureDialog prompt={writeFailures.prompt} onAnswer={answerPrompt} onDismiss={dismissPrompt} />
     </div>
   )
 }
