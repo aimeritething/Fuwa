@@ -51,6 +51,8 @@ export interface MockVaultCommands {
   start_vault_watcher: { args: { path: string }; result: void }
   stop_vault_watcher: { args?: undefined; result: void }
   take_pending_open: { args?: undefined; result: string[] }
+  read_session: { args?: undefined; result: unknown }
+  update_session: { args: { session: unknown }; result: void }
 }
 
 export interface MockVault {
@@ -69,7 +71,9 @@ export interface MockVault {
   takeDialogSelection(): string | null
   /** Make `save_note_content` refuse these paths, as a read-only file would; an empty list lifts it. */
   markReadOnly(paths: string[]): void
-  /** Restore the seed (or a new one), clear the watcher, the pending opens, the dialog queue, the read-only marks and the call log. */
+  /** Plant the Session file the next launch (page load) reads; null removes it. */
+  seedSession(session: unknown): void
+  /** Restore the seed (or a new one), clear the watcher, the pending opens, the dialog queue, the read-only marks, the Session file and the call log. */
   reset(seed?: MockVaultFile[]): void
 }
 
@@ -85,6 +89,7 @@ const ACTIVE_VAULT_UNAVAILABLE_ERROR = 'Active vault is not available'
 const FILE_DOES_NOT_EXIST_ERROR = 'File does not exist'
 const NOT_A_NOTE_ERROR = 'Path is not a note'
 const READ_ONLY_ERROR = 'Failed to write file: Permission denied (os error 13)'
+const SESSION_STORAGE_KEY = 'fuwa:mock-session'
 
 export const DEFAULT_MOCK_VAULT_FILES: MockVaultFile[] = [
   file('Welcome.md', 'note', '# Welcome\n\nThis Folder lives in memory. Edits stay for the life of the page.\n', 1_757_500_000),
@@ -123,6 +128,25 @@ function ancestorFolders(path: string, vaultPath: string): string[] {
   return segments.map((_, index) => `${vaultPath}/${segments.slice(0, index + 1).join('/')}`)
 }
 
+/** The mock Session file lives in localStorage so a reload restores it like a relaunch. */
+function readStoredSession(): unknown {
+  try {
+    const raw = globalThis.localStorage?.getItem(SESSION_STORAGE_KEY)
+    return raw === null || raw === undefined ? null : JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function writeStoredSession(session: unknown): void {
+  try {
+    if (session === null || session === undefined) globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY)
+    else globalThis.localStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
+  } catch {
+    // Storage can be unavailable in restricted contexts; the Session is then per page.
+  }
+}
+
 function folderTree(files: MockVaultFile[], vaultPath: string): FolderNode[] {
   const byParent = new Map<string, FolderNode[]>()
   const folders = files
@@ -159,7 +183,8 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     }
   }
 
-  function reset(nextSeed: MockVaultFile[] = seedFiles): void {
+  /** Load the seed; a fresh fixture (a page load) finds the Session file the last one left. */
+  function load(nextSeed: MockVaultFile[]): void {
     seedFiles = nextSeed
     files = new Map()
     for (const entry of nextSeed) {
@@ -171,6 +196,11 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     dialogSelections = []
     readOnlyPaths = new Set()
     calls.length = 0
+  }
+
+  function reset(nextSeed: MockVaultFile[] = seedFiles): void {
+    load(nextSeed)
+    writeStoredSession(null)
   }
 
   function requireRoot(candidate: unknown): void {
@@ -227,12 +257,18 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
         pendingOpen = []
         return drained
       }
+      case 'read_session':
+        return readStoredSession()
+      case 'update_session': {
+        writeStoredSession(args?.session ?? null)
+        return undefined
+      }
       default:
         throw new Error(`No mock handler for command: ${command}`)
     }
   }
 
-  reset(seed)
+  load(seed)
 
   return {
     vaultPath,
@@ -259,6 +295,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     markReadOnly: (paths) => {
       readOnlyPaths = new Set(paths)
     },
+    seedSession: writeStoredSession,
     reset,
   }
 }

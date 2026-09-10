@@ -391,12 +391,14 @@ fn build_window_menu(app: &App) -> MenuResult {
         builder = append_manifest_item(app, builder, item)?;
     }
 
+    // No native Close Window item: ⌘W is Close Tab (spec section 7), which
+    // closes the window itself once no Tab is left.
     builder = builder.separator().minimize().maximize();
     if window_menu_includes_native_fullscreen(std::env::consts::OS) {
         builder = builder.fullscreen();
     }
 
-    Ok(builder.separator().close_window().build()?)
+    Ok(builder.build()?)
 }
 
 pub fn setup_menu(app: &App) -> Result<(), Box<dyn Error>> {
@@ -599,12 +601,7 @@ mod tests {
 
         assert_eq!(
             menu_state_group_ids(NOTE_DEPENDENT_GROUP),
-            [
-                "file-save",
-                "file-close-tab",
-                "edit-toggle-raw-editor",
-                "edit-find-in-note"
-            ]
+            ["file-save", "edit-toggle-raw-editor", "edit-find-in-note"]
         );
         assert_eq!(
             menu_state_group_ids(VAULT_DEPENDENT_GROUP),

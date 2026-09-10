@@ -1,6 +1,7 @@
 mod asset_scope;
 mod commands;
 pub mod menu;
+pub mod session;
 pub mod vault;
 pub mod vault_watcher;
 
@@ -8,6 +9,7 @@ pub(crate) use asset_scope::sync_vault_asset_scope;
 
 use std::ffi::OsStr;
 use std::process::Command;
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -80,26 +82,88 @@ fn setup_macos_webview_shortcut_prevention(
     Ok(())
 }
 
+/// A dev build brings the window forward; it is centred only when no Session
+/// frame was restored, so the restored frame is the one you see.
 #[cfg(debug_assertions)]
-fn show_debug_main_window(app: &mut tauri::App) {
-    use tauri::Manager;
-
+fn show_debug_main_window(app: &mut tauri::App, has_saved_frame: bool) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
         let _ = window.show();
-        let _ = window.center();
+        if !has_saved_frame {
+            let _ = window.center();
+        }
         let _ = window.set_focus();
     }
 }
 
 #[cfg(not(debug_assertions))]
-fn show_debug_main_window(_app: &mut tauri::App) {}
+fn show_debug_main_window(_app: &mut tauri::App, _has_saved_frame: bool) {}
+
+fn setup_session(app: &mut tauri::App) -> Result<bool, Box<dyn std::error::Error>> {
+    let path = session::session_path(app.handle())?;
+    app.manage(session::SessionState::load(path));
+    let has_saved_frame = app.state::<session::SessionState>().window().is_some();
+    session::apply_saved_frame(app.handle());
+    Ok(has_saved_frame)
+}
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     setup_plugins(app)?;
     menu::setup_menu(app)?;
-    show_debug_main_window(app);
+    let has_saved_frame = setup_session(app)?;
+    show_debug_main_window(app, has_saved_frame);
     Ok(())
+}
+
+/// The main window's frame follows it into the Session; closing flushes the file.
+fn handle_window_event(window: &tauri::Window, event: &WindowEvent) {
+    match event {
+        WindowEvent::Moved(_) | WindowEvent::Resized(_) => session::note_window_frame(window),
+        WindowEvent::CloseRequested { .. } => {
+            session::note_window_frame(window);
+            session::flush_now(window.app_handle());
+        }
+        _ => {}
+    }
+}
+
+/// Reopen the main window from the Dock after ⌘W closed the last one; the
+/// renderer boots and restores the Session as at launch.
+#[cfg(target_os = "macos")]
+fn reopen_main_window(app: &AppHandle) {
+    let Some(config) = app.config().app.windows.first().cloned() else {
+        log::error!("No window configuration to reopen from");
+        return;
+    };
+    match tauri::WebviewWindowBuilder::from_config(app, &config).and_then(|builder| builder.build())
+    {
+        Ok(_) => session::apply_saved_frame(app),
+        Err(error) => log::error!("Could not reopen the window: {error}"),
+    }
+}
+
+fn handle_run_event(app: &AppHandle, event: RunEvent) {
+    match event {
+        // The last window closed (⌘W with zero Tabs): flush the Session and,
+        // on macOS, stay in the Dock so a reopen restores it.
+        RunEvent::ExitRequested {
+            code: None, api, ..
+        } => {
+            session::flush_now(app);
+            #[cfg(target_os = "macos")]
+            api.prevent_exit();
+            #[cfg(not(target_os = "macos"))]
+            let _ = api;
+        }
+        // ⌘Q reaches the event loop as `Exit`; `app.exit()` as `ExitRequested`.
+        RunEvent::ExitRequested { .. } | RunEvent::Exit => session::flush_now(app),
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen {
+            has_visible_windows: false,
+            ..
+        } => reopen_main_window(app),
+        _ => {}
+    }
 }
 
 pub fn run() {
@@ -109,6 +173,8 @@ pub fn run() {
         )))
         .manage(vault_watcher::VaultWatcherState::new())
         .invoke_handler(tauri::generate_handler![
+            commands::read_session,
+            commands::update_session,
             commands::get_note_content,
             commands::validate_note_content,
             commands::save_note_content,
@@ -132,9 +198,11 @@ pub fn run() {
             commands::read_text_from_clipboard,
             commands::update_menu_state,
         ])
+        .on_window_event(handle_window_event)
         .setup(setup_app)
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(handle_run_event);
 }
 
 #[cfg(test)]

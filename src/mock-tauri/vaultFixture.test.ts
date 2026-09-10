@@ -177,3 +177,33 @@ describe('read-only paths', () => {
     await expect(vault.invoke('get_note_content', { path })).resolves.toBe('# Changed\n')
   })
 })
+
+describe('the Session file in the fixture', () => {
+  it('answers read_session with null until a Session is written, then with the last write', async () => {
+    const vault = createMockVault(seed)
+    const session = { version: 1, openEditors: [{ path: `${MOCK_VAULT_PATH}/Welcome.md`, mode: 'rich' }], activePath: null }
+
+    await expect(vault.invoke('read_session')).resolves.toBeNull()
+    await vault.invoke('update_session', { session })
+
+    await expect(vault.invoke('read_session')).resolves.toEqual(session)
+  })
+
+  it('keeps the Session across fixtures, as a relaunch would, until reset clears it', async () => {
+    const first = createMockVault(seed)
+    await first.invoke('update_session', { session: { version: 1, openEditors: [], activePath: null } })
+
+    const relaunched = createMockVault(seed)
+    await expect(relaunched.invoke('read_session')).resolves.toEqual({ version: 1, openEditors: [], activePath: null })
+
+    relaunched.reset()
+    await expect(relaunched.invoke('read_session')).resolves.toBeNull()
+  })
+
+  it('lets a spec seed the Session a launch will find', async () => {
+    const vault = createMockVault(seed)
+    vault.seedSession({ version: 1, openEditors: [{ path: `${MOCK_VAULT_PATH}/Welcome.md` }], activePath: null })
+
+    await expect(vault.invoke('read_session')).resolves.toMatchObject({ version: 1, activePath: null })
+  })
+})
