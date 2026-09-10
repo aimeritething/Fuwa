@@ -196,6 +196,7 @@ describe('useEditorSave', () => {
     expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
       path: '/test/vault/renamed-draft.md',
       content: '# Draft\n\nUnsaved rename edit',
+      vaultPath: '/test/vault',
     })
     expect(onBeforePersist).toHaveBeenCalledWith('/test/vault/renamed-draft.md')
     expect(updateVaultContent).toHaveBeenCalledWith('/test/vault/renamed-draft.md', '# Draft\n\nUnsaved rename edit')
@@ -613,6 +614,49 @@ describe('useEditorSave', () => {
     expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
       path: '/vault/note.md',
       content: 'version 2',
+    })
+  })
+
+  describe('the boundary root (Fuwa: every write names its root)', () => {
+    it('sends the persistence scope that contains the path as vaultPath', async () => {
+      const { result } = renderHook(() =>
+        useEditorSave({
+          updateVaultContent,
+          setTabs,
+          setToastMessage,
+          persistenceScope: ['/vault-a', '/vault-b'],
+        })
+      )
+
+      act(() => {
+        result.current.handleContentChange('/vault-b/note.md', '# B')
+      })
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
+        path: '/vault-b/note.md',
+        content: '# B',
+        vaultPath: '/vault-b',
+      })
+    })
+
+    it('omits vaultPath when no scope is configured', async () => {
+      const { result } = renderSaveHook()
+
+      act(() => {
+        result.current.handleContentChange('/anywhere/note.md', '# Anywhere')
+      })
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
+        path: '/anywhere/note.md',
+        content: '# Anywhere',
+      })
+      expect(mockInvokeFn.mock.calls[0][1]).not.toHaveProperty('vaultPath')
     })
   })
 })

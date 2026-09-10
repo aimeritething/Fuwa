@@ -142,3 +142,23 @@ describe('createMockVault', () => {
     await expect(vault.invoke('get_note_content', { path: `${MOCK_VAULT_PATH}/Welcome.md` })).resolves.toBe('# Welcome\n')
   })
 })
+
+describe('the Open Document dialog stand-in', () => {
+  it('hands out queued selections one at a time, then reports a cancelled dialog', () => {
+    const vault = createMockVault(seed)
+    vault.queueDialogSelection([`${MOCK_VAULT_PATH}/Welcome.md`, `${MOCK_VAULT_PATH}/Projects/Plan.md`])
+
+    expect(vault.takeDialogSelection()).toBe(`${MOCK_VAULT_PATH}/Welcome.md`)
+    expect(vault.takeDialogSelection()).toBe(`${MOCK_VAULT_PATH}/Projects/Plan.md`)
+    expect(vault.takeDialogSelection()).toBeNull()
+  })
+
+  it('forgets queued selections on reset', () => {
+    const vault = createMockVault(seed)
+    vault.queueDialogSelection([`${MOCK_VAULT_PATH}/Welcome.md`])
+
+    vault.reset()
+
+    expect(vault.takeDialogSelection()).toBeNull()
+  })
+})

@@ -24,9 +24,10 @@ describe('useEditorTheme', () => {
     expect(result.current.cssVars['--headings-h4-font-weight']).toBe('600')
   })
 
-  it('exports the default editor max width', () => {
+  it('exports the editor column width: a 680px prose column plus 56px padding a side (spec section 2)', () => {
     const { result } = renderHook(() => useEditorTheme())
 
-    expect(result.current.cssVars['--editor-max-width']).toBe('820px')
+    expect(result.current.cssVars['--editor-max-width']).toBe('792px')
+    expect(result.current.cssVars['--editor-padding-horizontal']).toBe('56px')
   })
 })

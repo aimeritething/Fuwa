@@ -54,7 +54,7 @@ interface InFlightPendingSave {
 interface PersistPendingContentParams {
   pending: PendingContent
   pendingContentRef: MutableRefObject<PendingContent | null>
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
   onNotePersisted?: EditorSaveConfig['onNotePersisted']
   resolvePath?: EditorSaveConfig['resolvePath']
@@ -74,7 +74,7 @@ interface EditorSaveCommandsParams {
   autoSaveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>
   setTabs: EditorSaveConfig['setTabs']
   setToastMessage: EditorSaveConfig['setToastMessage']
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onAfterSave: () => void
   onAfterSaveRef: MutableRefObject<() => void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
@@ -114,6 +114,15 @@ function useLatestValueRef<T>(value: T): MutableRefObject<T> {
     ref.current = value
   }, [value])
   return ref
+}
+
+/** The configured root that contains `path`; undefined when no scope confines writes. */
+function persistenceRootForPath(
+  path: string,
+  persistenceScope: string | readonly string[] | undefined,
+): string | undefined {
+  const roots = typeof persistenceScope === 'string' ? [persistenceScope] : persistenceScope ?? []
+  return roots.find((root) => root.trim() !== '' && canWritePathToVault(path, root))
 }
 
 function resolveBufferedPath(path: string, resolvePath?: EditorSaveConfig['resolvePath']): string {
@@ -179,7 +188,7 @@ async function persistResolvedContent({
 }: {
   path: string
   content: string
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
   resolvePath?: EditorSaveConfig['resolvePath']
   resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
@@ -188,7 +197,7 @@ async function persistResolvedContent({
   const targetPath = await resolvePersistPath(path, resolvePath, resolvePathBeforeSave)
   if (!canWritePathToVault(targetPath, persistenceScopeRef.current ?? '')) return null
   onBeforePersist?.(targetPath)
-  await saveNote(targetPath, content)
+  await saveNote(targetPath, content, persistenceRootForPath(targetPath, persistenceScopeRef.current))
   return targetPath
 }
 
@@ -264,7 +273,7 @@ function useOnAfterSaveRef(onAfterSave: () => void) {
 
 function usePendingContentFlush(options: {
   pendingContentRef: MutableRefObject<PendingContent | null>
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
   onNotePersisted?: EditorSaveConfig['onNotePersisted']
   resolvePath?: EditorSaveConfig['resolvePath']
@@ -362,7 +371,7 @@ async function persistUnsavedFallback({
   persistenceScopeRef,
 }: {
   unsavedFallback?: { path: string; content: string }
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
   onNotePersisted?: EditorSaveConfig['onNotePersisted']
   resolvePath?: EditorSaveConfig['resolvePath']
@@ -408,7 +417,7 @@ function pausedSaveResult({
 async function persistImmediateSave(options: {
   unsavedFallback?: { path: string; content: string }
   flushPending: (pathFilter?: string) => Promise<boolean>
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
   onNotePersisted?: EditorSaveConfig['onNotePersisted']
   resolvePath?: EditorSaveConfig['resolvePath']
@@ -467,7 +476,7 @@ function useImmediateSaveCommands(options: {
   flushPending: (pathFilter?: string) => Promise<boolean>
   setToastMessage: EditorSaveConfig['setToastMessage']
   onAfterSave: () => void
-  saveNote: (path: string, content: string) => Promise<void>
+  saveNote: (path: string, content: string, vaultPath?: string) => Promise<void>
   onBeforePersist?: EditorSaveConfig['onBeforePersist']
   onNotePersisted?: EditorSaveConfig['onNotePersisted']
   resolvePath?: EditorSaveConfig['resolvePath']

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/jetbrains-mono/wght.css'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AppPreferencesProvider } from './hooks/useAppPreferences'
 import './index.css'
 import App from './App.tsx'
 import { applyStoredThemeMode } from './lib/themeMode'
@@ -61,8 +62,10 @@ function getRequiredRootElement(): HTMLElement {
 
 createRoot(getRequiredRootElement()).render(
   <StrictMode>
-    <TooltipProvider>
-      <App />
-    </TooltipProvider>
+    <AppPreferencesProvider>
+      <TooltipProvider>
+        <App />
+      </TooltipProvider>
+    </AppPreferencesProvider>
   </StrictMode>,
 )

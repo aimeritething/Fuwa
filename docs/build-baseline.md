@@ -30,6 +30,23 @@ CodeMirror, KaTeX, Mermaid, shiki, tldraw) is imported from the entry yet.
 The 303 kB is the shell, not the kernel. The next `tauri build` after the
 editor shell lands (AIM-379) is the first number that reflects the app.
 
+## Shipped build after the editor shell (AIM-379)
+
+`pnpm build` on 2026-09-10 with the AIM-379 working tree, same machine and
+toolchain (Vite 7.3.6). The first number that reflects the app: `App.tsx` now
+mounts the editor shell, so the production graph reaches the whole kernel.
+
+| Number | Value |
+| -- | -- |
+| JS total | 11,705.93 kB (139 chunks) |
+| JS gzip total | 2,744.82 kB |
+| Largest chunks | `index-*.js` 2,619.23 kB / 790.77 kB gzip · `TldrawWhiteboard-*.js` 1,325.10 kB / 411.24 kB · `cpp-*.js` (shiki grammar) 829.05 kB / 62.56 kB · `cynefin-*.js` (Mermaid) 691.42 kB / 155.09 kB · `mermaid.core-*.js` 672.97 kB / 163.53 kB |
+| CSS | `index-*.css` 161.21 kB / 34.33 kB gzip |
+
+tldraw and Mermaid are lazy chunks as ADR-0001 requires; KaTeX is inside
+`index-*.js` (static import, by the spec's rule). The binary and `.app` were not
+rebuilt for this entry.
+
 ## Kernel measurement (not shipped)
 
 To give the post-v0.1 chunking decision a number now, a one-off `vite build`

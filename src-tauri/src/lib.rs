@@ -130,6 +130,7 @@ pub fn run() {
             commands::sync_vault_asset_scope_for_window,
             commands::copy_text_to_clipboard,
             commands::read_text_from_clipboard,
+            commands::update_menu_state,
         ])
         .setup(setup_app)
         .run(tauri::generate_context!())

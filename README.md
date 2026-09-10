@@ -25,9 +25,12 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
   `take_pending_open` from memory and rejects anything else. Argument and result shapes
   follow the Rust commands; `list_files` and `take_pending_open` have no Rust side yet, so
   the fixture's shape is the one their Rust commands should match. A spec reaches it as
-  `window.__fuwaMockVault`: call `reset(seed)` to seed files, `queuePendingOpen(paths)` to
-  simulate a Finder open, and read `calls` to assert what the app invoked. Add a case to
-  the fixture's `answer` switch when a spec needs a command it does not answer yet.
+  `window.__fuwaMockVault`: call `reset(seed)` to seed files, `writeNote(path, content)` to
+  add one, `queuePendingOpen(paths)` to simulate a Finder open, `queueDialogSelection(paths)`
+  to decide what the next Open Document… dialog "returns" (the dialog is a plugin call with
+  no command behind it, so the fixture stands in for it too), and read `calls` to assert
+  what the app invoked. Add a case to the fixture's `answer` switch when a spec needs a
+  command it does not answer yet.
 
 CI (`.github/workflows/ci.yml`) runs the type-check, ESLint, Vitest, clippy and `cargo test`
 on macOS for every push to `main` and every pull request. Smoke and the bundle build are run
