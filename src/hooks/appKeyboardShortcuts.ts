@@ -1,4 +1,3 @@
-import { trackEvent } from '../lib/telemetry'
 import {
   APP_COMMAND_IDS,
   executeAppCommand,
@@ -12,32 +11,35 @@ export type KeyboardActions = Pick<
   AppCommandHandlers,
   | 'onQuickOpen'
   | 'onCommandPalette'
-  | 'onSearch'
   | 'onCreateNote'
+  | 'onOpenVault'
+  | 'onOpenNote'
+  | 'onCloseVault'
   | 'onSave'
+  | 'onCloseTab'
   | 'onUndo'
   | 'onRedo'
   | 'onFindInNote'
-  | 'onReplaceInNote'
   | 'onPastePlainText'
-  | 'onOpenSettings'
-  | 'onDeleteNote'
-  | 'onArchiveNote'
-  | 'onSetViewMode'
   | 'onZoomIn'
   | 'onZoomOut'
   | 'onZoomReset'
-  | 'onGoBack'
-  | 'onGoForward'
-  | 'onToggleAIChat'
-  | 'onToggleTableOfContents'
+  | 'onToggleSidebar'
   | 'onToggleRawEditor'
-  | 'onToggleInspector'
-  | 'onToggleFavorite'
-  | 'onToggleOrganized'
-  | 'onOpenInNewWindow'
-  | 'activeTabPathRef'
-  | 'multiSelectionCommandRef'
+  | 'onAppearanceSystem'
+  | 'onAppearanceDark'
+  | 'onAppearanceLight'
+  | 'onPreviousTab'
+  | 'onNextTab'
+  | 'onJumpToTab1'
+  | 'onJumpToTab2'
+  | 'onJumpToTab3'
+  | 'onJumpToTab4'
+  | 'onJumpToTab5'
+  | 'onJumpToTab6'
+  | 'onJumpToTab7'
+  | 'onJumpToTab8'
+  | 'onJumpToTab9'
 > & {
   canUndo?: boolean
   canRedo?: boolean
@@ -47,8 +49,6 @@ const TEXT_EDITING_KEYS = new Set(['Backspace', 'Delete'])
 const TEXT_EDITING_BLOCKED_COMMANDS = new Set<AppCommandId>([
   APP_COMMAND_IDS.editUndo,
   APP_COMMAND_IDS.editRedo,
-  APP_COMMAND_IDS.viewGoBack,
-  APP_COMMAND_IDS.viewGoForward,
 ])
 
 function isTextInputFocused(): boolean {
@@ -125,8 +125,5 @@ export function handleAppKeyboardEvent(actions: KeyboardActions, event: Keyboard
   if (handleFocusedTextCommand(event, commandId)) return
 
   event.preventDefault()
-  if (commandId === APP_COMMAND_IDS.editFindInVault) {
-    trackEvent('search_used')
-  }
   executeAppCommand(commandId, actions, 'renderer-keyboard')
 }

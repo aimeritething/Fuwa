@@ -1,29 +1,19 @@
-import { Component, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import {
-  BlockNoteViewRaw,
-  ComponentsContext,
-  type useCreateBlockNote,
-} from '@blocknote/react'
-import { components } from '@blocknote/mantine'
-import { MantineContext, MantineProvider } from '@mantine/core'
+import { Component, useCallback, useEffect, useRef, type ReactNode } from 'react'
+import type { useCreateBlockNote } from '@blocknote/react'
+import { BlockNoteView } from '@blocknote/shadcn'
 import { trackEvent } from '../lib/telemetry'
 import { useDocumentThemeMode } from '../hooks/useDocumentThemeMode'
 import { useEditorTheme } from '../hooks/useTheme'
 import { useImageDrop, type ImageImportError } from '../hooks/useImageDrop'
 import { useImageLightbox } from '../hooks/useImageLightbox'
 import type { AppLocale } from '../lib/i18n'
-import { buildTypeEntryMap } from '../utils/typeColors'
-import { workspacePathForEntry } from '../utils/workspaces'
 import { observeNativeTextAssistanceDisabled } from '../lib/nativeTextAssistance'
-import { getRuntimeStyleNonce } from '../lib/runtimeStyleNonce'
 import type { VaultEntry } from '../types'
-import { _wikilinkEntriesRef } from './editorSchema'
 import { insertImageBlockAfterCursor } from './editorImageInsertion'
 import { useBlockNoteSideMenuHoverGuard } from './blockNoteSideMenuHoverGuard'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 import { ImageLightbox } from './ImageLightbox'
 import { refreshCodeBlockSyntaxHighlighting } from './editorCodeBlockHighlightRefresh'
-import { VaultExpressionProvider } from './VaultExpressionContext'
 import { subscribeRichEditorExternalChange } from './editorExternalChangeEvents'
 import {
   activatePlainTextPasteTarget,
@@ -39,9 +29,7 @@ import {
 import { repairEditorDocumentForRenderRecovery } from './blockNoteRenderRecoveryDocument'
 import { useEditorPasteHandler } from './titleHeadingInteractions'
 import {
-  buildBaseSuggestionItems,
   type SuggestionAction,
-  useInsertWikilink,
   useSuggestionMenuItems,
 } from './singleEditorSuggestionItems'
 import {
@@ -147,37 +135,6 @@ function runSuggestionActionSafely({
   }
 }
 
-function SharedContextBlockNoteView(props: React.ComponentProps<typeof BlockNoteViewRaw>) {
-  const { children, className, theme, ...rest } = props
-  const mantineContext = useContext(MantineContext)
-  const colorScheme = theme === 'dark' ? 'dark' : 'light'
-  const view = (
-    <ComponentsContext.Provider value={components}>
-      <BlockNoteViewRaw
-        {...rest}
-        className={['bn-mantine', className].filter(Boolean).join(' ')}
-        data-mantine-color-scheme={colorScheme}
-        theme={theme}
-      >
-        {children}
-      </BlockNoteViewRaw>
-    </ComponentsContext.Provider>
-  )
-
-  if (mantineContext) return view
-
-  return (
-    <MantineProvider
-      // BlockNote scopes Mantine defaults under `.bn-mantine` instead of `:root`.
-      withCssVariables={false}
-      getStyleNonce={getRuntimeStyleNonce}
-      getRootElement={() => undefined}
-    >
-      {view}
-    </MantineProvider>
-  )
-}
-
 function shouldAllowToolbarMouseDown(target: HTMLElement) {
   return Boolean(target.closest(TOOLBAR_MOUSE_DOWN_ALLOW_SELECTOR))
 }
@@ -247,9 +204,7 @@ function useRichEditorPlainTextPasteTarget(options: {
 
 /** Single BlockNote editor view — content is swapped via replaceBlocks */
 export function SingleEditorView(options: {
-  currentContent?: string
   editor: ReturnType<typeof useCreateBlockNote>
-  entries: VaultEntry[]
   onNavigateWikilink: (target: string) => void
   onChange?: () => void
   onImageImportError?: (error: ImageImportError) => void
@@ -258,7 +213,7 @@ export function SingleEditorView(options: {
   editable?: boolean
   locale?: AppLocale
 }) {
-  const { currentContent = '', editor, entries, onNavigateWikilink, onChange, onImageImportError, sourceEntry, vaultPath, editable = true, locale = 'en' } = options
+  const { editor, onNavigateWikilink, onChange, onImageImportError, sourceEntry, vaultPath, editable = true, locale = 'en' } = options
   const { cssVars } = useEditorTheme()
   const themeMode = useDocumentThemeMode()
   const previousThemeModeRef = useRef(themeMode)
@@ -300,12 +255,7 @@ export function SingleEditorView(options: {
     onNavigateWikilink,
     vaultPath,
     sourceEntry?.path,
-    (sourceEntry ? workspacePathForEntry(sourceEntry) : null) ?? vaultPath,
   )
-
-  useEffect(() => {
-    _wikilinkEntriesRef.current = entries
-  }, [entries])
 
   useEffect(() => {
     if (previousThemeModeRef.current === themeMode) return
@@ -326,8 +276,6 @@ export function SingleEditorView(options: {
 
   useSeedBlockNoteTableBridge(editor)
 
-  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
-  const baseItems = useMemo(() => buildBaseSuggestionItems(entries), [entries])
   const runEditorAction = useCallback(
     (action: SuggestionAction) => {
     runSuggestionActionSafely({
@@ -380,18 +328,10 @@ export function SingleEditorView(options: {
     return () => container.removeEventListener('click', handleClick)
   }, [handleContainerClick])
 
-  const insertWikilink = useInsertWikilink(editor, runEditorAction)
   const suggestionMenuItems = useSuggestionMenuItems({
-    baseItems,
     editor,
-    entries,
-    insertWikilink,
     locale,
-    onNavigateWikilink,
     runEditorAction,
-    sourceEntry: sourceEntry ?? undefined,
-    typeEntryMap,
-    vaultPath,
   })
 
   return (
@@ -415,35 +355,27 @@ export function SingleEditorView(options: {
       )}
       <BlockNoteRenderRecoveryBoundary onRecover={(_, reason) => repairEditorDocumentForRenderRecovery(editor, reason)}>
         {(recoveryKey) => (
-          <VaultExpressionProvider
-            currentContent={currentContent}
-            entries={entries}
-            locale={locale}
-            sourceEntry={sourceEntry ?? null}
-            vaultPath={vaultPath ?? ''}
+          <BlockNoteView
+            key={recoveryKey}
+            editor={editor}
+            theme={themeMode}
+            onChange={handleEditorChange}
+            editable={editable}
+            emojiPicker={false}
+            formattingToolbar={false}
+            linkToolbar={false}
+            slashMenu={false}
+            sideMenu={false}
+            filePanel={false}
           >
-            <SharedContextBlockNoteView
-              key={recoveryKey}
-              editor={editor}
-              theme={themeMode}
-              onChange={handleEditorChange}
-              editable={editable}
-              emojiPicker={false}
-              formattingToolbar={false}
-              linkToolbar={false}
-              slashMenu={false}
-              sideMenu={false}
-              filePanel={false}
-            >
-              <EditorInteractionControllers
-                {...suggestionMenuItems}
-                locale={locale}
-                onToolbarMouseDown={handleToolbarMouseDownCapture}
-                runEditorAction={runEditorAction}
-                vaultPath={vaultPath}
-              />
-            </SharedContextBlockNoteView>
-          </VaultExpressionProvider>
+            <EditorInteractionControllers
+              {...suggestionMenuItems}
+              locale={locale}
+              onToolbarMouseDown={handleToolbarMouseDownCapture}
+              runEditorAction={runEditorAction}
+              vaultPath={vaultPath}
+            />
+          </BlockNoteView>
         )}
       </BlockNoteRenderRecoveryBoundary>
       {copyTarget && <CodeBlockCopyButton copyTarget={copyTarget} locale={locale} />}

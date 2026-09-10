@@ -7,7 +7,6 @@ import {
   createParagraphFixture,
   createTitleHeadingFixture,
   getSingleEditorViewTestState,
-  makeEntry,
   mockOpenExternalUrl,
   mockOpenLocalFile,
   renderEditorHarness,
@@ -81,12 +80,9 @@ describe('SingleEditorView interactions', () => {
     state.capturedSuggestionProps = {}
     state.capturedImageDropArgs = null
     state.capturedBlockNoteOnChange = null
-    state.capturedMantineGetStyleNonce = null
     state.blockNoteViewError = null
     state.blockNoteViewErrorOnce = false
     state.imageDropState.isDragOver = false
-    state.wikilinkEntriesRef.current = []
-    state.wikilinkCandidates = []
     mockOpenExternalUrl.mockClear()
     mockOpenLocalFile.mockClear()
     document.documentElement.removeAttribute('data-theme')
@@ -275,7 +271,6 @@ describe('SingleEditorView interactions', () => {
     render(
       <SingleEditorView
         editor={editor as never}
-        entries={[makeEntry()]}
         onNavigateWikilink={vi.fn()}
       />,
     )
@@ -364,7 +359,6 @@ describe('SingleEditorView interactions', () => {
     render(
       <SingleEditorView
         editor={editor as never}
-        entries={[makeEntry()]}
         onNavigateWikilink={vi.fn()}
       />,
     )

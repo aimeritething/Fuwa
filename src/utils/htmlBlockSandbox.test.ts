@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   htmlBlockIframeSrcDoc,
   htmlBlockPreview,
-  htmlBlockProtocolPayload,
   sanitizeHtmlBlockMarkup,
 } from './htmlBlockSandbox'
 
@@ -62,46 +61,6 @@ describe('HTML block sandbox', () => {
     expect(srcDoc).toContain("default-src 'none'")
     expect(srcDoc).toContain('<h1>Hello</h1>')
     expect(srcDoc).not.toContain('<script>window.evil = true</script>')
-  })
-
-  it('preserves only inline scripts when sandboxed scripts are explicitly enabled', () => {
-    const srcDoc = htmlBlockIframeSrcDoc([
-      '<div id="app"></div>',
-      '<script src="https://example.com/app.js"></script>',
-      '<script type="text/javascript">document.getElementById("app").textContent = "Ready"</script>',
-      '<script type="application/json" id="data">{"title":"Ready"}</script>',
-    ].join(''), { scripts: 'sandboxed' })
-
-    expect(srcDoc).toContain("script-src 'unsafe-inline'")
-    expect(srcDoc).toContain('<script>document.getElementById("app").textContent = "Ready"</script>')
-    expect(srcDoc).toContain('<script type="application/json" id="data">{"title":"Ready"}</script>')
-    expect(srcDoc).not.toContain('src="https://example.com/app.js"')
-  })
-
-  it('preserves sandboxed data script ids for dashboard JSON lookups', () => {
-    const srcDoc = htmlBlockIframeSrcDoc([
-      '<script type="application/json" id="notes">[{"title":"Ready"}]</script>',
-      '<script>window.dashboardData = JSON.parse(document.getElementById("notes").textContent)</script>',
-    ].join(''), { scripts: 'sandboxed' })
-    const documentObject = new DOMParser().parseFromString(srcDoc, 'text/html')
-
-    expect(srcDoc).toContain('<script type="application/json" id="notes">[{"title":"Ready"}]</script>')
-    expect(JSON.parse(documentObject.getElementById('notes')?.textContent ?? '')).toEqual([{ title: 'Ready' }])
-  })
-
-  it('encodes sanitized documents as URL-safe UTF-8 protocol payloads', () => {
-    const unicodeDocument = 'Grüße 🌳'
-    const payload = htmlBlockProtocolPayload(unicodeDocument)
-    const paddedPayload = payload
-      .replace(/-/gu, '+')
-      .replace(/_/gu, '/')
-      .padEnd(Math.ceil(payload.length / 4) * 4, '=')
-    const decoded = new TextDecoder().decode(
-      Uint8Array.from(atob(paddedPayload), character => character.charCodeAt(0)),
-    )
-
-    expect(payload).toMatch(/^[A-Za-z0-9_-]+$/u)
-    expect(decoded).toBe(unicodeDocument)
   })
 
   it('places sanitized style blocks in the iframe head so user CSS applies', () => {

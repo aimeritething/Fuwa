@@ -27,34 +27,20 @@ describe('vaultConfigStore', () => {
     resetVaultConfigStore()
   })
 
-  it('normalizes missing, null, and unknown AI agent permission modes to safe', () => {
-    bindVaultConfigStore(vaultConfig(), vi.fn())
-    expect(getVaultConfig().ai_agent_permission_mode).toBe('safe')
-
-    bindVaultConfigStore(vaultConfig({ ai_agent_permission_mode: null }), vi.fn())
-    expect(getVaultConfig().ai_agent_permission_mode).toBe('safe')
-
-    bindVaultConfigStore({
-      ...vaultConfig(),
-      ai_agent_permission_mode: 'danger' as VaultConfig['ai_agent_permission_mode'],
-    }, vi.fn())
-    expect(getVaultConfig().ai_agent_permission_mode).toBe('safe')
+  it('fills missing fields from the defaults when binding a config', () => {
+    bindVaultConfigStore(vaultConfig({ zoom: 1.25 }), vi.fn())
+    expect(getVaultConfig().zoom).toBe(1.25)
+    expect(getVaultConfig().view_mode).toBeNull()
   })
 
-  it('persists normalized AI agent permission mode updates', () => {
+  it('persists field updates through the bound save function', () => {
     const save = vi.fn()
     bindVaultConfigStore(vaultConfig(), save)
 
-    updateVaultConfigField('ai_agent_permission_mode', 'power_user')
-    expect(getVaultConfig().ai_agent_permission_mode).toBe('power_user')
+    updateVaultConfigField('zoom', 1.5)
+    expect(getVaultConfig().zoom).toBe(1.5)
     expect(save).toHaveBeenLastCalledWith(expect.objectContaining({
-      ai_agent_permission_mode: 'power_user',
-    }))
-
-    updateVaultConfigField('ai_agent_permission_mode', null)
-    expect(getVaultConfig().ai_agent_permission_mode).toBe('safe')
-    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({
-      ai_agent_permission_mode: 'safe',
+      zoom: 1.5,
     }))
   })
 })

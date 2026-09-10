@@ -1,8 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { VaultEntry, WorkspaceIdentity } from '../types'
-import { slugify } from './useNoteCreation'
+import type { VaultEntry } from '../types'
 import {
   findByNotePath,
   normalizeVaultRelativePath,
@@ -11,22 +10,11 @@ import {
   vaultRelativePathLabel,
 } from '../utils/notePathIdentity'
 import { filenameStemToTitle } from '../utils/noteTitle'
-import { vaultPathForEntry } from '../utils/workspaces'
-import { relativePathStem } from '../utils/wikilink'
 
 interface RenameResult {
   new_path: string
   updated_files: number
   failed_updates?: number
-}
-
-export { slugify }
-
-interface RenameRequest {
-  path: string
-  newTitle: string
-  vaultPath: string
-  oldTitle?: string
 }
 
 interface FilenameRenameRequest {
@@ -41,13 +29,6 @@ interface FolderMoveRequest {
   vaultPath: string
 }
 
-interface WorkspaceMoveRequest {
-  path: string
-  sourceVaultPath: string
-  destinationVaultPath: string
-  replacementTarget?: string
-}
-
 interface LoadNoteContentRequest {
   path: string
 }
@@ -57,7 +38,7 @@ interface ReloadTabsAfterRenameRequest {
   updateTabContent: (path: string, content: string) => void
 }
 
-type RenameCommand = 'rename_note' | 'rename_note_filename' | 'move_note_to_folder' | 'move_note_to_workspace'
+type RenameCommand = 'rename_note_filename' | 'move_note_to_folder'
 type NoteCommandExtra = Record<string, unknown>
 
 interface NoteCommandRequest {
@@ -84,23 +65,6 @@ const FOLDER_MOVE_COMMAND: SingleValueNoteCommand = {
   command: 'move_note_to_folder',
   mockKey: 'folder_path',
   tauriKey: 'folderPath',
-}
-
-/** Check if a note's filename doesn't match the slug of its current title. */
-export function needsRenameOnSave(title: string, filename: string): boolean {
-  if (!filename.toLowerCase().endsWith('.md')) return false
-  return `${slugify(title)}.md` !== filename
-}
-
-export async function performRename({ path, newTitle, vaultPath, oldTitle }: RenameRequest): Promise<RenameResult> {
-  const oldTitleArg = oldTitle ?? null
-  return invokeNoteCommand({
-    command: 'rename_note',
-    path,
-    vaultPath,
-    tauriExtra: { newTitle, oldTitle: oldTitleArg },
-    mockExtra: { new_title: newTitle, old_title: oldTitleArg },
-  })
 }
 
 function invokeRenameCommand(params: {
@@ -197,65 +161,11 @@ export async function performMoveNoteToFolder({
   })
 }
 
-export async function performMoveNoteToWorkspace({
-  path,
-  sourceVaultPath,
-  destinationVaultPath,
-  replacementTarget,
-}: WorkspaceMoveRequest): Promise<RenameResult> {
-  const tauriReplacementTarget = replacementTarget ?? null
-  return invokeRenameCommand({
-    command: 'move_note_to_workspace',
-    tauriArgs: {
-      args: {
-        sourceVaultPath,
-        destinationVaultPath,
-        oldPath: path,
-        replacementTarget: tauriReplacementTarget,
-      },
-    },
-    mockArgs: {
-      source_vault_path: sourceVaultPath,
-      destination_vault_path: destinationVaultPath,
-      old_path: path,
-      replacement_target: tauriReplacementTarget,
-    },
-  })
-}
-
-export function buildRenamedEntry(entry: VaultEntry, newTitle: string, newPath: string): VaultEntry {
-  const filename = notePathFilename(newPath)
-  return { ...entry, path: newPath, filename, title: newTitle }
-}
-
 export function buildFilenameRenamedEntry(entry: VaultEntry, newPath: string): VaultEntry {
   const filename = notePathFilename(newPath)
   const oldFallbackTitle = filenameStemToTitle(entry.filename)
   const title = !entry.hasH1 && entry.title === oldFallbackTitle ? filenameStemToTitle(filename) : entry.title
   return { ...entry, path: newPath, filename, title }
-}
-
-export function buildWorkspaceMovedEntry(entry: VaultEntry, newPath: string, workspace: WorkspaceIdentity): VaultEntry {
-  return {
-    ...buildFilenameRenamedEntry(entry, newPath),
-    workspace,
-  }
-}
-
-export function workspaceMoveReplacementTarget({
-  entry,
-  sourceVaultPath,
-  destinationWorkspace,
-}: {
-  entry: VaultEntry
-  sourceVaultPath: string
-  destinationWorkspace: WorkspaceIdentity
-}): string {
-  const localTarget = relativePathStem(entry.path, sourceVaultPath)
-  const sourceAlias = entry.workspace?.alias
-  return destinationWorkspace.alias && destinationWorkspace.alias !== sourceAlias
-    ? `${destinationWorkspace.alias}/${localTarget}`
-    : localTarget
 }
 
 export async function loadNoteContent({ path }: LoadNoteContentRequest): Promise<string> {
@@ -314,14 +224,6 @@ function moveToastMessage(folderPath: string, updatedFiles: number, failedUpdate
   })
 }
 
-function moveWorkspaceToastMessage(workspaceLabel: string, updatedFiles: number, failedUpdates = 0): string {
-  return formatRewriteToast({
-    action: `Moved to "${workspaceLabel}"`,
-    updatedFiles,
-    failedUpdates,
-  })
-}
-
 export async function reloadVaultAfterRename(reloadVault?: () => Promise<unknown>): Promise<void> {
   if (!reloadVault) return
   try {
@@ -352,10 +254,6 @@ interface Tab {
 
 function findRenameEntry(entries: VaultEntry[], tabs: Tab[], path: string): VaultEntry | undefined {
   return findByNotePath(entries, path) ?? tabs.find((tab) => notePathsMatch(tab.entry.path, path))?.entry
-}
-
-function resolveRenameVaultPath(entry: VaultEntry | undefined, fallbackVaultPath: string): string {
-  return entry ? vaultPathForEntry(entry, fallbackVaultPath) : fallbackVaultPath
 }
 
 function renameErrorMessage(err: unknown): string {
@@ -481,75 +379,13 @@ async function runRenameAction(options: {
   }
 }
 
-type ApplyRenameResult = ReturnType<typeof useRenameResultApplier>['applyRenameResult']
-
-function useWorkspaceMoveHandler({
-  applyRenameResult,
-  entries,
-  setToastMessage,
-  tabsRef,
-}: {
-  applyRenameResult: ApplyRenameResult
-  entries: VaultEntry[]
-  setToastMessage: (message: string | null) => void
-  tabsRef: React.MutableRefObject<Tab[]>
-}) {
-  return useCallback(
-    async (
-    path: string,
-    destinationWorkspace: WorkspaceIdentity,
-    vaultPath: string,
-    onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void,
-  ) => {
-    const entry = findRenameEntry(entries, tabsRef.current, path)
-    if (!entry) {
-      setToastMessage('Failed to move note: note not found')
-      return null
-    }
-
-    const sourceVaultPath = resolveRenameVaultPath(entry, vaultPath)
-    if (sourceVaultPath === destinationWorkspace.path) {
-      return { new_path: path, updated_files: 0, failed_updates: 0 }
-    }
-
-    return runRenameAction({
-      path,
-        perform: () =>
-          performMoveNoteToWorkspace({
-        path,
-        sourceVaultPath,
-        destinationVaultPath: destinationWorkspace.path,
-            replacementTarget: workspaceMoveReplacementTarget({
-              entry,
-              sourceVaultPath,
-              destinationWorkspace,
-            }),
-      }),
-      applyRenameResult,
-        buildEntry: (currentEntry, newPath) =>
-          buildWorkspaceMovedEntry(currentEntry ?? entry, newPath, destinationWorkspace),
-      onEntryRenamed,
-      setToastMessage,
-      errorMessage: moveNoteErrorMessage,
-      logLabel: 'Failed to move note to workspace',
-        successMessage: (result) =>
-          moveWorkspaceToastMessage(destinationWorkspace.label, result.updated_files, result.failed_updates ?? 0),
-      allowUnchangedResult: true,
-    })
-    },
-    [applyRenameResult, entries, setToastMessage, tabsRef],
-  )
-}
-
 interface LocalRenameHandlerContext {
   applyRenameResult: ReturnType<typeof useRenameResultApplier>['applyRenameResult']
-  entries: VaultEntry[]
   setToastMessage: NoteRenameConfig['setToastMessage']
-  tabsRef: ReturnType<typeof useRenameResultApplier>['tabsRef']
 }
 
-function useLocalRenameHandler(context: LocalRenameHandlerContext, mode: 'title' | 'filename') {
-  const { applyRenameResult, entries, setToastMessage, tabsRef } = context
+function useLocalRenameHandler(context: LocalRenameHandlerContext) {
+  const { applyRenameResult, setToastMessage } = context
   return useCallback(
     async (
       path: string,
@@ -557,14 +393,8 @@ function useLocalRenameHandler(context: LocalRenameHandlerContext, mode: 'title'
       vaultPath: string,
       onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void,
     ) => {
-      const entry = findRenameEntry(entries, tabsRef.current, path)
-      const renameVaultPath = resolveRenameVaultPath(entry, vaultPath)
-      const perform = mode === 'title'
-        ? () => performRename({ path, newTitle: value, vaultPath: renameVaultPath, oldTitle: entry?.title })
-        : () => performFilenameRename({ path, newFilenameStem: value, vaultPath: renameVaultPath })
-      const buildEntry = mode === 'title'
-        ? (currentEntry: VaultEntry | undefined, newPath: string) => buildRenamedEntry(currentEntry ?? ({} as VaultEntry), value, newPath)
-        : (currentEntry: VaultEntry | undefined, newPath: string) => buildFilenameRenamedEntry(currentEntry ?? ({} as VaultEntry), newPath)
+      const perform = () => performFilenameRename({ path, newFilenameStem: value, vaultPath })
+      const buildEntry = (currentEntry: VaultEntry | undefined, newPath: string) => buildFilenameRenamedEntry(currentEntry ?? ({} as VaultEntry), newPath)
       await runRenameAction({
         path,
         perform,
@@ -573,19 +403,18 @@ function useLocalRenameHandler(context: LocalRenameHandlerContext, mode: 'title'
         onEntryRenamed,
         setToastMessage,
         errorMessage: renameErrorMessage,
-        logLabel: mode === 'title' ? 'Failed to rename note' : 'Failed to rename note filename',
+        logLabel: 'Failed to rename note filename',
       })
     },
-    [applyRenameResult, entries, mode, setToastMessage, tabsRef],
+    [applyRenameResult, setToastMessage],
   )
 }
 
 export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) {
-  const { entries, setToastMessage } = config
+  const { setToastMessage } = config
   const { tabsRef, applyRenameResult } = useRenameResultApplier(config, tabDeps)
-  const handlerContext = { applyRenameResult, entries, setToastMessage, tabsRef }
-  const handleRenameNote = useLocalRenameHandler(handlerContext, 'title')
-  const handleRenameFilename = useLocalRenameHandler(handlerContext, 'filename')
+  const handlerContext = { applyRenameResult, setToastMessage }
+  const handleRenameFilename = useLocalRenameHandler(handlerContext)
 
   const handleMoveNoteToFolder = useCallback(
     async (
@@ -595,15 +424,13 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
       onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void,
     ) => {
     const normalizedFolderPath = normalizeVaultRelativePath(folderPath)
-    const entry = findRenameEntry(entries, tabsRef.current, path)
-    const moveVaultPath = resolveRenameVaultPath(entry, vaultPath)
     return runRenameAction({
       path,
         perform: () =>
           performMoveNoteToFolder({
             path,
             folderPath: normalizedFolderPath,
-            vaultPath: moveVaultPath,
+            vaultPath,
           }),
       applyRenameResult,
       buildEntry: (currentEntry, newPath) => buildFilenameRenamedEntry(currentEntry ?? ({} as VaultEntry), newPath),
@@ -616,21 +443,12 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
       allowUnchangedResult: true,
     })
     },
-    [entries, tabsRef, applyRenameResult, setToastMessage],
+    [applyRenameResult, setToastMessage],
   )
 
-  const handleMoveNoteToWorkspace = useWorkspaceMoveHandler({
-    applyRenameResult,
-    entries,
-    setToastMessage,
-    tabsRef,
-  })
-
   return {
-    handleRenameNote,
     handleRenameFilename,
     handleMoveNoteToFolder,
-    handleMoveNoteToWorkspace,
     tabsRef,
   }
 }

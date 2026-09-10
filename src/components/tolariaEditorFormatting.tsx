@@ -43,13 +43,16 @@ import {
   type SetStateAction,
 } from 'react'
 import {
-  Button as MantineButton,
-  CheckIcon as MantineCheckIcon,
-  Menu as MantineMenu,
-} from '@mantine/core'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
+import { Button } from './ui/button'
 import {
   ArrowSquareOut as ExternalLink,
   CaretDown as ChevronDown,
+  Check,
   Code as Code2,
   Highlighter,
   TextB as Bold,
@@ -606,45 +609,43 @@ function TolariaBlockTypeSelect() {
   if (!selectedItem || !editor.isEditable) return null
 
   return (
-    <MantineMenu
-      opened={menuState.opened}
-      onChange={handleMenuChange}
-      withinPortal={false}
-      transitionProps={{ exitDuration: 0 }}
-      middlewares={{ flip: true, shift: true, inline: false, size: true }}
+    <DropdownMenu
+      modal={false}
+      open={menuState.opened}
+      onOpenChange={handleMenuChange}
     >
-      <MantineMenu.Target>
-        <MantineButton
+      <DropdownMenuTrigger asChild>
+        <Button
           onMouseDown={(event) => {
             captureSelectedBlockIds()
             event.preventDefault()
             event.currentTarget.focus()
           }}
-          leftSection={selectedItem.iconElement}
-          rightSection={<ChevronDown size={16} />}
           size="xs"
-          variant="subtle"
+          variant="ghost"
         >
+          {selectedItem.iconElement}
           {selectedItem.name}
-        </MantineButton>
-      </MantineMenu.Target>
-      <MantineMenu.Dropdown className="bn-select">
+          <ChevronDown size={16} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="bn-select">
         {selectItems.map((item) => (
-          <MantineMenu.Item
+          <DropdownMenuItem
             key={item.name}
             onClick={() => {
               handleBlockTypeChange(item)
             }}
-            leftSection={item.iconElement}
-            rightSection={item.isSelected
-              ? <MantineCheckIcon size={10} className="bn-tick-icon" />
-              : <div className="bn-tick-space" />}
           >
+            {item.iconElement}
             {item.name}
-          </MantineMenu.Item>
+            {item.isSelected
+              ? <Check size={10} className="bn-tick-icon" />
+              : <div className="bn-tick-space" />}
+          </DropdownMenuItem>
         ))}
-      </MantineMenu.Dropdown>
-    </MantineMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

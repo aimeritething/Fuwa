@@ -43,22 +43,6 @@ function renderHarness(
   }
 }
 
-function appendWikilink(container: HTMLElement, target: string) {
-  const wikilink = document.createElement('span')
-  wikilink.className = 'wikilink'
-  wikilink.dataset.target = target
-  container.appendChild(wikilink)
-  return wikilink
-}
-
-function appendEditableWikilink(container: HTMLElement, target: string) {
-  const editable = document.createElement('div')
-  editable.setAttribute('contenteditable', 'true')
-  const wikilink = appendWikilink(editable, target)
-  container.appendChild(editable)
-  return { editable, wikilink }
-}
-
 function appendUrl(container: HTMLElement, href: string) {
   const link = document.createElement('a')
   link.setAttribute('href', href)
@@ -81,58 +65,6 @@ describe('useEditorLinkActivation', () => {
   beforeEach(() => {
     mockOpenExternalUrl.mockClear()
     mockOpenLocalFile.mockClear()
-  })
-
-  it('navigates wikilinks only on Cmd+click after the native click stack settles', async () => {
-    const { container, onNavigateWikilink } = renderHarness()
-    const wikilink = appendWikilink(container, 'Alpha Project')
-
-    dispatchMouseEvent(wikilink, 'click')
-    expect(onNavigateWikilink).not.toHaveBeenCalled()
-
-    const modifiedClick = dispatchMouseEvent(wikilink, 'click', { metaKey: true })
-    expect(modifiedClick.defaultPrevented).toBe(true)
-    expect(onNavigateWikilink).not.toHaveBeenCalled()
-
-    await Promise.resolve()
-    expect(onNavigateWikilink).toHaveBeenCalledWith('Alpha Project')
-  })
-
-  it('navigates wikilinks on Windows Ctrl+click', async () => {
-    const { container, onNavigateWikilink } = renderHarness()
-    const wikilink = appendWikilink(container, 'docs/adr/0031-foo')
-
-    const modifiedClick = dispatchMouseEvent(wikilink, 'click', { ctrlKey: true })
-
-    expect(modifiedClick.defaultPrevented).toBe(true)
-    await Promise.resolve()
-    expect(onNavigateWikilink).toHaveBeenCalledWith('docs/adr/0031-foo')
-  })
-
-  it('consumes plain wikilink mousedown and click events before editor internals see stale link nodes', () => {
-    const { container, onNavigateWikilink } = renderHarness()
-    const wikilink = appendWikilink(container, 'Alpha Project')
-
-    const mouseDown = dispatchMouseEvent(wikilink, 'mousedown')
-    const click = dispatchMouseEvent(wikilink, 'click')
-
-    expect(mouseDown.defaultPrevented).toBe(true)
-    expect(click.defaultPrevented).toBe(true)
-    expect(onNavigateWikilink).not.toHaveBeenCalled()
-  })
-
-  it('blurs an active editor before navigating a Cmd-clicked wikilink', async () => {
-    const { container, onNavigateWikilink } = renderHarness()
-    const { editable, wikilink } = appendEditableWikilink(container, 'Alpha Project')
-
-    editable.focus()
-    expect(document.activeElement).toBe(editable)
-
-    fireEvent.click(wikilink, { metaKey: true })
-
-    expect(document.activeElement).not.toBe(editable)
-    await Promise.resolve()
-    expect(onNavigateWikilink).toHaveBeenCalledWith('Alpha Project')
   })
 
   it('opens URLs only on Cmd+click', () => {
@@ -314,13 +246,11 @@ describe('useEditorLinkActivation', () => {
     const { container, onNavigateWikilink } = renderHarness()
     const codeBlock = document.createElement('div')
     codeBlock.setAttribute('data-content-type', 'codeBlock')
-    codeBlock.appendChild(appendWikilink(codeBlock, 'Inside Code'))
+    const codeLink = appendUrl(codeBlock, 'other.md')
     container.appendChild(codeBlock)
     const badLink = appendUrl(container, 'not a url')
-    const codeWikilink = codeBlock.firstElementChild
-    if (!codeWikilink) throw new Error('Expected code-block wikilink')
 
-    fireEvent.click(codeWikilink, { metaKey: true })
+    fireEvent.click(codeLink, { metaKey: true })
     fireEvent.click(badLink, { metaKey: true })
 
     expect(onNavigateWikilink).not.toHaveBeenCalled()

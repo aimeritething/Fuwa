@@ -90,22 +90,17 @@ vi.mock('@blocknote/core/extensions', () => ({
   FormattingToolbarExtension: Symbol('FormattingToolbarExtension'),
 }))
 
-vi.mock('@mantine/core', () => ({
-  Button: ({ children, ...props }: { children?: ReactNode }) => <button type="button" {...props}>{children}</button>,
-  CheckIcon: () => <span data-testid="mantine-check">check</span>,
-  Menu: Object.assign(
-    ({ children }: { children?: ReactNode }) => <div data-testid="mantine-menu">{children}</div>,
-    {
-      Target: ({ children }: { children?: ReactNode }) => <>{children}</>,
-      Dropdown: ({ children, ...props }: { children?: ReactNode }) => <div {...props}>{children}</div>,
-      Item: ({ children, ...props }: { children?: ReactNode }) => <button type="button" {...props}>{children}</button>,
-    },
-  ),
+vi.mock('./ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children?: ReactNode }) => <div data-testid="block-type-menu">{children}</div>,
+  DropdownMenuTrigger: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  DropdownMenuContent: ({ children, ...props }: { children?: ReactNode }) => <div {...props}>{children}</div>,
+  DropdownMenuItem: ({ children, ...props }: { children?: ReactNode }) => <button type="button" {...props}>{children}</button>,
 }))
 
 vi.mock('@phosphor-icons/react', () => ({
   ArrowSquareOut: MockIcon,
   CaretDown: MockIcon,
+  Check: MockIcon,
   Code: MockIcon,
   Highlighter: MockIcon,
   TextB: MockIcon,

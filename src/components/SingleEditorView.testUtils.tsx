@@ -10,21 +10,18 @@ const state = vi.hoisted(() => ({
   capturedSuggestionProps: {} as Record<string, Record<string, unknown>>,
   capturedImageDropArgs: null as null | Record<string, unknown>,
   capturedBlockNoteOnChange: null as null | (() => void),
-  capturedMantineGetStyleNonce: null as null | (() => string),
   blockNoteViewError: null as Error | null,
   blockNoteViewErrorOnce: false,
   hoverGuardMock: vi.fn(),
   imageDropState: { isDragOver: false },
   linkActivationMock: vi.fn(),
-  wikilinkEntriesRef: { current: [] as VaultEntry[] },
-  wikilinkCandidates: [] as Record<string, unknown>[],
 }))
 
 export function getSingleEditorViewTestState() {
   return state
 }
 
-interface BlockNoteViewRawProps {
+interface BlockNoteViewProps {
   children?: ReactNode
   editable?: boolean
   className?: string
@@ -52,42 +49,6 @@ function takeBlockNoteViewError() {
 }
 
 vi.mock('@blocknote/react', () => ({
-  ComponentsContext: {
-    Provider: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  },
-  BlockNoteViewRaw: (props: BlockNoteViewRawProps) => {
-    const error = takeBlockNoteViewError()
-    if (error) throw error
-
-    const {
-      children,
-      editable,
-      className,
-      emojiPicker,
-      formattingToolbar,
-      linkToolbar,
-      slashMenu,
-      sideMenu,
-      ...restProps
-    } = props
-    state.capturedBlockNoteOnChange = props.onChange ?? null
-    void emojiPicker
-    void formattingToolbar
-    void slashMenu
-    void sideMenu
-
-    return (
-      <div
-        data-testid="blocknote-view"
-        data-editable={enabledDataAttribute(editable)}
-        data-link-toolbar={enabledDataAttribute(linkToolbar)}
-        className={className}
-        {...restProps}
-      >
-        {children}
-      </div>
-    )
-  },
   LinkToolbarController: (props: Record<string, unknown>) => {
     state.capturedLinkToolbarProps = props
     return <div data-testid="link-toolbar-controller" />
@@ -136,26 +97,41 @@ vi.mock('@blocknote/react', () => ({
   }),
 }))
 
-vi.mock('@blocknote/mantine', () => ({
-  components: {},
-}))
+vi.mock('@blocknote/shadcn', () => ({
+  BlockNoteView: (props: BlockNoteViewProps) => {
+    const error = takeBlockNoteViewError()
+    if (error) throw error
 
-vi.mock('@mantine/core', async () => {
-  const React = await vi.importActual<typeof import('react')>('react')
-  return {
-    MantineContext: React.createContext(null),
-    MantineProvider: ({
+    const {
       children,
-      getStyleNonce,
-    }: {
-      children?: ReactNode
-      getStyleNonce?: () => string
-    }) => {
-      state.capturedMantineGetStyleNonce = getStyleNonce ?? null
-      return <>{children}</>
-    },
-  }
-})
+      editable,
+      className,
+      emojiPicker,
+      formattingToolbar,
+      linkToolbar,
+      slashMenu,
+      sideMenu,
+      ...restProps
+    } = props
+    state.capturedBlockNoteOnChange = props.onChange ?? null
+    void emojiPicker
+    void formattingToolbar
+    void slashMenu
+    void sideMenu
+
+    return (
+      <div
+        data-testid="blocknote-view"
+        data-editable={enabledDataAttribute(editable)}
+        data-link-toolbar={enabledDataAttribute(linkToolbar)}
+        className={className}
+        {...restProps}
+      >
+        {children}
+      </div>
+    )
+  },
+}))
 
 vi.mock('../hooks/useTheme', () => ({
   useEditorTheme: () => ({ cssVars: { '--editor-accent': '#abc' } }),
@@ -174,31 +150,6 @@ vi.mock('../utils/url', () => ({
   )),
   openExternalUrl: vi.fn().mockResolvedValue(undefined),
   openLocalFile: vi.fn().mockResolvedValue(undefined),
-}))
-
-vi.mock('../utils/typeColors', () => ({
-  ACCENT_COLOR_PICKER_KEYS: ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'],
-  buildTypeEntryMap: () => ({}),
-}))
-
-vi.mock('../utils/wikilinkSuggestions', () => ({
-  MIN_QUERY_LENGTH: 2,
-  deduplicateByPath: <T,>(items: T[]) => items,
-  preFilterWikilinks: () => state.wikilinkCandidates,
-}))
-
-vi.mock('../utils/suggestionEnrichment', () => ({
-  attachClickHandlers: <T,>(items: T[]) => items,
-  enrichSuggestionItems: <T,>(items: T[]) => items,
-  hasMultipleSuggestionWorkspaces: () => false,
-}))
-
-vi.mock('./WikilinkSuggestionMenu', () => ({
-  WikilinkSuggestionMenu: () => <div data-testid="wikilink-suggestion-menu" />,
-}))
-
-vi.mock('./editorSchema', () => ({
-  _wikilinkEntriesRef: state.wikilinkEntriesRef,
 }))
 
 vi.mock('./blockNoteSideMenuHoverGuard', () => ({
@@ -323,7 +274,6 @@ export function renderEditorHarness(editor = createEditor(), options: { vaultPat
   render(
     <SingleEditorView
       editor={editor as never}
-      entries={[makeEntry()]}
       onNavigateWikilink={vi.fn()}
       vaultPath={options.vaultPath}
     />,
@@ -341,7 +291,6 @@ export function renderEditorHarnessInScrollArea(editor = createEditor()) {
       <div className="editor-content-wrapper">
         <SingleEditorView
           editor={editor as never}
-          entries={[makeEntry()]}
           onNavigateWikilink={vi.fn()}
         />
       </div>
@@ -440,7 +389,6 @@ export function renderLinkToolbarOpenButton(options: {
   render(
     <SingleEditorView
       editor={createEditor() as never}
-      entries={[makeEntry()]}
       onNavigateWikilink={vi.fn()}
       vaultPath={options.vaultPath}
     />,

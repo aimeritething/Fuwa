@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { createTolariaCodeBlockOptions } from './codeBlockOptions'
 import { BLOCK_CONTAINER_SELECTOR } from './tolariaBlockNoteDom'
-import { useEditorImageRenameSync } from './editorImageRenameSync'
-import { useVaultExpressionContext } from './VaultExpressionContext'
 import {
   Select,
   SelectContent,
@@ -181,9 +179,7 @@ function CodeBlockLanguagePicker({
 }
 
 export function CodeBlockLanguageControls({ editor }: { editor: CodeBlockLanguageEditor }) {
-  const { vaultPath } = useVaultExpressionContext()
   const targets = useCodeBlockLanguageTargets(editor)
-  useEditorImageRenameSync(editor, vaultPath)
 
   return targets.map((target) => createPortal(
     <div

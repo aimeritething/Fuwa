@@ -18,17 +18,13 @@ import {
   VideoToExternalHTML,
 } from '@blocknote/react'
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps, type KeyboardEvent } from 'react'
-import { resolveWikilinkColor as resolveColor } from '../utils/wikilinkColors'
-import { resolveEntry } from '../utils/wikilink'
 import { MATH_BLOCK_TYPE, MATH_INLINE_TYPE, renderMathToHtml } from '../utils/mathMarkdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown'
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
 import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '../utils/htmlBlockMarkdown'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '../utils/markdownHighlightMarkdown'
-import type { VaultEntry } from '../types'
 import { createTolariaCodeBlockOptions } from './codeBlockOptions'
 import { HtmlBlock } from './HtmlBlock'
-import { NoteTitleIcon } from './NoteTitleIcon'
 import { MermaidDiagram } from './MermaidDiagram'
 import { SafeHtmlSpan } from './SafeMarkup'
 import { updateTldrawBlockPropsSafely } from './tldrawBlockProps'
@@ -55,27 +51,11 @@ type MediaBlockPreviewProps = {
   }
 }
 
-// Module-level cache so the WikiLink renderer (defined outside React) can access entries
-export const _wikilinkEntriesRef: { current: VaultEntry[] } = { current: [] }
-
-function resolveWikilinkColor(target: string) {
-  return resolveColor(_wikilinkEntriesRef.current, target)
-}
-
-/** Resolve the display text and optional note icon for a wikilink target.
- *  Priority: pipe display text → entry title → humanised path stem */
-function resolveDisplayInfo(target: string): { text: string; icon: string | null } {
+/** Inert wikilink renderer: `[[target]]` / `[[target|alias]]` text round-trips losslessly
+ *  through the schema, but Fuwa has no wikilink UI, so it renders as plain text. */
+function wikilinkDisplayText(target: string): string {
   const pipeIdx = target.indexOf('|')
-  if (pipeIdx !== -1) return pipedDisplayInfo(target, pipeIdx)
-  const entry = resolveEntry(_wikilinkEntriesRef.current, target)
-  if (entry) return { text: entry.title, icon: entry.icon ?? null }
-  const last = target.split('/').pop() ?? target
-  return { text: last.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), icon: null }
-}
-
-function pipedDisplayInfo(target: string, pipeIndex: number): { text: string; icon: string | null } {
-  const entry = resolveEntry(_wikilinkEntriesRef.current, target.slice(0, pipeIndex))
-  return { text: target.slice(pipeIndex + 1), icon: entry?.icon ?? null }
+  return pipeIdx === -1 ? target : target.slice(pipeIdx + 1)
 }
 
 export const WikiLink = createReactInlineContentSpec(
@@ -89,16 +69,9 @@ export const WikiLink = createReactInlineContentSpec(
   {
     render: (props) => {
       const target = props.inlineContent.props.target
-      const { color, isBroken } = resolveWikilinkColor(target)
-      const { text, icon } = resolveDisplayInfo(target)
       return (
-        <span
-          className={`wikilink${isBroken ? ' wikilink--broken' : ''}`}
-          data-target={target}
-          style={{ color }}
-        >
-          <NoteTitleIcon icon={icon} size={14} className="mr-1 align-middle" />
-          {text}
+        <span className="wikilink" data-target={target}>
+          {wikilinkDisplayText(target)}
         </span>
       )
     },

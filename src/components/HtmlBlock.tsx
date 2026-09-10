@@ -19,16 +19,14 @@ import { writeClipboardText } from '../utils/clipboardText'
 import {
   clampHtmlBlockHeight as clampBlockHeight,
   HTML_BLOCK_DEFAULT_HEIGHT as BLOCK_DEFAULT_HEIGHT,
-  HTML_BLOCK_SCRIPTS_SANDBOXED as SCRIPTS_SANDBOXED,
   HTML_BLOCK_TYPE as BLOCK_TYPE,
   normalizeHtmlBlockHeight as normalizeBlockHeight,
   normalizeHtmlBlockScripts as normalizeBlockScripts,
   type HtmlBlockScripts,
 } from '../utils/htmlBlockMarkdown'
-import { htmlBlockFrameSource, htmlBlockPreview } from '../utils/htmlBlockSandbox'
+import { htmlBlockPreview } from '../utils/htmlBlockSandbox'
 import { dispatchRichEditorExternalChange } from './editorExternalChangeEvents'
 import { Button } from './ui/button'
-import { useResolvedVaultExpressionTemplate } from './VaultExpressionContext'
 
 export interface HtmlBlockProps {
   height: string
@@ -65,6 +63,7 @@ type HeightChangeSource = 'keyboard' | 'pointer' | 'reset'
 
 const HEIGHT_KEYBOARD_STEP = 24
 const HEIGHT_KEYBOARD_LARGE_STEP = 96
+const HTML_BLOCK_SANDBOX_ATTRIBUTE = 'allow-popups allow-popups-to-escape-sandbox'
 
 function stopHtmlBlockEvent(event: SyntheticEvent): void {
   event.stopPropagation()
@@ -166,12 +165,6 @@ function heightFromKeyboard(currentHeight: string, key: string): string | null {
 function restoreHtmlPreviewFocus(editor: HtmlBlockEditor, frame: HTMLIFrameElement): void {
   frame.blur()
   editor.focus?.()
-}
-
-function htmlBlockSandboxAttribute(scripts: HtmlBlockScripts): string {
-  return scripts === SCRIPTS_SANDBOXED
-    ? 'allow-scripts allow-popups allow-popups-to-escape-sandbox'
-    : 'allow-popups allow-popups-to-escape-sandbox'
 }
 
 function useHtmlBlockFrameFocus(editor: HtmlBlockEditor) {
@@ -296,15 +289,13 @@ interface HtmlBlockContentProps {
   frameRef: RefObject<HTMLIFrameElement | null>
   onFocus: (event: SyntheticEvent<HTMLIFrameElement>) => void
   onLoad: (event: SyntheticEvent<HTMLIFrameElement>) => void
-  scripts: HtmlBlockScripts
-  src: string | undefined
   srcDoc: string
 }
 
-function HtmlBlockContent({ blocked, frameRef, onFocus, onLoad, scripts, src, srcDoc }: HtmlBlockContentProps) {
+function HtmlBlockContent({ blocked, frameRef, onFocus, onLoad, srcDoc }: HtmlBlockContentProps) {
   if (!blocked) {
     return <iframe className="html-block__frame" onFocus={onFocus} onLoad={onLoad} referrerPolicy="no-referrer"
-      ref={frameRef} sandbox={htmlBlockSandboxAttribute(scripts)} src={src} srcDoc={src ? undefined : srcDoc}
+      ref={frameRef} sandbox={HTML_BLOCK_SANDBOX_ATTRIBUTE} srcDoc={srcDoc}
       tabIndex={-1} title={t('editor.htmlBlock.previewTitle')} />
   }
   return (
@@ -333,14 +324,9 @@ function HtmlBlockResizeHandle({ onKeyDown, onPointerDown }: {
 
 export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
   const currentMarkup = Reflect.get(block.props, 'html') as string
-  const currentScripts = normalizeBlockScripts(block.props.scripts)
-  const resolvedMarkup = useResolvedVaultExpressionTemplate(currentMarkup)
   const currentHeight = normalizeBlockHeight(block.props.height)
-  const preview = useMemo(() => (
-    htmlBlockPreview(Reflect.get(resolvedMarkup, 'html'), { scripts: currentScripts })
-  ), [currentScripts, resolvedMarkup])
+  const preview = useMemo(() => htmlBlockPreview(currentMarkup), [currentMarkup])
   const blocked = currentMarkup.trim().length > 0 && preview.sanitizedHtml.trim().length === 0
-  const src = htmlBlockFrameSource(preview.srcDoc, preview.src, currentScripts)
   const focus = useHtmlBlockFrameFocus(editor)
   const height = useHtmlBlockHeight(block, editor, currentHeight)
   const copySource = useHtmlBlockSourceCopy(currentMarkup)
@@ -351,7 +337,7 @@ export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
       suppressContentEditableWarning>
       <HtmlBlockToolbar copySource={copySource} resetHeight={height.resetHeight} />
       <HtmlBlockContent blocked={blocked} frameRef={focus.frameRef} onFocus={focus.handlePreviewFocus}
-        onLoad={focus.handlePreviewLoad} scripts={currentScripts} src={src} srcDoc={preview.srcDoc} />
+        onLoad={focus.handlePreviewLoad} srcDoc={preview.srcDoc} />
       <HtmlBlockResizeHandle onKeyDown={height.handleResizeKeyDown} onPointerDown={height.startResize} />
     </section>
   )

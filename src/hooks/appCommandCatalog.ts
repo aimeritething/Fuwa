@@ -1,7 +1,5 @@
 import appCommandManifest from '../shared/appCommandManifest.json' with { type: 'json' }
-import type { SidebarFilter } from '../types'
 import { isMac } from '../utils/platform'
-import type { ViewMode } from './useViewMode'
 
 type AppCommandKey = keyof typeof appCommandManifest.commands
 type ShortcutEventLike = Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'key' | 'code'>
@@ -39,55 +37,40 @@ export type AppCommandShortcutEventInit = Pick<
 >
 
 type SimpleHandlerKey =
-  | 'onOpenSettings'
-  | 'onCheckForUpdates'
   | 'onCreateNote'
-  | 'onCreateType'
+  | 'onOpenVault'
+  | 'onOpenNote'
+  | 'onCloseVault'
   | 'onQuickOpen'
   | 'onSave'
-  | 'onFindInNote'
+  | 'onCloseTab'
   | 'onUndo'
   | 'onRedo'
-  | 'onReplaceInNote'
   | 'onPastePlainText'
-  | 'onSearch'
-  | 'onToggleRawEditor'
-  | 'onToggleDiff'
-  | 'onToggleInspector'
-  | 'onToggleAIChat'
-  | 'onToggleTableOfContents'
-  | 'onExportNoteAsPdf'
+  | 'onFindInNote'
   | 'onCommandPalette'
+  | 'onToggleSidebar'
+  | 'onToggleRawEditor'
+  | 'onAppearanceSystem'
+  | 'onAppearanceDark'
+  | 'onAppearanceLight'
   | 'onZoomIn'
   | 'onZoomOut'
   | 'onZoomReset'
-  | 'onGoBack'
-  | 'onGoForward'
-  | 'onOpenVault'
-  | 'onRemoveActiveVault'
-  | 'onRestoreGettingStarted'
-  | 'onAddRemote'
-  | 'onCommitPush'
-  | 'onPull'
-  | 'onResolveConflicts'
-  | 'onViewChanges'
-  | 'onInstallMcp'
-  | 'onReloadVault'
-  | 'onRepairVault'
-  | 'onOpenInNewWindow'
-  | 'onRestoreDeletedNote'
-
-type ActiveTabHandlerKey =
-  | 'onToggleOrganized'
-  | 'onToggleFavorite'
-  | 'onArchiveNote'
-  | 'onDeleteNote'
+  | 'onPreviousTab'
+  | 'onNextTab'
+  | 'onJumpToTab1'
+  | 'onJumpToTab2'
+  | 'onJumpToTab3'
+  | 'onJumpToTab4'
+  | 'onJumpToTab5'
+  | 'onJumpToTab6'
+  | 'onJumpToTab7'
+  | 'onJumpToTab8'
+  | 'onJumpToTab9'
 
 type AppCommandRoute =
-  | { kind: 'view-mode'; value: ViewMode }
-  | { kind: 'filter'; value: SidebarFilter }
   | { kind: 'handler'; handler: SimpleHandlerKey }
-  | { kind: 'active-tab-handler'; handler: ActiveTabHandlerKey }
 
 interface AppCommandShortcutDefinition {
   combo: AppCommandShortcutCombo
@@ -136,11 +119,9 @@ type AppCommandMenuManifestItem =
       enabled?: boolean
     }
   | {
-      kind: 'menu-event'
-      id: string
+      kind: 'submenu'
       label: PlatformLabel
-      accelerator?: string | null
-      enabled?: boolean
+      items: AppCommandMenuManifestItem[]
     }
 
 interface AppCommandMenuManifestSection {
@@ -158,6 +139,11 @@ export type AppCommandMenuItem =
       shortcut?: string
       enabled?: boolean
     }
+  | {
+      kind: 'submenu'
+      label: string
+      items: AppCommandMenuItem[]
+    }
 
 type AppCommandMenuStateGroupReference =
   | { command: AppCommandKey }
@@ -172,69 +158,6 @@ const APP_COMMAND_MANIFEST_STATE_GROUPS = appCommandManifest.menuStateGroups as 
   AppCommandMenuStateGroupName,
   AppCommandMenuStateGroupReference[]
 >
-
-const MENU_LABEL_KEYS = {
-  File: 'menu.file',
-  Edit: 'menu.edit',
-  View: 'menu.view',
-  Go: 'menu.go',
-  Note: 'menu.note',
-  Vault: 'menu.vault',
-  Window: 'menu.window',
-  'New Note': 'command.note.newNote',
-  'New Type': 'command.note.newType',
-  'Quick Open': 'menu.file.quickOpen',
-  'Quick Open (Cmd+O)': 'menu.file.quickOpenCmdO',
-  'Quick Open (Ctrl+O)': 'menu.file.quickOpenCtrlO',
-  Save: 'menu.file.save',
-  Undo: 'command.note.undo',
-  Redo: 'command.note.redo',
-  'Paste without Formatting': 'menu.edit.pasteWithoutFormatting',
-  'Find in Note': 'command.note.findInNote',
-  'Replace in Note': 'command.note.replaceInNote',
-  'Find in Vault': 'menu.edit.findInVault',
-  'Toggle Note List Search': 'menu.edit.toggleNoteListSearch',
-  'Toggle Diff Mode': 'command.view.toggleDiff',
-  'Editor Only': 'command.view.editorOnly',
-  'Editor + Notes': 'command.view.editorNoteList',
-  'All Panels': 'menu.view.allPanels',
-  'Toggle Properties Panel': 'command.view.toggleProperties',
-  'Toggle AI Panel': 'command.view.toggleAiPanel',
-  'Zoom In': 'menu.view.zoomIn',
-  'Zoom Out': 'menu.view.zoomOut',
-  'Actual Size': 'menu.view.actualSize',
-  'Command Palette': 'menu.view.commandPalette',
-  'All Notes': 'menu.go.allNotes',
-  Archived: 'menu.go.archived',
-  Changes: 'menu.go.changes',
-  Inbox: 'menu.go.inbox',
-  'Go Back': 'command.navigation.goBack',
-  'Go Forward': 'command.navigation.goForward',
-  'Toggle Organized': 'menu.note.toggleOrganized',
-  'Archive Note': 'command.note.archiveNote',
-  'Delete Note': 'command.note.deleteNote',
-  'Restore Deleted Note': 'command.note.restoreDeleted',
-  'Open in New Window': 'command.note.openNewWindow',
-  'Export Note as PDF': 'command.note.exportPdf',
-  'Toggle Raw Editor': 'command.view.toggleRaw',
-  'Toggle Table of Contents': 'menu.note.toggleTableOfContents',
-  'Toggle Backlinks': 'command.view.toggleBacklinks',
-  'Open Vault…': 'command.settings.openVault',
-  'Remove Vault from List': 'command.settings.removeVault',
-  'Restore Getting Started': 'command.settings.restoreGettingStarted',
-  'Add Remote…': 'menu.vault.addRemote',
-  'Commit & Push': 'command.git.commitPush',
-  'Pull from Remote': 'command.git.pull',
-  'Resolve Conflicts': 'command.git.resolveConflicts',
-  'View Pending Changes': 'command.git.viewChanges',
-  'Reload Vault': 'command.settings.reloadVault',
-  'Repair Vault': 'command.settings.repairVault',
-  'Set Up External AI Tools…': 'command.settings.setupExternalAi',
-} as const
-
-export type AppCommandMenuLabelKey = (typeof MENU_LABEL_KEYS)[keyof typeof MENU_LABEL_KEYS]
-const MENU_LABEL_KEY_BY_LABEL = new Map<string, AppCommandMenuLabelKey>(Object.entries(MENU_LABEL_KEYS))
-export type AppCommandMenuTranslator = (key: AppCommandMenuLabelKey) => string
 
 export const APP_COMMAND_IDS = Object.fromEntries(
   Object.entries(APP_COMMAND_MANIFEST_COMMANDS).map(([key, command]) => [key, command.id]),
@@ -277,13 +200,6 @@ function resolvePlatformLabel(label: PlatformLabel): string {
   return label.default
 }
 
-function localizeMenuLabel(label: string, t: AppCommandMenuTranslator | undefined): string {
-  const key = MENU_LABEL_KEY_BY_LABEL.get(label)
-  if (!key) return label
-  if (!t) return label
-  return t(key)
-}
-
 function formatAcceleratorDisplay(accelerator: string): string {
   const commandPrefix = isMac() ? '⌘' : 'Ctrl+'
   const commandShiftPrefix = isMac() ? '⌘⇧' : 'Ctrl+Shift+'
@@ -307,20 +223,14 @@ function menuShortcutForCommand(
   return undefined
 }
 
-function toMenuItem(item: AppCommandMenuManifestItem, t?: AppCommandMenuTranslator): AppCommandMenuItem {
+function toMenuItem(item: AppCommandMenuManifestItem): AppCommandMenuItem {
   if (item.kind === 'separator') return { kind: 'separator' }
 
-  if (item.kind === 'menu-event') {
-    const label = resolvePlatformLabel(item.label)
+  if (item.kind === 'submenu') {
     return {
-      kind: 'command',
-      commandId: item.id,
-      menuItemId: item.id,
-      label: localizeMenuLabel(label, t),
-      shortcut: typeof item.accelerator === 'string'
-        ? formatAcceleratorDisplay(item.accelerator)
-        : undefined,
-      enabled: item.enabled,
+      kind: 'submenu',
+      label: resolvePlatformLabel(item.label),
+      items: item.items.map(child => toMenuItem(child)),
     }
   }
 
@@ -330,20 +240,24 @@ function toMenuItem(item: AppCommandMenuManifestItem, t?: AppCommandMenuTranslat
     kind: 'command',
     commandId: command.id,
     menuItemId: item.id ?? command.id,
-    label: localizeMenuLabel(label, t),
+    label,
     shortcut: menuShortcutForCommand(item, command),
     enabled: item.enabled,
   }
 }
 
 function menuCommandIds(items: AppCommandMenuItem[]): string[] {
-  return items.flatMap(item => item.kind === 'command' ? [item.commandId] : [])
+  return items.flatMap(item => {
+    if (item.kind === 'command') return [item.commandId]
+    if (item.kind === 'submenu') return menuCommandIds(item.items)
+    return []
+  })
 }
 
-export function getAppCommandMenuSections(t?: AppCommandMenuTranslator) {
+export function getAppCommandMenuSections() {
   return APP_COMMAND_MANIFEST_MENUS.map(section => ({
-    label: localizeMenuLabel(section.label, t),
-    items: section.items.map(item => toMenuItem(item, t)),
+    label: section.label,
+    items: section.items.map(item => toMenuItem(item)),
   }))
 }
 

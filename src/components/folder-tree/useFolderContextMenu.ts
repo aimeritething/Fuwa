@@ -1,13 +1,13 @@
 import { useCallback, type MouseEvent as ReactMouseEvent } from 'react'
 import type { FolderNode } from '../../types'
 import type { FolderFileActions } from '../../hooks/useFileActions'
-import { requestCreateNoteInFolder } from '../../hooks/noteCreationRequests'
 import { useSidebarContextMenu } from '../sidebar/sidebarHooks'
 
 interface UseFolderContextMenuInput {
   onDeleteFolder?: (folderPath: string) => void
   folderFileActions?: FolderFileActions
   onCreateFolder?: (folderPath: string, rootPath?: string) => void
+  onCreateNoteInFolder?: (folderPath: string, rootPath?: string) => void
   onStartRenameFolder?: (folderPath: string) => void
 }
 
@@ -15,6 +15,7 @@ export function useFolderContextMenu({
   onDeleteFolder,
   folderFileActions,
   onCreateFolder,
+  onCreateNoteInFolder,
   onStartRenameFolder,
 }: UseFolderContextMenuInput) {
   const {
@@ -30,8 +31,8 @@ export function useFolderContextMenu({
 
   const handleCreateNoteFromMenu = useCallback((folderPath: string, rootPath?: string) => {
     closeContextMenu()
-    requestCreateNoteInFolder(folderPath, rootPath)
-  }, [closeContextMenu])
+    onCreateNoteInFolder?.(folderPath, rootPath)
+  }, [closeContextMenu, onCreateNoteInFolder])
 
   const handleCreateFolderFromMenu = useCallback((folderPath: string, rootPath?: string) => {
     closeContextMenu()

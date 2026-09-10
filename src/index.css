@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@blocknote/shadcn/style.css";
+@source "../node_modules/@blocknote/shadcn";
 
 /* ============================================================
    Theme Variables — app-owned light/dark contract
@@ -188,7 +190,7 @@
   color-scheme: dark;
 
   /* --- Semantic surfaces (dark mode) --- */
-  --surface-app: #1F1E1B;
+  --surface-app: #09090a;
   --surface-sidebar: #191814;
   --surface-panel: #23221F;
   --surface-card: #23221F;

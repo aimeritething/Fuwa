@@ -1,10 +1,3 @@
-import type { AiAgentId } from './lib/aiAgents'
-import type { AiAgentPermissionMode } from './lib/aiAgentPermissionMode'
-import type { AiModelProvider } from './lib/aiTargets'
-import type { ThemeMode } from './lib/themeMode'
-import type { AppLocale } from './lib/i18n'
-import type { DateDisplayFormat } from './utils/dateDisplay'
-
 export type VaultPropertyScalar = string | number | boolean | null
 export type VaultPropertyArray = Array<string | number | boolean>
 export type VaultPropertyValue = VaultPropertyScalar | VaultPropertyArray
@@ -81,157 +74,13 @@ export interface WorkspaceIdentity {
   defaultForNewNotes: boolean
 }
 
+/** An open editor tab: the vault entry plus its in-memory content (moved here from Tolaria's useTabManagement, which Fuwa does not port). */
+export interface Tab {
+  entry: VaultEntry
+  content: string
+}
+
 export type NoteStatus = 'new' | 'modified' | 'clean' | 'pendingSave' | 'unsaved'
-
-export interface GitCommit {
-  hash: string
-  shortHash: string
-  message: string
-  author: string
-  date: number // unix timestamp
-}
-
-export type GitAuthorIdentitySource = 'environment' | 'fallback' | 'global' | 'repository' | 'system' | 'unknown'
-export type GitAuthorIdentityWarning = 'local_overrides_global'
-
-export interface GitAuthorIdentity {
-  name: string
-  email: string
-  source: GitAuthorIdentitySource
-  warning: GitAuthorIdentityWarning | null
-}
-
-export interface LastCommitInfo {
-  shortHash: string
-  commitUrl: string | null
-}
-
-export interface ModifiedFile {
-  path: string
-  relativePath: string
-  vaultPath?: string
-  status: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed'
-  addedLines?: number | null
-  deletedLines?: number | null
-  binary?: boolean
-}
-
-export interface Settings {
-  auto_pull_interval_minutes: number | null
-  git_enabled?: boolean | null
-  git_path?: string | null
-  git_provider?: GitProviderId | null
-  git_wsl_distro?: string | null
-  autogit_enabled?: boolean | null
-  autogit_use_ai_commit_messages?: boolean | null
-  autogit_idle_threshold_seconds?: number | null
-  autogit_inactive_threshold_seconds?: number | null
-  auto_advance_inbox_after_organize?: boolean | null
-  telemetry_consent: boolean | null
-  crash_reporting_enabled: boolean | null
-  analytics_enabled: boolean | null
-  anonymous_id: string | null
-  release_channel: string | null
-  automatic_update_checks_enabled?: boolean | null
-  theme_mode?: ThemeMode | null
-  ui_language?: AppLocale | null
-  date_display_format?: DateDisplayFormat | null
-  note_width_mode?: NoteWidthMode | null
-  sidebar_type_pluralization_enabled?: boolean | null
-  initial_h1_auto_rename_enabled?: boolean | null
-  ai_features_enabled?: boolean | null
-  default_ai_agent?: AiAgentId | null
-  default_ai_target?: string | null
-  ai_model_providers?: AiModelProvider[] | null
-  ai_workspace_conversations?: AiWorkspaceConversationSetting[] | null
-  hide_gitignored_files?: boolean | null
-  all_notes_show_pdfs?: boolean | null
-  all_notes_show_images?: boolean | null
-  all_notes_show_unsupported?: boolean | null
-  multi_workspace_enabled?: boolean | null
-}
-
-export interface AiWorkspaceConversationSetting {
-  archived?: boolean | null
-  id: string
-  model_id?: string | null
-  target_id?: string | null
-  title: string
-}
-
-export interface GitPullResult {
-  status: 'up_to_date' | 'updated' | 'conflict' | 'no_remote' | 'error'
-  message: string
-  updatedFiles: string[]
-  conflictFiles: string[]
-}
-
-export interface GitPushResult {
-  status: 'ok' | 'rejected' | 'auth_error' | 'network_error' | 'no_remote' | 'error'
-  message: string
-}
-
-export interface GitAddRemoteResult {
-  status: 'connected' | 'already_configured' | 'incompatible_history' | 'auth_error' | 'network_error' | 'error'
-  message: string
-}
-
-export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflict' | 'pull_required'
-
-export interface GitRemoteStatus {
-  branch: string
-  ahead: number
-  behind: number
-  hasRemote: boolean
-  hasUpstream?: boolean
-  upstream?: string | null
-}
-
-export type GitProviderId = 'native' | 'wsl'
-
-export interface GitProviderProbe {
-  provider: GitProviderId
-  label: string
-  available: boolean
-  version: string | null
-  distro: string | null
-  path: string | null
-  message: string
-}
-
-export interface GitProviderStatus {
-  selected_provider: GitProviderId
-  selected_wsl_distro: string | null
-  native: GitProviderProbe
-  wsl_distributions: GitProviderProbe[]
-}
-
-export type GitRootRelation = 'vault' | 'parent' | 'none'
-
-export interface GitWorkspaceInfo {
-  vaultRoot: string
-  gitRoot: string | null
-  vaultPathspec: string | null
-  gitRootRelation: GitRootRelation
-  resolutionFailure: string | null
-}
-
-export interface SearchResult {
-  title: string
-  path: string
-  snippet: string
-  score: number
-  noteType: string | null
-}
-
-export interface SearchResponse {
-  results: SearchResult[]
-  elapsedMs: number
-  query: string
-  mode: string
-}
-
-export type SearchMode = 'keyword' | 'semantic' | 'hybrid'
 
 /** Vault-scoped UI configuration stored locally per vault path. */
 export interface InboxConfig {
@@ -249,7 +98,6 @@ export type NoteLayout = 'centered' | 'left'
 
 export type NoteWidthMode = 'normal' | 'wide'
 export type NoteDisplayMode = 'text' | 'sheet'
-export type GitSetupPreference = 'prompt' | 'never'
 
 /** Vault-scoped UI configuration stored locally per vault path. */
 export interface VaultConfig {
@@ -257,31 +105,13 @@ export interface VaultConfig {
   view_mode: string | null
   editor_mode: string | null
   note_layout?: NoteLayout | null
-  git_setup_preference?: GitSetupPreference | null
-  ai_agent_permission_mode?: AiAgentPermissionMode | null
+  git_setup_preference?: string | null
+  ai_agent_permission_mode?: string | null
   tag_colors: Record<string, string> | null
   status_colors: Record<string, string> | null
   property_display_modes: Record<string, string> | null
   inbox?: InboxConfig | null
   allNotes?: AllNotesConfig | null
-}
-
-export interface PulseFile {
-  path: string
-  status: 'added' | 'modified' | 'deleted'
-  title: string
-}
-
-export interface PulseCommit {
-  hash: string
-  shortHash: string
-  message: string
-  date: number
-  githubUrl: string | null
-  files: PulseFile[]
-  added: number
-  modified: number
-  deleted: number
 }
 
 export type SidebarFilter = 'all' | 'archived' | 'changes' | 'pulse' | 'inbox' | 'favorites'

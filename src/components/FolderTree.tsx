@@ -17,6 +17,7 @@ interface FolderTreeProps {
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
   onCreateFolder?: (name: string, parent?: FolderCreationParent) => Promise<boolean> | boolean
+  onCreateNoteInFolder?: (folderPath: string, rootPath?: string) => void
   onRenameFolder?: (folderPath: string, nextName: string) => Promise<boolean> | boolean
   onDeleteFolder?: (folderPath: string) => void
   folderFileActions?: FolderFileActions
@@ -141,7 +142,7 @@ function useCreateFolderSubmit({
 }
 
 export const FolderTree = memo(function FolderTree(options: FolderTreeProps) {
-  const { folders, selection, onSelect, onCreateFolder, onRenameFolder, onDeleteFolder, folderFileActions, renamingFolderPath, onStartRenameFolder, onCancelRenameFolder, onCanDropNote, onMoveNoteToFolder, collapsed: externalCollapsed, locale = 'en', onToggle, vaultRootPath } = options
+  const { folders, selection, onSelect, onCreateFolder, onCreateNoteInFolder, onRenameFolder, onDeleteFolder, folderFileActions, renamingFolderPath, onStartRenameFolder, onCancelRenameFolder, onCanDropNote, onMoveNoteToFolder, collapsed: externalCollapsed, locale = 'en', onToggle, vaultRootPath } = options
   const [creationParent, setCreationParent] = useState<FolderCreationParent | undefined>(undefined)
   const {
         closeCreateForm,
@@ -180,6 +181,7 @@ export const FolderTree = memo(function FolderTree(options: FolderTreeProps) {
         onDeleteFolder,
         folderFileActions,
         onCreateFolder: onCreateFolder ? openCreateFormForParent : undefined,
+        onCreateNoteInFolder,
         onStartRenameFolder,
       })
 
@@ -244,7 +246,7 @@ export const FolderTree = memo(function FolderTree(options: FolderTreeProps) {
             onReveal={handleRevealFromMenu}
             onCopyPath={handleCopyPathFromMenu}
             onCreateFolder={handleCreateFolderFromMenu}
-            onCreateNote={handleCreateNoteFromMenu}
+            onCreateNote={onCreateNoteInFolder ? handleCreateNoteFromMenu : undefined}
             onRename={handleRenameFromMenu}
             locale={locale}
           />

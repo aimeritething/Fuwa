@@ -1,14 +1,11 @@
 import {
   createEditor,
   getSingleEditorViewTestState,
-  makeEntry,
   mockOpenExternalUrl,
   mockOpenLocalFile,
 } from './SingleEditorView.testUtils'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { VaultEntry } from '../types'
-import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import { SingleEditorView } from './SingleEditorView'
 import { TooltipProvider } from './ui/tooltip'
 
@@ -22,12 +19,9 @@ describe('SingleEditorView', () => {
     state.capturedSuggestionProps = {}
     state.capturedImageDropArgs = null
     state.capturedBlockNoteOnChange = null
-    state.capturedMantineGetStyleNonce = null
     state.blockNoteViewError = null
     state.blockNoteViewErrorOnce = false
     state.imageDropState.isDragOver = false
-    state.wikilinkEntriesRef.current = []
-    state.wikilinkCandidates = []
     mockOpenExternalUrl.mockClear()
     mockOpenLocalFile.mockClear()
     document.documentElement.removeAttribute('data-theme')
@@ -57,7 +51,6 @@ describe('SingleEditorView', () => {
       render(
         <SingleEditorView
           editor={editor as never}
-          entries={[makeEntry()]}
           onNavigateWikilink={vi.fn()}
         />,
         { wrapper: TooltipProvider, onRecoverableError: () => {} },
@@ -96,7 +89,6 @@ describe('SingleEditorView', () => {
       render(
         <SingleEditorView
           editor={editor as never}
-          entries={[makeEntry()]}
           onNavigateWikilink={vi.fn()}
         />,
         { wrapper: TooltipProvider, onRecoverableError: () => {} },
@@ -114,16 +106,13 @@ describe('SingleEditorView', () => {
 
   it('registers the seeded BlockNote test bridge, applies column widths, and cleans it up on unmount', async () => {
     const editor = createEditor()
-    const entries = [makeEntry()]
     const { unmount } = render(
       <SingleEditorView
         editor={editor as never}
-        entries={entries}
         onNavigateWikilink={vi.fn()}
       />,
     )
 
-    expect(state.wikilinkEntriesRef.current).toEqual(entries)
     expect(typeof window.__laputaTest?.seedBlockNoteTable).toBe('function')
 
     await act(async () => {
@@ -155,7 +144,6 @@ describe('SingleEditorView', () => {
     render(
       <SingleEditorView
         editor={editor as never}
-        entries={[makeEntry()]}
         onNavigateWikilink={vi.fn()}
         vaultPath="/vault"
       />,
@@ -174,12 +162,11 @@ describe('SingleEditorView', () => {
     )
   })
 
-  it('wires the toolbar mouse guard and suggestion item click handlers', () => {
+  it('wires the toolbar mouse guard', () => {
     const editor = createEditor()
     render(
       <SingleEditorView
         editor={editor as never}
-        entries={[makeEntry()]}
         onNavigateWikilink={vi.fn()}
       />,
     )
@@ -222,140 +209,6 @@ describe('SingleEditorView', () => {
     const linkActionPreventDefault = vi.fn()
     linkToolbarMouseDownCapture({ target: linkActionTarget, preventDefault: linkActionPreventDefault })
     expect(linkActionPreventDefault).toHaveBeenCalledOnce()
-
-    const onWikiItemClick = vi.fn()
-    const onMentionItemClick = vi.fn()
-    ;(state.capturedSuggestionProps['[['].onItemClick as (item: { onItemClick: () => void }) => void)({ onItemClick: onWikiItemClick })
-    ;(state.capturedSuggestionProps['@'].onItemClick as (item: { onItemClick: () => void }) => void)({ onItemClick: onMentionItemClick })
-
-    expect(onWikiItemClick).toHaveBeenCalledOnce()
-    expect(onMentionItemClick).toHaveBeenCalledOnce()
-  })
-
-  it('renders when a reload returns an entry with missing suggestion metadata', () => {
-    const reloadedEntry = {
-      ...makeEntry({ path: '/vault/project/reloaded.md', title: 'Reloaded' }),
-      filename: undefined,
-      aliases: undefined,
-      isA: undefined,
-    } as unknown as VaultEntry
-
-    expect(() => {
-      render(
-        <SingleEditorView
-          editor={createEditor() as never}
-          entries={[reloadedEntry]}
-          onNavigateWikilink={vi.fn()}
-        />,
-      )
-    }).not.toThrow()
-  })
-
-  it('ignores stale suggestion item clicks after the editor DOM disconnects', () => {
-    const editor = createEditor()
-    editor.domElement = document.createElement('div')
-
-    render(
-      <SingleEditorView
-        editor={editor as never}
-        entries={[makeEntry()]}
-        onNavigateWikilink={vi.fn()}
-      />,
-    )
-
-    const staleItemClick = vi.fn(() => {
-      throw new TypeError('Cannot read properties of undefined (reading isConnected)')
-    })
-
-    expect(() => {
-      ;(state.capturedSuggestionProps['[['].onItemClick as (item: { onItemClick: () => void }) => void)({
-        onItemClick: staleItemClick,
-      })
-    }).not.toThrow()
-    expect(staleItemClick).not.toHaveBeenCalled()
-  })
-
-  it('runs suggestion item clicks when BlockNote keeps the editor DOM outside the React container', () => {
-    const editor = createEditor()
-    editor.domElement = document.createElement('div')
-    document.body.appendChild(editor.domElement)
-    const itemClick = vi.fn()
-
-    try {
-      render(
-        <SingleEditorView
-          editor={editor as never}
-          entries={[makeEntry()]}
-          onNavigateWikilink={vi.fn()}
-        />,
-      )
-
-      ;(state.capturedSuggestionProps['[['].onItemClick as (item: { onItemClick: () => void }) => void)({
-        onItemClick: itemClick,
-      })
-
-      expect(itemClick).toHaveBeenCalledOnce()
-    } finally {
-      editor.domElement.remove()
-    }
-  })
-
-  it('inserts the selected emoji from shortcode suggestions', async () => {
-    const editor = createEditor()
-
-    render(
-      <SingleEditorView
-        editor={editor as never}
-        entries={[makeEntry()]}
-        onNavigateWikilink={vi.fn()}
-      />,
-    )
-
-    const getEmojiItems = state.capturedSuggestionProps[':'].getItems as (
-      query: string
-    ) => Promise<Array<{ id: string; name: string; onItemClick: () => void }>>
-
-    const italyItems = await getEmojiItems(':it')
-    expect(italyItems[0]).toMatchObject({ id: '🇮🇹' })
-    expect(italyItems[0].name).toMatch(/italy/i)
-
-    const items = await getEmojiItems(':rocket')
-    const rocketItem = items.find(item => item.id === '🚀')
-
-    expect(rocketItem).toMatchObject({ name: 'rocket' })
-    rocketItem?.onItemClick()
-
-    expect(editor.insertInlineContent).toHaveBeenCalledWith('🚀', { updateSelection: true })
-  })
-
-  it('guards stale click handlers stored on wikilink suggestion items', async () => {
-    const editor = createEditor()
-    editor.domElement = document.createElement('div')
-    const staleItemClick = vi.fn(() => {
-      throw new TypeError('Cannot read properties of undefined (reading isConnected)')
-    })
-    state.wikilinkCandidates = [{
-      title: 'Alpha',
-      path: '/vault/project/alpha.md',
-      onItemClick: staleItemClick,
-    }]
-
-    render(
-      <SingleEditorView
-        editor={editor as never}
-        entries={[makeEntry()]}
-        onNavigateWikilink={vi.fn()}
-      />,
-    )
-
-    const getItems = state.capturedSuggestionProps['[['].getItems as (
-      query: string
-    ) => Promise<Array<{ onItemClick: () => void }>>
-    const items = await getItems('al')
-
-    expect(items).toHaveLength(1)
-    expect(() => items[0].onItemClick()).not.toThrow()
-    expect(staleItemClick).not.toHaveBeenCalled()
   })
 
   it('passes the active document theme to BlockNote', () => {
@@ -365,25 +218,11 @@ describe('SingleEditorView', () => {
     render(
       <SingleEditorView
         editor={createEditor() as never}
-        entries={[makeEntry()]}
         onNavigateWikilink={vi.fn()}
       />,
     )
 
     expect(screen.getByTestId('blocknote-view')).toHaveAttribute('theme', 'dark')
-    expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-mantine-color-scheme', 'dark')
-  })
-
-  it('passes the runtime CSP style nonce to Mantine fallback style tags', () => {
-    render(
-      <SingleEditorView
-        editor={createEditor() as never}
-        entries={[makeEntry()]}
-        onNavigateWikilink={vi.fn()}
-      />,
-    )
-
-    expect(state.capturedMantineGetStyleNonce?.()).toBe(RUNTIME_STYLE_NONCE)
   })
 
 })

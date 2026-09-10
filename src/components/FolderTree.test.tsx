@@ -4,7 +4,6 @@ import { describe, it, expect, vi } from 'vitest'
 import { FolderTree } from './FolderTree'
 import { FOLDER_ROW_SINGLE_CLICK_DELAY_MS } from './folder-tree/useFolderRowInteractions'
 import { FOLDER_ROW_NESTING_INDENT, getFolderConnectorLeft } from './folder-tree/folderTreeLayout'
-import { CREATE_NOTE_IN_FOLDER_EVENT } from '../hooks/noteCreationRequests'
 import type { FolderNode, SidebarSelection } from '../types'
 
 const mockFolders: FolderNode[] = [
@@ -609,20 +608,16 @@ describe('FolderTree', () => {
         folders={folders}
         selection={defaultSelection}
         onSelect={vi.fn()}
+        onCreateNoteInFolder={onCreateNoteInFolder}
         vaultRootPath="/Users/luca/Team"
       />,
     )
 
-    window.addEventListener(CREATE_NOTE_IN_FOLDER_EVENT, onCreateNoteInFolder)
     fireEvent.contextMenu(screen.getAllByTestId('folder-row:projects')[1])
     fireEvent.click(screen.getByTestId('create-note-in-folder-menu-item'))
 
     expect(onCreateNoteInFolder).toHaveBeenCalledOnce()
-    expect((onCreateNoteInFolder.mock.calls[0][0] as CustomEvent).detail).toEqual({
-      folderPath: 'projects',
-      rootPath: '/Users/luca/Team',
-    })
-    window.removeEventListener(CREATE_NOTE_IN_FOLDER_EVENT, onCreateNoteInFolder)
+    expect(onCreateNoteInFolder).toHaveBeenCalledWith('projects', '/Users/luca/Team')
   })
 
   it('creates a folder inside the right-clicked folder', async () => {

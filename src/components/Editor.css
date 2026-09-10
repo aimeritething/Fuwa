@@ -1,67 +1,3 @@
-/* Wikilink inline content — color is set via inline style per note type */
-.wikilink {
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 2px;
-  border-radius: 2px;
-  padding: 0 1px;
-}
-
-.wikilink:hover {
-  text-decoration-style: solid;
-  opacity: 0.85;
-}
-
-/* Broken wikilink: dashed underline + lower opacity */
-.wikilink--broken {
-  text-decoration-style: dashed;
-  opacity: 0.7;
-}
-
-.wikilink--broken:hover {
-  opacity: 0.55;
-}
-
-/* Breadcrumb bar: border can still react to the data attribute, but the
-   breadcrumb filename/title stays visible at all times. */
-.breadcrumb-bar {
-  container-type: inline-size;
-  --breadcrumb-bar-left-padding: 16px;
-  transition: border-color 0.2s ease;
-}
-
-body.mac-chrome .app:not(:has(.app__sidebar), :has(.app__note-list)) .breadcrumb-bar {
-  --breadcrumb-bar-left-padding: var(--tolaria-macos-traffic-light-padding, 90px);
-}
-
-.breadcrumb-bar[data-title-hidden] {
-  border-bottom-color: var(--border);
-}
-
-.breadcrumb-bar__title {
-  display: flex;
-}
-
-.breadcrumb-bar__actions [data-slot='button'] {
-  width: auto;
-  height: auto;
-  min-width: 0;
-  padding: 0;
-  border-radius: 0;
-}
-
-.breadcrumb-bar__actions [data-slot='button']:hover {
-  background: transparent;
-}
-
-.breadcrumb-bar__overflow-menu {
-  display: flex;
-}
-
-.breadcrumb-bar__actions[data-overflow-collapsed='true'] .breadcrumb-bar__overflowable-action {
-  display: none;
-}
-
 /* Scroll area wrapping title + editor — single scroll context for alignment */
 .editor-scroll-area {
   flex: 1;
@@ -176,20 +112,6 @@ body.mac-chrome .app:not(:has(.app__sidebar), :has(.app__note-list)) .breadcrumb
 .editor__blocknote-container .bn-mt-suggestion-menu-item-section[data-position="right"] {
   margin-inline-start: 12px !important;
   color: var(--text-muted) !important;
-}
-
-.editor__blocknote-container .bn-mt-suggestion-menu-item-section[data-position="right"] .mantine-Badge-root {
-  min-width: 0 !important;
-  height: auto !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: var(--text-muted) !important;
-  font-size: 10px !important;
-  font-weight: 500 !important;
-  line-height: 1.2 !important;
-  text-transform: none !important;
 }
 
 .editor__blocknote-container .bn-mt-suggestion-menu-item-body {
@@ -448,104 +370,8 @@ body.mac-chrome .app:not(:has(.app__sidebar), :has(.app__note-list)) .breadcrumb
   margin: 0;
 }
 
-/* --- Note Icon Area --- */
-.note-icon-area {
-  display: flex;
-  align-items: flex-start;
-  flex-shrink: 0;
-}
-
-.note-icon-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-}
-
-.note-icon-button:disabled {
-  cursor: default;
-}
-
-.note-icon-button--active {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  font-size: 36px;
-  line-height: 1;
-  transition: transform 0.1s;
-}
-
-.note-icon-button--active:hover:not(:disabled) {
-  transform: scale(1.1);
-}
-
-.note-icon-button--active :is(img, svg) {
-  display: block;
-}
-
-.note-icon-button--add {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-faint);
-  font-size: 13px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.note-icon-button--add:focus-visible {
-  opacity: 1;
-}
-
-.note-icon-button__plus {
-  font-size: 16px;
-  font-weight: 300;
-}
-
-.note-icon-button__label {
-  font-size: 12px;
-}
-
-.note-icon-menu {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 4px);
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  min-width: 140px;
-  border-radius: 8px;
-  border: 1px solid var(--border-dialog);
-  background: var(--popover);
-  box-shadow: 0 4px 16px var(--shadow-dialog);
-  padding: 4px;
-}
-
-.note-icon-menu__item {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
-  padding: 6px 10px;
-  font-size: 13px;
-  color: var(--foreground);
-  border-radius: 4px;
-  transition: background 0.1s;
-}
-
-.note-icon-menu__item:hover {
-  background: var(--accent);
-}
-
-.note-icon-menu__item--danger {
-  color: var(--destructive);
-}
-
 /* =============================================
-   Disable BlockNote/Mantine editor animations
+   Disable BlockNote editor animations
    =============================================
    Scoped to .editor__blocknote-container so app-wide
    components (dialogs, sidebar, etc.) are unaffected.

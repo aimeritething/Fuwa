@@ -1,27 +1,8 @@
 /**
- * Mock Tauri invoke for browser testing.
- * When running outside Tauri (e.g. in Chrome via localhost:5173),
- * this provides realistic test data so the UI can be verified visually.
+ * Browser fallback for Tauri commands. Fuwa has no mock vault yet, so
+ * `mockInvoke` always rejects; the module exists so the kept call sites and the
+ * carried `vi.mock('../mock-tauri')` calls resolve.
  */
-
-import { MOCK_CONTENT } from './mock-content'
-import { mockHandlers, addMockEntry, updateMockContent, trackMockChange } from './mock-handlers'
-import { tryVaultApi } from './vault-api'
-
-export { addMockEntry, updateMockContent, trackMockChange }
-
-type MockHandler = (args?: unknown) => unknown
-
-function registerMockHandlers(): Record<string, MockHandler> {
-  return Object.fromEntries(
-    Object.entries(mockHandlers).map(([command, handler]) => [
-      command,
-      (args?: unknown) => Reflect.apply(handler, undefined, [args]),
-    ]),
-  )
-}
-
-const registeredMockHandlers = registerMockHandlers()
 
 export function isTauri(): boolean {
   if (typeof globalThis !== 'undefined' && typeof (globalThis as { isTauri?: unknown }).isTauri === 'boolean') {
@@ -31,27 +12,21 @@ export function isTauri(): boolean {
   return typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 }
 
-// Initialize window globals for browser testing and Playwright overrides
-if (typeof window !== 'undefined') {
-  window.__mockContent = MOCK_CONTENT
-  window.__mockHandlers = registeredMockHandlers
+export function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  void args
+  return Promise.reject(new Error(`No mock handler for command: ${cmd}`))
 }
 
-function resolveMockHandler(command: string) {
-  const windowHandler = typeof window === 'undefined' || !window.__mockHandlers
-    ? undefined
-    : Reflect.get(window.__mockHandlers, command) as MockHandler | undefined
-  return windowHandler ?? Reflect.get(registeredMockHandlers, command) as MockHandler | undefined
+export function addMockEntry(entry: unknown, content: string): void {
+  void entry
+  void content
 }
 
-export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  const vaultResult = await tryVaultApi<T>(cmd, args)
-  if (vaultResult !== undefined) return vaultResult
+export function updateMockContent(path: string, content: string): void {
+  void path
+  void content
+}
 
-  const handler = resolveMockHandler(cmd)
-  if (handler) {
-    await new Promise((r) => setTimeout(r, 100))
-    return handler(args) as T
-  }
-  throw new Error(`No mock handler for command: ${cmd}`)
+export function trackMockChange(path: string): void {
+  void path
 }
