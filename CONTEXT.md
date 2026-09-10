@@ -48,9 +48,13 @@ The sidebar section listing every Document currently open, including Documents o
 **Tab**:
 One entry in the tab bar above the editor; one Tab per open Document. Clicking a Document in the Explorer always opens a real Tab (there are no preview tabs).
 
+**Command Menu**:
+The Cmd+K palette that lists Fuwa's commands and, as you type, fuzzy-matches both commands and Document names. Every command in the native menu bar appears here and nothing else does.
+_Avoid_: Command palette, palette
+
 **Quick Open**:
-The Cmd+P palette that fuzzy-matches Document names within the Folder. Searches names only, never contents.
-_Avoid_: Command palette, search
+The Command Menu's search-only mode, opened with Cmd+P: it fuzzy-matches Document names within the Folder and shows no commands. Searches names only, never contents.
+_Avoid_: Search, file picker
 
 **Session**:
 The state Fuwa restores on launch: the Folder, the Open Editors (each with its Rich or Raw mode), the active Document, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.
