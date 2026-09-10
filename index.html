@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      const isResizeObserverLoopMessage = (message) => (
+        typeof message === 'string'
+        && (
+          message.indexOf('ResizeObserver loop completed with undelivered notifications') !== -1
+          || message.indexOf('ResizeObserver loop limit exceeded') !== -1
+        )
+      );
+
+      const preventResizeObserverLoopError = (event) => {
+        if (isResizeObserverLoopMessage(event.message)) {
+          event.preventDefault();
+        }
+      };
+
+      const preventResizeObserverLoopRejection = (event) => {
+        const reason = event.reason && (event.reason.stack || event.reason.message || String(event.reason));
+        if (isResizeObserverLoopMessage(reason)) {
+          event.preventDefault();
+        }
+      };
+
+      const markAiWorkspaceWindow = () => {
+        try {
+          if (new URLSearchParams(window.location.search).get('window') === 'ai-workspace') {
+            document.documentElement.classList.add('ai-workspace-native-window');
+          }
+        } catch {
+          // Leave the normal app chrome untouched if URL parsing is unavailable.
+        }
+      };
+
+      window.addEventListener('error', preventResizeObserverLoopError);
+      window.addEventListener('unhandledrejection', preventResizeObserverLoopRejection);
+      markAiWorkspaceWindow();
+    </script>
+    <style>
+      /* Critical pre-bundle shell: index.html owns this structure/style so the
+         Tauri WebView can paint app chrome before the React chunk loads. */
+      :root {
+        color-scheme: light;
+        background: #FFFFFF;
+        color: #37352F;
+        --startup-surface-app: #FFFFFF;
+        --startup-surface-sidebar: #F7F6F3;
+        --startup-surface-editor: #FFFFFF;
+        --startup-border-primary: #E9E9E7;
+        --startup-border-subtle: #E9E9E7;
+        --startup-text-muted: #B4B4B4;
+        --startup-state-selected: #E8F4FE;
+      }
+      :root[data-theme="dark"] {
+        color-scheme: dark;
+        background: #1F1E1B;
+        color: #E6E1D8;
+        --startup-surface-app: #1F1E1B;
+        --startup-surface-sidebar: #191814;
+        --startup-surface-editor: #1F1E1B;
+        --startup-border-primary: #34322D;
+        --startup-border-subtle: #2A2925;
+        --startup-text-muted: #7F776D;
+        --startup-state-selected: #213A4D;
+      }
+      html,
+      body,
+      #root {
+        height: 100%;
+        width: 100%;
+      }
+      body {
+        background: inherit;
+        color: inherit;
+        margin: 0;
+        overflow: hidden;
+      }
+      .startup-shell-fallback {
+        background: var(--startup-surface-app);
+        box-shadow: inset 0 0 0 1px var(--startup-border-primary);
+        display: flex;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        width: 100%;
+      }
+      .startup-shell-fallback__sidebar,
+      .startup-shell-fallback__list,
+      .startup-shell-fallback__editor {
+        min-height: 0;
+      }
+      .startup-shell-fallback__sidebar {
+        background: var(--startup-surface-sidebar);
+        border-right: 1px solid var(--startup-border-subtle);
+        flex: 0 0 250px;
+        padding: calc(18px + var(--tolaria-macos-traffic-light-padding, 0px)) 14px 14px;
+        width: 250px;
+      }
+      .startup-shell-fallback__list {
+        background: var(--startup-surface-sidebar);
+        border-right: 1px solid var(--startup-border-subtle);
+        flex: 0 0 300px;
+        padding: 18px 14px;
+        width: 300px;
+      }
+      .startup-shell-fallback__editor {
+        background: var(--startup-surface-editor);
+        flex: 1;
+        min-width: 0;
+        padding: 40px clamp(28px, 8vw, 120px);
+      }
+      .startup-shell-fallback__sidebar-block,
+      .startup-shell-fallback__line,
+      .startup-shell-fallback__list-header,
+      .startup-shell-fallback__item,
+      .startup-shell-fallback__editor-title,
+      .startup-shell-fallback__editor-line {
+        background: color-mix(in srgb, var(--startup-text-muted) 18%, transparent);
+        border-radius: 5px;
+      }
+      .startup-shell-fallback__sidebar-block {
+        height: 24px;
+        margin-bottom: 24px;
+      }
+      .startup-shell-fallback__sidebar-block--short {
+        width: 46%;
+      }
+      .startup-shell-fallback__nav {
+        display: grid;
+        gap: 12px;
+      }
+      .startup-shell-fallback__nav--lower {
+        margin-top: 32px;
+      }
+      .startup-shell-fallback__line {
+        height: 14px;
+        width: 68%;
+      }
+      .startup-shell-fallback__line--strong {
+        width: 82%;
+      }
+      .startup-shell-fallback__line--wide {
+        width: 74%;
+      }
+      .startup-shell-fallback__line--narrow {
+        width: 52%;
+      }
+      .startup-shell-fallback__list-header {
+        height: 28px;
+        margin-bottom: 18px;
+        width: 70%;
+      }
+      .startup-shell-fallback__item {
+        height: 58px;
+        margin-bottom: 10px;
+        opacity: 0.74;
+      }
+      .startup-shell-fallback__item--selected {
+        background: var(--startup-state-selected);
+        opacity: 1;
+      }
+      .startup-shell-fallback__editor-title {
+        height: 34px;
+        margin-bottom: 28px;
+        width: min(420px, 72%);
+      }
+      .startup-shell-fallback__editor-line {
+        height: 14px;
+        margin-bottom: 14px;
+        width: min(560px, 86%);
+      }
+      .startup-shell-fallback__editor-line--wide {
+        width: min(660px, 94%);
+      }
+      .startup-shell-fallback__editor-line--short {
+        width: min(360px, 58%);
+      }
+      @media (max-width: 760px) {
+        .startup-shell-fallback__sidebar {
+          flex-basis: 84px;
+          width: 84px;
+        }
+        .startup-shell-fallback__list {
+          flex: 1 1 42%;
+          width: auto;
+        }
+        .startup-shell-fallback__editor {
+          display: none;
+        }
+      }
+      :root.ai-workspace-native-window .startup-shell-fallback {
+        display: none;
+      }
+      :root.ai-workspace-native-window,
+      :root.ai-workspace-native-window body {
+        background: transparent;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        width: 100%;
+      }
+      :root.ai-workspace-native-window body {
+        box-sizing: border-box;
+        padding: 20px;
+      }
+      :root.ai-workspace-native-window #root {
+        background: #FFFFFF;
+        border: 1px solid #E9E9E7;
+        border-radius: 12px;
+        box-sizing: border-box;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12), 0 1px 3px rgba(15, 23, 42, 0.10);
+        height: 100%;
+        overflow: hidden;
+        width: 100%;
+      }
+      :root.ai-workspace-native-window[data-theme="dark"] #root {
+        background: #1F1E1B;
+        border-color: #34322D;
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.30), 0 1px 4px rgba(0, 0, 0, 0.22);
+      }
+    </style>
+    <title>Tolaria</title>
+  </head>
+  <body>
+    <script>
+      (() => {
+        var key = 'tolaria-theme';
+        var legacyKey = 'laputa-theme';
+        var systemDarkQuery = '(prefers-color-scheme: dark)';
+        function normalizeTheme(value) {
+          return value === 'dark' || value === 'light' || value === 'system' ? value : null;
+        }
+        function prefersDarkTheme() {
+          try {
+            return typeof window.matchMedia === 'function' && window.matchMedia(systemDarkQuery).matches;
+          } catch {
+            return false;
+          }
+        }
+        function resolveTheme(value) {
+          var mode = normalizeTheme(value) || 'light';
+          return mode === 'system' ? (prefersDarkTheme() ? 'dark' : 'light') : mode;
+        }
+        function applyTheme(value) {
+          var mode = resolveTheme(value);
+          document.documentElement.setAttribute('data-theme', mode);
+          document.documentElement.classList.toggle('dark', mode === 'dark');
+        }
+        var mode;
+        try {
+          mode = normalizeTheme(localStorage.getItem(key));
+          if (mode === null) {
+            mode = normalizeTheme(localStorage.getItem(legacyKey));
+            if (mode !== null) localStorage.setItem(key, mode);
+          }
+          applyTheme(mode);
+        } catch {
+          applyTheme('light');
+        }
+      })();
+    </script>
+    <script>
+      const readyEventName = 'tolaria:frontend-ready';
+      const reloadAttemptKey = 'tolaria:startup-reload-attempted';
+      const startupTimeoutMs = 10000;
+      const isTauri = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+
+      const hasReloadAttempted = () => {
+        try {
+          return sessionStorage.getItem(reloadAttemptKey) === '1';
+        } catch {
+          return true;
+        }
+      };
+
+      const markReloadAttempted = () => {
+        try {
+          sessionStorage.setItem(reloadAttemptKey, '1');
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      const clearReloadAttempt = () => {
+        try {
+          sessionStorage.removeItem(reloadAttemptKey);
+        } catch {
+          // Storage can be unavailable in hardened WebView/privacy modes.
+        }
+      };
+
+      const reloadIfFrontendStalls = () => {
+        if (window.__tolariaFrontendReady === true) return;
+        if (hasReloadAttempted()) return;
+        if (!markReloadAttempted()) return;
+
+        window.location.reload();
+      };
+
+      if (isTauri) {
+        window.addEventListener(readyEventName, clearReloadAttempt, { once: true });
+        window.setTimeout(reloadIfFrontendStalls, startupTimeoutMs);
+      }
+    </script>
+    <div id="root">
+      <div id="tolaria-boot-shell" class="startup-shell-fallback" data-testid="startup-shell-fallback" aria-hidden="true">
+        <div class="startup-shell-fallback__sidebar">
+          <div class="startup-shell-fallback__sidebar-block startup-shell-fallback__sidebar-block--short"></div>
+          <div class="startup-shell-fallback__nav">
+            <div class="startup-shell-fallback__line startup-shell-fallback__line--strong"></div>
+            <div class="startup-shell-fallback__line"></div>
+            <div class="startup-shell-fallback__line"></div>
+          </div>
+          <div class="startup-shell-fallback__nav startup-shell-fallback__nav--lower">
+            <div class="startup-shell-fallback__line startup-shell-fallback__line--wide"></div>
+            <div class="startup-shell-fallback__line"></div>
+            <div class="startup-shell-fallback__line startup-shell-fallback__line--narrow"></div>
+          </div>
+        </div>
+        <div class="startup-shell-fallback__list">
+          <div class="startup-shell-fallback__list-header"></div>
+          <div class="startup-shell-fallback__item"></div>
+          <div class="startup-shell-fallback__item startup-shell-fallback__item--selected"></div>
+          <div class="startup-shell-fallback__item"></div>
+        </div>
+        <div class="startup-shell-fallback__editor">
+          <div class="startup-shell-fallback__editor-title"></div>
+          <div class="startup-shell-fallback__editor-line startup-shell-fallback__editor-line--wide"></div>
+          <div class="startup-shell-fallback__editor-line"></div>
+          <div class="startup-shell-fallback__editor-line startup-shell-fallback__editor-line--short"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        var bootShell = document.getElementById('tolaria-boot-shell');
+        window.__tolariaStartupShellFallbackNode = bootShell ? bootShell.cloneNode(true) : null;
+      })();
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
