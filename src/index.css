@@ -493,7 +493,6 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
-  --color-surface-shade: var(--surface-shade);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -619,7 +618,6 @@
 /* --- Menu surface: popovers, dialogs, tooltips and the kernel's menus sit on
    the menu sub-theme with a hairline border and Linear's menu shadow. --- */
 .fuwa-menu-surface,
-[data-radix-popper-content-wrapper] > .bn-suggestion-menu,
 .bn-shadcn .bn-menu-dropdown,
 .bn-shadcn .bn-toolbar {
   border: var(--hairline) solid var(--menu-border);
