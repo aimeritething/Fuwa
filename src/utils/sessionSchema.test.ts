@@ -105,14 +105,18 @@ describe('restoreOpenEditors', () => {
 })
 
 describe('sessionForOpenEditors', () => {
-  it('writes the Tabs in order as Rich Documents with the other fields at their defaults', () => {
-    expect(sessionForOpenEditors([B, A], A)).toEqual({
+  it('writes the Tabs in order as Rich Documents and the chosen theme, the other fields at their defaults', () => {
+    expect(sessionForOpenEditors([B, A], A, 'light')).toEqual({
       version: 1,
       folder: null,
       openEditors: [{ path: B, mode: 'rich' }, { path: A, mode: 'rich' }],
       activePath: A,
-      theme: 'dark',
+      theme: 'light',
       sidebar: { collapsed: false, width: 260 },
     })
+  })
+
+  it('writes system when the appearance follows the OS', () => {
+    expect(sessionForOpenEditors([], null, 'system').theme).toBe('system')
   })
 })

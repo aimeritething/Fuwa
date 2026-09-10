@@ -3,12 +3,14 @@ import type { Tab } from './types'
 import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
 import { Sidebar } from './components/Sidebar'
+import { useAppearance } from './hooks/useAppearance'
 import { useAppKeyboard } from './hooks/useAppKeyboard'
 import { useEditorSave } from './hooks/useEditorSave'
 import { useMenuEvents, type MenuEventHandlers } from './hooks/useMenuEvents'
 import { useNoteTabs } from './hooks/useNoteTabs'
 import { useSession } from './hooks/useSession'
 import { useTabCommands } from './hooks/useTabCommands'
+import { useThemeMode } from './hooks/useThemeMode'
 import { closeAppWindow } from './utils/appWindow'
 import { noteRootForPath } from './utils/noteEntry'
 import { pickNoteToOpen } from './utils/noteOpenDialog'
@@ -88,7 +90,15 @@ export default function App() {
     activateAdjacentTab,
     restoreOpenEditors,
   } = useNoteTabs()
-  useSession({ tabs, activeTabPath, restoreOpenEditors })
+  const appearance = useAppearance()
+  const { restored } = useSession({
+    tabs,
+    activeTabPath,
+    theme: appearance.themeMode,
+    restoreOpenEditors,
+    restoreTheme: appearance.restoreTheme,
+  })
+  useThemeMode(appearance.themeMode, restored)
   const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
   const vaultPath = activeTabPath ? noteRootForPath(activeTabPath) : undefined
@@ -152,13 +162,14 @@ export default function App() {
     void handleSave()
   }, [activeTabPath, handleSave])
 
-  // Open Document…, Save and the Tab commands are wired; the other manifest
-  // commands get their handlers with their own tickets.
+  // Open Document…, Save, Appearance and the Tab commands are wired; the
+  // other manifest commands get their handlers with their own tickets.
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeTabPath,
     onOpenNote,
     onSave,
     ...tabCommands.handlers,
+    ...appearance.handlers,
     onCreateNote: noop,
     onQuickOpen: noop,
     onPastePlainText: noop,
@@ -166,7 +177,7 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeTabPath, onOpenNote, onSave, tabCommands])
+  }), [activeTabPath, appearance.handlers, onOpenNote, onSave, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
 

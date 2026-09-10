@@ -5,14 +5,21 @@
 
 /* ============================================================
    Theme Variables — app-owned light/dark contract
+   Re-valued to the Linear app's default theme-generator output (AIM-382,
+   spec section 6). Reference: docs/research/linear-app-tokens.md. Every
+   variable Tolaria's stylesheet declared keeps its name; the Fuwa chrome
+   and content-chroma variables are additions.
    ============================================================ */
 
 :root {
   /* --- Font defaults --- */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  /* Inter Variable (weight 450 needs the variable font) and JetBrains Mono
+     are the only faces loaded (spec section 6 item 5). Root size stays 14px
+     for the kernel's rem calibration; Linear's sizes are written in px. */
+  font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Oxygen, Ubuntu, Cantarell, sans-serif;
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 450;
   font-size: 14px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -35,80 +42,128 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* --- Semantic surfaces (light mode) --- */
-  --surface-app: #FFFFFF;
-  --surface-sidebar: #F7F6F3;
-  --surface-panel: #FFFFFF;
-  --surface-card: #FFFFFF;
-  --surface-popover: #FFFFFF;
-  --surface-input: #FFFFFF;
-  --surface-button: #EBEBEA;
-  --surface-dialog: #FFFFFF;
-  --surface-editor: #FFFFFF;
-  --surface-overlay: rgba(0, 0, 0, 0.3);
+  /* --- Hairline: 1px, 0.5px on HiDPI (the media query below) --- */
+  --hairline: 1px;
 
-  /* --- Semantic text (light mode) --- */
-  --text-primary: #37352F;
-  --text-secondary: #787774;
-  --text-tertiary: #787774;
-  --text-muted: #B4B4B4;
-  --text-faint: #B4B4B4;
-  --text-heading: #37352F;
-  --text-inverse: #FFFFFF;
+  /* --- Semantic surfaces (light mode) ---
+     Linear light default: base LCH 97.94 0.5 282, contrast 30. The canvas and
+     sidebar sit on the sidebar sub-theme, the card and editor on the base
+     theme, popovers and dialogs on the menu sub-theme. */
+  --surface-app: #eeeeef;
+  --surface-sidebar: #eeeeef;
+  --surface-panel: #f8f8f9;
+  --surface-card: #f8f8f9;
+  --surface-popover: #ffffff;
+  --surface-input: #f8f8f9;
+  --surface-button: #fefeff;
+  --surface-dialog: #ffffff;
+  --surface-editor: #f8f8f9;
+  --surface-overlay: #0000003f;
+  --surface-shade: #e9e9ea;
+
+  /* --- Semantic text (light mode): title / base / muted / faint --- */
+  --text-primary: #2f2f31;
+  --text-secondary: #5b5c5e;
+  --text-tertiary: #5b5c5e;
+  --text-muted: #9c9c9e;
+  --text-faint: #9c9c9e;
+  --text-heading: #1b1b1b;
+  --text-inverse: #fefeff;
 
   /* --- Semantic borders (light mode) --- */
-  --border-default: #E9E9E7;
-  --border-subtle: #E9E9E7;
-  --border-strong: #D9D9D6;
-  --border-input: #E9E9E7;
-  --border-dialog: #E9E9E7;
-  --border-focus: #155DFF;
+  --border-default: #dedede;
+  --border-subtle: #dedede;
+  --border-strong: #d2d2d2;
+  --border-input: #dedede;
+  --border-dialog: #e3e3e3;
+  --border-focus: #6d78d5;
 
   /* --- Interaction states (light mode) --- */
-  --state-hover: #EBEBEA;
-  --state-hover-subtle: #F0F0EF;
-  --state-selected: #E8F4FE;
-  --state-selected-strong: #D8ECFE;
-  --editor-selection: var(--state-selected);
-  --state-active: #E8F4FE;
-  --state-focus-ring: #155DFF;
-  --state-drag-target: #155DFF18;
-  --state-disabled: #F0F0EF;
+  --state-hover: #eaeaeb;
+  --state-hover-subtle: #e9e9ea;
+  --state-selected: #e7e8f3;
+  --state-selected-strong: #dedfeb;
+  --editor-selection: color-mix(in srgb, var(--text-secondary) 20%, transparent);
+  --state-active: #e7e8f3;
+  --state-focus-ring: #6d78d5;
+  --state-drag-target: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  --state-disabled: #f0f0f0;
 
-  /* --- Accent roles (light mode) --- */
-  --accent-blue: #155DFF;
-  --accent-blue-bg: #155DFF18;
-  --accent-blue-hover: #0D4AD6;
-  --accent-blue-light: #155DFF14;
-  --accent-green: #38A169;
-  --accent-green-light: rgba(56, 161, 105, 0.1);
-  --accent-orange: #D9730D;
-  --accent-orange-light: rgba(217, 115, 13, 0.1);
-  --accent-red: #E53E3E;
-  --accent-red-light: rgba(229, 62, 62, 0.1);
-  --accent-purple: #805AD5;
-  --accent-purple-light: rgba(128, 90, 213, 0.1);
-  --accent-yellow: #D69E2E;
-  --accent-yellow-light: rgba(214, 158, 46, 0.1);
-  --accent-teal: #319795;
-  --accent-teal-light: rgba(49, 151, 149, 0.1);
-  --accent-pink: #D53F8C;
+  /* --- Fuwa chrome (light mode): sidebar rows, tabs, controls, menus --- */
+  --sidebar-row-hover: #dfdfe0;
+  --sidebar-row-active: #d4d4d4;
+  --tab-hover: #eaeaeb;
+  --tab-active: #e2e2e3;
+  --control-secondary: #fefeff;
+  --control-secondary-hover: #f0f0f0;
+  --control-secondary-selected: #f0f0f0;
+  --control-tertiary-hover: #eaeaeb;
+  --menu-item-hover: #efefef;
+  --menu-shortcut: #5e5e5f;
+  --menu-border: #e3e3e3;
+
+  /* --- Content chroma (light mode): Linear's seven roles as base / text / bg.
+     The text forms are the base darkened for a light ground; the dark theme
+     carries the generator's own readable forms. --- */
+  --chroma-teal: #00b8cb;
+  --chroma-teal-text: color-mix(in oklab, var(--chroma-teal) 72%, black);
+  --chroma-teal-bg: color-mix(in srgb, var(--chroma-teal) 12%, transparent);
+  --chroma-green: #43bc58;
+  --chroma-green-text: color-mix(in oklab, var(--chroma-green) 72%, black);
+  --chroma-green-bg: color-mix(in srgb, var(--chroma-green) 12%, transparent);
+  --chroma-yellow: #f0bf00;
+  --chroma-yellow-text: color-mix(in oklab, var(--chroma-yellow) 66%, black);
+  --chroma-yellow-bg: color-mix(in srgb, var(--chroma-yellow) 14%, transparent);
+  --chroma-orange: #ff7235;
+  --chroma-orange-text: color-mix(in oklab, var(--chroma-orange) 72%, black);
+  --chroma-orange-bg: color-mix(in srgb, var(--chroma-orange) 12%, transparent);
+  --chroma-red: #f34e52;
+  --chroma-red-text: color-mix(in oklab, var(--chroma-red) 76%, black);
+  --chroma-red-bg: color-mix(in srgb, var(--chroma-red) 12%, transparent);
+  --chroma-blue: #55ccff;
+  --chroma-blue-text: color-mix(in oklab, var(--chroma-blue) 66%, black);
+  --chroma-blue-bg: color-mix(in srgb, var(--chroma-blue) 14%, transparent);
+  --chroma-purple: #5e6ad2;
+  --chroma-purple-text: color-mix(in oklab, var(--chroma-purple) 80%, black);
+  --chroma-purple-bg: color-mix(in srgb, var(--chroma-purple) 12%, transparent);
+
+  /* --- Accent roles (light mode): blue is the primary control (indigo);
+     the rest alias the chromatic roles. --- */
+  --accent-blue: #6d78d5;
+  --accent-blue-bg: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  --accent-blue-hover: #6974e1;
+  --accent-blue-light: color-mix(in srgb, var(--accent-blue) 10%, transparent);
+  --accent-green: var(--chroma-green);
+  --accent-green-light: var(--chroma-green-bg);
+  --accent-orange: var(--chroma-orange);
+  --accent-orange-light: var(--chroma-orange-bg);
+  --accent-red: var(--chroma-red);
+  --accent-red-light: var(--chroma-red-bg);
+  --accent-purple: var(--chroma-purple);
+  --accent-purple-light: var(--chroma-purple-bg);
+  --accent-yellow: var(--chroma-yellow);
+  --accent-yellow-light: var(--chroma-yellow-bg);
+  --accent-teal: var(--chroma-teal);
+  --accent-teal-light: var(--chroma-teal-bg);
+  --accent-pink: #d53f8c;
   --accent-pink-light: rgba(213, 63, 140, 0.1);
-  --accent-gray: #718096;
-  --accent-gray-light: rgba(113, 128, 150, 0.1);
+  --accent-gray: var(--text-secondary);
+  --accent-gray-light: color-mix(in srgb, var(--text-secondary) 10%, transparent);
 
   /* --- Feedback roles (light mode) --- */
-  --feedback-info-text: var(--accent-blue);
-  --feedback-info-bg: var(--accent-blue-light);
-  --feedback-success-text: var(--accent-green);
-  --feedback-success-bg: var(--accent-green-light);
-  --feedback-warning-text: #92400E;
-  --feedback-warning-bg: #FEF3C7;
-  --feedback-warning-border: #D97706;
-  --feedback-error-text: var(--accent-red);
-  --feedback-error-bg: var(--accent-red-light);
+  --feedback-info-text: var(--chroma-blue-text);
+  --feedback-info-bg: var(--chroma-blue-bg);
+  --feedback-success-text: var(--chroma-green-text);
+  --feedback-success-bg: var(--chroma-green-bg);
+  --feedback-warning-text: var(--chroma-orange-text);
+  --feedback-warning-bg: var(--chroma-orange-bg);
+  --feedback-warning-border: var(--chroma-orange);
+  --feedback-error-text: var(--chroma-red-text);
+  --feedback-error-bg: var(--chroma-red-bg);
 
-  /* --- Syntax and diff roles (light mode) --- */
+  /* --- Syntax and diff roles (light mode) ---
+     Raw-mode syntax, diff and the light code-highlighting set keep
+     Tolaria's values (spec section 6 item 9). --- */
   --syntax-heading: #0969DA;
   --syntax-link: #0969DA;
   --syntax-monospace: #C9383E;
@@ -120,6 +175,7 @@
   --syntax-highlight-keyword: #D73A49;
   --syntax-highlight-string: #032F62;
   --syntax-highlight-number: #005CC5;
+  --syntax-highlight-attr: #005CC5;
   --syntax-highlight-title: #6F42C1;
   --syntax-highlight-type: #E36209;
   --syntax-highlight-deletion: #B31D28;
@@ -129,18 +185,22 @@
   --diff-removed-text: #F44336;
   --diff-removed-bg: rgba(244, 67, 54, 0.12);
   --diff-hunk-bg: rgba(33, 150, 243, 0.08);
-  --editor-code-block-background: var(--surface-sidebar);
-  --editor-code-block-border: var(--border-subtle);
+  --editor-code-block-background: var(--surface-app);
+  --editor-code-block-border: var(--border-default);
   --editor-code-block-text: var(--text-primary);
   --editor-code-block-language: var(--text-secondary);
-  --editor-paragraph-spacing: 0.5em;
+  --editor-inline-code-background: rgba(0, 0, 0, 0.05);
+  --editor-inline-code-border: #d2d2d2;
+  --editor-paragraph-spacing: 16px;
 
   /* --- Overlays and shadows (light mode) --- */
   --shadow-overlay: var(--surface-overlay);
-  --shadow-dialog: rgba(0, 0, 0, 0.15);
+  --shadow-dialog: rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 3px 6px -2px #00000005, 0 1px 1px #0000000a;
+  --shadow-menu: 0 6px 18px #00000005, 0 3px 9px #0000000a, 0 1px 1px #0000000a;
 
   /* --- shadcn theme aliases (light mode) --- */
-  --radius: 0.5rem;
+  --radius: 8px;
   --background: var(--surface-app);
   --foreground: var(--text-primary);
   --card: var(--surface-card);
@@ -149,13 +209,13 @@
   --popover-foreground: var(--text-primary);
   --primary: var(--accent-blue);
   --primary-foreground: var(--text-inverse);
-  --secondary: var(--state-hover);
+  --secondary: var(--control-secondary);
   --secondary-foreground: var(--text-primary);
-  --muted: var(--state-hover-subtle);
+  --muted: var(--surface-shade);
   --muted-foreground: var(--text-secondary);
   --accent: var(--state-hover);
-  --accent-foreground: var(--text-primary);
-  --destructive: var(--accent-red);
+  --accent-foreground: var(--text-heading);
+  --destructive: var(--chroma-red);
   --destructive-foreground: var(--text-inverse);
   --border: var(--border-default);
   --input: var(--border-input);
@@ -164,13 +224,13 @@
   --sidebar-foreground: var(--text-primary);
   --sidebar-primary: var(--accent-blue);
   --sidebar-primary-foreground: var(--text-inverse);
-  --sidebar-accent: var(--state-hover);
-  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-accent: var(--sidebar-row-hover);
+  --sidebar-accent-foreground: var(--text-heading);
   --sidebar-border: var(--border-default);
   --sidebar-ring: var(--state-focus-ring);
 
   /* --- Compatibility aliases for existing product code --- */
-  --bg-primary: var(--surface-app);
+  --bg-primary: var(--surface-editor);
   --bg-sidebar: var(--surface-sidebar);
   --bg-card: var(--surface-card);
   --bg-hover: var(--state-hover);
@@ -181,88 +241,128 @@
   --bg-dialog: var(--surface-dialog);
   --border-primary: var(--border-default);
   --hover: var(--state-hover);
-  --link-color: var(--accent-blue);
-  --link-hover: var(--accent-blue-hover);
+  --link-color: #3f60d9;
+  --link-hover: #3f60d9;
 }
 
 :root.dark,
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* --- Semantic surfaces (dark mode) --- */
+  /* --- Semantic surfaces (dark mode) ---
+     Linear dark default: base LCH 5.52 0.4 272, contrast 27. --- */
   --surface-app: #09090a;
-  --surface-sidebar: #191814;
-  --surface-panel: #23221F;
-  --surface-card: #23221F;
-  --surface-popover: #292823;
-  --surface-input: #1F1E1B;
-  --surface-button: #34322D;
-  --surface-dialog: #272622;
-  --surface-editor: #1F1E1B;
-  --surface-overlay: rgba(8, 8, 7, 0.58);
+  --surface-sidebar: #09090a;
+  --surface-panel: #111212;
+  --surface-card: #111212;
+  --surface-popover: #202022;
+  --surface-input: #111212;
+  --surface-button: #1b1b1c;
+  --surface-dialog: #202022;
+  --surface-editor: #111212;
+  --surface-overlay: #00000066;
+  --surface-shade: #151617;
 
   /* --- Semantic text (dark mode) --- */
-  --text-primary: #E6E1D8;
-  --text-secondary: #B8B1A6;
-  --text-tertiary: #9C9488;
-  --text-muted: #7F776D;
-  --text-faint: #625B53;
-  --text-heading: #F1ECE3;
-  --text-inverse: #151411;
+  --text-primary: #e2e3e5;
+  --text-secondary: #949597;
+  --text-tertiary: #949597;
+  --text-muted: #565658;
+  --text-faint: #565658;
+  --text-heading: #ffffff;
+  --text-inverse: #fefeff;
 
   /* --- Semantic borders (dark mode) --- */
-  --border-default: #34322D;
-  --border-subtle: #2A2925;
-  --border-strong: #46433B;
-  --border-input: #3A3832;
-  --border-dialog: #3A3832;
-  --border-focus: #78A4FF;
+  --border-default: #232325;
+  --border-subtle: #232325;
+  --border-strong: #27282a;
+  --border-input: #232325;
+  --border-dialog: #323336;
+  --border-focus: #5e69d1;
 
   /* --- Interaction states (dark mode) --- */
-  --state-hover: #2D2B27;
-  --state-hover-subtle: #262520;
-  --state-selected: #1E344C;
-  --state-selected-strong: #25415F;
-  --editor-selection: #3A63A0;
-  --state-active: #203A55;
-  --state-focus-ring: #78A4FF;
-  --state-drag-target: rgba(120, 164, 255, 0.2);
-  --state-disabled: #292824;
+  --state-hover: #191a1b;
+  --state-hover-subtle: #171719;
+  --state-selected: #1b1e37;
+  --state-selected-strong: #1f223e;
+  --editor-selection: color-mix(in srgb, var(--text-secondary) 20%, transparent);
+  --state-active: #1b1e37;
+  --state-focus-ring: #5e69d1;
+  --state-drag-target: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+  --state-disabled: #1b1b1c;
+
+  /* --- Fuwa chrome (dark mode) --- */
+  --sidebar-row-hover: #1d1e1f;
+  --sidebar-row-active: #28292b;
+  --tab-hover: #1e1f22;
+  --tab-active: #232427;
+  --control-secondary: #1b1b1c;
+  --control-secondary-hover: #242526;
+  --control-secondary-selected: #2c2d2e;
+  --control-tertiary-hover: #232324;
+  --menu-item-hover: #303133;
+  --menu-shortcut: #9c9d9f;
+  --menu-border: #323336;
+
+  /* --- Content chroma (dark mode) --- */
+  --chroma-teal: #00b8cb;
+  --chroma-teal-text: #00e8ff;
+  --chroma-teal-bg: color-mix(in srgb, var(--chroma-teal) 16%, transparent);
+  --chroma-green: #26a544;
+  --chroma-green-text: #3de261;
+  --chroma-green-bg: color-mix(in srgb, var(--chroma-green) 16%, transparent);
+  --chroma-yellow: #f0bf00;
+  --chroma-yellow-text: #edbf0a;
+  --chroma-yellow-bg: color-mix(in srgb, var(--chroma-yellow) 16%, transparent);
+  --chroma-orange: #ff7235;
+  --chroma-orange-text: #ff9958;
+  --chroma-orange-bg: color-mix(in srgb, var(--chroma-orange) 16%, transparent);
+  --chroma-red: #f34e52;
+  --chroma-red-text: #ff8583;
+  --chroma-red-bg: color-mix(in srgb, var(--chroma-red) 16%, transparent);
+  --chroma-blue: #55ccff;
+  --chroma-blue-text: #00ceff;
+  --chroma-blue-bg: color-mix(in srgb, var(--chroma-blue) 16%, transparent);
+  --chroma-purple: #5e6ad2;
+  --chroma-purple-text: #adbaff;
+  --chroma-purple-bg: color-mix(in srgb, var(--chroma-purple) 20%, transparent);
 
   /* --- Accent roles (dark mode) --- */
-  --accent-blue: #78A4FF;
-  --accent-blue-bg: rgba(120, 164, 255, 0.2);
-  --accent-blue-hover: #9BBEFF;
-  --accent-blue-light: rgba(120, 164, 255, 0.16);
-  --accent-green: #79D89D;
-  --accent-green-light: rgba(121, 216, 157, 0.16);
-  --accent-orange: #F3A15B;
-  --accent-orange-light: rgba(243, 161, 91, 0.17);
-  --accent-red: #FF8A86;
-  --accent-red-light: rgba(255, 138, 134, 0.16);
-  --accent-purple: #B69CFF;
-  --accent-purple-light: rgba(182, 156, 255, 0.17);
-  --accent-yellow: #F2C86B;
-  --accent-yellow-light: rgba(242, 200, 107, 0.18);
-  --accent-teal: #64D1C8;
-  --accent-teal-light: rgba(100, 209, 200, 0.16);
-  --accent-pink: #F28AC3;
+  --accent-blue: #5e69d1;
+  --accent-blue-bg: color-mix(in srgb, var(--accent-blue) 20%, transparent);
+  --accent-blue-hover: #6974e1;
+  --accent-blue-light: color-mix(in srgb, var(--accent-blue) 16%, transparent);
+  --accent-green: var(--chroma-green);
+  --accent-green-light: var(--chroma-green-bg);
+  --accent-orange: var(--chroma-orange);
+  --accent-orange-light: var(--chroma-orange-bg);
+  --accent-red: var(--chroma-red);
+  --accent-red-light: var(--chroma-red-bg);
+  --accent-purple: var(--chroma-purple);
+  --accent-purple-light: var(--chroma-purple-bg);
+  --accent-yellow: var(--chroma-yellow);
+  --accent-yellow-light: var(--chroma-yellow-bg);
+  --accent-teal: var(--chroma-teal);
+  --accent-teal-light: var(--chroma-teal-bg);
+  --accent-pink: #f28ac3;
   --accent-pink-light: rgba(242, 138, 195, 0.16);
-  --accent-gray: #A7B0BD;
-  --accent-gray-light: rgba(167, 176, 189, 0.14);
+  --accent-gray: var(--text-secondary);
+  --accent-gray-light: color-mix(in srgb, var(--text-secondary) 14%, transparent);
 
   /* --- Feedback roles (dark mode) --- */
-  --feedback-info-text: var(--accent-blue);
-  --feedback-info-bg: var(--accent-blue-light);
-  --feedback-success-text: var(--accent-green);
-  --feedback-success-bg: var(--accent-green-light);
-  --feedback-warning-text: #F5C36B;
-  --feedback-warning-bg: rgba(245, 195, 107, 0.16);
-  --feedback-warning-border: #D99B3D;
-  --feedback-error-text: var(--accent-red);
-  --feedback-error-bg: var(--accent-red-light);
+  --feedback-info-text: var(--chroma-blue-text);
+  --feedback-info-bg: var(--chroma-blue-bg);
+  --feedback-success-text: var(--chroma-green-text);
+  --feedback-success-bg: var(--chroma-green-bg);
+  --feedback-warning-text: var(--chroma-orange-text);
+  --feedback-warning-bg: var(--chroma-orange-bg);
+  --feedback-warning-border: var(--chroma-orange);
+  --feedback-error-text: var(--chroma-red-text);
+  --feedback-error-bg: var(--chroma-red-bg);
 
-  /* --- Syntax and diff roles (dark mode) --- */
+  /* --- Syntax and diff roles (dark mode) ---
+     Raw-mode syntax and diff keep Tolaria's values; the code-highlighting
+     set is Linear's (spec section 6 item 9). --- */
   --syntax-heading: #83B2FF;
   --syntax-link: #83B2FF;
   --syntax-monospace: #FFA6A3;
@@ -270,12 +370,13 @@
   --syntax-muted: #9C9488;
   --syntax-frontmatter-key: #FFA6A3;
   --syntax-frontmatter-value: #8EDFAE;
-  --syntax-highlight-comment: #8E877D;
-  --syntax-highlight-keyword: #FF9BA0;
-  --syntax-highlight-string: #A9D6FF;
-  --syntax-highlight-number: #8BB7FF;
-  --syntax-highlight-title: #C2AAFF;
-  --syntax-highlight-type: #F3B175;
+  --syntax-highlight-comment: var(--text-faint);
+  --syntax-highlight-keyword: #e394dc;
+  --syntax-highlight-string: #00c5f0;
+  --syntax-highlight-number: #ec3b40;
+  --syntax-highlight-attr: #fce27d;
+  --syntax-highlight-title: #25f8ca;
+  --syntax-highlight-type: #fce27d;
   --syntax-highlight-deletion: #FF9C9A;
   --syntax-highlight-deletion-bg: rgba(255, 138, 134, 0.16);
   --diff-added-text: #79D89D;
@@ -283,15 +384,19 @@
   --diff-removed-text: #FF8A86;
   --diff-removed-bg: rgba(255, 138, 134, 0.14);
   --diff-hunk-bg: rgba(120, 164, 255, 0.13);
-  --editor-code-block-background: #161616;
-  --editor-code-block-border: transparent;
-  --editor-code-block-text: #FFFFFF;
-  --editor-code-block-language: rgba(255, 255, 255, 0.7);
-  --editor-paragraph-spacing: 0.5em;
+  --editor-code-block-background: var(--surface-app);
+  --editor-code-block-border: var(--border-default);
+  --editor-code-block-text: var(--text-primary);
+  --editor-code-block-language: var(--text-secondary);
+  --editor-inline-code-background: rgba(255, 255, 255, 0.075);
+  --editor-inline-code-border: #3f4042;
+  --editor-paragraph-spacing: 16px;
 
   /* --- Overlays and shadows (dark mode) --- */
   --shadow-overlay: var(--surface-overlay);
-  --shadow-dialog: rgba(0, 0, 0, 0.42);
+  --shadow-dialog: rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 0.5px 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-menu: 0 3px 8px #0000001f, 0 2px 5px #0000001f, 0 1px 1px #0000001f;
 
   /* --- shadcn theme aliases (dark mode) --- */
   --background: var(--surface-app);
@@ -302,13 +407,13 @@
   --popover-foreground: var(--text-primary);
   --primary: var(--accent-blue);
   --primary-foreground: var(--text-inverse);
-  --secondary: var(--state-hover);
+  --secondary: var(--control-secondary);
   --secondary-foreground: var(--text-primary);
-  --muted: var(--state-hover-subtle);
+  --muted: var(--surface-shade);
   --muted-foreground: var(--text-secondary);
   --accent: var(--state-hover);
-  --accent-foreground: var(--text-primary);
-  --destructive: var(--accent-red);
+  --accent-foreground: var(--text-heading);
+  --destructive: var(--chroma-red);
   --destructive-foreground: var(--text-inverse);
   --border: var(--border-default);
   --input: var(--border-input);
@@ -317,13 +422,13 @@
   --sidebar-foreground: var(--text-primary);
   --sidebar-primary: var(--accent-blue);
   --sidebar-primary-foreground: var(--text-inverse);
-  --sidebar-accent: var(--state-hover);
-  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-accent: var(--sidebar-row-hover);
+  --sidebar-accent-foreground: var(--text-heading);
   --sidebar-border: var(--border-default);
   --sidebar-ring: var(--state-focus-ring);
 
   /* --- Compatibility aliases for existing product code --- */
-  --bg-primary: var(--surface-app);
+  --bg-primary: var(--surface-editor);
   --bg-sidebar: var(--surface-sidebar);
   --bg-card: var(--surface-card);
   --bg-hover: var(--state-hover);
@@ -334,8 +439,16 @@
   --bg-dialog: var(--surface-dialog);
   --border-primary: var(--border-default);
   --hover: var(--state-hover);
-  --link-color: var(--accent-blue);
-  --link-hover: var(--accent-blue-hover);
+  --link-color: #adbbff;
+  --link-hover: #adbbff;
+}
+
+/* Hairlines: half a device pixel on Retina, a whole one otherwise. Inputs and
+   checkboxes keep a 1px border. */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+  :root {
+    --hairline: 0.5px;
+  }
 }
 
 /* --- Tailwind v4 theme inline: register colors + radii --- */
@@ -380,6 +493,7 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --color-surface-shade: var(--surface-shade);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -502,17 +616,27 @@
   }
 }
 
+/* --- Menu surface: popovers, dialogs, tooltips and the kernel's menus sit on
+   the menu sub-theme with a hairline border and Linear's menu shadow. --- */
+.fuwa-menu-surface,
+[data-radix-popper-content-wrapper] > .bn-suggestion-menu,
+.bn-shadcn .bn-menu-dropdown,
+.bn-shadcn .bn-toolbar {
+  border: var(--hairline) solid var(--menu-border);
+  box-shadow: var(--shadow-menu);
+}
+
 /* --- Label typography (Inter, sentence case) --- */
 /* t8: Section labels, metadata tags — 11px medium */
 .font-mono-label {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter Variable', 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 500;
 }
 
 /* t9: Overlines, category labels — 10px regular */
 .font-mono-overline {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter Variable', 'Inter', sans-serif;
   font-size: 10px;
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -563,7 +687,7 @@
 .ai-markdown li > ol { margin: 0.1em 0; }
 
 .ai-markdown code {
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
   font-size: 0.9em;
   background: var(--muted);
   border-radius: 3px;
@@ -665,7 +789,7 @@
 .ai-markdown .hljs-type { color: var(--syntax-highlight-type); }
 .ai-markdown .hljs-attr,
 .ai-markdown .hljs-name,
-.ai-markdown .hljs-attribute { color: var(--syntax-highlight-number); }
+.ai-markdown .hljs-attribute { color: var(--syntax-highlight-attr); }
 .ai-markdown .hljs-deletion { color: var(--syntax-highlight-deletion); background: var(--syntax-highlight-deletion-bg); }
 .ai-markdown .hljs-meta { color: var(--syntax-highlight-comment); }
 

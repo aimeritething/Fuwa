@@ -1,6 +1,9 @@
 /* ==============================================
    EditorTheme.css — BlockNote theme overrides
-   Driven by CSS custom properties from theme.json
+   Driven by CSS custom properties from theme.json, re-valued to the Linear
+   app's editor typography (AIM-382, spec section 6). Hairlines (code block,
+   table and inline-code borders) come from --hairline; inputs and checkboxes
+   keep 1px.
    ============================================== */
 
 /* --- Editor root --- */
@@ -16,6 +19,8 @@
   margin: 0 auto;  /* Center the editor body */
   padding: var(--editor-padding-vertical) var(--editor-padding-horizontal);
   padding-bottom: max(var(--editor-padding-vertical), 50vh);
+  font-weight: var(--editor-font-weight);
+  letter-spacing: var(--editor-letter-spacing);
   color: var(--colors-text);
   caret-color: var(--colors-cursor);
 }
@@ -167,13 +172,21 @@
    and ensure the handle aligns by NOT adding padding/margin on inner elements.
    BlockNote positions handles via JS based on .bn-block-content bounding rect. */
 
-/* Title (H1) — visually separated from content.
-   BlockNote renders H1 without data-level, so we target :has(h1) */
+/* Title (H1). BlockNote renders H1 without data-level, so we target :has(h1) */
 .editor__blocknote-container .bn-block-outer:has(h1) {
   margin-top: var(--headings-h1-margin-top) !important;
   margin-bottom: var(--headings-h1-margin-bottom) !important;
-  padding-bottom: 16px !important;
-  border-bottom: 1px solid var(--border-primary);
+}
+
+/* A heading that opens the Document carries no top margin: the column's own
+   padding is the space above it. */
+.editor__blocknote-container .bn-editor > .bn-block-group > .bn-block-outer:first-child:has(> .bn-block > [data-content-type="heading"]) {
+  margin-top: 0 !important;
+}
+
+/* Headings are the one place with an OpenType feature: contextual alternates. */
+.editor__blocknote-container [data-content-type="heading"] .bn-inline-content {
+  font-feature-settings: "calt";
 }
 .editor__blocknote-container [data-content-type="heading"]:not([data-level]) .bn-inline-content,
 .editor__blocknote-container [data-content-type="heading"][data-level="1"] .bn-inline-content {
@@ -356,15 +369,17 @@
 .editor__blocknote-container .bn-inline-content code {
   font-family: var(--inline-styles-code-font-family);
   font-size: var(--inline-styles-code-font-size);
+  line-height: 1.3;
   background-color: var(--inline-styles-code-background-color);
+  box-shadow: inset 0 0 0 var(--hairline) var(--editor-inline-code-border);
   padding: var(--inline-styles-code-padding-vertical) var(--inline-styles-code-padding-horizontal);
   border-radius: var(--inline-styles-code-border-radius);
   color: var(--inline-styles-code-color);
 }
 
-/* --- Inline: Markdown highlight --- */
+/* --- Inline: Markdown highlight (the chromatic roles, yellow by default) --- */
 .editor__blocknote-container .bn-editor mark.markdown-highlight {
-  background-color: var(--feedback-warning-bg);
+  background-color: var(--chroma-yellow-bg);
   color: var(--colors-text);
   border-radius: 2px;
 }
@@ -373,28 +388,28 @@
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="green"]:has(mark.markdown-highlight),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="green"] mark.markdown-highlight,
 .editor__blocknote-container .bn-editor mark.markdown-highlight [data-style-type="backgroundColor"][data-value="green"] {
-  background-color: var(--accent-green-light);
+  background-color: var(--chroma-green-bg);
 }
 
 .editor__blocknote-container .bn-editor mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="red"]),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="red"]:has(mark.markdown-highlight),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="red"] mark.markdown-highlight,
 .editor__blocknote-container .bn-editor mark.markdown-highlight [data-style-type="backgroundColor"][data-value="red"] {
-  background-color: var(--accent-red-light);
+  background-color: var(--chroma-red-bg);
 }
 
 .editor__blocknote-container .bn-editor mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="blue"]),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="blue"]:has(mark.markdown-highlight),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="blue"] mark.markdown-highlight,
 .editor__blocknote-container .bn-editor mark.markdown-highlight [data-style-type="backgroundColor"][data-value="blue"] {
-  background-color: var(--accent-blue-light);
+  background-color: var(--chroma-blue-bg);
 }
 
 .editor__blocknote-container .bn-editor mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="purple"]),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="purple"]:has(mark.markdown-highlight),
 .editor__blocknote-container .bn-editor [data-style-type="backgroundColor"][data-value="purple"] mark.markdown-highlight,
 .editor__blocknote-container .bn-editor mark.markdown-highlight [data-style-type="backgroundColor"][data-value="purple"] {
-  background-color: var(--accent-purple-light);
+  background-color: var(--chroma-purple-bg);
 }
 
 .markdown-highlight-toolbar-color-host {
@@ -451,35 +466,41 @@
 }
 
 .markdown-highlight-color-swatch--yellow {
-  color: var(--accent-yellow);
-  background: var(--feedback-warning-bg);
+  color: var(--chroma-yellow);
+  background: var(--chroma-yellow-bg);
 }
 
 .markdown-highlight-color-swatch--green {
-  color: var(--accent-green);
-  background: var(--accent-green-light);
+  color: var(--chroma-green);
+  background: var(--chroma-green-bg);
 }
 
 .markdown-highlight-color-swatch--red {
-  color: var(--accent-red);
-  background: var(--accent-red-light);
+  color: var(--chroma-red);
+  background: var(--chroma-red-bg);
 }
 
 .markdown-highlight-color-swatch--blue {
-  color: var(--accent-blue);
-  background: var(--accent-blue-light);
+  color: var(--chroma-blue);
+  background: var(--chroma-blue-bg);
 }
 
 .markdown-highlight-color-swatch--purple {
-  color: var(--accent-purple);
-  background: var(--accent-purple-light);
+  color: var(--chroma-purple);
+  background: var(--chroma-purple-bg);
 }
 
-/* --- Inline: links --- */
+/* --- Inline: links (underline on hover only) --- */
 .editor__blocknote-container .bn-editor a {
   color: var(--inline-styles-link-color);
   text-decoration: var(--inline-styles-link-text-decoration);
   cursor: text;
+}
+
+.editor__blocknote-container .bn-editor a:hover {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 .editor__blocknote-container .math {
@@ -774,11 +795,17 @@ body.tldraw-whiteboard-fullscreen-open {
   cursor: pointer;
 }
 
-/* Code blocks follow Tolaria's theme instead of BlockNote's fixed dark shell. */
+/* Code blocks sit on the canvas colour with a hairline border and a 6px
+   radius, 13px / 1.4 in the mono face, instead of BlockNote's fixed dark shell. */
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] {
   background-color: var(--editor-code-block-background) !important;
-  border: 1px solid var(--editor-code-block-border);
+  border: var(--hairline) solid var(--editor-code-block-border);
+  border-radius: 6px;
   color: var(--editor-code-block-text) !important;
+  font-family: var(--inline-styles-code-font-family);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0;
   position: relative;
 }
 
@@ -805,6 +832,8 @@ body.tldraw-whiteboard-fullscreen-open {
   color: inherit;
   overflow-x: hidden;
   overflow-wrap: anywhere;
+  /* 16px all round, plus a strip above for the kernel's language control. */
+  padding: 28px 16px 16px;
   position: relative;
   white-space: pre-wrap;
 }
@@ -960,10 +989,12 @@ body.tldraw-whiteboard-fullscreen-open {
   opacity: 1;
 }
 
-/* --- Blockquote --- */
+/* --- Blockquote: a 4px rounded bar, the text colour unchanged --- */
 .editor__blocknote-container [data-content-type="blockquote"],
 .editor__blocknote-container blockquote {
   border-inline-start: var(--blockquote-border-left-width) solid var(--blockquote-border-left-color);
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
   padding-inline-start: var(--blockquote-padding-left);
   margin-top: var(--blockquote-margin-vertical);
   margin-bottom: var(--blockquote-margin-vertical);
@@ -1005,18 +1036,43 @@ body.tldraw-whiteboard-fullscreen-open {
   margin-top: 0;
 }
 
-/* --- Table --- */
+/* --- Table: hairline grid, 6px radius, shaded header row --- */
 .editor__blocknote-container [data-content-type="table"] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: var(--hairline) solid var(--table-border-color);
   border-color: var(--table-border-color);
+  border-radius: 6px;
   font-size: var(--table-font-size);
 }
 
 .editor__blocknote-container [data-content-type="table"] :is(th, td) {
+  border-width: 0;
+  border-inline-start: var(--hairline) solid var(--table-border-color);
   border-color: var(--table-border-color);
+}
+
+.editor__blocknote-container [data-content-type="table"] :is(th, td):first-child {
+  border-inline-start-width: 0;
+}
+
+.editor__blocknote-container [data-content-type="table"] tr + tr :is(th, td) {
+  border-top: var(--hairline) solid var(--table-border-color);
+}
+
+.editor__blocknote-container [data-content-type="table"] tr:first-child th:first-child,
+.editor__blocknote-container [data-content-type="table"] tr:first-child td:first-child {
+  border-start-start-radius: 6px;
+}
+
+.editor__blocknote-container [data-content-type="table"] tr:first-child th:last-child,
+.editor__blocknote-container [data-content-type="table"] tr:first-child td:last-child {
+  border-start-end-radius: 6px;
 }
 
 .editor__blocknote-container [data-content-type="table"] th {
   background: var(--table-header-background);
+  font-weight: 600;
   padding: var(--table-cell-padding-vertical) var(--table-cell-padding-horizontal);
 }
 
@@ -1025,9 +1081,11 @@ body.tldraw-whiteboard-fullscreen-open {
   text-align: start;
 }
 
-/* Keep the one-pixel grid exposed beneath ProseMirror's selected-cell overlay. */
+/* Keep the hairline grid exposed beneath ProseMirror's selected-cell overlay,
+   tinted with the primary control (table selection). */
 .editor__blocknote-container [data-content-type="table"] .selectedCell::after {
-  inset: 1px;
+  inset: var(--hairline);
+  background: var(--accent-blue-light);
 }
 
 /* --- Horizontal rule --- */

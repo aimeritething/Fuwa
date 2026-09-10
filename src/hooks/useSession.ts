@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useState } from 'react'
+import type { ThemeMode } from '../lib/themeMode'
 import type { Tab } from '../types'
 import { readSessionFile, updateSessionFile } from '../utils/sessionFile'
 import { parseSession, sessionForOpenEditors, type SessionEditor } from '../utils/sessionSchema'
@@ -6,22 +7,28 @@ import { parseSession, sessionForOpenEditors, type SessionEditor } from '../util
 interface UseSessionOptions {
   tabs: Tab[]
   activeTabPath: string | null
+  /** The View → Appearance choice. */
+  theme: ThemeMode
   /** Reopens the Session's Documents, dropping the ones that no longer exist. */
   restoreOpenEditors: (editors: SessionEditor[], activePath: string | null) => Promise<void> | void
+  /** Puts the Session's appearance back. */
+  restoreTheme: (theme: ThemeMode) => void
 }
 
 /**
  * Restores the Session once at launch and hands every later change of the
- * open Tabs to the Session file. Nothing is written before the restore has
- * settled, so a launch never overwrites the file with the empty initial
- * state. A file with an unknown version restores nothing and is rewritten in
- * the current schema by the first write.
+ * open Tabs and the appearance to the Session file. Nothing is written before
+ * the restore has settled, so a launch never overwrites the file with the
+ * empty initial state. A file with an unknown version restores nothing and
+ * is rewritten in the current schema by the first write.
  */
-export function useSession({ tabs, activeTabPath, restoreOpenEditors }: UseSessionOptions) {
+export function useSession({ tabs, activeTabPath, theme, restoreOpenEditors, restoreTheme }: UseSessionOptions) {
   const [restored, setRestored] = useState(false)
   const restore = useEffectEvent(async () => {
     const session = parseSession(await readSessionFile())
-    if (session) await restoreOpenEditors(session.openEditors, session.activePath)
+    if (!session) return
+    restoreTheme(session.theme)
+    await restoreOpenEditors(session.openEditors, session.activePath)
   })
 
   useEffect(() => {
@@ -38,16 +45,16 @@ export function useSession({ tabs, activeTabPath, restoreOpenEditors }: UseSessi
     }
   }, [])
 
-  // Tab order and the active Tab are what this ticket persists; a content
-  // change inside a Tab does not touch the file.
+  // Tab order, the active Tab and the appearance are what the file holds; a
+  // content change inside a Tab does not touch it.
   const openPathsKey = tabs.map((tab) => tab.entry.path).join('\n')
   useEffect(() => {
     if (!restored) return
     const openPaths = openPathsKey === '' ? [] : openPathsKey.split('\n')
-    updateSessionFile(sessionForOpenEditors(openPaths, activeTabPath)).catch((error: unknown) => {
+    updateSessionFile(sessionForOpenEditors(openPaths, activeTabPath, theme)).catch((error: unknown) => {
       console.warn('[session] Failed to hand the Session to the file:', error)
     })
-  }, [activeTabPath, openPathsKey, restored])
+  }, [activeTabPath, openPathsKey, restored, theme])
 
   return { restored }
 }

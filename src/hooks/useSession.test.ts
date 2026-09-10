@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ThemeMode } from '../lib/themeMode'
 import type { Tab } from '../types'
 import { noteEntryForPath } from '../utils/noteEntry'
 import { useSession } from './useSession'
@@ -39,15 +40,18 @@ const sessionWrites = () =>
   runtime.invoke.mock.calls.filter(([cmd]) => cmd === 'update_session').map(([, args]) => args?.session)
 
 describe('useSession', () => {
+  const restoreTheme = vi.fn()
+
   beforeEach(() => {
     runtime.invoke.mockReset()
+    restoreTheme.mockReset()
   })
 
   it('restores the stored Tabs and active Tab on launch', async () => {
     answerWith(STORED_SESSION)
     const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, restoreOpenEditors }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreOpenEditors).toHaveBeenCalledWith(
@@ -60,7 +64,7 @@ describe('useSession', () => {
     answerWith({ version: 7, openEditors: [{ path: A }] })
     const restoreOpenEditors = vi.fn()
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, restoreOpenEditors }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreOpenEditors).not.toHaveBeenCalled()
@@ -83,8 +87,9 @@ describe('useSession', () => {
     )
     const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
     const { result, rerender } = renderHook(
-      (props: { tabs: Tab[]; activeTabPath: string | null }) => useSession({ ...props, restoreOpenEditors }),
-      { initialProps: { tabs: [tab(A)], activeTabPath: A } },
+      (props: { tabs: Tab[]; activeTabPath: string | null; theme: ThemeMode }) =>
+        useSession({ ...props, restoreOpenEditors, restoreTheme }),
+      { initialProps: { tabs: [tab(A)], activeTabPath: A, theme: 'dark' as ThemeMode } },
     )
 
     expect(sessionWrites()).toEqual([])
@@ -93,7 +98,7 @@ describe('useSession', () => {
       releaseRead(null)
     })
     await waitFor(() => expect(result.current.restored).toBe(true))
-    rerender({ tabs: [tab(A), tab(B)], activeTabPath: B })
+    rerender({ tabs: [tab(A), tab(B)], activeTabPath: B, theme: 'dark' })
 
     await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({
       version: 1,
@@ -110,11 +115,46 @@ describe('useSession', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const restoreOpenEditors = vi.fn()
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, restoreOpenEditors }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreOpenEditors).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
+  })
+
+  it('restores the stored appearance on launch and writes it back with the Tabs', async () => {
+    answerWith({ ...STORED_SESSION, theme: 'light' })
+    const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'light', restoreOpenEditors, restoreTheme }))
+
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    expect(restoreTheme).toHaveBeenCalledWith('light')
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ theme: 'light' }))
+  })
+
+  it('leaves the appearance alone when there is no Session to restore', async () => {
+    answerWith(null)
+    const restoreOpenEditors = vi.fn()
+
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
+
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    expect(restoreTheme).not.toHaveBeenCalled()
+  })
+
+  it('writes the appearance whenever it changes', async () => {
+    answerWith(null)
+    const restoreOpenEditors = vi.fn()
+    const { result, rerender } = renderHook(
+      (props: { theme: ThemeMode }) => useSession({ tabs: [], activeTabPath: null, ...props, restoreOpenEditors, restoreTheme }),
+      { initialProps: { theme: 'dark' as ThemeMode } },
+    )
+
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    rerender({ theme: 'system' })
+
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ version: 1, theme: 'system' }))
   })
 })

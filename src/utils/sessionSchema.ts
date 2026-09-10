@@ -6,8 +6,9 @@ import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '../lib/t
  * owns the file itself and the `window` frame, which it merges in when it
  * writes; the renderer sends everything else and never reads `window` back.
  *
- * `folder`, `theme` and `sidebar` are written at their defaults here and
- * consumed by later tickets (Explorer, theme modes, sidebar collapse).
+ * `folder` and `sidebar` are written at their defaults here and consumed by
+ * later tickets (Explorer, sidebar collapse); `theme` is the View → Appearance
+ * choice (AIM-382).
  */
 
 export const SESSION_VERSION = 1
@@ -120,14 +121,21 @@ export function restoreOpenEditors(
   return { openEditors, activePath: nearestSurvivor(paths, activeIndex, survives) }
 }
 
-/** The Session for the open Documents, every one in Rich mode until AIM-381 remembers a mode per Tab. */
-export function sessionForOpenEditors(openPaths: readonly string[], activePath: string | null): Session {
+/**
+ * The Session for the open Documents (every one in Rich mode until AIM-381
+ * remembers a mode per Tab) and the chosen appearance.
+ */
+export function sessionForOpenEditors(
+  openPaths: readonly string[],
+  activePath: string | null,
+  theme: ThemeMode,
+): Session {
   return {
     version: SESSION_VERSION,
     folder: null,
     openEditors: openPaths.map((path) => ({ path, mode: 'rich' })),
     activePath,
-    theme: DEFAULT_THEME_MODE,
+    theme,
     sidebar: DEFAULT_SESSION_SIDEBAR,
   }
 }
