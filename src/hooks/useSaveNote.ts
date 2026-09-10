@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke, updateMockContent } from '../mock-tauri'
-import { cacheNoteContent } from './useTabManagement'
+import { cacheNoteContent } from './noteContentCache'
 
 export async function persistContent(path: string, content: string): Promise<void> {
   if (isTauri()) {

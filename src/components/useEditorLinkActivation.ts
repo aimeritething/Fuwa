@@ -1,5 +1,4 @@
 import { useEffect, type RefObject } from 'react'
-import { relativePathStem } from '../utils/wikilink'
 import { openEditorAttachmentOrUrl } from './editorAttachmentActions'
 
 const CODE_BLOCK_CONTEXT_SELECTOR = '[data-content-type="codeBlock"], pre'
@@ -8,7 +7,6 @@ const HEADING_SELECTOR = '[data-content-type="heading"], h1, h2, h3, h4, h5, h6'
 const MOUSEDOWN_URL_SUPPRESSION_MS = 750
 const MARKDOWN_NOTE_EXT_RE = /\.(?:md|markdown)$/iu
 const URL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/iu
-const WIKILINK_SELECTOR = '.wikilink[data-target]'
 type LinkSourcePath = string | null | undefined
 type LinkActivationContext = {
   container: HTMLElement
@@ -67,9 +65,6 @@ type HrefResolutionRequest = {
   phase: LinkEventPhase
   target: HTMLElement
 }
-type WikilinkEventRequest = LinkEventRequest & {
-  wikilinkTarget: string
-}
 
 function hasFollowModifier(event: KeyboardEvent | MouseEvent) {
   return event.metaKey || event.ctrlKey
@@ -85,10 +80,6 @@ function elementFromEventTarget(target: EventTarget | null) {
   if (target instanceof HTMLElement) return target
   if (target instanceof Text) return target.parentElement
   return null
-}
-
-function resolveWikilinkTarget(target: HTMLElement) {
-  return target.closest<HTMLElement>(WIKILINK_SELECTOR)?.dataset.target ?? null
 }
 
 function resolveAnchorHref(target: HTMLElement) {
@@ -110,17 +101,6 @@ function setFollowLinksActive({ active, container }: FollowLinkStateRequest) {
 function consumeEditorLinkEvent(event: Event) {
   event.preventDefault()
   event.stopPropagation()
-}
-
-function makeWikilinkKeyboardAccessible(wikilink: HTMLElement) {
-  wikilink.setAttribute('role', 'link')
-  wikilink.tabIndex = 0
-}
-
-function makeWikilinksKeyboardAccessible(container: HTMLElement) {
-  for (const wikilink of Array.from(container.querySelectorAll<HTMLElement>(WIKILINK_SELECTOR))) {
-    makeWikilinkKeyboardAccessible(wikilink)
-  }
 }
 
 function safeDecodeUriComponent({ value }: DecodeRequest) {
@@ -202,6 +182,35 @@ function normalizePathSegments({ path }: PathRequest) {
   return segments.join('/')
 }
 
+function stripWindowsExtendedPathPrefix(path: string): string {
+  return path
+    .replace(/^\\\\\?\\UNC\\/i, '//')
+    .replace(/^\\\\\?\\/, '')
+}
+
+function normalizeFilesystemPath(path: string): string {
+  return stripWindowsExtendedPathPrefix(path)
+    .replace(/\\/g, '/')
+    .replace(/\/+$/g, '')
+}
+
+function withoutMarkdownExtension(pathStem: string): string {
+  return pathStem.replace(/\.md$/i, '')
+}
+
+/** Extract the vault-relative path stem (no leading slash, no .md extension). */
+function relativePathStem(absolutePath: string, vaultPath: string): string {
+  const normalizedAbsolutePath = normalizeFilesystemPath(absolutePath)
+  const normalizedVaultPath = normalizeFilesystemPath(vaultPath)
+  const prefix = normalizedVaultPath.endsWith('/') ? normalizedVaultPath : `${normalizedVaultPath}/`
+  if (normalizedAbsolutePath.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return withoutMarkdownExtension(normalizedAbsolutePath.slice(prefix.length))
+  }
+  // Fallback: just the filename stem
+  const filename = normalizedAbsolutePath.split('/').pop() ?? normalizedAbsolutePath
+  return withoutMarkdownExtension(filename)
+}
+
 function sourceDirectory({ sourceEntryPath, sourceVaultPath }: SourceDirectoryRequest) {
   const sourcePath = sourceEntryPath?.replace(/\\/g, '/')
   if (!sourcePath) return ''
@@ -269,16 +278,6 @@ function linkEventTarget(event: MouseEvent): HTMLElement | null {
   return target && !isInsideCodeContext(target) ? target : null
 }
 
-function handleWikilinkEvent({ context, event, phase, wikilinkTarget }: WikilinkEventRequest): null {
-  consumeEditorLinkEvent(event)
-  if (phase === 'click' && hasFollowModifier(event)) {
-    blurActiveEditable(context.container)
-    navigateNoteTarget({ context, target: wikilinkTarget })
-  }
-
-  return null
-}
-
 function hrefForLinkEvent({ event, phase, target }: HrefResolutionRequest): string | null {
   const href = resolveAnchorHref(target)
   if (!href) return null
@@ -290,9 +289,6 @@ function hrefForLinkEvent({ event, phase, target }: HrefResolutionRequest): stri
 function handleEditorLinkEvent(request: LinkEventRequest): string | null {
   const target = linkEventTarget(request.event)
   if (!target) return null
-
-  const wikilinkTarget = resolveWikilinkTarget(target)
-  if (wikilinkTarget) return handleWikilinkEvent({ ...request, wikilinkTarget })
 
   const href = hrefForLinkEvent({ event: request.event, phase: request.phase, target })
   if (!href) return null
@@ -332,11 +328,6 @@ export function useEditorLinkActivation(
       sourceVaultPath,
       vaultPath,
     }
-    makeWikilinksKeyboardAccessible(container)
-    const wikilinkObserver = new MutationObserver(() => {
-      makeWikilinksKeyboardAccessible(container)
-    })
-    wikilinkObserver.observe(container, { childList: true, subtree: true })
     let handledMouseDownUrl: string | null = null
     let handledMouseDownUrlTimer: number | null = null
     const clearHandledMouseDownUrl = () => {
@@ -368,21 +359,9 @@ export function useEditorLinkActivation(
       clearHandledMouseDownUrl()
       handleEditorLinkEvent({ context, event, phase: 'click' })
     }
-    const handleKeyboardActivation = (event: KeyboardEvent) => {
-      if (event.key !== 'Enter') return
-      const target = elementFromEventTarget(event.target)
-      if (!target) return
-      const wikilinkTarget = resolveWikilinkTarget(target)
-      if (!wikilinkTarget) return
-
-      consumeEditorLinkEvent(event)
-      target.blur()
-      navigateNoteTarget({ context, target: wikilinkTarget })
-    }
 
     container.addEventListener('mousedown', handleMouseDown, true)
     container.addEventListener('click', handleClick, true)
-    container.addEventListener('keydown', handleKeyboardActivation, true)
     window.addEventListener('keydown', handleModifierChange)
     window.addEventListener('keyup', handleModifierChange)
     window.addEventListener('blur', resetModifierState)
@@ -391,13 +370,11 @@ export function useEditorLinkActivation(
     return () => {
       container.removeEventListener('mousedown', handleMouseDown, true)
       container.removeEventListener('click', handleClick, true)
-      container.removeEventListener('keydown', handleKeyboardActivation, true)
       window.removeEventListener('keydown', handleModifierChange)
       window.removeEventListener('keyup', handleModifierChange)
       window.removeEventListener('blur', resetModifierState)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       clearHandledMouseDownUrl()
-      wikilinkObserver.disconnect()
       resetModifierState()
     }
   }, [containerRef, onNavigateWikilink, sourceEntryPath, sourceVaultPath, vaultPath])

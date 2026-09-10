@@ -1,12 +1,4 @@
-import { trackEvent } from '../lib/telemetry'
 import { injectLinkedCodeInBlocks, preProcessLinkedCodeMarkdown } from '../utils/linkedCodeMarkdown'
-import {
-  clipboardRemoteImages,
-  importRemoteImages,
-  type RemoteImageImportResult,
-  type RemotePasteImage,
-} from '../utils/remoteImagePaste'
-import { vaultAttachmentAssetUrl } from '../utils/vaultAttachments'
 import { createTolariaCodeBlockOptions } from './codeBlockOptions'
 
 type PasteHandlerOptions = {
@@ -91,22 +83,6 @@ const SPACED_LITERAL_ASTERISK_RE = /\S\s+\*\s+\S/u
 const PREFIX_GLOB_ASTERISK_RE = /(?:^|\s)\*(?![*\s])[\w./-]+(?=\s|$)/u
 const SUFFIX_GLOB_ASTERISK_RE = /(?:^|\s)[\w./-]+\*(?=\s|$)/u
 const LINK_PASTE_PROTOCOLS = new Set(['http:', 'https:'])
-
-type ImportRemoteImages = (request: {
-  images: RemotePasteImage[]
-  vaultPath: string
-}) => Promise<RemoteImageImportResult>
-
-type RichPasteHandlerOptions = {
-  canApply?: () => boolean
-  getVaultPath: () => string | undefined
-  importImages?: ImportRemoteImages
-  onImportResult?: (result: Pick<RemoteImageImportResult, 'failedCount' | 'totalCount'>) => void
-}
-
-type ActiveRichPasteHandlerOptions = Omit<RichPasteHandlerOptions, 'getVaultPath'> & {
-  vaultPath?: string
-}
 
 function hasExplicitMarkdownPayload(clipboardData: DataTransfer): boolean {
   return Array.from(clipboardData.types).some(type => EXPLICIT_MARKDOWN_TYPES.has(type))
@@ -431,91 +407,6 @@ export function handleRichEditorPaste({
   return defaultPasteHandler()
 }
 
-function replaceRichImageBlockUrls(
-  blocks: PasteBlock[],
-  replacements: ReadonlyMap<string, string>,
-  updateBlock: NonNullable<RichPasteEditor['updateBlock']>,
-  vaultPath: string,
-): void {
-  for (const block of blocks) {
-    const url = block.type === 'image' ? block.props?.url : undefined
-    if (typeof url === 'string' && typeof block.id === 'string') {
-      const attachmentPath = replacements.get(url)
-      if (attachmentPath) {
-        updateBlock(block.id, {
-          props: { url: vaultAttachmentAssetUrl({ attachmentPath, vaultPath }) },
-        })
-      }
-    }
-    if (block.children) {
-      replaceRichImageBlockUrls(block.children, replacements, updateBlock, vaultPath)
-    }
-  }
-}
-
-function finishRichRemoteImageImport(
-  context: RichEditorPasteContext,
-  options: ActiveRichPasteHandlerOptions,
-  result: RemoteImageImportResult,
-  vaultPath: string,
-): void {
-  const target = richImageRewriteTarget(context, options)
-  if (target) {
-    replaceRichImageBlockUrls(
-      target.blocks,
-      result.replacements,
-      target.updateBlock,
-      vaultPath,
-    )
-  }
-  options.onImportResult?.({
-    failedCount: result.failedCount,
-    totalCount: result.totalCount,
-  })
-  trackEvent('remote_images_paste_imported', {
-    surface: 'rich_editor',
-    total_count: result.totalCount,
-    success_count: result.totalCount - result.failedCount,
-    failure_count: result.failedCount,
-  })
-}
-
-function richImageRewriteTarget(
-  context: RichEditorPasteContext,
-  options: ActiveRichPasteHandlerOptions,
-): { blocks: PasteBlock[]; updateBlock: NonNullable<RichPasteEditor['updateBlock']> } | null {
-  if (options.canApply?.() === false) return null
-  const blocks = context.editor.document
-  const updateBlock = context.editor.updateBlock?.bind(context.editor)
-  if (!blocks || !updateBlock) return null
-  return { blocks, updateBlock }
-}
-
-export function createRichEditorPasteHandler(
-  options: RichPasteHandlerOptions,
-): (context: RichEditorPasteContext) => boolean | undefined {
-  return context => handleRemoteRichEditorPaste(context, {
-    canApply: options.canApply,
-    importImages: options.importImages,
-    onImportResult: options.onImportResult,
-    vaultPath: options.getVaultPath(),
-  })
-}
-
-export function handleRemoteRichEditorPaste(
-  context: RichEditorPasteContext,
-  options: ActiveRichPasteHandlerOptions,
-): boolean | undefined {
-  const images = context.event.clipboardData
-    ? clipboardRemoteImages(context.event.clipboardData)
-    : []
-  const handled = handleRichEditorPaste(context)
-  if (images.length === 0 || !options.vaultPath) return handled
-
-  const importImages = options.importImages ?? importRemoteImages
-  const vaultPath = options.vaultPath
-  void importImages({ images, vaultPath }).then(result => {
-    finishRichRemoteImageImport(context, options, result, vaultPath)
-  })
-  return handled
+export function createRichEditorPasteHandler(): (context: RichEditorPasteContext) => boolean | undefined {
+  return context => handleRichEditorPaste(context)
 }

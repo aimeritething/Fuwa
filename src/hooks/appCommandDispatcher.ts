@@ -1,12 +1,8 @@
-import type { MutableRefObject } from 'react'
-import type { SidebarFilter } from '../types'
 import {
   APP_COMMAND_DEFINITIONS,
   type AppCommandId,
   type AppCommandDefinition,
 } from './appCommandCatalog'
-import type { ViewMode } from './useViewMode'
-import type { NoteListMultiSelectionCommands } from '../components/note-list/multiSelectionCommands'
 
 export const APP_COMMAND_EVENT_NAME = 'laputa:dispatch-command'
 
@@ -28,157 +24,113 @@ export type AppCommandDispatchSource =
 type SuppressedShortcutSource = Extract<AppCommandDispatchSource, 'renderer-keyboard'>
 
 export interface AppCommandHandlers {
-  onSetViewMode: (mode: ViewMode) => void
   onCreateNote: () => void
-  onCreateType?: () => void
+  onOpenVault?: () => void
+  onOpenNote?: () => void
+  onCloseVault?: () => void
   onQuickOpen: () => void
   onSave: () => void
-  onOpenSettings: () => void
-  onToggleInspector: () => void
+  onCloseTab?: () => void
+  onUndo?: () => void
+  onRedo?: () => void
+  onPastePlainText: () => void
+  onFindInNote?: () => void
   onCommandPalette: () => void
+  onToggleSidebar?: () => void
+  onToggleRawEditor?: () => void
+  onAppearanceSystem?: () => void
+  onAppearanceDark?: () => void
+  onAppearanceLight?: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
-  onToggleOrganized?: (path: string) => void
-  onToggleFavorite?: (path: string) => void
-  onArchiveNote: (path: string) => void
-  onDeleteNote: (path: string) => void
-  onFindInNote?: () => void
-  onUndo?: () => void
-  onRedo?: () => void
-  onReplaceInNote?: () => void
-  onPastePlainText: () => void
-  onSearch: () => void
-  onToggleRawEditor?: () => void
-  onToggleDiff?: () => void
-  onToggleAIChat?: () => void
-  onToggleTableOfContents?: () => void
-  onExportNoteAsPdf?: () => void
-  onGoBack?: () => void
-  onGoForward?: () => void
-  onCheckForUpdates?: () => void
-  onSelectFilter?: (filter: SidebarFilter) => void
-  onOpenVault?: () => void
-  onRemoveActiveVault?: () => void
-  onRestoreGettingStarted?: () => void
-  onAddRemote?: () => void
-  onCommitPush?: () => void
-  onPull?: () => void
-  onResolveConflicts?: () => void
-  onViewChanges?: () => void
-  onInstallMcp?: () => void
-  onOpenInNewWindow?: () => void
-  onReloadVault?: () => void
-  onRepairVault?: () => void
-  onRestoreDeletedNote?: () => void
-  activeTabPathRef: MutableRefObject<string | null>
-  multiSelectionCommandRef?: MutableRefObject<NoteListMultiSelectionCommands | null>
+  onPreviousTab?: () => void
+  onNextTab?: () => void
+  onJumpToTab1?: () => void
+  onJumpToTab2?: () => void
+  onJumpToTab3?: () => void
+  onJumpToTab4?: () => void
+  onJumpToTab5?: () => void
+  onJumpToTab6?: () => void
+  onJumpToTab7?: () => void
+  onJumpToTab8?: () => void
+  onJumpToTab9?: () => void
 }
 
 type SimpleHandlerKey = keyof Pick<
   AppCommandHandlers,
-  | 'onOpenSettings'
-  | 'onCheckForUpdates'
   | 'onCreateNote'
-  | 'onCreateType'
+  | 'onOpenVault'
+  | 'onOpenNote'
+  | 'onCloseVault'
   | 'onQuickOpen'
   | 'onSave'
-  | 'onFindInNote'
+  | 'onCloseTab'
   | 'onUndo'
   | 'onRedo'
-  | 'onReplaceInNote'
   | 'onPastePlainText'
-  | 'onSearch'
-  | 'onToggleRawEditor'
-  | 'onToggleDiff'
-  | 'onToggleInspector'
-  | 'onToggleAIChat'
-  | 'onToggleTableOfContents'
-  | 'onExportNoteAsPdf'
+  | 'onFindInNote'
   | 'onCommandPalette'
+  | 'onToggleSidebar'
+  | 'onToggleRawEditor'
+  | 'onAppearanceSystem'
+  | 'onAppearanceDark'
+  | 'onAppearanceLight'
   | 'onZoomIn'
   | 'onZoomOut'
   | 'onZoomReset'
-  | 'onGoBack'
-  | 'onGoForward'
-  | 'onOpenVault'
-  | 'onRemoveActiveVault'
-  | 'onRestoreGettingStarted'
-  | 'onAddRemote'
-  | 'onCommitPush'
-  | 'onPull'
-  | 'onResolveConflicts'
-  | 'onViewChanges'
-  | 'onInstallMcp'
-  | 'onReloadVault'
-  | 'onRepairVault'
-  | 'onOpenInNewWindow'
-  | 'onRestoreDeletedNote'
->
-
-type ActiveTabHandlerKey = keyof Pick<
-  AppCommandHandlers,
-  'onToggleOrganized' | 'onToggleFavorite' | 'onArchiveNote' | 'onDeleteNote'
+  | 'onPreviousTab'
+  | 'onNextTab'
+  | 'onJumpToTab1'
+  | 'onJumpToTab2'
+  | 'onJumpToTab3'
+  | 'onJumpToTab4'
+  | 'onJumpToTab5'
+  | 'onJumpToTab6'
+  | 'onJumpToTab7'
+  | 'onJumpToTab8'
+  | 'onJumpToTab9'
 >
 
 type SimpleHandlerExecutor = (handlers: AppCommandHandlers) => void
-type ActiveTabHandlerExecutor = (handlers: AppCommandHandlers, path: string) => void
 
 const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecutor][] = [
-  ['onOpenSettings', (handlers) => handlers.onOpenSettings()],
-  ['onCheckForUpdates', (handlers) => handlers.onCheckForUpdates?.()],
   ['onCreateNote', (handlers) => handlers.onCreateNote()],
-  ['onCreateType', (handlers) => handlers.onCreateType?.()],
+  ['onOpenVault', (handlers) => handlers.onOpenVault?.()],
+  ['onOpenNote', (handlers) => handlers.onOpenNote?.()],
+  ['onCloseVault', (handlers) => handlers.onCloseVault?.()],
   ['onQuickOpen', (handlers) => handlers.onQuickOpen()],
   ['onSave', (handlers) => handlers.onSave()],
-  ['onFindInNote', (handlers) => handlers.onFindInNote?.()],
+  ['onCloseTab', (handlers) => handlers.onCloseTab?.()],
   ['onUndo', (handlers) => handlers.onUndo?.()],
   ['onRedo', (handlers) => handlers.onRedo?.()],
-  ['onReplaceInNote', (handlers) => handlers.onReplaceInNote?.()],
   ['onPastePlainText', (handlers) => handlers.onPastePlainText()],
-  ['onSearch', (handlers) => handlers.onSearch()],
-  ['onToggleRawEditor', (handlers) => handlers.onToggleRawEditor?.()],
-  ['onToggleDiff', (handlers) => handlers.onToggleDiff?.()],
-  ['onToggleInspector', (handlers) => handlers.onToggleInspector()],
-  ['onToggleAIChat', (handlers) => handlers.onToggleAIChat?.()],
-  ['onToggleTableOfContents', (handlers) => handlers.onToggleTableOfContents?.()],
-  ['onExportNoteAsPdf', (handlers) => handlers.onExportNoteAsPdf?.()],
+  ['onFindInNote', (handlers) => handlers.onFindInNote?.()],
   ['onCommandPalette', (handlers) => handlers.onCommandPalette()],
+  ['onToggleSidebar', (handlers) => handlers.onToggleSidebar?.()],
+  ['onToggleRawEditor', (handlers) => handlers.onToggleRawEditor?.()],
+  ['onAppearanceSystem', (handlers) => handlers.onAppearanceSystem?.()],
+  ['onAppearanceDark', (handlers) => handlers.onAppearanceDark?.()],
+  ['onAppearanceLight', (handlers) => handlers.onAppearanceLight?.()],
   ['onZoomIn', (handlers) => handlers.onZoomIn()],
   ['onZoomOut', (handlers) => handlers.onZoomOut()],
   ['onZoomReset', (handlers) => handlers.onZoomReset()],
-  ['onGoBack', (handlers) => handlers.onGoBack?.()],
-  ['onGoForward', (handlers) => handlers.onGoForward?.()],
-  ['onOpenVault', (handlers) => handlers.onOpenVault?.()],
-  ['onRemoveActiveVault', (handlers) => handlers.onRemoveActiveVault?.()],
-  ['onRestoreGettingStarted', (handlers) => handlers.onRestoreGettingStarted?.()],
-  ['onAddRemote', (handlers) => handlers.onAddRemote?.()],
-  ['onCommitPush', (handlers) => handlers.onCommitPush?.()],
-  ['onPull', (handlers) => handlers.onPull?.()],
-  ['onResolveConflicts', (handlers) => handlers.onResolveConflicts?.()],
-  ['onViewChanges', (handlers) => handlers.onViewChanges?.()],
-  ['onInstallMcp', (handlers) => handlers.onInstallMcp?.()],
-  ['onReloadVault', (handlers) => handlers.onReloadVault?.()],
-  ['onRepairVault', (handlers) => handlers.onRepairVault?.()],
-  ['onOpenInNewWindow', (handlers) => handlers.onOpenInNewWindow?.()],
-  ['onRestoreDeletedNote', (handlers) => handlers.onRestoreDeletedNote?.()],
-]
-
-const ACTIVE_TAB_HANDLER_EXECUTORS: readonly [ActiveTabHandlerKey, ActiveTabHandlerExecutor][] = [
-  ['onToggleOrganized', (handlers, path) => handlers.onToggleOrganized?.(path)],
-  ['onToggleFavorite', (handlers, path) => handlers.onToggleFavorite?.(path)],
-  ['onArchiveNote', (handlers, path) => handlers.onArchiveNote(path)],
-  ['onDeleteNote', (handlers, path) => handlers.onDeleteNote(path)],
+  ['onPreviousTab', (handlers) => handlers.onPreviousTab?.()],
+  ['onNextTab', (handlers) => handlers.onNextTab?.()],
+  ['onJumpToTab1', (handlers) => handlers.onJumpToTab1?.()],
+  ['onJumpToTab2', (handlers) => handlers.onJumpToTab2?.()],
+  ['onJumpToTab3', (handlers) => handlers.onJumpToTab3?.()],
+  ['onJumpToTab4', (handlers) => handlers.onJumpToTab4?.()],
+  ['onJumpToTab5', (handlers) => handlers.onJumpToTab5?.()],
+  ['onJumpToTab6', (handlers) => handlers.onJumpToTab6?.()],
+  ['onJumpToTab7', (handlers) => handlers.onJumpToTab7?.()],
+  ['onJumpToTab8', (handlers) => handlers.onJumpToTab8?.()],
+  ['onJumpToTab9', (handlers) => handlers.onJumpToTab9?.()],
 ]
 
 function runSimpleHandler(handler: SimpleHandlerKey, handlers: AppCommandHandlers): void {
   const executor = SIMPLE_HANDLER_EXECUTORS.find(([key]) => key === handler)?.[1]
   executor?.(handlers)
-}
-
-function runActiveTabHandler(handler: ActiveTabHandlerKey, handlers: AppCommandHandlers, path: string): void {
-  const executor = ACTIVE_TAB_HANDLER_EXECUTORS.find(([key]) => key === handler)?.[1]
-  executor?.(handlers, path)
 }
 
 const SHORTCUT_ECHO_DEDUPE_WINDOW_MS = 150
@@ -229,65 +181,14 @@ function shouldSuppressShortcutEchoAfterKeyboardYield(
   return currentTimestamp - lastSuppressedShortcutCommand.timestamp <= SHORTCUT_ECHO_DEDUPE_WINDOW_MS
 }
 
-function dispatchActiveTabCommand(
-  pathRef: MutableRefObject<string | null>,
-  handler: (path: string) => void,
-): boolean {
-  const path = pathRef.current
-  if (!path) return false
-  handler(path)
-  return true
-}
-
-function dispatchMultiSelectionCommand(
-  selectionRef: MutableRefObject<NoteListMultiSelectionCommands | null> | undefined,
-  handler: ActiveTabHandlerKey,
-): boolean | null {
-  const selection = selectionRef?.current
-  if (!selection || selection.selectedPaths.length <= 1) return null
-
-  if (handler === 'onDeleteNote') {
-    selection.deleteSelected?.()
-    return !!selection.deleteSelected
-  }
-
-  if (handler === 'onToggleOrganized') {
-    selection.organizeSelected?.()
-    return !!selection.organizeSelected
-  }
-
-  return false
-}
-
 function dispatchDefinition(
   definition: AppCommandDefinition,
   handlers: AppCommandHandlers,
 ): boolean {
   switch (definition.route.kind) {
-    case 'view-mode':
-      handlers.onSetViewMode(definition.route.value)
-      return true
-    case 'filter':
-      handlers.onSelectFilter?.(definition.route.value)
-      return true
     case 'handler': {
       runSimpleHandler(definition.route.handler as SimpleHandlerKey, handlers)
       return true
-    }
-    case 'active-tab-handler': {
-      const handler = definition.route.handler
-      const multiSelectionResult = dispatchMultiSelectionCommand(
-        handlers.multiSelectionCommandRef,
-        handler as ActiveTabHandlerKey,
-      )
-      if (multiSelectionResult !== null) {
-        return multiSelectionResult
-      }
-
-      return dispatchActiveTabCommand(
-        handlers.activeTabPathRef,
-        (path) => runActiveTabHandler(handler as ActiveTabHandlerKey, handlers, path),
-      )
     }
   }
 }

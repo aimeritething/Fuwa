@@ -1,22 +1,5 @@
 {
   "commands": {
-    "appSettings": {
-      "id": "app-settings",
-      "route": { "kind": "handler", "handler": "onOpenSettings" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": ",",
-        "display": "⌘,",
-        "accelerator": "CmdOrCtrl+,",
-        "requiresManualNativeAcceleratorQa": true
-      }
-    },
-    "appCheckForUpdates": {
-      "id": "app-check-for-updates",
-      "route": { "kind": "handler", "handler": "onCheckForUpdates" },
-      "menuOwned": true
-    },
     "fileNewNote": {
       "id": "file-new-note",
       "route": { "kind": "handler", "handler": "onCreateNote" },
@@ -30,9 +13,35 @@
         "requiresManualNativeAcceleratorQa": true
       }
     },
-    "fileNewType": {
-      "id": "file-new-type",
-      "route": { "kind": "handler", "handler": "onCreateType" },
+    "fileOpenVault": {
+      "id": "file-open-vault",
+      "route": { "kind": "handler", "handler": "onOpenVault" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "o",
+        "code": "KeyO",
+        "display": "⌘O",
+        "accelerator": "CmdOrCtrl+O",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
+    "fileOpenNote": {
+      "id": "file-open-note",
+      "route": { "kind": "handler", "handler": "onOpenNote" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl-shift",
+        "key": "o",
+        "code": "KeyO",
+        "display": "⌘⇧O",
+        "accelerator": "CmdOrCtrl+Shift+O",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
+    "fileCloseVault": {
+      "id": "file-close-vault",
+      "route": { "kind": "handler", "handler": "onCloseVault" },
       "menuOwned": true
     },
     "fileQuickOpen": {
@@ -42,9 +51,8 @@
       "shortcut": {
         "combo": "command-or-ctrl",
         "key": "p",
-        "aliases": ["o"],
         "code": "KeyP",
-        "display": "⌘P / ⌘O",
+        "display": "⌘P",
         "accelerator": "CmdOrCtrl+P",
         "requiresManualNativeAcceleratorQa": true
       }
@@ -59,6 +67,19 @@
         "code": "KeyS",
         "display": "⌘S",
         "accelerator": "CmdOrCtrl+S",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
+    "fileCloseTab": {
+      "id": "file-close-tab",
+      "route": { "kind": "handler", "handler": "onCloseTab" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "w",
+        "code": "KeyW",
+        "display": "⌘W",
+        "accelerator": "CmdOrCtrl+W",
         "requiresManualNativeAcceleratorQa": true
       }
     },
@@ -90,6 +111,19 @@
         "requiresManualNativeAcceleratorQa": true
       }
     },
+    "editPastePlainText": {
+      "id": "edit-paste-plain-text",
+      "route": { "kind": "handler", "handler": "onPastePlainText" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl-shift",
+        "key": "v",
+        "code": "KeyV",
+        "display": "⌘⇧V",
+        "accelerator": "CmdOrCtrl+Shift+V",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
     "editFindInNote": {
       "id": "edit-find-in-note",
       "route": { "kind": "handler", "handler": "onFindInNote" },
@@ -104,35 +138,29 @@
         "requiresManualNativeAcceleratorQa": true
       }
     },
-    "editReplaceInNote": {
-      "id": "edit-replace-in-note",
-      "route": { "kind": "handler", "handler": "onReplaceInNote" },
-      "menuOwned": true
-    },
-    "editFindInVault": {
-      "id": "edit-find-in-vault",
-      "route": { "kind": "handler", "handler": "onSearch" },
+    "viewCommandPalette": {
+      "id": "view-command-palette",
+      "route": { "kind": "handler", "handler": "onCommandPalette" },
       "menuOwned": true,
       "shortcut": {
-        "combo": "command-or-ctrl-shift",
-        "key": "f",
-        "code": "KeyF",
-        "display": "⌘⇧F",
-        "accelerator": "CmdOrCtrl+Shift+F",
+        "combo": "command-or-ctrl",
+        "key": "k",
+        "code": "KeyK",
+        "display": "⌘K",
+        "accelerator": "CmdOrCtrl+K",
         "requiresManualNativeAcceleratorQa": true
       }
     },
-    "editPastePlainText": {
-      "id": "edit-paste-plain-text",
-      "route": { "kind": "handler", "handler": "onPastePlainText" },
+    "viewToggleSidebar": {
+      "id": "view-toggle-sidebar",
+      "route": { "kind": "handler", "handler": "onToggleSidebar" },
       "menuOwned": true,
       "shortcut": {
-        "combo": "command-or-ctrl-shift",
-        "key": "v",
-        "code": "KeyV",
-        "display": "⌘⇧V",
-        "accelerator": "CmdOrCtrl+Shift+V",
-        "requiresManualNativeAcceleratorQa": true
+        "combo": "command-or-ctrl",
+        "key": "[",
+        "code": "BracketLeft",
+        "display": "⌘[",
+        "accelerator": "CmdOrCtrl+["
       }
     },
     "editToggleRawEditor": {
@@ -156,100 +184,20 @@
         ]
       }
     },
-    "editToggleDiff": {
-      "id": "edit-toggle-diff",
-      "route": { "kind": "handler", "handler": "onToggleDiff" },
+    "viewAppearanceSystem": {
+      "id": "view-appearance-system",
+      "route": { "kind": "handler", "handler": "onAppearanceSystem" },
       "menuOwned": true
     },
-    "viewEditorOnly": {
-      "id": "view-editor-only",
-      "route": { "kind": "view-mode", "value": "editor-only" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "1",
-        "display": "⌘1",
-        "accelerator": "CmdOrCtrl+1"
-      }
-    },
-    "viewEditorList": {
-      "id": "view-editor-list",
-      "route": { "kind": "view-mode", "value": "editor-list" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "2",
-        "display": "⌘2",
-        "accelerator": "CmdOrCtrl+2"
-      }
-    },
-    "viewAll": {
-      "id": "view-all",
-      "route": { "kind": "view-mode", "value": "all" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "3",
-        "display": "⌘3",
-        "accelerator": "CmdOrCtrl+3"
-      }
-    },
-    "viewToggleProperties": {
-      "id": "view-toggle-properties",
-      "route": { "kind": "handler", "handler": "onToggleInspector" },
-      "menuOwned": true,
-      "preferredShortcutQaMode": "renderer-shortcut-event",
-      "shortcut": {
-        "combo": "command-or-ctrl-shift",
-        "key": "i",
-        "code": "KeyI",
-        "display": "⌘⇧I",
-        "accelerator": "CmdOrCtrl+Shift+I"
-      }
-    },
-    "viewToggleAiChat": {
-      "id": "view-toggle-ai-chat",
-      "route": { "kind": "handler", "handler": "onToggleAIChat" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl-shift",
-        "key": "l",
-        "code": "KeyL",
-        "display": "⌘⇧L",
-        "accelerator": "CmdOrCtrl+Shift+L",
-        "requiresManualNativeAcceleratorQa": true
-      }
-    },
-    "viewToggleTableOfContents": {
-      "id": "view-toggle-table-of-contents",
-      "route": { "kind": "handler", "handler": "onToggleTableOfContents" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl-shift",
-        "key": "t",
-        "code": "KeyT",
-        "display": "⌘⇧T",
-        "accelerator": "CmdOrCtrl+Shift+T",
-        "requiresManualNativeAcceleratorQa": true
-      }
-    },
-    "viewToggleBacklinks": {
-      "id": "view-toggle-backlinks",
-      "route": { "kind": "handler", "handler": "onToggleInspector" },
+    "viewAppearanceDark": {
+      "id": "view-appearance-dark",
+      "route": { "kind": "handler", "handler": "onAppearanceDark" },
       "menuOwned": true
     },
-    "viewCommandPalette": {
-      "id": "view-command-palette",
-      "route": { "kind": "handler", "handler": "onCommandPalette" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "k",
-        "code": "KeyK",
-        "display": "⌘K",
-        "accelerator": "CmdOrCtrl+K",
-        "requiresManualNativeAcceleratorQa": true
-      }
+    "viewAppearanceLight": {
+      "id": "view-appearance-light",
+      "route": { "kind": "handler", "handler": "onAppearanceLight" },
+      "menuOwned": true
     },
     "viewZoomIn": {
       "id": "view-zoom-in",
@@ -285,187 +233,155 @@
         "accelerator": "CmdOrCtrl+0"
       }
     },
-    "viewGoBack": {
-      "id": "view-go-back",
-      "route": { "kind": "handler", "handler": "onGoBack" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "ArrowLeft",
-        "code": "ArrowLeft",
-        "display": "⌘←",
-        "accelerator": "CmdOrCtrl+Left"
-      }
-    },
-    "viewGoForward": {
-      "id": "view-go-forward",
-      "route": { "kind": "handler", "handler": "onGoForward" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "ArrowRight",
-        "code": "ArrowRight",
-        "display": "⌘→",
-        "accelerator": "CmdOrCtrl+Right"
-      }
-    },
-    "goAllNotes": {
-      "id": "go-all-notes",
-      "route": { "kind": "filter", "value": "all" },
-      "menuOwned": true
-    },
-    "goArchived": {
-      "id": "go-archived",
-      "route": { "kind": "filter", "value": "archived" },
-      "menuOwned": true
-    },
-    "goChanges": {
-      "id": "go-changes",
-      "route": { "kind": "filter", "value": "changes" },
-      "menuOwned": true
-    },
-    "goInbox": {
-      "id": "go-inbox",
-      "route": { "kind": "filter", "value": "inbox" },
-      "menuOwned": true
-    },
-    "noteToggleOrganized": {
-      "id": "note-toggle-organized",
-      "route": { "kind": "active-tab-handler", "handler": "onToggleOrganized" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "e",
-        "code": "KeyE",
-        "display": "⌘E",
-        "accelerator": "CmdOrCtrl+E",
-        "requiresManualNativeAcceleratorQa": true
-      }
-    },
-    "noteToggleFavorite": {
-      "id": "note-toggle-favorite",
-      "route": { "kind": "active-tab-handler", "handler": "onToggleFavorite" },
-      "menuOwned": false,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "d",
-        "code": "KeyD",
-        "display": "⌘D",
-        "accelerator": "CmdOrCtrl+D",
-        "requiresManualNativeAcceleratorQa": true
-      }
-    },
-    "noteArchive": {
-      "id": "note-archive",
-      "route": { "kind": "active-tab-handler", "handler": "onArchiveNote" },
-      "menuOwned": true
-    },
-    "noteDelete": {
-      "id": "note-delete",
-      "route": { "kind": "active-tab-handler", "handler": "onDeleteNote" },
-      "menuOwned": true,
-      "shortcut": {
-        "combo": "command-or-ctrl",
-        "key": "Backspace",
-        "aliases": ["Delete"],
-        "display": "⌘⌫",
-        "accelerator": "CmdOrCtrl+Backspace"
-      }
-    },
-    "noteOpenInNewWindow": {
-      "id": "note-open-in-new-window",
-      "route": { "kind": "handler", "handler": "onOpenInNewWindow" },
+    "windowPreviousTab": {
+      "id": "window-previous-tab",
+      "route": { "kind": "handler", "handler": "onPreviousTab" },
       "menuOwned": true,
       "shortcut": {
         "combo": "command-or-ctrl-shift",
-        "key": "o",
-        "code": "KeyO",
-        "display": "⌘⇧O",
-        "accelerator": "CmdOrCtrl+Shift+O"
+        "key": "[",
+        "aliases": ["{"],
+        "code": "BracketLeft",
+        "display": "⌘⇧[",
+        "accelerator": "CmdOrCtrl+Shift+["
       }
     },
-    "noteExportPdf": {
-      "id": "note-export-pdf",
-      "route": { "kind": "handler", "handler": "onExportNoteAsPdf" },
-      "menuOwned": true
+    "windowNextTab": {
+      "id": "window-next-tab",
+      "route": { "kind": "handler", "handler": "onNextTab" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl-shift",
+        "key": "]",
+        "aliases": ["}"],
+        "code": "BracketRight",
+        "display": "⌘⇧]",
+        "accelerator": "CmdOrCtrl+Shift+]"
+      }
     },
-    "noteRestoreDeleted": {
-      "id": "note-restore-deleted",
-      "route": { "kind": "handler", "handler": "onRestoreDeletedNote" },
-      "menuOwned": true
+    "windowJumpToTab1": {
+      "id": "window-jump-to-tab-1",
+      "route": { "kind": "handler", "handler": "onJumpToTab1" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "1",
+        "code": "Digit1",
+        "display": "⌘1",
+        "accelerator": "CmdOrCtrl+1"
+      }
     },
-    "vaultOpen": {
-      "id": "vault-open",
-      "route": { "kind": "handler", "handler": "onOpenVault" },
-      "menuOwned": true
+    "windowJumpToTab2": {
+      "id": "window-jump-to-tab-2",
+      "route": { "kind": "handler", "handler": "onJumpToTab2" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "2",
+        "code": "Digit2",
+        "display": "⌘2",
+        "accelerator": "CmdOrCtrl+2"
+      }
     },
-    "vaultRemove": {
-      "id": "vault-remove",
-      "route": { "kind": "handler", "handler": "onRemoveActiveVault" },
-      "menuOwned": true
+    "windowJumpToTab3": {
+      "id": "window-jump-to-tab-3",
+      "route": { "kind": "handler", "handler": "onJumpToTab3" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "3",
+        "code": "Digit3",
+        "display": "⌘3",
+        "accelerator": "CmdOrCtrl+3"
+      }
     },
-    "vaultRestoreGettingStarted": {
-      "id": "vault-restore-getting-started",
-      "route": { "kind": "handler", "handler": "onRestoreGettingStarted" },
-      "menuOwned": true
+    "windowJumpToTab4": {
+      "id": "window-jump-to-tab-4",
+      "route": { "kind": "handler", "handler": "onJumpToTab4" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "4",
+        "code": "Digit4",
+        "display": "⌘4",
+        "accelerator": "CmdOrCtrl+4"
+      }
     },
-    "vaultAddRemote": {
-      "id": "vault-add-remote",
-      "route": { "kind": "handler", "handler": "onAddRemote" },
-      "menuOwned": true
+    "windowJumpToTab5": {
+      "id": "window-jump-to-tab-5",
+      "route": { "kind": "handler", "handler": "onJumpToTab5" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "5",
+        "code": "Digit5",
+        "display": "⌘5",
+        "accelerator": "CmdOrCtrl+5"
+      }
     },
-    "vaultCommitPush": {
-      "id": "vault-commit-push",
-      "route": { "kind": "handler", "handler": "onCommitPush" },
-      "menuOwned": true
+    "windowJumpToTab6": {
+      "id": "window-jump-to-tab-6",
+      "route": { "kind": "handler", "handler": "onJumpToTab6" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "6",
+        "code": "Digit6",
+        "display": "⌘6",
+        "accelerator": "CmdOrCtrl+6"
+      }
     },
-    "vaultPull": {
-      "id": "vault-pull",
-      "route": { "kind": "handler", "handler": "onPull" },
-      "menuOwned": true
+    "windowJumpToTab7": {
+      "id": "window-jump-to-tab-7",
+      "route": { "kind": "handler", "handler": "onJumpToTab7" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "7",
+        "code": "Digit7",
+        "display": "⌘7",
+        "accelerator": "CmdOrCtrl+7"
+      }
     },
-    "vaultResolveConflicts": {
-      "id": "vault-resolve-conflicts",
-      "route": { "kind": "handler", "handler": "onResolveConflicts" },
-      "menuOwned": true
+    "windowJumpToTab8": {
+      "id": "window-jump-to-tab-8",
+      "route": { "kind": "handler", "handler": "onJumpToTab8" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "8",
+        "code": "Digit8",
+        "display": "⌘8",
+        "accelerator": "CmdOrCtrl+8"
+      }
     },
-    "vaultViewChanges": {
-      "id": "vault-view-changes",
-      "route": { "kind": "handler", "handler": "onViewChanges" },
-      "menuOwned": true
-    },
-    "vaultInstallMcp": {
-      "id": "vault-install-mcp",
-      "route": { "kind": "handler", "handler": "onInstallMcp" },
-      "menuOwned": true
-    },
-    "vaultReload": {
-      "id": "vault-reload",
-      "route": { "kind": "handler", "handler": "onReloadVault" },
-      "menuOwned": true
-    },
-    "vaultRepair": {
-      "id": "vault-repair",
-      "route": { "kind": "handler", "handler": "onRepairVault" },
-      "menuOwned": true
+    "windowJumpToTab9": {
+      "id": "window-jump-to-tab-9",
+      "route": { "kind": "handler", "handler": "onJumpToTab9" },
+      "menuOwned": false,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "9",
+        "code": "Digit9",
+        "display": "⌘9",
+        "accelerator": "CmdOrCtrl+9"
+      }
     }
   },
   "menus": [
     {
       "label": "File",
       "items": [
-        { "kind": "command", "command": "fileNewNote", "label": "New Note" },
-        { "kind": "command", "command": "fileNewType", "label": "New Type" },
-        { "kind": "command", "command": "fileQuickOpen", "label": "Quick Open" },
-        {
-          "kind": "command",
-          "command": "fileQuickOpen",
-          "id": "file-quick-open-alias",
-          "label": { "macos": "Quick Open (Cmd+O)", "default": "Quick Open (Ctrl+O)" },
-          "accelerator": "CmdOrCtrl+O"
-        },
+        { "kind": "command", "command": "fileNewNote", "label": "New Document" },
+        { "kind": "command", "command": "fileOpenVault", "label": "Open Folder…" },
+        { "kind": "command", "command": "fileOpenNote", "label": "Open Document…" },
+        { "kind": "command", "command": "fileCloseVault", "label": "Close Folder" },
         { "kind": "separator" },
-        { "kind": "command", "command": "fileSave", "label": "Save" }
+        { "kind": "command", "command": "fileQuickOpen", "label": "Quick Open" },
+        { "kind": "separator" },
+        { "kind": "command", "command": "fileSave", "label": "Save" },
+        { "kind": "separator" },
+        { "kind": "command", "command": "fileCloseTab", "label": "Close Tab" }
       ]
     },
     {
@@ -476,124 +392,51 @@
         { "kind": "separator" },
         { "kind": "command", "command": "editPastePlainText", "label": "Paste without Formatting" },
         { "kind": "separator" },
-        { "kind": "command", "command": "editFindInNote", "label": "Find in Note", "enabled": false },
-        { "kind": "command", "command": "editReplaceInNote", "label": "Replace in Note", "enabled": false },
-        { "kind": "command", "command": "editFindInVault", "label": "Find in Vault" },
-        {
-          "kind": "menu-event",
-          "id": "edit-toggle-note-list-search",
-          "label": "Toggle Note List Search",
-          "accelerator": "CmdOrCtrl+F",
-          "enabled": false
-        },
-        { "kind": "command", "command": "editToggleDiff", "label": "Toggle Diff Mode" }
+        { "kind": "command", "command": "editFindInNote", "label": "Find" }
       ]
     },
     {
       "label": "View",
       "items": [
-        { "kind": "command", "command": "viewEditorOnly", "label": "Editor Only" },
-        { "kind": "command", "command": "viewEditorList", "label": "Editor + Notes" },
-        { "kind": "command", "command": "viewAll", "label": "All Panels" },
+        { "kind": "command", "command": "viewCommandPalette", "label": "Command Menu" },
+        { "kind": "command", "command": "viewToggleSidebar", "label": "Toggle Sidebar" },
+        { "kind": "command", "command": "editToggleRawEditor", "label": "Toggle Rich/Raw" },
         { "kind": "separator" },
         {
-          "kind": "command",
-          "command": "viewToggleProperties",
-          "label": "Toggle Properties Panel",
-          "accelerator": null
+          "kind": "submenu",
+          "label": "Appearance",
+          "items": [
+            { "kind": "command", "command": "viewAppearanceSystem", "label": "System" },
+            { "kind": "command", "command": "viewAppearanceDark", "label": "Dark" },
+            { "kind": "command", "command": "viewAppearanceLight", "label": "Light" }
+          ]
         },
-        { "kind": "command", "command": "viewToggleAiChat", "label": "Toggle AI Panel" },
         { "kind": "separator" },
         { "kind": "command", "command": "viewZoomIn", "label": "Zoom In" },
         { "kind": "command", "command": "viewZoomOut", "label": "Zoom Out" },
-        { "kind": "command", "command": "viewZoomReset", "label": "Actual Size" },
-        { "kind": "separator" },
-        { "kind": "command", "command": "viewCommandPalette", "label": "Command Palette" }
+        { "kind": "command", "command": "viewZoomReset", "label": "Actual Size" }
       ]
     },
     {
-      "label": "Go",
+      "label": "Window",
       "items": [
-        { "kind": "command", "command": "goAllNotes", "label": "All Notes" },
-        { "kind": "command", "command": "goArchived", "label": "Archived" },
-        { "kind": "command", "command": "goChanges", "label": "Changes" },
-        { "kind": "command", "command": "goInbox", "label": "Inbox" },
-        { "kind": "separator" },
-        { "kind": "command", "command": "viewGoBack", "label": "Go Back" },
-        { "kind": "command", "command": "viewGoForward", "label": "Go Forward" }
-      ]
-    },
-    {
-      "label": "Note",
-      "items": [
-        { "kind": "command", "command": "noteToggleOrganized", "label": "Toggle Organized" },
-        { "kind": "command", "command": "noteArchive", "label": "Archive Note" },
-        { "kind": "command", "command": "noteDelete", "label": "Delete Note" },
-        { "kind": "command", "command": "noteRestoreDeleted", "label": "Restore Deleted Note", "enabled": false },
-        { "kind": "separator" },
-        { "kind": "command", "command": "noteOpenInNewWindow", "label": "Open in New Window" },
-        { "kind": "command", "command": "noteExportPdf", "label": "Export Note as PDF" },
-        { "kind": "separator" },
-        { "kind": "command", "command": "editToggleRawEditor", "label": "Toggle Raw Editor" },
-        { "kind": "command", "command": "viewToggleTableOfContents", "label": "Toggle Table of Contents" },
-        { "kind": "command", "command": "viewToggleBacklinks", "label": "Toggle Backlinks" }
-      ]
-    },
-    {
-      "label": "Vault",
-      "items": [
-        { "kind": "command", "command": "vaultOpen", "label": "Open Vault…" },
-        { "kind": "command", "command": "vaultRemove", "label": "Remove Vault from List" },
-        { "kind": "command", "command": "vaultRestoreGettingStarted", "label": "Restore Getting Started" },
-        { "kind": "separator" },
-        { "kind": "command", "command": "vaultAddRemote", "label": "Add Remote…", "enabled": false },
-        { "kind": "command", "command": "vaultCommitPush", "label": "Commit & Push" },
-        { "kind": "command", "command": "vaultPull", "label": "Pull from Remote" },
-        { "kind": "command", "command": "vaultResolveConflicts", "label": "Resolve Conflicts", "enabled": false },
-        { "kind": "command", "command": "vaultViewChanges", "label": "View Pending Changes" },
-        { "kind": "separator" },
-        { "kind": "command", "command": "vaultReload", "label": "Reload Vault" },
-        { "kind": "command", "command": "vaultRepair", "label": "Repair Vault" },
-        { "kind": "command", "command": "vaultInstallMcp", "label": "Set Up External AI Tools…" }
+        { "kind": "command", "command": "windowPreviousTab", "label": "Previous Tab" },
+        { "kind": "command", "command": "windowNextTab", "label": "Next Tab" }
       ]
     }
   ],
-  "appMenu": [
-    { "kind": "command", "command": "appCheckForUpdates", "label": "Check for Updates..." },
-    { "kind": "separator" },
-    { "kind": "command", "command": "appSettings", "label": "Settings..." }
-  ],
+  "appMenu": [],
   "menuStateGroups": {
     "noteDependent": [
       { "command": "fileSave" },
-      { "command": "noteToggleOrganized" },
-      { "command": "noteArchive" },
-      { "command": "noteDelete" },
+      { "command": "fileCloseTab" },
       { "command": "editToggleRawEditor" },
-      { "command": "editToggleDiff" },
-      { "command": "viewToggleTableOfContents" },
-      { "command": "viewToggleBacklinks" },
-      { "command": "noteOpenInNewWindow" },
-      { "command": "noteExportPdf" }
+      { "command": "editFindInNote" }
     ],
-    "editorFindDependent": [
-      { "command": "editFindInNote" },
-      { "command": "editReplaceInNote" }
-    ],
-    "noteListSearchDependent": [
-      { "id": "edit-toggle-note-list-search" }
-    ],
-    "restoreDeletedDependent": [
-      { "command": "noteRestoreDeleted" }
-    ],
-    "gitCommitDependent": [
-      { "command": "vaultCommitPush" }
-    ],
-    "gitConflictDependent": [
-      { "command": "vaultResolveConflicts" }
-    ],
-    "gitNoRemoteDependent": [
-      { "command": "vaultAddRemote" }
+    "vaultDependent": [
+      { "command": "fileNewNote" },
+      { "command": "fileQuickOpen" },
+      { "command": "fileCloseVault" }
     ]
   }
 }

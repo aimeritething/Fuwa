@@ -1,8 +1,4 @@
 import type { VaultConfig } from '../types'
-import {
-  DEFAULT_AI_AGENT_PERMISSION_MODE,
-  normalizeAiAgentPermissionMode,
-} from '../lib/aiAgentPermissionMode'
 
 type SaveFn = (config: VaultConfig) => void
 type Listener = () => void
@@ -10,7 +6,6 @@ type Listener = () => void
 const DEFAULT_CONFIG: VaultConfig = {
   zoom: null, view_mode: null, editor_mode: null, note_layout: null,
   git_setup_preference: 'prompt',
-  ai_agent_permission_mode: DEFAULT_AI_AGENT_PERMISSION_MODE,
   tag_colors: null, status_colors: null, property_display_modes: null,
   inbox: null, allNotes: null,
 }
@@ -55,6 +50,5 @@ function normalizeVaultConfig(next: VaultConfig): VaultConfig {
     ...DEFAULT_CONFIG,
     ...next,
     git_setup_preference: next.git_setup_preference === 'never' ? 'never' : 'prompt',
-    ai_agent_permission_mode: normalizeAiAgentPermissionMode(next.ai_agent_permission_mode),
   }
 }

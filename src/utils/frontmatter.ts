@@ -1,5 +1,6 @@
-import type { FrontmatterValue } from '../components/Inspector'
 import { canonicalFrontmatterKey } from './systemMetadata'
+
+export type FrontmatterValue = string | number | boolean | string[] | null
 
 export interface ParsedFrontmatter {
   [key: string]: FrontmatterValue

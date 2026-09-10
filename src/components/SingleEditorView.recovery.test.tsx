@@ -4,7 +4,6 @@ import { isRecoveredBlockNoteRenderError } from './blockNoteRenderRecovery'
 import {
   createEditor,
   getSingleEditorViewTestState,
-  makeEntry,
 } from './SingleEditorView.testUtils'
 import { SingleEditorView } from './SingleEditorView'
 import { TooltipProvider } from './ui/tooltip'
@@ -28,7 +27,6 @@ describe('SingleEditorView render recovery', () => {
         <div data-testid="vault-shell">Vault remains usable</div>
         <SingleEditorView
           editor={createEditor() as never}
-          entries={[makeEntry()]}
           onNavigateWikilink={vi.fn()}
         />
       </>,

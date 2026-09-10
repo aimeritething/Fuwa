@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { VaultEntry } from '../types'
-import type { Tab } from '../hooks/useTabManagement'
+import type { Tab } from '../types'
 import {
   applyPendingRawExitContent,
   rememberPendingRawExitContent,

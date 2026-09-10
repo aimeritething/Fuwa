@@ -2,7 +2,7 @@ import { renderHook, act, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MutableRefObject } from 'react'
 import type { VaultEntry } from '../types'
-import { cacheNoteContent, clearPrefetchCache } from './useTabManagement'
+import { cacheNoteContent, clearNoteContentCache as clearPrefetchCache } from './noteContentCache'
 import {
   PARSED_BLOCK_PRELOAD_DELAY_MS,
   PARSED_BLOCK_PRELOAD_FOREGROUND_IDLE_MS,

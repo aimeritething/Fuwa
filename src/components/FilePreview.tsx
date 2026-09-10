@@ -1,23 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import {
   ArrowSquareOut,
   ClipboardText,
   FileDashed,
-  FilePdf,
   FolderOpen,
   ImageSquare,
   Link,
-  SpeakerHigh,
-  Video,
   WarningCircle,
 } from '@phosphor-icons/react'
 import type { VaultEntry } from '../types'
 import { translate, type AppLocale } from '../lib/i18n'
 import { trackFilePreviewAction, trackFilePreviewFailed, trackFilePreviewOpened } from '../lib/productAnalytics'
 import { filePreviewKind, previewFileTypeLabel, type FilePreviewKind } from '../utils/filePreview'
-import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
-import { focusNoteListContainer } from '../utils/neighborhoodHistory'
 import { openLocalFile } from '../utils/url'
 import { Button } from './ui/button'
 
@@ -44,22 +39,6 @@ interface FilePreviewState {
   previewPath: string | null
 }
 
-const EMPTY_CAPTIONS_TRACK = 'data:text/vtt,WEBVTT'
-let pdfPreviewLoadSequence = 0
-
-function nextPdfPreviewLoadKey(): string {
-  pdfPreviewLoadSequence += 1
-  return String(pdfPreviewLoadSequence)
-}
-
-function appendPdfPreviewLoadKey(assetSrc: string, loadKey: string): string {
-  const hashIndex = assetSrc.indexOf('#')
-  const baseSrc = hashIndex === -1 ? assetSrc : assetSrc.slice(0, hashIndex)
-  const hash = hashIndex === -1 ? '' : assetSrc.slice(hashIndex)
-  const separator = baseSrc.includes('?') ? '&' : '?'
-  return `${baseSrc}${separator}tolaria_pdf_preview=${encodeURIComponent(loadKey)}${hash}`
-}
-
 function filePreviewPath(path: unknown): string | null {
   if (typeof path !== 'string') return null
   return path.trim().length > 0 ? path : null
@@ -82,7 +61,6 @@ function filePreviewState(entry: VaultEntry): FilePreviewState {
 function filePreviewAssetSrc(
   previewKind: FilePreviewKind | null,
   previewPath: string | null,
-  pdfPreviewLoadKey: string,
 ): string | null {
   if (!previewKind || previewPath === null) return null
 
@@ -94,12 +72,7 @@ function filePreviewAssetSrc(
     return null
   }
 
-  return previewKind === 'pdf' ? appendPdfPreviewLoadKey(src, pdfPreviewLoadKey) : src
-}
-
-function usePdfPreviewLoadKey(): string {
-  const [loadKey] = useState(nextPdfPreviewLoadKey)
-  return loadKey
+  return src
 }
 
 function fallbackContentForPreviewKind(
@@ -113,14 +86,6 @@ function fallbackContentForPreviewKind(
     }
   }
 
-  if (previewKind === 'pdf') {
-    return {
-      icon: 'warning',
-      title: 'PDF preview failed',
-      description: 'Tolaria could not render this PDF file in the preview.',
-    }
-  }
-
   return {
     icon: 'file',
     title: 'Preview unavailable',
@@ -131,18 +96,6 @@ function fallbackContentForPreviewKind(
 function FilePreviewHeaderIcon({ previewKind }: { previewKind: FilePreviewKind | null }) {
   if (previewKind === 'image') {
     return <ImageSquare size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-  }
-
-  if (previewKind === 'pdf') {
-    return <FilePdf size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-  }
-
-  if (previewKind === 'audio') {
-    return <SpeakerHigh size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-  }
-
-  if (previewKind === 'video') {
-    return <Video size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
   }
 
   return <FileDashed size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -237,36 +190,6 @@ function FilePreviewHeader(options: {
   )
 }
 
-function FilePreviewPdf({
-  entry,
-  pdfSrc,
-  onOpenExternal,
-}: {
-  entry: VaultEntry
-  pdfSrc: string
-  onOpenExternal: () => void
-}) {
-  const fallback = fallbackContentForPreviewKind('pdf')
-
-  return (
-    <object
-      key={pdfSrc}
-      data={pdfSrc}
-      type="application/pdf"
-      title={entry.title}
-      className="h-full min-h-[320px] w-full bg-background"
-      data-testid="pdf-file-preview"
-    >
-      <FilePreviewFallback
-        icon={fallback.icon}
-        title={fallback.title}
-        description={fallback.description}
-        onOpenExternal={onOpenExternal}
-      />
-    </object>
-  )
-}
-
 function FilePreviewImage({
   entry,
   imageSrc,
@@ -289,61 +212,6 @@ function FilePreviewImage({
   )
 }
 
-function FilePreviewMediaFrame({ children, video = false }: { children: ReactNode; video?: boolean }) {
-  return (
-    <div
-      className={`flex h-full items-center justify-center ${video ? 'min-h-[320px] bg-black p-4' : 'min-h-[260px] p-6'}`}
-    >
-      {children}
-    </div>
-  )
-}
-
-function FilePreviewMedia({
-  entry,
-  mediaKind,
-  mediaSrc,
-  onMediaError,
-}: {
-  entry: VaultEntry
-  mediaKind: 'audio' | 'video'
-  mediaSrc: string
-  onMediaError: () => void
-}) {
-  if (mediaKind === 'audio') {
-    return (
-      <FilePreviewMediaFrame>
-        <audio
-          controls
-          preload="metadata"
-          src={mediaSrc}
-          className="w-full max-w-2xl"
-          data-testid="audio-file-preview"
-          onError={onMediaError}
-        >
-          <track kind="captions" src={EMPTY_CAPTIONS_TRACK} srcLang="en" label="No captions available" default />
-        </audio>
-      </FilePreviewMediaFrame>
-    )
-  }
-
-  return (
-    <FilePreviewMediaFrame video>
-        <video
-          controls
-          preload="metadata"
-          src={mediaSrc}
-          title={entry.title}
-          className="max-h-full max-w-full"
-          data-testid="video-file-preview"
-          onError={onMediaError}
-        >
-          <track kind="captions" src={EMPTY_CAPTIONS_TRACK} srcLang="en" label="No captions available" default />
-        </video>
-    </FilePreviewMediaFrame>
-  )
-}
-
 function shouldRenderImagePreview(isImage: boolean, imageSrc: string | null, imageFailed: boolean): imageSrc is string {
   return isImage && imageSrc !== null && !imageFailed
 }
@@ -355,8 +223,6 @@ function FilePreviewBody(options: {
   imageFailed: boolean
   canOpenExternal: boolean
   onImageError: () => void
-  onAudioError: () => void
-  onVideoError: () => void
   onOpenExternal: () => void
 }) {
   const {
@@ -366,24 +232,10 @@ function FilePreviewBody(options: {
     imageFailed,
     canOpenExternal,
     onImageError,
-    onAudioError,
-    onVideoError,
     onOpenExternal,
   } = options
   if (shouldRenderImagePreview(previewKind === 'image', assetSrc, imageFailed)) {
     return <FilePreviewImage entry={entry} imageSrc={assetSrc} onImageError={onImageError} />
-  }
-
-  if (previewKind === 'pdf' && assetSrc !== null) {
-    return <FilePreviewPdf entry={entry} pdfSrc={assetSrc} onOpenExternal={onOpenExternal} />
-  }
-
-  if (previewKind === 'audio' && assetSrc !== null) {
-    return <FilePreviewMedia entry={entry} mediaKind="audio" mediaSrc={assetSrc} onMediaError={onAudioError} />
-  }
-
-  if (previewKind === 'video' && assetSrc !== null) {
-    return <FilePreviewMedia entry={entry} mediaKind="video" mediaSrc={assetSrc} onMediaError={onVideoError} />
   }
 
   const fallback = fallbackContentForPreviewKind(previewKind)
@@ -401,27 +253,15 @@ function FilePreviewBody(options: {
 
 function useFilePreviewFailureState(entryPath: string) {
   const [failedImagePath, setFailedImagePath] = useState<string | null>(null)
-  const [failedMediaPath, setFailedMediaPath] = useState<string | null>(null)
 
   const handleImageError = useCallback(() => {
     setFailedImagePath(entryPath)
     trackFilePreviewFailed('image')
   }, [entryPath])
-  const handleAudioError = useCallback(() => {
-    setFailedMediaPath(entryPath)
-    trackFilePreviewFailed('audio')
-  }, [entryPath])
-  const handleVideoError = useCallback(() => {
-    setFailedMediaPath(entryPath)
-    trackFilePreviewFailed('video')
-  }, [entryPath])
 
   return {
     imageFailed: failedImagePath === entryPath,
-    mediaFailed: failedMediaPath === entryPath,
     handleImageError,
-    handleAudioError,
-    handleVideoError,
   }
 }
 
@@ -477,19 +317,6 @@ function useFilePreviewActions({
   }
 }
 
-function isMediaPreviewKind(previewKind: FilePreviewKind | null): boolean {
-  return previewKind === 'audio' || previewKind === 'video'
-}
-
-function previewKindForBody(
-  previewKind: FilePreviewKind | null,
-  mediaFailed: boolean,
-  externalMediaPreview: boolean,
-): FilePreviewKind | null {
-  if (mediaFailed || (externalMediaPreview && isMediaPreviewKind(previewKind))) return null
-  return previewKind
-}
-
 export function FilePreview({
   entry,
   locale = 'en',
@@ -500,12 +327,10 @@ export function FilePreview({
 }: FilePreviewProps) {
   const previewRef = useRef<HTMLElement | null>(null)
   const { canUseFileActions, previewKind, previewPath } = filePreviewState(entry)
-  const pdfPreviewLoadKey = usePdfPreviewLoadKey()
   const assetSrc = useMemo(() => {
-    return filePreviewAssetSrc(previewKind, previewPath, pdfPreviewLoadKey)
-  }, [pdfPreviewLoadKey, previewKind, previewPath])
+    return filePreviewAssetSrc(previewKind, previewPath)
+  }, [previewKind, previewPath])
   const fileTypeLabel = previewFileTypeLabel(entry)
-  const externalMediaPreview = useExternalMediaPreview()
   const failures = useFilePreviewFailureState(previewPath ?? '')
   const actions = useFilePreviewActions({
     entry,
@@ -524,17 +349,6 @@ export function FilePreview({
 
   useEffect(() => {
     previewRef.current?.setAttribute('tabindex', '0')
-  }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.preventDefault()
-      focusNoteListContainer(document)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   return (
@@ -558,13 +372,11 @@ export function FilePreview({
       <div className="min-h-0 flex-1 overflow-auto bg-background">
         <FilePreviewBody
           entry={entry}
-          previewKind={previewKindForBody(previewKind, failures.mediaFailed, externalMediaPreview)}
+          previewKind={previewKind}
           assetSrc={assetSrc}
           imageFailed={failures.imageFailed}
           canOpenExternal={canUseFileActions}
           onImageError={failures.handleImageError}
-          onAudioError={failures.handleAudioError}
-          onVideoError={failures.handleVideoError}
           onOpenExternal={actions.handleOpenExternal}
         />
       </div>

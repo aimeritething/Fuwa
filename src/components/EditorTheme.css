@@ -482,14 +482,6 @@
   cursor: text;
 }
 
-/* --- Wikilinks (override from Editor.css with theme vars) --- */
-.editor__blocknote-container .wikilink {
-  color: var(--inline-styles-wikilink-color);
-  text-decoration: var(--inline-styles-wikilink-text-decoration);
-  border-bottom: var(--inline-styles-wikilink-border-bottom);
-  cursor: text;
-}
-
 .editor__blocknote-container .math {
   color: var(--colors-text);
   cursor: text;
@@ -727,7 +719,6 @@ body.tldraw-whiteboard-fullscreen-open {
   position: absolute !important;
 }
 
-.editor__blocknote-container .mantine-Popover-dropdown,
 .editor__blocknote-container .bn-menu,
 .editor__blocknote-container .bn-suggestion-menu {
   z-index: 1000 !important;
@@ -779,8 +770,7 @@ body.tldraw-whiteboard-fullscreen-open {
   content: '';
 }
 
-.editor__blocknote-container[data-follow-links] .bn-editor a,
-.editor__blocknote-container[data-follow-links] .wikilink {
+.editor__blocknote-container[data-follow-links] .bn-editor a {
   cursor: pointer;
 }
 

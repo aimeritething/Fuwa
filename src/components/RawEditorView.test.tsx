@@ -4,22 +4,9 @@ import { language, syntaxTree } from '@codemirror/language'
 import type { EditorView } from '@codemirror/view'
 import { RawEditorView } from './RawEditorView'
 
-function entry(title: string, path = `/vault/note/${title}.md`) {
-  return {
-    path, filename: `${title}.md`, title, isA: 'Note',
-    aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-    cadence: null, archived: false,
-    modifiedAt: null, createdAt: null, fileSize: 0, snippet: '', wordCount: 0,
-    relationships: {}, icon: null, color: null, order: null,
-    sidebarLabel: null, template: null, sort: null, outgoingLinks: [],
-    properties: {},
-  }
-}
-
 const defaultProps = {
   content: '---\ntitle: My Note\n---\n\n# My Note\n\nSome content.',
   path: '/vault/note/my-note.md',
-  entries: [entry('Project Alpha'), entry('Meeting Notes')],
   onContentChange: vi.fn(),
   onSave: vi.fn(),
 }

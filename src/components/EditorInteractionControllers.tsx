@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import {
-  GridSuggestionMenuController,
   LinkToolbarController,
   SideMenuController,
   SuggestionMenuController,
@@ -11,7 +10,6 @@ import type { AppLocale } from '../lib/i18n'
 import { TolariaFilePanelController } from './TolariaFilePanel'
 import { TolariaLinkToolbar } from './TolariaLinkToolbar'
 import { TolariaSlashMenu } from './TolariaSlashMenu'
-import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
 import { TolariaCollapsedHeadingsController, TolariaSideMenu } from './tolariaBlockNoteSideMenu'
 import { TolariaFormattingToolbar, TolariaFormattingToolbarController } from './tolariaEditorFormatting'
 import type { SuggestionAction } from './singleEditorSuggestionItems'
@@ -59,41 +57,14 @@ function EditorToolbarControllers({
 }
 
 function EditorSuggestionControllers({
-  getAtWikilinkItems,
-  getEmojiItems,
   getSlashMenuItems,
-  getWikilinkItems,
-  runEditorAction,
-}: Pick<
-  EditorInteractionControllersProps,
-  'getAtWikilinkItems' | 'getEmojiItems' | 'getSlashMenuItems' | 'getWikilinkItems' | 'runEditorAction'
->) {
-  const handleItemClick = useCallback(
-    (item: WikilinkSuggestionItem) => runEditorAction(item.onItemClick),
-    [runEditorAction],
-  )
-
+}: Pick<EditorInteractionControllersProps, 'getSlashMenuItems'>) {
   return (
-    <>
-      <SuggestionMenuController
-        triggerCharacter="/"
-        getItems={getSlashMenuItems}
-        suggestionMenuComponent={TolariaSlashMenu}
-      />
-      <GridSuggestionMenuController triggerCharacter=":" columns={10} minQueryLength={1} getItems={getEmojiItems} />
-      <SuggestionMenuController
-        triggerCharacter="[["
-        getItems={getWikilinkItems}
-        suggestionMenuComponent={WikilinkSuggestionMenu}
-        onItemClick={handleItemClick}
-      />
-      <SuggestionMenuController
-        triggerCharacter="@"
-        getItems={getAtWikilinkItems}
-        suggestionMenuComponent={WikilinkSuggestionMenu}
-        onItemClick={handleItemClick}
-      />
-    </>
+    <SuggestionMenuController
+      triggerCharacter="/"
+      getItems={getSlashMenuItems}
+      suggestionMenuComponent={TolariaSlashMenu}
+    />
   )
 }
 

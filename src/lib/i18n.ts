@@ -1,268 +1,180 @@
-import EN_TRANSLATIONS from './locales/en.json'
+/**
+ * Fuwa ships one locale. This module keeps Tolaria's i18n module path and
+ * export names so every call site (and the carried tests) resolve unchanged,
+ * but the catalog is a single flat English map instead of 22 JSON locales.
+ */
 
 export const DEFAULT_APP_LOCALE = 'en'
-export const SYSTEM_UI_LANGUAGE = 'system'
 
-export const APP_LOCALES = [
-  'en',
-  'it-IT',
-  'fr-FR',
-  'de-DE',
-  'ru-RU',
-  'es-ES',
-  'pt-BR',
-  'pt-PT',
-  'es-419',
-  'zh-CN',
-  'zh-TW',
-  'ja-JP',
-  'ko-KR',
-  'vi',
-  'pl-PL',
-  'be-BY',
-  'be-Latn',
-  'id-ID',
-  'uk-UA',
-  'sv-SE',
-  'sk-SK',
-] as const
+export const APP_LOCALES = ['en'] as const
 
 export type AppLocale = typeof APP_LOCALES[number]
-export type UiLanguagePreference = typeof SYSTEM_UI_LANGUAGE | AppLocale
-export type TranslationCatalog = typeof EN_TRANSLATIONS
-export type TranslationKey = keyof TranslationCatalog
 export type TranslationValues = Record<string, string | number>
 
-type LocaleDefinition = {
-  code: AppLocale
-  dateLocale: string
-  labelKey: TranslationKey
-  aliases: readonly string[]
-  searchKeywords: readonly string[]
-}
+export const EN_TRANSLATIONS = {
+  "command.git.commitPush": "Commit & Push",
+  "command.git.pull": "Pull from Remote",
+  "command.git.resolveConflicts": "Resolve Conflicts",
+  "command.git.viewChanges": "View Pending Changes",
+  "command.navigation.goBack": "Go Back",
+  "command.navigation.goForward": "Go Forward",
+  "command.note.archiveNote": "Archive Note",
+  "command.note.deleteNote": "Delete Note",
+  "command.note.exportPdf": "Export note as PDF",
+  "command.note.findInNote": "Find in Note",
+  "command.note.newNote": "New Note",
+  "command.note.newType": "New Type",
+  "command.note.openNewWindow": "Open in New Window",
+  "command.note.redo": "Redo",
+  "command.note.replaceInNote": "Replace in Note",
+  "command.note.restoreDeleted": "Restore Deleted Note",
+  "command.note.undo": "Undo",
+  "command.settings.openVault": "Open Vault…",
+  "command.settings.reloadVault": "Reload Vault",
+  "command.settings.removeVault": "Remove Vault from List",
+  "command.settings.repairVault": "Repair Vault",
+  "command.settings.restoreGettingStarted": "Restore Getting Started Vault",
+  "command.settings.setupExternalAi": "Set Up External AI Tools…",
+  "command.view.editorNoteList": "Editor + Note List",
+  "command.view.editorOnly": "Editor Only",
+  "command.view.toggleAiPanel": "Toggle AI Panel",
+  "command.view.toggleBacklinks": "Toggle Backlinks",
+  "command.view.toggleDiff": "Toggle Diff Mode",
+  "command.view.toggleProperties": "Toggle Properties Panel",
+  "command.view.toggleRaw": "Toggle Raw Editor",
+  "editor.blockType.bulletList": "Bullet List",
+  "editor.blockType.checklist": "Checklist",
+  "editor.blockType.codeBlock": "Code Block",
+  "editor.blockType.heading1": "Heading 1",
+  "editor.blockType.heading2": "Heading 2",
+  "editor.blockType.heading3": "Heading 3",
+  "editor.blockType.heading4": "Heading 4",
+  "editor.blockType.heading5": "Heading 5",
+  "editor.blockType.heading6": "Heading 6",
+  "editor.blockType.numberedList": "Numbered List",
+  "editor.blockType.paragraph": "Paragraph",
+  "editor.blockType.quote": "Quote",
+  "editor.callout.defaultHeading": "Note",
+  "editor.codeBlock.copy": "Copy code to clipboard",
+  "editor.empty.selectNote": "Select a note to start editing",
+  "editor.empty.shortcuts": "{quickOpen} to search · {newNote} to create",
+  "editor.find.close": "Close find",
+  "editor.find.findLabel": "Find",
+  "editor.find.findPlaceholder": "Find",
+  "editor.find.hideReplace": "Hide replace",
+  "editor.find.invalidRegex": "Invalid regex",
+  "editor.find.matchCase": "Match case",
+  "editor.find.matchCount": "{current} / {total}",
+  "editor.find.nextMatch": "Next match",
+  "editor.find.noMatches": "No matches",
+  "editor.find.previousMatch": "Previous match",
+  "editor.find.regex": "Use regular expression",
+  "editor.find.regexMustMatchText": "Regex must match text",
+  "editor.find.replace": "Replace",
+  "editor.find.replaceAll": "All",
+  "editor.find.replaceLabel": "Replace",
+  "editor.find.replacePlaceholder": "Replace",
+  "editor.find.showReplace": "Show replace",
+  "editor.formatting.highlight": "Highlight",
+  "editor.formatting.highlightBlue": "Blue",
+  "editor.formatting.highlightChangeColor": "Change highlight color",
+  "editor.formatting.highlightColor": "Choose highlight color",
+  "editor.formatting.highlightGreen": "Green",
+  "editor.formatting.highlightPurple": "Purple",
+  "editor.formatting.highlightRed": "Red",
+  "editor.formatting.highlightTooltip": "Highlight (persists in markdown)",
+  "editor.formatting.highlightYellow": "Yellow",
+  "editor.htmlBlock.blockedFallback": "This HTML was blocked by the sandbox rules.",
+  "editor.htmlBlock.copySource": "Copy source",
+  "editor.htmlBlock.openRawEditor": "Open raw editor",
+  "editor.htmlBlock.previewTitle": "Sandboxed HTML block preview",
+  "editor.htmlBlock.resetHeight": "Reset height",
+  "editor.htmlBlock.resizeHeight": "Resize height",
+  "editor.htmlBlock.toolbar": "HTML block actions",
+  "editor.imageLightbox.title": "Image preview",
+  "editor.sideMenu.collapseItem": "Collapse item",
+  "editor.sideMenu.collapseSection": "Collapse section",
+  "editor.sideMenu.expandItem": "Expand item",
+  "editor.sideMenu.expandSection": "Expand section",
+  "editor.sideMenu.turnIntoMenu": "Turn into...",
+  "editor.slash.callout": "Callout",
+  "editor.slash.callout.abstract": "Abstract",
+  "editor.slash.callout.bug": "Bug",
+  "editor.slash.callout.danger": "Danger",
+  "editor.slash.callout.example": "Example",
+  "editor.slash.callout.failure": "Failure",
+  "editor.slash.callout.info": "Info",
+  "editor.slash.callout.note": "Note",
+  "editor.slash.callout.question": "Question",
+  "editor.slash.callout.quote": "Quote",
+  "editor.slash.callout.success": "Success",
+  "editor.slash.callout.tip": "Tip",
+  "editor.slash.callout.todo": "Todo",
+  "editor.slash.callout.warning": "Warning",
+  "editor.slash.date": "Date",
+  "editor.slash.datetime": "Date and time",
+  "editor.slash.htmlBlock": "HTML block",
+  "editor.slash.math": "Math",
+  "editor.slash.time": "Time",
+  "editor.toolbar.rawOpen": "Open the raw editor",
+  "editor.whiteboard.enterFullscreen": "Expand whiteboard",
+  "editor.whiteboard.exitFullscreen": "Exit fullscreen whiteboard",
+  "editor.whiteboard.permissionDeniedBody": "Tolaria could not use a desktop capability that this whiteboard needs. Allow the permission in your system settings, then reopen the note.",
+  "editor.whiteboard.permissionDeniedTitle": "Whiteboard permission blocked",
+  "fileActions.copied.filePath": "File path copied",
+  "fileActions.copied.folderPath": "Folder path copied",
+  "fileActions.error.copyFolderPath": "Failed to copy folder path: {detail}",
+  "fileActions.error.copyPath": "Failed to copy path: {detail}",
+  "fileActions.error.openFile": "Failed to open file: {detail}",
+  "fileActions.error.pathMissing": "Path does not exist: {path}",
+  "fileActions.error.revealPath": "Failed to reveal path: {detail}",
+  "filePreview.copyDeepLink": "Copy link",
+  "menu.edit": "Edit",
+  "menu.edit.findInVault": "Find in Vault",
+  "menu.edit.pasteWithoutFormatting": "Paste without Formatting",
+  "menu.edit.toggleNoteListSearch": "Toggle Note List Search",
+  "menu.file": "File",
+  "menu.file.quickOpen": "Quick Open",
+  "menu.file.quickOpenCmdO": "Quick Open (Cmd+O)",
+  "menu.file.quickOpenCtrlO": "Quick Open (Ctrl+O)",
+  "menu.file.save": "Save",
+  "menu.go": "Go",
+  "menu.go.allNotes": "All Notes",
+  "menu.go.archived": "Archived",
+  "menu.go.changes": "Changes",
+  "menu.go.inbox": "Inbox",
+  "menu.note": "Note",
+  "menu.note.toggleOrganized": "Toggle Organized",
+  "menu.note.toggleTableOfContents": "Toggle Table of Contents",
+  "menu.vault": "Vault",
+  "menu.vault.addRemote": "Add Remote…",
+  "menu.view": "View",
+  "menu.view.actualSize": "Actual Size",
+  "menu.view.allPanels": "All Panels",
+  "menu.view.commandPalette": "Command Palette",
+  "menu.view.zoomIn": "Zoom In",
+  "menu.view.zoomOut": "Zoom Out",
+  "menu.window": "Window",
+  "save.error.failed": "Save failed: {error}",
+  "save.error.invalidPath": "Save failed: The note path is invalid on this platform. Rename the note or move it to a valid folder, then try again.",
+  "save.toast.missingActiveVault": "Select or restore a vault before saving.",
+  "save.toast.nothingToSave": "Nothing to save",
+  "save.toast.saved": "Saved",
+  "sidebar.action.copyFolderPathMenu": "Copy folder path",
+  "sidebar.action.createFolder": "Create folder",
+  "sidebar.action.createFolderInFolderMenu": "Create a new folder in this folder",
+  "sidebar.action.createNoteInFolderMenu": "Create a new note in this folder",
+  "sidebar.action.deleteFolderMenu": "Delete folder...",
+  "sidebar.action.renameFolderMenu": "Rename folder...",
+  "sidebar.action.revealFolderMenu": "Reveal in Finder",
+  "sidebar.folder.name": "Folder name",
+  "sidebar.folder.newName": "New folder name",
+  "sidebar.group.folders": "FOLDERS",
+  "status.vault.default": "Vault",
+} as const
 
-const LOCALE_DEFINITIONS: Record<AppLocale, LocaleDefinition> = {
-  en: {
-    code: 'en',
-    dateLocale: 'en-US',
-    labelKey: 'locale.en',
-    aliases: ['en', 'en-us', 'en-gb', 'en-ca', 'en-au'],
-    searchKeywords: ['english', 'en'],
-  },
-  'it-IT': {
-    code: 'it-IT',
-    dateLocale: 'it-IT',
-    labelKey: 'locale.itIT',
-    aliases: ['it', 'it-it'],
-    searchKeywords: ['italian', 'italiano', 'it', 'it-it'],
-  },
-  'fr-FR': {
-    code: 'fr-FR',
-    dateLocale: 'fr-FR',
-    labelKey: 'locale.frFR',
-    aliases: ['fr', 'fr-fr'],
-    searchKeywords: ['french', 'francais', 'français', 'fr', 'fr-fr'],
-  },
-  'de-DE': {
-    code: 'de-DE',
-    dateLocale: 'de-DE',
-    labelKey: 'locale.deDE',
-    aliases: ['de', 'de-de'],
-    searchKeywords: ['german', 'deutsch', 'de', 'de-de'],
-  },
-  'ru-RU': {
-    code: 'ru-RU',
-    dateLocale: 'ru-RU',
-    labelKey: 'locale.ruRU',
-    aliases: ['ru', 'ru-ru'],
-    searchKeywords: ['russian', 'russkiy', 'русский', 'ru', 'ru-ru'],
-  },
-  'es-ES': {
-    code: 'es-ES',
-    dateLocale: 'es-ES',
-    labelKey: 'locale.esES',
-    aliases: ['es-es'],
-    searchKeywords: ['spanish', 'espanol', 'español', 'spain', 'es', 'es-es'],
-  },
-  'pt-BR': {
-    code: 'pt-BR',
-    dateLocale: 'pt-BR',
-    labelKey: 'locale.ptBR',
-    aliases: ['pt-br'],
-    searchKeywords: ['portuguese', 'brasil', 'brazilian', 'pt', 'pt-br'],
-  },
-  'pt-PT': {
-    code: 'pt-PT',
-    dateLocale: 'pt-PT',
-    labelKey: 'locale.ptPT',
-    aliases: ['pt-pt'],
-    searchKeywords: ['portuguese', 'portugal', 'european', 'pt-pt'],
-  },
-  'es-419': {
-    code: 'es-419',
-    dateLocale: 'es-419',
-    labelKey: 'locale.es419',
-    aliases: [
-      'es-419',
-      'es-ar',
-      'es-bo',
-      'es-cl',
-      'es-co',
-      'es-cr',
-      'es-cu',
-      'es-do',
-      'es-ec',
-      'es-gt',
-      'es-hn',
-      'es-mx',
-      'es-ni',
-      'es-pa',
-      'es-pe',
-      'es-pr',
-      'es-py',
-      'es-sv',
-      'es-us',
-      'es-uy',
-      'es-ve',
-    ],
-    searchKeywords: ['spanish', 'latin', 'latam', 'latin america', 'es-419'],
-  },
-  'zh-CN': {
-    code: 'zh-CN',
-    dateLocale: 'zh-CN',
-    labelKey: 'locale.zhCN',
-    aliases: ['zh', 'zh-cn', 'zh-hans', 'zh-sg'],
-    searchKeywords: ['chinese', 'simplified', 'zh', 'zh-cn', '中文', '简体中文'],
-  },
-  'zh-TW': {
-    code: 'zh-TW',
-    dateLocale: 'zh-TW',
-    labelKey: 'locale.zhTW',
-    aliases: ['zh-tw', 'zh-hant', 'zh-hk', 'zh-mo'],
-    searchKeywords: ['chinese', 'traditional', 'zh-tw', 'zh-hant', '中文', '繁體中文', '繁体中文'],
-  },
-  'ja-JP': {
-    code: 'ja-JP',
-    dateLocale: 'ja-JP',
-    labelKey: 'locale.jaJP',
-    aliases: ['ja', 'ja-jp'],
-    searchKeywords: ['japanese', 'nihongo', '日本語', 'ja', 'ja-jp'],
-  },
-  'ko-KR': {
-    code: 'ko-KR',
-    dateLocale: 'ko-KR',
-    labelKey: 'locale.koKR',
-    aliases: ['ko', 'ko-kr'],
-    searchKeywords: ['korean', 'hangul', '한국어', 'ko', 'ko-kr'],
-  },
-  vi: {
-    code: 'vi',
-    dateLocale: 'vi-VN',
-    labelKey: 'locale.vi',
-    aliases: ['vi', 'vi-vn'],
-    searchKeywords: ['vietnamese', 'vietnam', 'viet nam', 'tiếng việt', 'tieng viet', 'việt nam', 'vi'],
-  },
-  'pl-PL': {
-    code: 'pl-PL',
-    dateLocale: 'pl-PL',
-    labelKey: 'locale.plPL',
-    aliases: ['pl', 'pl-pl'],
-    searchKeywords: ['polish', 'polski', 'polska', 'pl', 'pl-pl'],
-  },
-  'be-BY': {
-    code: 'be-BY',
-    dateLocale: 'be-BY',
-    labelKey: 'locale.beBY',
-    aliases: ['be', 'be-by'],
-    searchKeywords: ['belarusian', 'беларуская', 'be', 'be-by'],
-  },
-  'be-Latn': {
-    code: 'be-Latn',
-    dateLocale: 'be-Latn',
-    labelKey: 'locale.beLatn',
-    aliases: ['be-latn'],
-    searchKeywords: ['belarusian', 'bielaruskaja', 'lacinka', 'be-latn'],
-  },
-  'id-ID': {
-    code: 'id-ID',
-    dateLocale: 'id-ID',
-    labelKey: 'locale.idID',
-    aliases: ['id','id-id'],
-    searchKeywords: ['indonesia', 'indonesian', 'bahasa', 'idn', 'id', 'id-id'],
-  },
-  'uk-UA': {
-    code: 'uk-UA',
-    dateLocale: 'uk-UA',
-    labelKey: 'locale.ukUA',
-    aliases: ['uk', 'uk-ua'],
-    searchKeywords: ['ukrainian', 'українська', 'ukrayinska', 'uk', 'uk-ua'],
-  },
-  'sv-SE': {
-    code: 'sv-SE',
-    dateLocale: 'sv-SE',
-    labelKey: 'locale.svSE',
-    aliases: ['sv', 'sv-se'],
-    searchKeywords: ['swedish', 'svenska', 'sverige', 'sv', 'sv-se'],
-  },
-  'sk-SK': {
-    code: 'sk-SK',
-    dateLocale: 'sk-SK',
-    labelKey: 'locale.skSK',
-    aliases: ['sk', 'sk-sk'],
-    searchKeywords: ['slovak', 'slovencina', 'slovenčina', 'slovensko', 'sk', 'sk-sk'],
-  },
-}
-
-const APP_LOCALE_SET = new Set<AppLocale>(APP_LOCALES)
-const LOCALE_DEFINITION_LOOKUP = new Map<AppLocale, LocaleDefinition>(
-  Object.values(LOCALE_DEFINITIONS).map((definition) => [definition.code, definition]),
-)
-const NORMALIZED_LOCALE_LOOKUP = new Map<string, AppLocale>()
-for (const locale of APP_LOCALES) {
-  const definition = getLocaleDefinition(locale)
-  NORMALIZED_LOCALE_LOOKUP.set(locale.toLowerCase(), locale)
-  for (const alias of definition.aliases) {
-    NORMALIZED_LOCALE_LOOKUP.set(alias, locale)
-  }
-}
-
-const LOCALE_MODULES = import.meta.glob('./locales/*.json', { eager: true, import: 'default' }) as Record<string, TranslationCatalog>
-const TRANSLATIONS: Partial<Record<AppLocale, Partial<Record<TranslationKey, string>>>> = buildTranslations()
-
-export const APP_LOCALE_DEFINITIONS = APP_LOCALES.map((locale) => getLocaleDefinition(locale))
-export { EN_TRANSLATIONS }
-
-function buildTranslations() {
-  const translations: Partial<Record<AppLocale, Partial<Record<TranslationKey, string>>>> = {
-    en: EN_TRANSLATIONS,
-  }
-
-  for (const [path, catalog] of Object.entries(LOCALE_MODULES)) {
-    const match = path.match(/\/([^/]+)\.json$/)
-    if (!match) continue
-
-    const locale = normalizeLocaleCode(match[1])
-    if (!locale || locale === 'en') continue
-
-    Reflect.set(translations, locale, catalog)
-  }
-
-  return translations
-}
-
-function isAppLocale(value: string): value is AppLocale {
-  return APP_LOCALE_SET.has(value as AppLocale)
-}
-
-export function getLocaleDefinition(locale: AppLocale): LocaleDefinition {
-  const definition = LOCALE_DEFINITION_LOOKUP.get(locale)
-  if (definition) return definition
-  throw new Error(`Unknown locale: ${locale}`)
-}
-
-export function getLocaleDateLocale(locale: AppLocale): string {
-  return getLocaleDefinition(locale).dateLocale
-}
+export type TranslationCatalog = typeof EN_TRANSLATIONS
+export type TranslationKey = keyof TranslationCatalog
 
 export function interpolate(template: string, values: TranslationValues = {}): string {
   const interpolationValues = new Map(Object.entries(values))
@@ -272,88 +184,19 @@ export function interpolate(template: string, values: TranslationValues = {}): s
   })
 }
 
-function localizedInterpolationValues(locale: AppLocale, values?: TranslationValues): TranslationValues | undefined {
-  if (!values || locale === 'en' || values.plural === undefined) return values
-  return { ...values, plural: '' }
-}
-
-export function translate(locale: AppLocale, key: TranslationKey, values?: TranslationValues): string {
-  const catalog = Reflect.get(TRANSLATIONS, locale) as Partial<Record<TranslationKey, string>> | undefined
-  const template = Reflect.get(catalog ?? {}, key) as string | undefined
-  const fallbackTemplate = Reflect.get(EN_TRANSLATIONS, key) as string
-  return interpolate(template ?? fallbackTemplate, localizedInterpolationValues(locale, values))
+export function translate(_locale: AppLocale, key: TranslationKey, values?: TranslationValues): string {
+  return interpolate(Reflect.get(EN_TRANSLATIONS, key) as string, values)
 }
 
 export function createTranslator(locale: AppLocale = DEFAULT_APP_LOCALE) {
   return (key: TranslationKey, values?: TranslationValues) => translate(locale, key, values)
 }
 
-function normalizeLocaleCode(value: string): AppLocale | null {
-  const normalized = value.trim().replaceAll('_', '-').toLowerCase()
-  if (!normalized) return null
-
-  const exactMatch = NORMALIZED_LOCALE_LOOKUP.get(normalized)
-  if (exactMatch) return exactMatch
-
-  const languageMatches = APP_LOCALES.filter((locale) => locale.toLowerCase().startsWith(`${normalized}-`))
-  return languageMatches.length === 1 ? languageMatches[0] : null
-}
-
-export function normalizeUiLanguagePreference(value: unknown): UiLanguagePreference | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  const lower = trimmed.toLowerCase()
-  if (lower === SYSTEM_UI_LANGUAGE || lower === 'auto') return SYSTEM_UI_LANGUAGE
-  return normalizeLocaleCode(trimmed)
-}
-
-export function serializeUiLanguagePreference(value: unknown): AppLocale | null {
-  const normalized = normalizeUiLanguagePreference(value)
-  if (!normalized || normalized === SYSTEM_UI_LANGUAGE) return null
-  return normalized
-}
-
-export function getBrowserLanguagePreferences(): string[] {
-  if (typeof navigator === 'undefined') return []
-  const languages = Array.isArray(navigator.languages) ? navigator.languages : []
-  if (languages.length > 0) return [...languages]
-  return navigator.language ? [navigator.language] : []
-}
-
 export function resolveEffectiveLocale(
-  preference: unknown,
-  languagePreferences: readonly string[] = getBrowserLanguagePreferences(),
+  preference?: unknown,
+  languagePreferences?: readonly string[],
 ): AppLocale {
-  const normalizedPreference = normalizeUiLanguagePreference(preference)
-  if (normalizedPreference && normalizedPreference !== SYSTEM_UI_LANGUAGE) {
-    return normalizedPreference
-  }
-
-  for (const language of languagePreferences) {
-    const locale = normalizeLocaleCode(language)
-    if (locale) return locale
-  }
-
+  void preference
+  void languagePreferences
   return DEFAULT_APP_LOCALE
-}
-
-export function localeDisplayName(locale: AppLocale, displayLocale: AppLocale = locale): string {
-  return translate(displayLocale, getLocaleDefinition(locale).labelKey)
-}
-
-export function localeSearchKeywords(locale: AppLocale): readonly string[] {
-  return getLocaleDefinition(locale).searchKeywords
-}
-
-export function hasLocaleCatalog(locale: AppLocale): boolean {
-  return locale === 'en' || Boolean(Reflect.get(TRANSLATIONS, locale))
-}
-
-export function localeCatalogLocales(): AppLocale[] {
-  return APP_LOCALES.filter((locale) => hasLocaleCatalog(locale))
-}
-
-export function isCanonicalAppLocale(value: string): value is AppLocale {
-  return isAppLocale(value)
 }
