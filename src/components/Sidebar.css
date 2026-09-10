@@ -3,8 +3,9 @@
    Spec section 2: the sidebar sits directly on the canvas, no border, no
    separate surface. Its top row is 44px so the traffic lights keep one y in
    both states. Open Editors is a pinned group above the Explorer (AIM-383).
-   Colours are the semantic variables in index.css; the token pass (AIM-382)
-   re-values them in place.
+   Colours are the semantic variables in index.css, re-valued to Linear's
+   sidebar sub-theme (AIM-382): rows 28px, radius 8px, 13px/500, hover and
+   active from the sidebar link tokens.
    ============================================== */
 
 .fuwa-sidebar {
@@ -16,7 +17,7 @@
   padding: 0 8px 8px;
   color: var(--text-secondary);
   font-size: 13px;
-  letter-spacing: -0.01em;
+  font-weight: 500;
   user-select: none;
 }
 
@@ -35,7 +36,7 @@
   height: 24px;
   padding: 0 8px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: default;
 }
 
@@ -55,9 +56,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 26px;
+  height: 28px;
   padding: 0 6px 0 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-secondary);
   white-space: nowrap;
   cursor: default;
@@ -65,12 +66,13 @@
 }
 
 .fuwa-sidebar-row:hover {
-  background: var(--state-hover-subtle);
+  background: var(--sidebar-row-hover);
+  color: var(--text-heading);
 }
 
 .fuwa-sidebar-row[data-active] {
-  background: var(--state-selected);
-  color: var(--text-primary);
+  background: var(--sidebar-row-active);
+  color: var(--text-heading);
 }
 
 .fuwa-sidebar-row:focus-visible {
@@ -79,11 +81,12 @@
 
 .fuwa-sidebar-row__icon {
   flex: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
+.fuwa-sidebar-row:hover .fuwa-sidebar-row__icon,
 .fuwa-sidebar-row[data-active] .fuwa-sidebar-row__icon {
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .fuwa-sidebar-row__name {

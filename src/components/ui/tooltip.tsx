@@ -35,7 +35,7 @@ const TooltipContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
 >(function TooltipContent({
   className,
-  sideOffset = 0,
+  sideOffset = 4,
   collisionPadding = 8,
   children,
   style,
@@ -49,14 +49,14 @@ const TooltipContent = React.forwardRef<
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "bg-foreground text-background z-50 w-fit max-w-[min(var(--radix-tooltip-content-available-width,22rem),22rem)] origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs text-balance",
+          // The menu surface (spec section 6 item 7): popover ground, hairline border, 8px radius, 11px.
+          "fuwa-menu-surface bg-popover text-popover-foreground z-50 w-fit max-w-[min(var(--radix-tooltip-content-available-width,22rem),22rem)] origin-(--radix-tooltip-content-transform-origin) rounded-lg px-2 py-[5px] text-[11px] leading-[15px] text-balance",
           className
         )}
         style={style}
         {...props}
       >
         {children}
-        <TooltipPrimitive.Arrow className="bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   )

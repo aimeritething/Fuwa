@@ -11,12 +11,12 @@
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   opacity: var(--close-affordance-opacity, 0);
   cursor: default;
 }
 
 .fuwa-close-affordance:hover {
-  background: var(--state-hover);
-  color: var(--text-primary);
+  background: var(--control-tertiary-hover);
+  color: var(--text-heading);
 }

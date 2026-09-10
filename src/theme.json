@@ -1,47 +1,49 @@
 {
   "editor": {
-    "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    "fontFamily": "'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     "fontSize": 15,
-    "lineHeight": 1.5,
+    "fontWeight": 450,
+    "lineHeight": 1.6,
+    "letterSpacing": "-0.0067em",
     "maxWidth": 792,
     "paddingHorizontal": 56,
     "paddingVertical": 20,
-    "paragraphSpacing": 8,
+    "paragraphSpacing": 16,
     "dividerFollowedByHeadingMarginTop": 8
   },
   "headings": {
     "h1": {
-      "fontSize": 32,
-      "fontWeight": 700,
-      "lineHeight": 1.2,
-      "marginTop": 32,
-      "marginBottom": 12,
+      "fontSize": 22,
+      "fontWeight": 600,
+      "lineHeight": "29.6px",
+      "marginTop": 48,
+      "marginBottom": 16,
       "color": "var(--text-heading)",
-      "letterSpacing": -0.5
+      "letterSpacing": "-0.07px"
     },
     "h2": {
-      "fontSize": 27,
+      "fontSize": 19,
       "fontWeight": 600,
-      "lineHeight": 1.4,
-      "marginTop": 28,
-      "marginBottom": 10,
+      "lineHeight": "28px",
+      "marginTop": 32,
+      "marginBottom": 16,
       "color": "var(--text-heading)",
-      "letterSpacing": -0.5
+      "letterSpacing": "0.05px"
     },
     "h3": {
-      "fontSize": 20,
-      "fontWeight": 600,
-      "lineHeight": 1.4,
-      "marginTop": 24,
-      "marginBottom": 8,
-      "color": "var(--text-heading)",
-      "letterSpacing": -0.5
-    },
-    "h4": {
       "fontSize": 17,
       "fontWeight": 600,
-      "lineHeight": 1.4,
-      "marginTop": 20,
+      "lineHeight": "24px",
+      "marginTop": 24,
+      "marginBottom": 6,
+      "color": "var(--text-heading)",
+      "letterSpacing": "0.1px"
+    },
+    "h4": {
+      "fontSize": 15,
+      "fontWeight": 600,
+      "lineHeight": "24px",
+      "marginTop": 22,
       "marginBottom": 6,
       "color": "var(--text-heading)",
       "letterSpacing": 0
@@ -50,71 +52,71 @@
   "lists": {
     "bulletSymbol": "•",
     "bulletSize": 24,
-    "bulletColor": "var(--accent-blue)",
+    "bulletColor": "var(--text-primary)",
     "indentSize": 24,
-    "itemSpacing": 4,
-    "paddingLeft": 8,
+    "itemSpacing": 2,
+    "paddingLeft": 0,
     "nestedBulletSymbols": ["•", "◦", "▪"],
-    "bulletGap": 6
+    "bulletGap": 0
   },
   "checkboxes": {
-    "size": 18,
+    "size": 14,
     "borderRadius": 3,
-    "checkedColor": "var(--accent-blue)",
-    "uncheckedBorderColor": "var(--text-muted)",
+    "checkedColor": "var(--text-primary)",
+    "uncheckedBorderColor": "var(--text-faint)",
     "gap": 8
   },
   "inlineStyles": {
     "bold": {
-      "fontWeight": 700,
-      "color": "var(--text-primary)"
+      "fontWeight": 600,
+      "color": "var(--text-heading)"
     },
     "italic": {
       "fontStyle": "italic",
-      "color": "var(--text-primary)"
+      "color": "inherit"
     },
     "strikethrough": {
       "color": "var(--text-tertiary)",
       "textDecoration": "line-through"
     },
     "code": {
-      "fontFamily": "'SF Mono', 'Fira Code', monospace",
-      "fontSize": 14,
-      "backgroundColor": "var(--bg-hover-subtle)",
-      "paddingHorizontal": 4,
-      "paddingVertical": 2,
-      "borderRadius": 3,
-      "color": "var(--text-secondary)"
+      "fontFamily": "'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
+      "fontSize": "0.9375em",
+      "backgroundColor": "var(--editor-inline-code-background)",
+      "paddingHorizontal": "0.25em",
+      "paddingVertical": "0.5px",
+      "borderRadius": "0.2em",
+      "color": "inherit"
     },
     "link": {
-      "color": "var(--accent-blue)",
-      "textDecoration": "underline"
+      "color": "var(--link-color)",
+      "textDecoration": "none"
     },
     "wikilink": {
-      "color": "var(--accent-blue)",
+      "color": "var(--link-color)",
       "textDecoration": "none",
       "borderBottom": "1px dotted currentColor",
       "cursor": "pointer"
     }
   },
   "blockquote": {
-    "borderLeftWidth": 3,
-    "borderLeftColor": "var(--accent-blue)",
+    "borderLeftWidth": 4,
+    "borderLeftColor": "var(--border-strong)",
     "paddingLeft": 16,
-    "marginVertical": 12,
-    "color": "var(--text-secondary)",
-    "fontStyle": "italic"
+    "marginVertical": 0,
+    "color": "inherit",
+    "fontStyle": "normal"
   },
   "table": {
-    "borderColor": "var(--border-primary)",
-    "headerBackground": "var(--bg-card)",
-    "cellPaddingHorizontal": 12,
-    "cellPaddingVertical": 8,
-    "fontSize": 14
+    "borderColor": "var(--border-default)",
+    "headerBackground": "var(--surface-shade)",
+    "cellPaddingHorizontal": 10,
+    "cellPaddingVertical": 6,
+    "fontSize": 15
   },
   "horizontalRule": {
-    "color": "var(--border-primary)",
-    "marginVertical": 24,
+    "color": "var(--border-strong)",
+    "marginVertical": 22,
     "thickness": 1
   },
   "colors": {
