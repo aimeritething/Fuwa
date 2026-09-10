@@ -23,6 +23,10 @@ _Avoid_: Asset, upload
 **Frontmatter**:
 The YAML block at the top of a Document. Preserved byte-for-byte across saves; visible and editable only in Raw mode.
 
+**Image file**:
+A file in the Folder whose extension is one of apng, avif, bmp, gif, ico, jpeg, jpg, png, svg, tif, tiff, webp. Fuwa shows it and never edits it. An Attachment is an Image file that a Document links to; an Image file need not be an Attachment.
+_Avoid_: Image (alone, when you mean the file rather than the picture inside a Document), asset, media
+
 ### Editing
 
 **Rich mode**:
@@ -39,22 +43,22 @@ Writing a Document's pending edits to disk after a short idle delay. Disk is wri
 ### Shell
 
 **Explorer**:
-The sidebar section that shows the Folder as a tree of Documents, sub-folders, and image files.
+The sidebar section that shows the Folder as a tree of Documents, sub-folders, and Image files. Any other file is not shown.
 _Avoid_: File tree, folder tree, sidebar (the Explorer is one section of the sidebar)
 
 **Open Editors**:
-The sidebar section listing every Document currently open, including Documents outside the Folder. Mirrors the tab bar.
+The sidebar section listing every Document and Image file currently open, including Documents outside the Folder. Mirrors the tab bar.
 
 **Tab**:
-One entry in the tab bar above the editor; one Tab per open Document. Clicking a Document in the Explorer always opens a real Tab (there are no preview tabs).
+One entry in the tab bar above the editor; one Tab per open Document or Image file. Clicking a Document or an Image file in the Explorer always opens a real Tab (there are no preview tabs). An Image file's Tab shows the picture, fitted to the card; it has no Rich or Raw mode.
 
 **Command Menu**:
-The Cmd+K palette that lists Fuwa's commands and, as you type, fuzzy-matches both commands and Document names. Every command in the native menu bar appears here and nothing else does.
+The Cmd+K palette that lists Fuwa's commands and, as you type, fuzzy-matches commands, Document names, and Image file names. Every command in the native menu bar appears here and nothing else does.
 _Avoid_: Command palette, palette
 
 **Quick Open**:
-The Command Menu's search-only mode, opened with Cmd+P: it fuzzy-matches Document names within the Folder and shows no commands. Searches names only, never contents.
+The Command Menu's search-only mode, opened with Cmd+P: it fuzzy-matches Document and Image file names within the Folder and shows no commands. Searches names only, never contents.
 _Avoid_: Search, file picker
 
 **Session**:
-The state Fuwa restores on launch: the Folder, the Open Editors (each with its Rich or Raw mode), the active Document, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.
+The state Fuwa restores on launch: the Folder, the Open Editors (each Document with its Rich or Raw mode), the active Tab, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.
