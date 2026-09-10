@@ -10,7 +10,10 @@ import type { FolderNode } from '../types'
  * Extending it for a later spec: seed files through `createMockVault(seed)` or
  * `reset(seed)`, queue Finder-style opens with `queuePendingOpen`, and assert on
  * `calls` (every invocation in order). Add a case to the `answer` switch when a
- * spec needs a command the fixture does not answer yet. Like a real directory
+ * spec needs a command the fixture does not answer yet. The system file dialog
+ * has no command behind it, so the fixture stands in for that too: a spec
+ * queues the path the user "chooses" with `queueDialogSelection` and the shell
+ * takes it with `takeDialogSelection`. Like a real directory
  * tree, every ancestor folder of a seeded or saved path exists implicitly. Shapes follow the Rust commands:
  * absolute paths in, Folder-relative `/`-separated paths in `list_vault_folders`,
  * `modifiedAt` in seconds, errors as the Rust boundary's strings. `list_files`
@@ -60,7 +63,11 @@ export interface MockVault {
   writeNote(path: string, content: string): void
   watchedPath(): string | null
   queuePendingOpen(paths: string[]): void
-  /** Restore the seed (or a new one), clear the watcher, the pending opens and the call log. */
+  /** Queue what the next Open Document… dialogs "return", in order. */
+  queueDialogSelection(paths: string[]): void
+  /** The next queued dialog selection, or null for a cancelled dialog. */
+  takeDialogSelection(): string | null
+  /** Restore the seed (or a new one), clear the watcher, the pending opens, the dialog queue and the call log. */
   reset(seed?: MockVaultFile[]): void
 }
 
@@ -139,6 +146,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
   let files = new Map<string, MockVaultFile>()
   let watched: string | null = null
   let pendingOpen: string[] = []
+  let dialogSelections: string[] = []
   const calls: MockVaultCall[] = []
 
   function ensureFolders(path: string, modifiedAt: number): void {
@@ -156,6 +164,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     }
     watched = null
     pendingOpen = []
+    dialogSelections = []
     calls.length = 0
   }
 
@@ -231,6 +240,14 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     watchedPath: () => watched,
     queuePendingOpen: (paths) => {
       pendingOpen = [...pendingOpen, ...paths]
+    },
+    queueDialogSelection: (paths) => {
+      dialogSelections = [...dialogSelections, ...paths]
+    },
+    takeDialogSelection: () => {
+      const [next, ...rest] = dialogSelections
+      dialogSelections = rest
+      return next ?? null
     },
     reset,
   }

@@ -3,8 +3,8 @@
     "fontFamily": "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
     "fontSize": 15,
     "lineHeight": 1.5,
-    "maxWidth": 820,
-    "paddingHorizontal": 40,
+    "maxWidth": 792,
+    "paddingHorizontal": 56,
     "paddingVertical": 20,
     "paragraphSpacing": 8,
     "dividerFollowedByHeadingMarginTop": 8
