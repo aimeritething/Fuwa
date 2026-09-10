@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { Tab } from '../types'
 
 /**
@@ -6,8 +6,9 @@ import type { Tab } from '../types'
  * keeps the Tab open with an error bar offering Retry and Discard changes;
  * closing that Tab offers the same two instead of closing silently; ⌘Q writes
  * every pending edit first and, when one is refused, stays open with the same
- * choices plus Discard and quit. This hook owns the failure of each Document
- * and the one prompt; the save hook keeps the buffer, the Tabs hold the bytes.
+ * choices plus Discard and quit. `useWriteFailureRecord` is the failure of
+ * each Document; `useWriteFailures` adds the actions and the one prompt on
+ * top of it. The save hook keeps the buffer, the Tabs hold the bytes.
  */
 
 export interface WriteFailure {
@@ -25,33 +26,39 @@ export interface WritePrompt {
 
 export type WritePromptChoice = 'retry' | 'discard' | 'discardAndQuit'
 
-export interface WriteFailureDeps {
-  tabs: Tab[]
-  activeTabPath: string | null
-  /** Push the active Document's fresh keystrokes into the buffer and write it; rejects when refused. */
-  settleActiveNote: () => Promise<void>
-  /** Write `content` as the Document's buffer now; rejects when refused. */
-  writeBuffer: (path: string, content: string) => Promise<void>
-  /** Drop the Document's buffered edits and put the disk bytes back in its Tab. */
-  revertToDisk: (path: string) => Promise<void>
-  closeTab: (path: string) => void
-  exitApp: () => Promise<void>
-}
-
-export interface WriteFailures {
+export interface WriteFailureRecord {
   /** The Document's failure while its last write stands refused, else null. */
   failureFor: (path: string | null) => WriteFailure | null
   recordFailure: (path: string, error: unknown) => void
   /** A write landed (from any path): the bar goes away. */
   clearFailure: (path: string) => void
-  /** The deps' settle, with a refusal recorded against the active Document before it propagates. */
+  /** The record as of now, for a decision made before React re-renders. */
+  failuresRef: MutableRefObject<Readonly<Record<string, string>>>
+}
+
+export interface WriteFailureDeps {
+  record: WriteFailureRecord
+  tabs: Tab[]
+  activeTabPath: string | null
+  /** Push the active Document's fresh keystrokes into its buffer and write it; rejects when refused. */
   settleActiveNote: () => Promise<void>
+  /** Write the Document's buffer again, `content` being the Tab's copy of it; rejects when refused. */
+  writeBuffer: (path: string, content: string) => Promise<void>
+  /** Drop the Document's buffered edits and put the disk bytes back in its Tab; rejects when the file is gone. */
+  revertToDisk: (path: string) => Promise<void>
+  closeTab: (path: string) => void
+  exitApp: () => Promise<void>
+}
+
+export interface WriteFailures extends WriteFailureRecord {
+  /** The deps' settle, with a refusal recorded against the active Document before it propagates. */
+  settleAndRecord: () => Promise<void>
   /** The bar's Retry: true once the write lands. */
   retry: (path: string) => Promise<boolean>
-  /** The bar's Discard changes: true once the disk bytes are back. */
+  /** The bar's Discard changes: true once the disk bytes are back (or the Tab is closed, the file being gone). */
   discard: (path: string) => Promise<boolean>
-  /** Close a Tab, or ask first when its last write was refused. */
-  closeTab: (path: string) => void
+  /** Close a Tab, or ask first when its last write stands refused. */
+  closeTabOrAsk: (path: string) => void
   /** ⌘Q: write every pending edit, then exit; ask about the first refusal instead. */
   quit: () => Promise<void>
   prompt: WritePrompt | null
@@ -64,37 +71,31 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
-  const depsRef = useRef(deps)
-  useEffect(() => {
-    depsRef.current = deps
-  }, [deps])
-
-  // The ref is the source of truth so a decision made right after a refusal
-  // (⌘W's close following its settle) sees it before React re-renders.
-  const [failures, setFailures] = useState<Readonly<Record<string, string>>>({})
-  const failuresRef = useRef(failures)
-  const [prompt, setPrompt] = useState<WritePrompt | null>(null)
-  const promptRef = useRef(prompt)
-
-  const showPrompt = useCallback((next: WritePrompt | null) => {
-    promptRef.current = next
-    setPrompt(next)
+/** State whose ref is updated in the same tick as the setter, for decisions made before React re-renders. */
+function useStateWithRef<T>(initial: T): [T, MutableRefObject<T>, (next: T) => void] {
+  const [value, setValue] = useState(initial)
+  const ref = useRef(value)
+  const set = useCallback((next: T) => {
+    ref.current = next
+    setValue(next)
   }, [])
+  return [value, ref, set]
+}
+
+export function useWriteFailureRecord(): WriteFailureRecord {
+  const [failures, failuresRef, setFailures] = useStateWithRef<Readonly<Record<string, string>>>({})
 
   const recordFailure = useCallback((path: string, error: unknown) => {
     console.error(`Could not save ${path}:`, error)
-    failuresRef.current = { ...failuresRef.current, [path]: messageOf(error) }
-    setFailures(failuresRef.current)
-  }, [])
+    setFailures({ ...failuresRef.current, [path]: messageOf(error) })
+  }, [failuresRef, setFailures])
 
   const clearFailure = useCallback((path: string) => {
     if (!(path in failuresRef.current)) return
     const { [path]: _cleared, ...rest } = failuresRef.current
     void _cleared
-    failuresRef.current = rest
     setFailures(rest)
-  }, [])
+  }, [failuresRef, setFailures])
 
   const failureFor = useCallback(
     (path: string | null): WriteFailure | null => {
@@ -105,17 +106,30 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
     [failures],
   )
 
-  const settleActiveNote = useCallback(async () => {
-    const { activeTabPath, settleActiveNote: settle } = depsRef.current
+  return { failureFor, recordFailure, clearFailure, failuresRef }
+}
+
+export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
+  const { record } = deps
+  const { recordFailure, clearFailure, failuresRef } = record
+  const depsRef = useRef(deps)
+  useEffect(() => {
+    depsRef.current = deps
+  }, [deps])
+
+  const [prompt, promptRef, showPrompt] = useStateWithRef<WritePrompt | null>(null)
+
+  const settleAndRecord = useCallback(async () => {
+    const { activeTabPath, settleActiveNote } = depsRef.current
     try {
-      await settle()
+      await settleActiveNote()
     } catch (error) {
       if (activeTabPath) recordFailure(activeTabPath, error)
       throw error
     }
   }, [recordFailure])
 
-  /** Write the Tab's buffer again; a Document that is no longer open has nothing left to write. */
+  /** Write the Document's buffer again; a Document that is no longer open has nothing left to write. */
   const retry = useCallback(
     async (path: string): Promise<boolean> => {
       const tab = depsRef.current.tabs.find((candidate) => candidate.entry.path === path)
@@ -135,13 +149,18 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
     [clearFailure, recordFailure],
   )
 
+  /**
+   * Put the disk bytes back. A file that cannot be read any more has no bytes
+   * to go back to: the Document is gone, so its Tab closes (spec section 5's
+   * rule for a Document deleted from outside).
+   */
   const discard = useCallback(
     async (path: string): Promise<boolean> => {
       try {
         await depsRef.current.revertToDisk(path)
       } catch (error) {
-        console.error(`Could not reload ${path} from disk:`, error)
-        return false
+        console.warn(`Closing ${path}: it could not be read back from disk:`, error)
+        depsRef.current.closeTab(path)
       }
       clearFailure(path)
       return true
@@ -149,7 +168,7 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
     [clearFailure],
   )
 
-  const closeTab = useCallback(
+  const closeTabOrAsk = useCallback(
     (path: string) => {
       const message = failuresRef.current[path]
       if (message === undefined) {
@@ -158,8 +177,17 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
       }
       showPrompt({ kind: 'close', path, message })
     },
-    [showPrompt],
+    [failuresRef, showPrompt],
   )
+
+  const exit = useCallback(async () => {
+    showPrompt(null)
+    try {
+      await depsRef.current.exitApp()
+    } catch (error) {
+      console.error('Could not quit:', error)
+    }
+  }, [showPrompt])
 
   /** Write every refused Document again, in Tab order; ask about the first that is refused again, else exit. */
   const continueQuit = useCallback(async () => {
@@ -170,26 +198,24 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
       showPrompt({ kind: 'quit', path, message: failuresRef.current[path] })
       return
     }
-    showPrompt(null)
-    await depsRef.current.exitApp()
-  }, [retry, showPrompt])
+    await exit()
+  }, [exit, failuresRef, retry, showPrompt])
 
   const quit = useCallback(async () => {
     try {
-      await settleActiveNote()
+      await settleAndRecord()
     } catch {
       // Recorded against the active Document; the loop below asks about it.
     }
     await continueQuit()
-  }, [continueQuit, settleActiveNote])
+  }, [continueQuit, settleAndRecord])
 
   const answerPrompt = useCallback(
     async (choice: WritePromptChoice) => {
       const current = promptRef.current
       if (!current) return
       if (choice === 'discardAndQuit') {
-        showPrompt(null)
-        await depsRef.current.exitApp()
+        await exit()
         return
       }
       const resolved = choice === 'retry' ? await retry(current.path) : await discard(current.path)
@@ -204,19 +230,17 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
       }
       await continueQuit()
     },
-    [continueQuit, discard, retry, showPrompt],
+    [continueQuit, discard, exit, failuresRef, promptRef, retry, showPrompt],
   )
 
   const dismissPrompt = useCallback(() => showPrompt(null), [showPrompt])
 
   return {
-    failureFor,
-    recordFailure,
-    clearFailure,
-    settleActiveNote,
+    ...record,
+    settleAndRecord,
     retry,
     discard,
-    closeTab,
+    closeTabOrAsk,
     quit,
     prompt,
     answerPrompt,
