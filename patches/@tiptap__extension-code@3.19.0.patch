@@ -1,0 +1,39 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 650402009637c04dce23b2de9baa48b69601f6e7..db95d00afaa0ed96e96575ca055a1fd993cf3c1f 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -38,7 +38,7 @@ var Code = import_core.Mark.create({
+       HTMLAttributes: {}
+     };
+   },
+-  excludes: "_",
++  excludes: "code bold italic underline strike textColor backgroundColor",
+   code: true,
+   exitable: true,
+   parseHTML() {
+diff --git a/dist/index.js b/dist/index.js
+index 7f9e650a5713377d8d6a824f884bbfe6d27fe519..e6edb15ce6fb2a3e6713b031666746260563e0eb 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -9,7 +9,7 @@ var Code = Mark.create({
+       HTMLAttributes: {}
+     };
+   },
+-  excludes: "_",
++  excludes: "code bold italic underline strike textColor backgroundColor",
+   code: true,
+   exitable: true,
+   parseHTML() {
+diff --git a/src/code.ts b/src/code.ts
+index 14a276c9201070659dbda2a33d34738f9e50c5ec..3e71b71a5efc5a042526dcb588613be05d00e10e 100644
+--- a/src/code.ts
++++ b/src/code.ts
+@@ -57,7 +57,7 @@ export const Code = Mark.create<CodeOptions>({
+     }
+   },
+ 
+-  excludes: '_',
++  excludes: 'code bold italic underline strike textColor backgroundColor',
+ 
+   code: true,
+ 

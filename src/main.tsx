@@ -1,0 +1,279 @@
+import { lazy, StrictMode, Suspense } from 'react'
+import * as Sentry from '@sentry/react'
+import { createRoot } from 'react-dom/client'
+import '@fontsource-variable/inter/wght.css'
+import '@fontsource-variable/jetbrains-mono/wght.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import '@fontsource/ibm-plex-mono/600.css'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import './index.css'
+import { FrontendReadyMarker } from './components/FrontendReadyMarker'
+import { LinuxTitlebar } from './components/LinuxTitlebar'
+import { StartupShellFallback } from './components/StartupShellFallback'
+import { applyStoredThemeMode } from './lib/themeMode'
+import {
+  APP_COMMAND_EVENT_NAME,
+  isAppCommandId,
+  isNativeMenuCommandId,
+} from './hooks/appCommandDispatcher'
+import {
+  getShortcutEventInit,
+  type AppCommandShortcutEventInit,
+  type AppCommandShortcutEventOptions,
+} from './hooks/appCommandCatalog'
+import {
+  isBlockNoteRenderUpdateDepthError,
+  isRecoverableBlockNoteRenderError,
+  isRecoveredBlockNoteRenderError,
+} from './components/blockNoteRenderRecovery'
+import { isRecoveredActionTooltipError } from './components/ui/actionTooltipRecovery'
+import { isMac, shouldUseCustomWindowChrome } from './utils/platform'
+import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
+import { markStartupPhase } from './lib/startupPerformance'
+
+markStartupPhase('renderer_module_loaded')
+
+const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
+const MACOS_FULLSCREEN_CHROME_CLASS = 'mac-chrome-fullscreen'
+
+function isTauriRuntime(): boolean {
+  return '__TAURI__' in window || '__TAURI_INTERNALS__' in window
+}
+
+async function installMacosFullscreenChromeTracking(): Promise<void> {
+  if (!isMac() || !isTauriRuntime()) return
+
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const appWindow = getCurrentWindow()
+    const syncFullscreenClass = () => {
+      void appWindow.isFullscreen()
+        .then((isFullscreen) => {
+          document.body.classList.toggle(MACOS_FULLSCREEN_CHROME_CLASS, isFullscreen)
+        })
+        .catch(() => {})
+    }
+
+    syncFullscreenClass()
+    await appWindow.onResized(syncFullscreenClass).catch(() => {})
+  } catch {
+    document.body.classList.remove(MACOS_FULLSCREEN_CHROME_CLASS)
+  }
+}
+
+const RootApp = lazy(async () => {
+  markStartupPhase('app_module_requested')
+  const appModule = await import('./App.tsx')
+  markStartupPhase('app_module_loaded')
+  return appModule
+})
+
+function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
+  if (!dataTransfer) return false
+  if (dataTransfer.files.length > 0) return true
+  if (Array.from(dataTransfer.types).includes('Files')) return true
+
+  return Array.from(dataTransfer.items).some((item) => item.kind === 'file')
+}
+
+function preventFileDropNavigation(event: DragEvent): void {
+  if (!dataTransferHasFiles(event.dataTransfer)) return
+
+  event.preventDefault()
+}
+
+function isTldrawContextMenuTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(TLDRAW_CONTEXT_MENU_SELECTOR) !== null
+}
+
+function preventNativeContextMenu(event: MouseEvent): void {
+  if (isTldrawContextMenuTarget(event.target)) return
+
+  event.preventDefault()
+}
+
+document.addEventListener('dragover', preventFileDropNavigation, true)
+document.addEventListener('drop', preventFileDropNavigation, true)
+
+// Disable native WebKit context menu in Tauri (WKWebView intercepts right-click
+// at native level before React's synthetic events can call preventDefault).
+// Capture phase fires first → prevents native menu; React bubble phase still fires
+// → our custom context menus (e.g. sidebar right-click) work correctly.
+if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
+  document.addEventListener('contextmenu', preventNativeContextMenu, true)
+}
+
+if (shouldUseCustomWindowChrome()) {
+  document.body.classList.add('custom-window-chrome')
+}
+
+if (isMac()) {
+  document.body.classList.add('mac-chrome')
+  void installMacosFullscreenChromeTracking()
+}
+
+applyStoredThemeMode(document, window.localStorage)
+
+function dispatchDeterministicShortcutEvent(init: AppCommandShortcutEventInit) {
+  const target =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : document.body ?? window
+
+  target.dispatchEvent(new KeyboardEvent('keydown', init))
+}
+
+window.__laputaTest = {
+  dispatchAppCommand(id: string) {
+    if (!isAppCommandId(id)) {
+      throw new Error(`Unknown app command: ${id}`)
+    }
+    window.dispatchEvent(new CustomEvent(APP_COMMAND_EVENT_NAME, { detail: id }))
+  },
+  dispatchShortcutEvent(init: AppCommandShortcutEventInit) {
+    dispatchDeterministicShortcutEvent(init)
+  },
+  async triggerMenuCommand(id: string) {
+    if (!isNativeMenuCommandId(id)) {
+      throw new Error(`Unknown native menu command: ${id}`)
+    }
+
+    if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('trigger_menu_command', { id })
+    }
+
+    if (!window.__laputaTest?.dispatchBrowserMenuCommand) {
+      throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
+    }
+
+    window.__laputaTest.dispatchBrowserMenuCommand(id)
+    return undefined
+  },
+  triggerShortcutCommand(id: string, options?: AppCommandShortcutEventOptions) {
+    if (!isAppCommandId(id)) {
+      throw new Error(`Unknown app command: ${id}`)
+    }
+
+    const init = getShortcutEventInit(id, options)
+    if (!init) {
+      throw new Error(`Command ${id} does not define a keyboard shortcut`)
+    }
+
+    dispatchDeterministicShortcutEvent(init)
+  },
+}
+
+const sentryReactErrorHandler = Sentry.reactErrorHandler()
+
+function isResizeObserverLoopError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('ResizeObserver loop completed with undelivered notifications')
+    || message.includes('ResizeObserver loop limit exceeded')
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.stack ?? error.message : String(error)
+}
+
+function isStartupDefaultExportImportError(error: unknown): boolean {
+  const message = errorText(error)
+  return message.includes("Cannot read properties of undefined (reading 'default')")
+    || message.includes("undefined is not an object (evaluating 'o.default')")
+}
+
+function fatalRenderOverlay(): HTMLElement {
+  const existing = document.getElementById('tolaria-fatal-render-error')
+  const overlay = existing ?? document.createElement('pre')
+  overlay.id = 'tolaria-fatal-render-error'
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:24px',
+    'z-index:2147483647',
+    'overflow:auto',
+    'margin:0',
+    'padding:16px',
+    'border-radius:8px',
+    'background:#1f1f1f',
+    'color:#fff',
+    'font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
+    'white-space:pre-wrap',
+  ].join(';')
+  return overlay
+}
+
+function showFatalRenderError(
+  error: unknown,
+  errorInfo: { componentStack?: string },
+): void {
+  const overlay = fatalRenderOverlay()
+  overlay.textContent = [
+    'Tolaria render error',
+    '',
+    errorText(error),
+    '',
+    errorInfo.componentStack ?? '',
+  ].join('\n')
+  document.body.appendChild(overlay)
+}
+
+function captureReactRootError(
+  error: unknown,
+  errorInfo: { componentStack?: string },
+): void {
+  if (isResizeObserverLoopError(error)) return
+  if (isStartupDefaultExportImportError(error) && reloadFrontendOnceIfStartupFailed()) return
+
+  const componentStack = errorInfo.componentStack ?? ''
+  showFatalRenderError(error, { componentStack })
+  sentryReactErrorHandler(error, { componentStack })
+  reloadFrontendOnceIfStartupFailed()
+}
+
+function reportNonFatalReactRootError(
+  error: unknown,
+  errorInfo: { componentStack?: string },
+): void {
+  if (isResizeObserverLoopError(error)) return
+
+  sentryReactErrorHandler(error, { componentStack: errorInfo.componentStack ?? '' })
+}
+
+function shouldIgnoreRecoverableRootError(error: unknown, componentStack: string): boolean {
+  if (isResizeObserverLoopError(error)) return true
+  if (isRecoveredBlockNoteRenderError(error, componentStack)) return true
+  if (isRecoverableBlockNoteRenderError(error) && !isBlockNoteRenderUpdateDepthError(error)) return true
+  return isRecoveredActionTooltipError(error, componentStack)
+}
+
+function captureRecoverableReactRootError(
+  error: unknown,
+  errorInfo: { componentStack?: string },
+): void {
+  const componentStack = errorInfo.componentStack ?? ''
+  if (shouldIgnoreRecoverableRootError(error, componentStack)) return
+  reportNonFatalReactRootError(error, { componentStack })
+}
+
+function getRequiredRootElement(): HTMLElement {
+  const root = document.getElementById('root')
+  if (!root) throw new Error('Tolaria root element is missing')
+  return root
+}
+
+createRoot(getRequiredRootElement(), {
+  onCaughtError: captureRecoverableReactRootError,
+  onUncaughtError: captureReactRootError,
+  onRecoverableError: captureRecoverableReactRootError,
+}).render(
+  <StrictMode>
+    <TooltipProvider>
+      <LinuxTitlebar />
+      <Suspense fallback={<StartupShellFallback />}>
+        <RootApp />
+        <FrontendReadyMarker />
+      </Suspense>
+    </TooltipProvider>
+  </StrictMode>,
+)
