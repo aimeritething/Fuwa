@@ -1,5 +1,3 @@
-#[cfg(not(target_os = "macos"))]
-use crate::window_state::MAIN_WINDOW_LABEL;
 use serde::{Deserialize, Deserializer};
 use std::{
     borrow::Cow,
@@ -20,13 +18,11 @@ use tauri::{
 };
 
 const APP_COMMAND_MANIFEST_JSON: &str = include_str!("../../src/shared/appCommandManifest.json");
+const APP_NAME: &str = "Fuwa";
+#[cfg(not(target_os = "macos"))]
+const MAIN_WINDOW_LABEL: &str = "main";
 const NOTE_DEPENDENT_GROUP: &str = "noteDependent";
-const EDITOR_FIND_DEPENDENT_GROUP: &str = "editorFindDependent";
-const NOTE_LIST_SEARCH_DEPENDENT_GROUP: &str = "noteListSearchDependent";
-const RESTORE_DELETED_DEPENDENT_GROUP: &str = "restoreDeletedDependent";
-const GIT_COMMIT_DEPENDENT_GROUP: &str = "gitCommitDependent";
-const GIT_CONFLICT_DEPENDENT_GROUP: &str = "gitConflictDependent";
-const GIT_NO_REMOTE_DEPENDENT_GROUP: &str = "gitNoRemoteDependent";
+const VAULT_DEPENDENT_GROUP: &str = "vaultDependent";
 
 type MenuResult = Result<Submenu<tauri::Wry>, Box<dyn Error>>;
 type AppSubmenuBuilder<'a> = SubmenuBuilder<'a, tauri::Wry, App>;
@@ -71,13 +67,10 @@ enum ManifestMenuItem {
         accelerator: ManifestAccelerator,
         enabled: Option<bool>,
     },
-    #[serde(rename = "menu-event")]
-    MenuEvent {
-        id: String,
+    #[serde(rename = "submenu")]
+    Submenu {
         label: PlatformLabel,
-        #[serde(default, deserialize_with = "deserialize_accelerator")]
-        accelerator: ManifestAccelerator,
-        enabled: Option<bool>,
+        items: Vec<ManifestMenuItem>,
     },
 }
 
@@ -144,8 +137,7 @@ impl ManifestMenuItem {
                 .commands
                 .get(command)
                 .map(|command| command.id.as_str()),
-            Self::MenuEvent { id, .. } => Some(id.as_str()),
-            Self::Separator => None,
+            Self::Separator | Self::Submenu { .. } => None,
         }
     }
 
@@ -157,14 +149,13 @@ impl ManifestMenuItem {
                     .get(command)
                     .map(|command| command.id.as_str())
             }),
-            Self::MenuEvent { id, .. } => Some(id.as_str()),
-            Self::Separator => None,
+            Self::Separator | Self::Submenu { .. } => None,
         }
     }
 
     fn label(&self, target_os: &str) -> Option<&str> {
         match self {
-            Self::Command { label, .. } | Self::MenuEvent { label, .. } => {
+            Self::Command { label, .. } | Self::Submenu { label, .. } => {
                 Some(label.resolve(target_os))
             }
             Self::Separator => None,
@@ -186,20 +177,14 @@ impl ManifestMenuItem {
                     .and_then(|command| command.shortcut.as_ref())
                     .map(|shortcut| shortcut.accelerator.as_str()),
             },
-            Self::MenuEvent { accelerator, .. } => match accelerator {
-                ManifestAccelerator::Explicit(accelerator) => Some(accelerator.as_str()),
-                ManifestAccelerator::Suppressed | ManifestAccelerator::Inherit => None,
-            },
-            Self::Separator => None,
+            Self::Separator | Self::Submenu { .. } => None,
         }
     }
 
     fn enabled(&self) -> bool {
         match self {
-            Self::Command { enabled, .. } | Self::MenuEvent { enabled, .. } => {
-                enabled.unwrap_or(true)
-            }
-            Self::Separator => true,
+            Self::Command { enabled, .. } => enabled.unwrap_or(true),
+            Self::Separator | Self::Submenu { .. } => true,
         }
     }
 }
@@ -214,13 +199,28 @@ fn manifest() -> &'static AppCommandManifest {
     })
 }
 
+/// Collect the leaf items (commands and separators) of `items`, descending
+/// into nested submenus so their commands register for menu-event dispatch.
+fn collect_leaf_menu_items<'a>(
+    items: &'a [ManifestMenuItem],
+    leaves: &mut Vec<&'a ManifestMenuItem>,
+) {
+    for item in items {
+        match item {
+            ManifestMenuItem::Submenu { items, .. } => collect_leaf_menu_items(items, leaves),
+            _ => leaves.push(item),
+        }
+    }
+}
+
 fn manifest_menu_items() -> impl Iterator<Item = &'static ManifestMenuItem> {
     let manifest = manifest();
-    manifest
-        .menus
-        .iter()
-        .flat_map(|section| section.items.iter())
-        .chain(manifest.app_menu.iter())
+    let mut leaves = Vec::new();
+    for section in &manifest.menus {
+        collect_leaf_menu_items(&section.items, &mut leaves);
+    }
+    collect_leaf_menu_items(&manifest.app_menu, &mut leaves);
+    leaves.into_iter()
 }
 
 fn custom_menu_ids() -> &'static HashSet<String> {
@@ -294,33 +294,39 @@ fn append_manifest_item<'a>(
     builder: AppSubmenuBuilder<'a>,
     item: &ManifestMenuItem,
 ) -> Result<AppSubmenuBuilder<'a>, Box<dyn Error>> {
-    if matches!(item, ManifestMenuItem::Separator) {
-        return Ok(builder.separator());
+    match item {
+        ManifestMenuItem::Separator => Ok(builder.separator()),
+        ManifestMenuItem::Submenu { label, items } => {
+            let submenu = build_manifest_submenu(app, label.resolve(std::env::consts::OS), items)?;
+            Ok(builder.item(&submenu))
+        }
+        ManifestMenuItem::Command { .. } => {
+            let Some(item) = build_manifest_menu_item(app, item)? else {
+                return Ok(builder);
+            };
+            Ok(builder.item(&item))
+        }
     }
-
-    let Some(item) = build_manifest_menu_item(app, item)? else {
-        return Ok(builder);
-    };
-    Ok(builder.item(&item))
 }
 
-fn build_manifest_menu(app: &App, label: &str) -> MenuResult {
-    let section = manifest_section(label)?;
-    let mut builder = SubmenuBuilder::new(app, section.label.as_str());
-    for item in &section.items {
+fn build_manifest_submenu(app: &App, label: &str, items: &[ManifestMenuItem]) -> MenuResult {
+    let label = native_menu_label(label);
+    let mut builder = SubmenuBuilder::new(app, label.as_ref());
+    for item in items {
         builder = append_manifest_item(app, builder, item)?;
     }
     Ok(builder.build()?)
 }
 
+fn build_manifest_menu(app: &App, label: &str) -> MenuResult {
+    let section = manifest_section(label)?;
+    build_manifest_submenu(app, section.label.as_str(), &section.items)
+}
+
 fn build_app_menu(app: &App) -> MenuResult {
-    let mut builder = SubmenuBuilder::new(app, "Tolaria").about(None).separator();
-
-    for item in &manifest().app_menu {
-        builder = append_manifest_item(app, builder, item)?;
-    }
-
-    builder = builder.separator();
+    let mut builder = SubmenuBuilder::new(app, APP_NAME)
+        .about_with_text(format!("About {APP_NAME}"), None)
+        .separator();
 
     if app_menu_includes_services(std::env::consts::OS) {
         builder = builder
@@ -374,25 +380,18 @@ fn build_view_menu(app: &App) -> MenuResult {
     build_manifest_menu(app, "View")
 }
 
-fn build_go_menu(app: &App) -> MenuResult {
-    build_manifest_menu(app, "Go")
-}
-
-fn build_note_menu(app: &App) -> MenuResult {
-    build_manifest_menu(app, "Note")
-}
-
-fn build_vault_menu(app: &App) -> MenuResult {
-    build_manifest_menu(app, "Vault")
-}
-
 fn build_window_menu(app: &App) -> MenuResult {
-    let mut builder = SubmenuBuilder::new(app, "Window");
+    let section = manifest_section("Window")?;
+    let mut builder = SubmenuBuilder::new(app, section.label.as_str());
     if let Some(id) = native_window_menu_submenu_id(std::env::consts::OS) {
         builder = builder.id(id);
     }
 
-    builder = builder.minimize().maximize();
+    for item in &section.items {
+        builder = append_manifest_item(app, builder, item)?;
+    }
+
+    builder = builder.separator().minimize().maximize();
     if window_menu_includes_native_fullscreen(std::env::consts::OS) {
         builder = builder.fullscreen();
     }
@@ -405,9 +404,6 @@ pub fn setup_menu(app: &App) -> Result<(), Box<dyn Error>> {
     let file_menu = build_file_menu(app)?;
     let edit_menu = build_edit_menu(app)?;
     let view_menu = build_view_menu(app)?;
-    let go_menu = build_go_menu(app)?;
-    let note_menu = build_note_menu(app)?;
-    let vault_menu = build_vault_menu(app)?;
     let window_menu = build_window_menu(app)?;
 
     let menu = MenuBuilder::new(app)
@@ -415,9 +411,6 @@ pub fn setup_menu(app: &App) -> Result<(), Box<dyn Error>> {
         .item(&file_menu)
         .item(&edit_menu)
         .item(&view_menu)
-        .item(&go_menu)
-        .item(&note_menu)
-        .item(&vault_menu)
         .item(&window_menu)
         .build()?;
 
@@ -514,34 +507,9 @@ pub fn set_note_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, NOTE_DEPENDENT_GROUP, enabled);
 }
 
-/// Enable or disable menu items that depend on the editor being the active surface.
-pub fn set_editor_find_items_enabled(app_handle: &AppHandle, enabled: bool) {
-    set_menu_state_group_enabled(app_handle, EDITOR_FIND_DEPENDENT_GROUP, enabled);
-}
-
-/// Enable or disable menu items that depend on the note list being the active surface.
-pub fn set_note_list_search_items_enabled(app_handle: &AppHandle, enabled: bool) {
-    set_menu_state_group_enabled(app_handle, NOTE_LIST_SEARCH_DEPENDENT_GROUP, enabled);
-}
-
-/// Enable or disable menu items that depend on having uncommitted changes.
-pub fn set_git_commit_items_enabled(app_handle: &AppHandle, enabled: bool) {
-    set_menu_state_group_enabled(app_handle, GIT_COMMIT_DEPENDENT_GROUP, enabled);
-}
-
-/// Enable or disable menu items that depend on having merge conflicts.
-pub fn set_git_conflict_items_enabled(app_handle: &AppHandle, enabled: bool) {
-    set_menu_state_group_enabled(app_handle, GIT_CONFLICT_DEPENDENT_GROUP, enabled);
-}
-
-/// Enable or disable menu items that depend on the active vault having no remote.
-pub fn set_git_no_remote_items_enabled(app_handle: &AppHandle, enabled: bool) {
-    set_menu_state_group_enabled(app_handle, GIT_NO_REMOTE_DEPENDENT_GROUP, enabled);
-}
-
-/// Enable or disable menu items that depend on a deleted note preview being active.
-pub fn set_restore_deleted_item_enabled(app_handle: &AppHandle, enabled: bool) {
-    set_menu_state_group_enabled(app_handle, RESTORE_DELETED_DEPENDENT_GROUP, enabled);
+/// Enable or disable menu items that depend on having an open vault.
+pub fn set_vault_items_enabled(app_handle: &AppHandle, enabled: bool) {
+    set_menu_state_group_enabled(app_handle, VAULT_DEPENDENT_GROUP, enabled);
 }
 
 #[cfg(test)]
@@ -562,7 +530,8 @@ mod tests {
             .collect();
 
         assert_eq!(custom_menu_ids(), &expected);
-        assert!(custom_menu_ids().contains("file-quick-open-alias"));
+        assert!(custom_menu_ids().contains("file-quick-open"));
+        assert!(!custom_menu_ids().contains("file-quick-open-alias"));
     }
 
     #[test]
@@ -578,16 +547,29 @@ mod tests {
     }
 
     #[test]
-    fn overridden_menu_item_ids_emit_their_primary_command() {
-        assert_eq!(
-            emitted_menu_event_id("file-quick-open-alias"),
-            Some("file-quick-open")
-        );
-        assert_eq!(
-            emitted_menu_event_id("edit-toggle-note-list-search"),
-            Some("edit-toggle-note-list-search")
-        );
+    fn menu_sections_are_file_edit_view_window() {
+        let labels: Vec<_> = manifest()
+            .menus
+            .iter()
+            .map(|section| section.label.as_str())
+            .collect();
+
+        assert_eq!(labels, ["File", "Edit", "View", "Window"]);
+    }
+
+    #[test]
+    fn app_menu_has_no_manifest_items() {
+        assert!(manifest().app_menu.is_empty());
+    }
+
+    #[test]
+    fn menu_item_ids_emit_their_command() {
         assert_eq!(emitted_menu_event_id("file-save"), Some("file-save"));
+        assert_eq!(
+            emitted_menu_event_id("edit-toggle-raw-editor"),
+            Some("edit-toggle-raw-editor")
+        );
+        assert_eq!(emitted_menu_event_id("file-quick-open-alias"), None);
     }
 
     #[test]
@@ -611,24 +593,155 @@ mod tests {
     }
 
     #[test]
-    fn view_toggle_properties_keeps_renderer_owned_accelerator() {
-        let item = menu_item_by_id("view-toggle-properties");
+    fn state_groups_are_note_and_vault_dependent() {
+        let groups: Vec<_> = manifest().menu_state_groups.keys().cloned().collect();
+        assert_eq!(groups, [NOTE_DEPENDENT_GROUP, VAULT_DEPENDENT_GROUP]);
 
-        assert_eq!(item.accelerator(manifest()), None);
+        assert_eq!(
+            menu_state_group_ids(NOTE_DEPENDENT_GROUP),
+            [
+                "file-save",
+                "file-close-tab",
+                "edit-toggle-raw-editor",
+                "edit-find-in-note"
+            ]
+        );
+        assert_eq!(
+            menu_state_group_ids(VAULT_DEPENDENT_GROUP),
+            ["file-new-note", "file-quick-open", "file-close-vault"]
+        );
     }
 
     #[test]
-    fn view_menu_exposes_ai_panel_toggle() {
-        let view_menu = manifest_section("View").expect("view menu exists");
-        let item = view_menu
+    fn file_menu_accelerators_follow_the_shortcut_table() {
+        assert_eq!(
+            menu_item_by_id("file-open-vault").accelerator(manifest()),
+            Some("CmdOrCtrl+O")
+        );
+        assert_eq!(
+            menu_item_by_id("file-open-note").accelerator(manifest()),
+            Some("CmdOrCtrl+Shift+O")
+        );
+        assert_eq!(
+            menu_item_by_id("file-close-tab").accelerator(manifest()),
+            Some("CmdOrCtrl+W")
+        );
+        assert_eq!(
+            menu_item_by_id("file-close-vault").accelerator(manifest()),
+            None
+        );
+    }
+
+    #[test]
+    fn edit_menu_keeps_native_item_slots() {
+        let edit_menu = manifest_section("Edit").expect("edit menu exists");
+        let ids: Vec<_> = edit_menu
             .items
             .iter()
-            .find(|item| item.command_id(manifest()) == Some("view-toggle-ai-chat"))
-            .expect("View menu exposes the AI panel toggle");
+            .map(|item| item.menu_item_id(manifest()))
+            .collect();
 
-        assert_eq!(item.menu_item_id(manifest()), Some("view-toggle-ai-chat"));
-        assert_eq!(item.label("macos"), Some("Toggle AI Panel"));
-        assert_eq!(item.accelerator(manifest()), Some("CmdOrCtrl+Shift+L"));
+        assert_eq!(
+            ids,
+            [
+                Some("edit-undo"),
+                Some("edit-redo"),
+                None,
+                Some("edit-paste-plain-text"),
+                None,
+                Some("edit-find-in-note"),
+            ]
+        );
+    }
+
+    #[test]
+    fn view_menu_exposes_appearance_submenu() {
+        let view_menu = manifest_section("View").expect("view menu exists");
+        let submenu = view_menu
+            .items
+            .iter()
+            .find(|item| matches!(item, ManifestMenuItem::Submenu { .. }))
+            .expect("View menu exposes the Appearance submenu");
+
+        assert_eq!(submenu.label("macos"), Some("Appearance"));
+        assert_eq!(submenu.menu_item_id(manifest()), None);
+        assert_eq!(submenu.accelerator(manifest()), None);
+        assert!(submenu.enabled());
+
+        let ManifestMenuItem::Submenu { items, .. } = submenu else {
+            unreachable!();
+        };
+        let ids: Vec<_> = items
+            .iter()
+            .map(|item| item.menu_item_id(manifest()))
+            .collect();
+        assert_eq!(
+            ids,
+            [
+                Some("view-appearance-system"),
+                Some("view-appearance-dark"),
+                Some("view-appearance-light"),
+            ]
+        );
+        for item in items {
+            assert_eq!(item.accelerator(manifest()), None);
+        }
+    }
+
+    #[test]
+    fn submenu_items_register_for_menu_event_dispatch() {
+        for id in [
+            "view-appearance-system",
+            "view-appearance-dark",
+            "view-appearance-light",
+        ] {
+            assert!(custom_menu_ids().contains(id), "{id} is not registered");
+            assert_eq!(emitted_menu_event_id(id), Some(id));
+        }
+    }
+
+    #[test]
+    fn window_menu_exposes_tab_navigation() {
+        let window_menu = manifest_section("Window").expect("window menu exists");
+        let items: Vec<_> = window_menu
+            .items
+            .iter()
+            .map(|item| {
+                (
+                    item.menu_item_id(manifest()),
+                    item.label("macos"),
+                    item.accelerator(manifest()),
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            items,
+            [
+                (
+                    Some("window-previous-tab"),
+                    Some("Previous Tab"),
+                    Some("CmdOrCtrl+Shift+[")
+                ),
+                (
+                    Some("window-next-tab"),
+                    Some("Next Tab"),
+                    Some("CmdOrCtrl+Shift+]")
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn jump_to_tab_commands_have_no_menu_item() {
+        for index in 1..=9 {
+            let id = format!("window-jump-to-tab-{index}");
+            assert!(
+                manifest().commands.values().any(|command| command.id == id),
+                "{id} is missing from the manifest"
+            );
+            assert!(!custom_menu_ids().contains(&id), "{id} has a menu item");
+        }
     }
 
     #[test]
@@ -681,16 +794,17 @@ mod tests {
 
     #[test]
     fn native_menu_labels_without_ampersands_are_unchanged() {
-        assert_eq!(native_menu_label("Pull from Remote"), "Pull from Remote");
+        assert_eq!(native_menu_label("Open Folder…"), "Open Folder…");
     }
 
     #[test]
-    fn vault_commit_push_menu_label_is_native_menu_safe() {
-        let item = menu_item_by_id("vault-commit-push");
-        let label = item.label("windows").expect("commit push label exists");
-
-        assert_eq!(label, "Commit & Push");
-        assert_eq!(native_menu_label(label), "Commit && Push");
-        assert_eq!(item.accelerator(manifest()), None);
+    fn manifest_menu_labels_are_native_menu_safe() {
+        for section in &manifest().menus {
+            for item in &section.items {
+                if let Some(label) = item.label("macos") {
+                    assert_eq!(native_menu_label(label), label, "{label} needs escaping");
+                }
+            }
+        }
     }
 }

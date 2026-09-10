@@ -1,21 +1,18 @@
 use crate::commands::expand_tilde;
-use crate::vault::filename_rules::validate_view_filename_stem;
-use crate::vault_list;
 use std::ffi::OsString;
 use std::path::{Component, Path, PathBuf};
 
 pub(crate) const ACTIVE_VAULT_PATH_ERROR: &str = "Path must stay inside the active vault";
-const ACTIVE_VAULT_MISMATCH_ERROR: &str = "Vault path must match the active vault";
-const ACTIVE_VAULT_UNAVAILABLE_ERROR: &str = "Active vault is not available";
-const NO_ACTIVE_VAULT_ERROR: &str = "No active vault selected";
-pub(crate) const INVALID_VIEW_FILENAME_ERROR: &str = "Invalid view filename";
+pub(crate) const ACTIVE_VAULT_UNAVAILABLE_ERROR: &str = "Active vault is not available";
+pub(crate) const NO_ACTIVE_VAULT_ERROR: &str = "No active vault selected";
 
-#[derive(Clone, Debug)]
-struct VaultRootPaths {
-    requested: PathBuf,
-    canonical: PathBuf,
-}
-
+/// The single root every file command is confined to.
+///
+/// The frontend passes `vault_path` on every call and that path *is* the root:
+/// there is no vault registry, settings file or configured "active vault"
+/// behind it. The root is kept both as requested (tilde-expanded, so validated
+/// paths keep the caller's spelling) and canonicalized (symlinks resolved, so
+/// containment checks cannot be fooled).
 #[derive(Clone, Debug)]
 pub(crate) struct VaultBoundary {
     requested_root: PathBuf,
@@ -24,38 +21,21 @@ pub(crate) struct VaultBoundary {
 
 impl VaultBoundary {
     pub(crate) fn from_request(requested_vault_path: Option<&str>) -> Result<Self, String> {
-        let configured_root = if cfg!(test) {
-            None
-        } else {
-            load_configured_active_vault_root()?
-        };
-        let requested_root = requested_vault_path
+        let raw_root = requested_vault_path
             .filter(|path| !path.trim().is_empty())
-            .map(build_vault_root_paths)
-            .transpose()?;
-
-        let root = match (configured_root, requested_root) {
-            (Some(configured), Some(requested)) => {
-                if configured.canonical != requested.canonical
-                    && !is_registered_vault_root(&requested)?
-                {
-                    return Err(ACTIVE_VAULT_MISMATCH_ERROR.to_string());
-                }
-                requested
-            }
-            (Some(configured), None) => configured,
-            (None, Some(requested)) => requested,
-            (None, None) => return Err(NO_ACTIVE_VAULT_ERROR.to_string()),
-        };
+            .ok_or_else(|| NO_ACTIVE_VAULT_ERROR.to_string())?;
+        let requested_root = PathBuf::from(expand_tilde(raw_root).into_owned());
+        let canonical_root = requested_root
+            .canonicalize()
+            .map_err(|_| ACTIVE_VAULT_UNAVAILABLE_ERROR.to_string())?;
+        if !canonical_root.is_dir() {
+            return Err(ACTIVE_VAULT_UNAVAILABLE_ERROR.to_string());
+        }
 
         Ok(Self {
-            requested_root: root.requested,
-            canonical_root: root.canonical,
+            requested_root,
+            canonical_root,
         })
-    }
-
-    pub(crate) fn requested_root(&self) -> &Path {
-        &self.requested_root
     }
 
     fn requested_root_str(&self) -> String {
@@ -118,114 +98,6 @@ impl VaultBoundary {
     }
 }
 
-fn load_configured_active_vault_root() -> Result<Option<VaultRootPaths>, String> {
-    let list = vault_list::load_vault_list()?;
-    list.active_vault
-        .as_deref()
-        .filter(|path| !path.trim().is_empty())
-        .map(build_vault_root_paths)
-        .transpose()
-}
-
-fn load_registered_vault_roots() -> Result<Vec<VaultRootPaths>, String> {
-    let list = vault_list::load_vault_list()?;
-    Ok(registered_vault_roots(&list))
-}
-
-fn push_unique_vault_root_path(paths: &mut Vec<String>, path: String) {
-    if path.trim().is_empty() || paths.iter().any(|existing| existing == &path) {
-        return;
-    }
-    paths.push(path);
-}
-
-#[cfg(all(debug_assertions, not(test)))]
-fn local_dev_demo_vault_path() -> Option<String> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_dir
-        .parent()
-        .map(|root| root.join("demo-vault-v2").to_string_lossy().into_owned())
-}
-
-#[cfg(not(all(debug_assertions, not(test))))]
-fn local_dev_demo_vault_path() -> Option<String> {
-    None
-}
-
-fn configured_vault_root_paths(list: &vault_list::VaultList) -> Vec<String> {
-    let mut paths = Vec::new();
-    for entry in &list.vaults {
-        push_unique_vault_root_path(&mut paths, entry.path.clone());
-    }
-    if let Some(active_vault) = &list.active_vault {
-        push_unique_vault_root_path(&mut paths, active_vault.clone());
-    }
-    for hidden_default in &list.hidden_defaults {
-        push_unique_vault_root_path(&mut paths, hidden_default.clone());
-    }
-    #[cfg(not(test))]
-    if let Ok(default_path) = crate::vault::default_vault_path() {
-        push_unique_vault_root_path(&mut paths, default_path.to_string_lossy().into_owned());
-    }
-    if let Some(dev_demo_path) = local_dev_demo_vault_path() {
-        push_unique_vault_root_path(&mut paths, dev_demo_path);
-    }
-    paths
-}
-
-fn registered_vault_roots(list: &vault_list::VaultList) -> Vec<VaultRootPaths> {
-    configured_vault_root_paths(list)
-        .into_iter()
-        .filter(|path| !path.trim().is_empty())
-        .filter_map(|path| build_vault_root_paths(&path).ok())
-        .collect()
-}
-
-fn is_registered_vault_root(requested: &VaultRootPaths) -> Result<bool, String> {
-    let list = vault_list::load_vault_list()?;
-    for root in registered_vault_roots(&list) {
-        if root.canonical == requested.canonical {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-fn find_registered_root_for_absolute_path(
-    raw_path: &str,
-) -> Result<Option<VaultRootPaths>, String> {
-    let requested = PathBuf::from(expand_tilde(raw_path).into_owned());
-    if !requested.is_absolute() {
-        return Ok(None);
-    }
-
-    let canonical = canonicalize_candidate_for_write(&requested)?;
-    let roots = match load_registered_vault_roots() {
-        Ok(roots) => roots,
-        Err(_) => return Ok(None),
-    };
-    let root = roots
-        .into_iter()
-        .filter(|root| canonical.starts_with(&root.canonical))
-        .max_by_key(|root| root.canonical.components().count());
-    Ok(root)
-}
-
-fn build_vault_root_paths(raw_vault_path: &str) -> Result<VaultRootPaths, String> {
-    let requested = PathBuf::from(expand_tilde(raw_vault_path).into_owned());
-    let canonical = requested
-        .canonicalize()
-        .map_err(|_| ACTIVE_VAULT_UNAVAILABLE_ERROR.to_string())?;
-    if !canonical.is_dir() {
-        return Err(ACTIVE_VAULT_UNAVAILABLE_ERROR.to_string());
-    }
-
-    Ok(VaultRootPaths {
-        requested,
-        canonical,
-    })
-}
-
 fn canonicalize_candidate_for_write(path: &Path) -> Result<PathBuf, String> {
     let (ancestor, tail) = find_existing_ancestor(path)?;
     Ok(tail
@@ -278,23 +150,6 @@ fn validate_relative_child_path(relative_path: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn validate_view_filename(filename: &str) -> Result<(), String> {
-    if !filename.ends_with(".yml") {
-        return Err("Filename must end with .yml".to_string());
-    }
-
-    let path = Path::new(filename);
-    let mut components = path.components();
-    match (components.next(), components.next()) {
-        (Some(Component::Normal(value)), None) => {
-            let stem = value.to_string_lossy();
-            let stem = stem.strip_suffix(".yml").unwrap_or(&stem);
-            validate_view_filename_stem(stem)
-        }
-        _ => Err(INVALID_VIEW_FILENAME_ERROR.to_string()),
-    }
-}
-
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
@@ -319,17 +174,6 @@ pub(crate) fn with_validated_path<T>(
     mode: ValidatedPathMode,
     action: impl FnOnce(&str) -> Result<T, String>,
 ) -> Result<T, String> {
-    if vault_path.is_none() {
-        if let Some(root) = find_registered_root_for_absolute_path(path)? {
-            let boundary = VaultBoundary {
-                requested_root: root.requested,
-                canonical_root: root.canonical,
-            };
-            let validated_path = validate_for_mode(&boundary, path, mode)?;
-            return action(&validated_path);
-        }
-    }
-
     with_boundary(vault_path, |boundary| {
         let validated_path = validate_for_mode(boundary, path, mode)?;
         action(&validated_path)
@@ -373,94 +217,281 @@ pub(crate) fn with_existing_path_in_requested_vault<T>(
     path: &str,
     action: impl FnOnce(&str, &str) -> Result<T, String>,
 ) -> Result<T, String> {
-    let requested_validation = with_boundary(Some(vault_path), |boundary| {
-        Ok((
-            boundary.requested_root_str(),
-            boundary.validate_existing_path(path)?,
-        ))
-    });
-
-    let validated = match requested_validation {
-        Ok(validated) => validated,
-        Err(error) if error == ACTIVE_VAULT_PATH_ERROR || error == ACTIVE_VAULT_MISMATCH_ERROR => {
-            let Some(root) = find_registered_root_for_absolute_path(path)? else {
-                return Err(error);
-            };
-            let boundary = VaultBoundary {
-                requested_root: root.requested,
-                canonical_root: root.canonical,
-            };
-            (
-                boundary.requested_root_str(),
-                boundary.validate_existing_path(path)?,
-            )
-        }
-        Err(error) => return Err(error),
-    };
-    action(&validated.0, &validated.1)
-}
-
-pub(crate) fn with_view_file<T>(
-    vault_path: &str,
-    filename: &str,
-    action: impl FnOnce(&str, &str) -> Result<T, String>,
-) -> Result<T, String> {
     with_boundary(Some(vault_path), |boundary| {
-        validate_view_filename(filename)?;
         let requested_root = boundary.requested_root_str();
-        action(&requested_root, filename)
+        let validated_path = boundary.validate_existing_path(path)?;
+        action(&requested_root, &validated_path)
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::vault_list::{VaultEntry, VaultList};
+    use std::fs;
+    use tempfile::TempDir;
 
-    #[test]
-    fn registered_vault_roots_skip_unavailable_vaults() {
-        let available = tempfile::TempDir::new().unwrap();
-        let missing = available.path().join("missing-vault");
-        let list = VaultList {
-            vaults: vec![
-                VaultEntry {
-                    label: "Missing".to_string(),
-                    path: missing.to_string_lossy().to_string(),
-                    ..Default::default()
-                },
-                VaultEntry {
-                    label: "Available".to_string(),
-                    path: available.path().to_string_lossy().to_string(),
-                    ..Default::default()
-                },
-            ],
-            active_vault: None,
-            default_workspace_path: None,
-            hidden_defaults: vec![],
-        };
+    fn root_arg(dir: &TempDir) -> String {
+        dir.path().to_string_lossy().into_owned()
+    }
 
-        let roots = registered_vault_roots(&list);
-
-        assert!(roots
-            .iter()
-            .any(|root| root.canonical == available.path().canonicalize().unwrap()));
-        assert!(roots.iter().all(|root| root.canonical != missing));
+    fn validate(path: &Path, root: &str, mode: ValidatedPathMode) -> Result<String, String> {
+        with_validated_path(&path.to_string_lossy(), Some(root), mode, |validated| {
+            Ok(validated.to_string())
+        })
     }
 
     #[test]
-    fn registered_vault_roots_include_hidden_default_vaults() {
-        let hidden = tempfile::TempDir::new().unwrap();
-        let list = VaultList {
-            vaults: Vec::new(),
-            active_vault: None,
-            default_workspace_path: None,
-            hidden_defaults: vec![hidden.path().to_string_lossy().to_string()],
+    fn from_request_requires_a_root() {
+        assert_eq!(
+            VaultBoundary::from_request(None).unwrap_err(),
+            NO_ACTIVE_VAULT_ERROR
+        );
+        assert_eq!(
+            VaultBoundary::from_request(Some("   ")).unwrap_err(),
+            NO_ACTIVE_VAULT_ERROR
+        );
+    }
+
+    #[test]
+    fn from_request_rejects_a_root_that_does_not_exist() {
+        let dir = TempDir::new().unwrap();
+        let missing = dir.path().join("missing");
+
+        let err = VaultBoundary::from_request(Some(&missing.to_string_lossy())).unwrap_err();
+
+        assert_eq!(err, ACTIVE_VAULT_UNAVAILABLE_ERROR);
+    }
+
+    #[test]
+    fn from_request_rejects_a_file_as_root() {
+        let dir = TempDir::new().unwrap();
+        let file = dir.path().join("note.md");
+        fs::write(&file, "# Note\n").unwrap();
+
+        let err = VaultBoundary::from_request(Some(&file.to_string_lossy())).unwrap_err();
+
+        assert_eq!(err, ACTIVE_VAULT_UNAVAILABLE_ERROR);
+    }
+
+    #[test]
+    fn from_request_keeps_requested_and_canonical_roots() {
+        let dir = TempDir::new().unwrap();
+
+        let boundary = VaultBoundary::from_request(Some(&root_arg(&dir))).unwrap();
+
+        assert_eq!(boundary.requested_root, dir.path());
+        assert_eq!(boundary.canonical_root, dir.path().canonicalize().unwrap());
+    }
+
+    #[test]
+    fn from_request_expands_a_leading_tilde() {
+        let Some(home) = dirs::home_dir() else {
+            return;
         };
 
-        let roots = registered_vault_roots(&list);
+        let boundary = VaultBoundary::from_request(Some("~")).unwrap();
 
-        assert!(roots
-            .iter()
-            .any(|root| root.canonical == hidden.path().canonicalize().unwrap()));
+        assert_eq!(boundary.requested_root, home);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn from_request_canonicalizes_the_root_through_a_symlink() {
+        let dir = TempDir::new().unwrap();
+        let real = dir.path().join("Real Vault");
+        let link = dir.path().join("Linked Vault");
+        fs::create_dir(&real).unwrap();
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        fs::write(real.join("note.md"), "# Note\n").unwrap();
+        let link_root = link.to_string_lossy().into_owned();
+
+        let boundary = VaultBoundary::from_request(Some(&link_root)).unwrap();
+        assert_eq!(boundary.requested_root, link);
+        assert_eq!(boundary.canonical_root, real.canonicalize().unwrap());
+
+        // A note addressed through the symlink stays inside the root and keeps
+        // the caller's spelling; the same note addressed through the real path
+        // is inside the root too.
+        let through_link = validate(
+            &link.join("note.md"),
+            &link_root,
+            ValidatedPathMode::Existing,
+        );
+        assert_eq!(
+            through_link.unwrap(),
+            link.join("note.md").to_string_lossy()
+        );
+        let through_real = validate(
+            &real.join("note.md"),
+            &link_root,
+            ValidatedPathMode::Existing,
+        );
+        assert_eq!(
+            through_real.unwrap(),
+            real.join("note.md").to_string_lossy()
+        );
+    }
+
+    #[test]
+    fn validated_paths_reject_parent_traversal_in_both_modes() {
+        let vault = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        fs::write(outside.path().join("outside.md"), "# Outside\n").unwrap();
+        let sibling = outside.path().file_name().unwrap();
+        let escape = vault.path().join("..").join(sibling).join("outside.md");
+        assert!(escape.exists());
+        let root = root_arg(&vault);
+
+        for mode in [ValidatedPathMode::Existing, ValidatedPathMode::Writable] {
+            let err = validate(&escape, &root, mode).unwrap_err();
+            assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
+        }
+
+        // A leaf that does not exist yet is still confined in Writable mode.
+        let new_escape = vault.path().join("../new-outside.md");
+        let err = validate(&new_escape, &root, ValidatedPathMode::Writable).unwrap_err();
+        assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
+    }
+
+    #[test]
+    fn validated_paths_reject_absolute_paths_outside_the_root() {
+        let vault = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let existing = outside.path().join("outside.md");
+        fs::write(&existing, "# Outside\n").unwrap();
+        let root = root_arg(&vault);
+
+        let err = validate(&existing, &root, ValidatedPathMode::Existing).unwrap_err();
+        assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
+
+        let new_outside = outside.path().join("new.md");
+        let err = validate(&new_outside, &root, ValidatedPathMode::Writable).unwrap_err();
+        assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
+    }
+
+    #[test]
+    fn validated_paths_accept_paths_inside_the_root_in_both_modes() {
+        let dir = TempDir::new().unwrap();
+        let root = root_arg(&dir);
+        let existing = dir.path().join("notes").join("existing.md");
+        fs::create_dir_all(existing.parent().unwrap()).unwrap();
+        fs::write(&existing, "# Existing\n").unwrap();
+
+        let validated = validate(&existing, &root, ValidatedPathMode::Existing).unwrap();
+        assert_eq!(validated, existing.to_string_lossy());
+
+        // Writable mode accepts a leaf (and missing parents) that do not exist yet.
+        let new_note = dir.path().join("new folder").join("new.md");
+        let validated = validate(&new_note, &root, ValidatedPathMode::Writable).unwrap();
+        assert_eq!(validated, new_note.to_string_lossy());
+    }
+
+    #[test]
+    fn existing_mode_rejects_missing_files() {
+        let dir = TempDir::new().unwrap();
+        let missing = dir.path().join("missing.md");
+
+        let err = validate(&missing, &root_arg(&dir), ValidatedPathMode::Existing).unwrap_err();
+
+        assert_eq!(err, "File does not exist");
+    }
+
+    #[test]
+    fn relative_paths_resolve_against_the_requested_root() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("note.md"), "# Note\n").unwrap();
+
+        let validated = validate(
+            Path::new("note.md"),
+            &root_arg(&dir),
+            ValidatedPathMode::Existing,
+        )
+        .unwrap();
+
+        assert_eq!(validated, dir.path().join("note.md").to_string_lossy());
+    }
+
+    #[test]
+    fn child_path_rejects_empty_absolute_and_traversing_segments() {
+        let dir = TempDir::new().unwrap();
+        let boundary = VaultBoundary::from_request(Some(&root_arg(&dir))).unwrap();
+
+        for relative in [
+            "",
+            "  ",
+            "/absolute",
+            "../escape",
+            "Projects/../../escape",
+            "./Inbox",
+        ] {
+            assert_eq!(
+                boundary.child_path(relative).unwrap_err(),
+                ACTIVE_VAULT_PATH_ERROR,
+                "{relative:?} should be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn child_path_joins_nested_segments_under_the_requested_root() {
+        let dir = TempDir::new().unwrap();
+        let boundary = VaultBoundary::from_request(Some(&root_arg(&dir))).unwrap();
+
+        let child = boundary.child_path("Projects/Laputa").unwrap();
+
+        assert_eq!(child, dir.path().join("Projects").join("Laputa"));
+    }
+
+    #[test]
+    fn with_existing_paths_validates_every_path() {
+        let vault = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let inside = vault.path().join("inside.md");
+        let outside_note = outside.path().join("outside.md");
+        fs::write(&inside, "# Inside\n").unwrap();
+        fs::write(&outside_note, "# Outside\n").unwrap();
+        let root = root_arg(&vault);
+
+        let accepted =
+            with_existing_paths(&[inside.to_string_lossy().into_owned()], Some(&root), Ok).unwrap();
+        assert_eq!(accepted, vec![inside.to_string_lossy().into_owned()]);
+
+        let err = with_existing_paths(
+            &[
+                inside.to_string_lossy().into_owned(),
+                outside_note.to_string_lossy().into_owned(),
+            ],
+            Some(&root),
+            Ok,
+        )
+        .unwrap_err();
+        assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
+    }
+
+    #[test]
+    fn with_requested_root_returns_the_root_as_requested() {
+        let dir = TempDir::new().unwrap();
+        let root = root_arg(&dir);
+
+        let requested = with_requested_root(&root, |requested| Ok(requested.to_string())).unwrap();
+
+        assert_eq!(requested, root);
+    }
+
+    #[test]
+    fn with_existing_path_in_requested_vault_returns_root_and_validated_path() {
+        let dir = TempDir::new().unwrap();
+        let note = dir.path().join("note.md");
+        fs::write(&note, "# Note\n").unwrap();
+        let root = root_arg(&dir);
+
+        let (requested_root, validated) =
+            with_existing_path_in_requested_vault(&root, &note.to_string_lossy(), |root, path| {
+                Ok((root.to_string(), path.to_string()))
+            })
+            .unwrap();
+
+        assert_eq!(requested_root, root);
+        assert_eq!(validated, note.to_string_lossy());
     }
 }

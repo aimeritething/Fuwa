@@ -1,7 +1,33 @@
-use std::fs;
 use std::path::Path;
 
-/// Permanently delete a single note file.
+/// Move `path` (a file or a whole folder) to the user's Trash.
+///
+/// Fuwa never destroys a user's file: every delete in the app is a move to the
+/// macOS Trash, where Tolaria removed the file permanently (its ADR-0045). On
+/// macOS the `NSFileManager` route is used instead of the crate's default
+/// Finder AppleScript route, so deleting never triggers a "wants to control
+/// Finder" automation prompt.
+pub(super) fn move_to_trash(path: &Path) -> Result<(), String> {
+    trash_context()
+        .delete(path)
+        .map_err(|error| format!("Failed to move {} to the Trash: {}", path.display(), error))
+}
+
+#[cfg(target_os = "macos")]
+fn trash_context() -> trash::TrashContext {
+    use trash::macos::{DeleteMethod, TrashContextExtMacos};
+
+    let mut context = trash::TrashContext::new();
+    context.set_delete_method(DeleteMethod::NsFileManager);
+    context
+}
+
+#[cfg(not(target_os = "macos"))]
+fn trash_context() -> trash::TrashContext {
+    trash::TrashContext::new()
+}
+
+/// Move a single note file to the Trash.
 /// Returns the deleted path on success, or an error if the file doesn't exist.
 pub fn delete_note(path: &str) -> Result<String, String> {
     let file = Path::new(path);
@@ -11,12 +37,12 @@ pub fn delete_note(path: &str) -> Result<String, String> {
     if !file.is_file() {
         return Err(format!("Path is not a file: {}", path));
     }
-    fs::remove_file(file).map_err(|e| format!("Failed to delete {}: {}", path, e))?;
-    log::info!("Permanently deleted note: {}", path);
+    move_to_trash(file)?;
+    log::info!("Moved note to the Trash: {}", path);
     Ok(path.to_string())
 }
 
-/// Delete multiple note files from disk.
+/// Move multiple note files to the Trash.
 /// Returns the list of successfully deleted paths.
 /// Skips files that don't exist or fail to delete (logs warnings).
 pub fn batch_delete_notes(paths: &[String]) -> Result<Vec<String>, String> {
@@ -27,13 +53,13 @@ pub fn batch_delete_notes(paths: &[String]) -> Result<Vec<String>, String> {
             log::warn!("File does not exist, skipping: {}", path);
             continue;
         }
-        match fs::remove_file(file) {
+        match move_to_trash(file) {
             Ok(()) => {
-                log::info!("Permanently deleted note: {}", path);
+                log::info!("Moved note to the Trash: {}", path);
                 deleted.push(path.clone());
             }
             Err(e) => {
-                log::warn!("Failed to delete {}: {}", path, e);
+                log::warn!("{}", e);
             }
         }
     }
@@ -43,6 +69,7 @@ pub fn batch_delete_notes(paths: &[String]) -> Result<Vec<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
     use std::io::Write;
     use tempfile::TempDir;
 

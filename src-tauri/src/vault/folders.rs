@@ -96,6 +96,8 @@ fn existing_folder_name(source_path: &Path, folder_path: &str) -> Result<String,
         .ok_or_else(|| "Folder path cannot target the vault root".to_string())
 }
 
+/// Move a folder and everything inside it to the Trash (see
+/// [`super::trash::move_to_trash`]); Tolaria removed the tree permanently.
 pub fn delete_folder(vault_path: &Path, folder_path: &str) -> Result<String, String> {
     let relative_path = ensure_relative_folder_path(folder_path)?;
     let target_path = vault_path.join(&relative_path);
@@ -107,8 +109,7 @@ pub fn delete_folder(vault_path: &Path, folder_path: &str) -> Result<String, Str
         return Err(format!("Not a folder: {}", folder_path));
     }
 
-    fs::remove_dir_all(&target_path)
-        .map_err(|error| format!("Failed to delete folder: {}", error))?;
+    super::trash::move_to_trash(&target_path)?;
     Ok(display_relative_path(&relative_path))
 }
 
