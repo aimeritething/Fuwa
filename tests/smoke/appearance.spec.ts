@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
-import { openWelcome, watchForErrors } from './harness'
+// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+import { MOCK_FOLDER, openDocumentThroughDialog, openWelcome, watchForErrors } from './harness'
 
 // AIM-382: dark on first launch, View → Appearance switches and the choice
 // lives in the Session; `system` follows the OS live. The native menu is the
@@ -18,6 +20,24 @@ async function chooseAppearance(page: Page, mode: 'system' | 'dark' | 'light') {
   )
 }
 
+const SAMPLE_PATH = `${MOCK_FOLDER}/Sample.md`
+const SAMPLE = [
+  '# Title', '', 'Body with `inline code`.', '', '## Section', '', '- [ ] Task', '', '> Quote', '',
+  '```ts', 'const a = 1', '```', '', '| A | B |', '| --- | --- |', '| 1 | 2 |', '', '---', '',
+].join('\n')
+
+/** Plant a Document that uses every block the ticket measures, and open it. */
+async function openSample(page: Page) {
+  await page.goto('/')
+  await page.evaluate(([path, content]) => {
+    const vault: MockVault | undefined = window.__fuwaMockVault
+    if (!vault) throw new Error('The Folder fixture is not installed')
+    vault.writeNote(path, content)
+  }, [SAMPLE_PATH, SAMPLE] as const)
+  await openDocumentThroughDialog(page, SAMPLE_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Title')
+}
+
 test('first launch is dark: the canvas, the card and the body text sample to the Linear values', async ({ page }) => {
   const errors = watchForErrors(page)
   await openWelcome(page)
@@ -28,10 +48,33 @@ test('first launch is dark: the canvas, the card and the body text sample to the
   await expect(page.locator('.fuwa-shell')).toHaveCSS('background-color', 'rgb(9, 9, 10)')
   await expect(page.getByTestId('editor-card')).toHaveCSS('background-color', 'rgb(17, 18, 18)')
   await expect(page.locator('.bn-editor')).toHaveCSS('color', 'rgb(226, 227, 229)')
-  await expect(page.locator('.bn-editor')).toHaveCSS('font-size', '15px')
-  await expect(page.locator('.bn-editor')).toHaveCSS('line-height', '24px')
-  await expect(page.locator('.bn-editor')).toHaveCSS('font-weight', '450')
   await expect(page.locator('.bn-editor h1')).toHaveCSS('color', 'rgb(255, 255, 255)')
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
+test('a sample Document measures at the specified typography', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await openSample(page)
+  const editor = page.locator('.bn-editor')
+
+  await expect(editor).toHaveCSS('font-size', '15px')
+  await expect(editor).toHaveCSS('line-height', '24px')
+  await expect(editor).toHaveCSS('font-weight', '450')
+  await expect(editor.locator('h1')).toHaveCSS('font-size', '22px')
+  await expect(editor.locator('h1')).toHaveCSS('line-height', '29.6px')
+  await expect(editor.locator('h2')).toHaveCSS('font-size', '19px')
+  await expect(editor.locator('h2')).toHaveCSS('line-height', '28px')
+  await expect(editor.locator('h2')).toHaveCSS('font-weight', '600')
+  await expect(editor.locator('.bn-inline-content code').first()).toHaveCSS('font-size', '14.0625px')
+  await expect(editor.locator('[data-content-type="codeBlock"]')).toHaveCSS('font-size', '13px')
+  await expect(editor.locator('[data-content-type="codeBlock"]')).toHaveCSS('background-color', 'rgb(9, 9, 10)')
+  await expect(editor.locator('[data-content-type="codeBlock"]')).toHaveCSS('border-top-left-radius', '6px')
+  await expect(editor.locator('blockquote').first()).toHaveCSS('border-left-width', '4px')
+  await expect(editor.locator('input[type="checkbox"]').first()).toHaveCSS('width', '14px')
+  await expect(editor.locator('input[type="checkbox"]').first()).toHaveCSS('border-top-width', '1px')
+  await expect(editor.locator('th').first()).toHaveCSS('background-color', 'rgb(21, 22, 23)')
+  await expect(editor.locator('hr')).toHaveCSS('border-top-width', '1px')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })

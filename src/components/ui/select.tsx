@@ -114,7 +114,7 @@ function SelectStaticPart(props: SelectStaticPartProps) {
   void staticPart
   return (
     <SelectPrimitive.Separator
-      {...selectSlotProps("select-separator", "bg-[var(--menu-border)] pointer-events-none -mx-1 my-1 h-[var(--hairline)]", className)}
+      {...selectSlotProps("select-separator", "bg-[var(--border-dialog)] pointer-events-none -mx-1 my-1 h-[var(--hairline)]", className)}
       {...separatorProps}
     />
   )
