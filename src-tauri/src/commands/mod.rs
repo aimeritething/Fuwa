@@ -1,6 +1,7 @@
 mod clipboard;
 mod folders;
 mod menu_state;
+mod session_file;
 mod vault;
 
 use std::borrow::Cow;
@@ -8,6 +9,7 @@ use std::borrow::Cow;
 pub use clipboard::*;
 pub use folders::*;
 pub use menu_state::*;
+pub use session_file::*;
 pub use vault::*;
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.

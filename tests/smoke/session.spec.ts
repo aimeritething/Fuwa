@@ -1,0 +1,109 @@
+import { expect, test, type Page } from '@playwright/test'
+// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
+
+// Spec 7 of the smoke plan (AIM-380): the Session survives a relaunch. The
+// fixture keeps its Session file in localStorage, so a page reload stands in
+// for quit and relaunch. The window frame is the Rust side's part of the file
+// and does not appear here.
+
+const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
+const GONE_PATH = `${MOCK_FOLDER}/Gone.md`
+
+const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+const tabNames = (page: Page) => page.getByRole('tab').allTextContents()
+const activeTab = (page: Page) => page.getByRole('tab', { selected: true })
+
+async function seedSession(page: Page, session: unknown) {
+  await page.goto('/')
+  await page.evaluate((seed) => {
+    const vault: MockVault | undefined = window.__fuwaMockVault
+    if (!vault) throw new Error('The Folder fixture is not installed')
+    vault.seedSession(seed)
+  }, session)
+}
+
+test('quit and relaunch restores the Tabs in order and the active Tab, and the file matches the schema', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await page.goto('/')
+  await openDocumentThroughDialog(page, WELCOME_PATH)
+  await openDocumentThroughDialog(page, FUWA_PATH)
+  await page.keyboard.press('Meta+1')
+  await expect(activeTab(page)).toHaveText('Welcome.md')
+
+  await expect.poll(() => storedSession(page)).toEqual({
+    version: 1,
+    folder: null,
+    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
+    activePath: WELCOME_PATH,
+    theme: 'dark',
+    sidebar: { collapsed: false, width: 260 },
+  })
+
+  await page.reload()
+
+  await expect(page.getByRole('tab')).toHaveCount(2)
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Fuwa.md'])
+  await expect(activeTab(page)).toHaveText('Welcome.md')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
+test('a Tab whose file is gone is dropped on relaunch, and its successor takes over when it was active', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await seedSession(page, {
+    version: 1,
+    folder: null,
+    openEditors: [
+      { path: WELCOME_PATH, mode: 'rich' },
+      { path: GONE_PATH, mode: 'rich' },
+      { path: FUWA_PATH, mode: 'rich' },
+    ],
+    activePath: GONE_PATH,
+    theme: 'dark',
+    sidebar: { collapsed: false, width: 260 },
+  })
+
+  await page.reload()
+
+  await expect(page.getByRole('tab')).toHaveCount(2)
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Fuwa.md'])
+  await expect(activeTab(page)).toHaveText('Fuwa.md')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await expect.poll(() => storedSession(page)).toMatchObject({
+    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
+    activePath: FUWA_PATH,
+  })
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
+test('a Session with an unknown version is ignored and rewritten', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await seedSession(page, { version: 99, openEditors: [{ path: WELCOME_PATH, mode: 'rich' }], activePath: WELCOME_PATH })
+
+  await page.reload()
+
+  await expect(page.getByTestId('editor-empty-state')).toBeVisible()
+  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect.poll(() => storedSession(page)).toMatchObject({ version: 1, openEditors: [], activePath: null })
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
+test('an empty Session restores to the empty card without error', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await page.goto('/')
+  await openDocumentThroughDialog(page, WELCOME_PATH)
+  await page.keyboard.press('Meta+w')
+  await expect.poll(() => storedSession(page)).toMatchObject({ version: 1, openEditors: [], activePath: null })
+
+  await page.reload()
+
+  await expect(page.getByTestId('editor-empty-state')).toBeVisible()
+  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})

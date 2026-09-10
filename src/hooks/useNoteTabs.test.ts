@@ -16,6 +16,33 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }))
 
+const A = '/n/a.md'
+const B = '/n/b.md'
+const C = '/n/c.md'
+
+/** Answers get_note_content from `files`; a path outside it does not exist. */
+function seedFiles(files: Record<string, string>) {
+  runtime.invoke.mockImplementation(async (_cmd, args) => {
+    const path = String(args?.path)
+    if (!(path in files)) throw new Error('File does not exist')
+    return files[path]
+  })
+}
+
+async function openThree() {
+  seedFiles({ [A]: '# A\n', [B]: '# B\n', [C]: '# C\n' })
+  const rendered = renderHook(() => useNoteTabs())
+  await act(async () => {
+    await rendered.result.current.openNote(A)
+    await rendered.result.current.openNote(B)
+    await rendered.result.current.openNote(C)
+  })
+  return rendered
+}
+
+const openPaths = (result: { current: ReturnType<typeof useNoteTabs> }) =>
+  result.current.tabs.map((tab) => tab.entry.path)
+
 describe('useNoteTabs', () => {
   beforeEach(() => {
     runtime.invoke.mockReset()
@@ -39,17 +66,63 @@ describe('useNoteTabs', () => {
     expect(result.current.tabs).toHaveLength(1)
   })
 
-  it('keeps one Document at a time: opening another replaces the first', async () => {
-    runtime.invoke.mockResolvedValueOnce('# A\n').mockResolvedValueOnce('# B\n')
+  it('keeps every opened Document as a Tab, in opening order, with the latest active', async () => {
+    const { result } = await openThree()
+
+    expect(openPaths(result)).toEqual([A, B, C])
+    expect(result.current.activeTabPath).toBe(C)
+  })
+
+  it('activates the existing Tab without re-reading when a Document is opened again', async () => {
+    const { result } = await openThree()
+    runtime.invoke.mockClear()
+
+    await act(async () => {
+      await result.current.openNote(A)
+    })
+
+    expect(openPaths(result)).toEqual([A, B, C])
+    expect(result.current.activeTabPath).toBe(A)
+    expect(runtime.invoke).not.toHaveBeenCalled()
+  })
+
+  it('closes a Tab and hands the active spot to the successor', async () => {
+    const { result } = await openThree()
+
+    act(() => result.current.activateTab(B))
+    act(() => result.current.closeTab(B))
+
+    expect(openPaths(result)).toEqual([A, C])
+    expect(result.current.activeTabPath).toBe(C)
+  })
+
+  it('moves between Tabs positionally and jumps to Tab N', async () => {
+    const { result } = await openThree()
+
+    act(() => result.current.activateAdjacentTab(-1))
+    expect(result.current.activeTabPath).toBe(B)
+
+    act(() => result.current.activateAdjacentTab(1))
+    expect(result.current.activeTabPath).toBe(C)
+
+    act(() => result.current.activateTabAt(0))
+    expect(result.current.activeTabPath).toBe(A)
+  })
+
+  it('restores the Session Tabs that still exist and hands a missing active Tab to its successor', async () => {
+    seedFiles({ [A]: '# A\n', [C]: '# C\n' })
     const { result } = renderHook(() => useNoteTabs())
 
     await act(async () => {
-      await result.current.openNote('/n/a.md')
-      await result.current.openNote('/n/b.md')
+      await result.current.restoreOpenEditors(
+        [{ path: A, mode: 'rich' }, { path: B, mode: 'rich' }, { path: C, mode: 'rich' }],
+        B,
+      )
     })
 
-    expect(result.current.tabs.map((tab) => tab.entry.path)).toEqual(['/n/b.md'])
-    expect(result.current.activeTabPath).toBe('/n/b.md')
+    expect(openPaths(result)).toEqual([A, C])
+    expect(result.current.activeTabPath).toBe(C)
+    expect(result.current.tabs.map((tab) => tab.content)).toEqual(['# A\n', '# C\n'])
   })
 
   it('announces the opened content on the note-content bus for the active Document', async () => {

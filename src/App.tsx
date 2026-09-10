@@ -1,9 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Editor } from './components/Editor'
+import { OpenEditors } from './components/OpenEditors'
+import { Sidebar } from './components/Sidebar'
 import { useAppKeyboard } from './hooks/useAppKeyboard'
 import { useEditorSave } from './hooks/useEditorSave'
 import { useMenuEvents, type MenuEventHandlers } from './hooks/useMenuEvents'
 import { useNoteTabs } from './hooks/useNoteTabs'
+import { useSession } from './hooks/useSession'
+import { useTabCommands } from './hooks/useTabCommands'
+import { closeAppWindow } from './utils/appWindow'
 import { noteRootForPath } from './utils/noteEntry'
 import { pickNoteToOpen } from './utils/noteOpenDialog'
 
@@ -39,61 +44,116 @@ function useAutosaveOnEditorChange(
   )
 }
 
+/** When each open Document's last write landed; the path row shows the active one's. */
+function useSavedTimes() {
+  const [savedAtByPath, setSavedAtByPath] = useState<Record<string, number>>({})
+  const markSaved = useCallback((path: string) => {
+    setSavedAtByPath((prev) => ({ ...prev, [path]: Date.now() }))
+  }, [])
+  const forgetSaved = useCallback((path: string) => {
+    setSavedAtByPath((prev) => {
+      if (!(path in prev)) return prev
+      const rest = { ...prev }
+      delete rest[path]
+      return rest
+    })
+  }, [])
+  return { savedAtByPath, markSaved, forgetSaved }
+}
+
 export default function App() {
-  const { tabs, setTabs, activeTabPath, openNote } = useNoteTabs()
-  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const {
+    tabs,
+    setTabs,
+    activeTabPath,
+    openNote,
+    closeTab,
+    activateTab,
+    activateTabAt,
+    activateAdjacentTab,
+    restoreOpenEditors,
+  } = useNoteTabs()
+  useSession({ tabs, activeTabPath, restoreOpenEditors })
+  const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
   const vaultPath = activeTabPath ? noteRootForPath(activeTabPath) : undefined
 
-  const onNotePersisted = useCallback(() => setSavedAt(Date.now()), [])
   const { handleSave, handleContentChange, savePending } = useEditorSave({
     updateVaultContent: noVaultContentToUpdate,
     setTabs,
     setToastMessage: ignoreSaveToast,
-    onNotePersisted,
+    onNotePersisted: markSaved,
     persistenceScope: vaultPath,
   })
   const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePending)
 
-  /** Push the rich editor's fresh keystrokes into the save buffer, so nothing is younger than 1.5 s. */
-  const flushOpenNote = useCallback(() => {
+  /**
+   * Push the rich editor's fresh keystrokes into the save buffer and write
+   * them, while the active Document's directory is still the persistence
+   * scope. Every Tab switch and close goes through here (spec section 3
+   * flushes a dirty Document before it closes).
+   */
+  const settleActiveNote = useCallback(async () => {
     if (activeTabPath) flushPendingEditorContentRef.current?.(activeTabPath)
-  }, [activeTabPath])
+    await savePending()
+  }, [activeTabPath, savePending])
+
+  const closeTabAndForget = useCallback((path: string) => {
+    closeTab(path)
+    forgetSaved(path)
+  }, [closeTab, forgetSaved])
+
+  const tabCommands = useTabCommands({
+    activeTabPath,
+    settleActiveNote,
+    closeTab: closeTabAndForget,
+    activateTab,
+    activateTabAt,
+    activateAdjacentTab,
+    closeWindow: closeAppWindow,
+  })
 
   const onOpenNote = useCallback(() => {
     void (async () => {
       const path = await pickNoteToOpen()
       if (!path) return
-      // With one Document at a time every open is a close, and a dirty
-      // Document flushes before it closes (spec section 3): write it while
-      // its own directory is still the persistence scope.
-      flushOpenNote()
-      await savePending().catch((error: unknown) => {
+      await settleActiveNote().catch((error: unknown) => {
         console.error('Autosave failed:', error)
       })
       try {
         await openNote(path)
-        setSavedAt(null)
       } catch (error) {
         console.error(`Failed to open ${path}:`, error)
       }
     })()
-  }, [flushOpenNote, openNote, savePending])
+  }, [openNote, settleActiveNote])
 
   // Save is disabled with no Document open: the native menu item through
   // update_menu_state, the ⌘S keydown here.
   const onSave = useCallback(() => {
     if (!activeTabPath) return
-    flushOpenNote()
+    flushPendingEditorContentRef.current?.(activeTabPath)
     void handleSave()
-  }, [activeTabPath, flushOpenNote, handleSave])
+  }, [activeTabPath, handleSave])
 
-  // Only Open Document… and Save are wired in this slice; the other manifest
+  // Open Document…, Save and the Tab commands are wired; the other manifest
   // commands get their handlers with their own tickets.
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeTabPath,
     onOpenNote,
     onSave,
+    onCloseTab: tabCommands.onCloseTab,
+    onPreviousTab: tabCommands.onPreviousTab,
+    onNextTab: tabCommands.onNextTab,
+    onJumpToTab1: tabCommands.onJumpToTab1,
+    onJumpToTab2: tabCommands.onJumpToTab2,
+    onJumpToTab3: tabCommands.onJumpToTab3,
+    onJumpToTab4: tabCommands.onJumpToTab4,
+    onJumpToTab5: tabCommands.onJumpToTab5,
+    onJumpToTab6: tabCommands.onJumpToTab6,
+    onJumpToTab7: tabCommands.onJumpToTab7,
+    onJumpToTab8: tabCommands.onJumpToTab8,
+    onJumpToTab9: tabCommands.onJumpToTab9,
     onCreateNote: noop,
     onQuickOpen: noop,
     onPastePlainText: noop,
@@ -101,12 +161,22 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeTabPath, onOpenNote, onSave])
+  }), [activeTabPath, onOpenNote, onSave, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
 
+  const savedAt = activeTabPath ? savedAtByPath[activeTabPath] ?? null : null
+
   return (
     <div className="fuwa-shell">
+      <Sidebar>
+        <OpenEditors
+          tabs={tabs}
+          activeTabPath={activeTabPath}
+          onActivate={tabCommands.activateTabSettled}
+          onClose={tabCommands.closeTabSettled}
+        />
+      </Sidebar>
       <Editor
         tabs={tabs}
         activeTabPath={activeTabPath}
@@ -114,6 +184,8 @@ export default function App() {
         savedAt={savedAt}
         onContentChange={onContentChange}
         flushPendingEditorContentRef={flushPendingEditorContentRef}
+        onActivateTab={tabCommands.activateTabSettled}
+        onCloseTab={tabCommands.closeTabSettled}
       />
     </div>
   )

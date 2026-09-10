@@ -1,0 +1,122 @@
+/* ==============================================
+   Sidebar.css — the sidebar on the canvas
+   Spec section 2: the sidebar sits directly on the canvas, no border, no
+   separate surface. Its top row is 44px so the traffic lights keep one y in
+   both states. Open Editors is a pinned group above the Explorer (AIM-383).
+   Colours are the semantic variables in index.css; the token pass (AIM-382)
+   re-values them in place.
+   ============================================== */
+
+.fuwa-sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: var(--fuwa-sidebar-width, 260px);
+  min-height: 0;
+  padding: 0 8px 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  user-select: none;
+}
+
+/* The traffic lights' row; the whole row drags the window. */
+.fuwa-sidebar__top {
+  flex: none;
+  height: 44px;
+  margin: 0 -8px 2px;
+  -webkit-app-region: drag;
+}
+
+.fuwa-sidebar__label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.fuwa-open-editors {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+}
+
+.fuwa-open-editors__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fuwa-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px 0 8px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+}
+
+.fuwa-sidebar-row:hover {
+  background: var(--state-hover-subtle);
+}
+
+.fuwa-sidebar-row[data-active] {
+  background: var(--state-selected);
+  color: var(--text-primary);
+}
+
+.fuwa-sidebar-row:focus-visible {
+  box-shadow: 0 0 0 1px var(--state-focus-ring) inset;
+}
+
+.fuwa-sidebar-row__icon {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.fuwa-sidebar-row[data-active] .fuwa-sidebar-row__icon {
+  color: var(--text-secondary);
+}
+
+.fuwa-sidebar-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The close affordance: hidden until the row is hovered or active. */
+.fuwa-sidebar-row__close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0;
+  cursor: default;
+}
+
+.fuwa-sidebar-row:hover .fuwa-sidebar-row__close,
+.fuwa-sidebar-row[data-active] .fuwa-sidebar-row__close {
+  opacity: 1;
+}
+
+.fuwa-sidebar-row__close:hover {
+  background: var(--state-hover);
+  color: var(--text-primary);
+}

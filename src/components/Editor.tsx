@@ -20,6 +20,7 @@ import { schema } from './editorSchema'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
 import { createMarkdownHighlightShortcutExtension } from './markdownHighlightShortcutExtension'
 import { PathRow } from './PathRow'
+import { TabBar } from './TabBar'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
 import { createRichEditorBlockSelectionExtension } from './richEditorBlockSelectionExtension'
 import { createRichEditorCodeBlockArrowNavigationExtension } from './richEditorCodeBlockArrowNavigationExtension'
@@ -66,6 +67,9 @@ export interface EditorProps {
   onContentChange?: (path: string, content: string) => void
   /** Registers a flush of the rich editor's pending edits, so ⌘S saves the latest keystrokes. */
   flushPendingEditorContentRef?: FlushPendingContentRef
+  /** The tab bar's clicks. */
+  onActivateTab: (path: string) => void
+  onCloseTab: (path: string) => void
 }
 
 /** Images arrive with AIM-384; until then an unsupported format is logged, not surfaced. */
@@ -199,16 +203,16 @@ function EmptyCard() {
 
 export const Editor = memo(function Editor(props: EditorProps) {
   const { editor, activeTab, handleEditorChange } = useEditorRuntime(props)
-  const { vaultPath, savedAt } = props
+  const { tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab } = props
   // theme.json's editor.maxWidth and paddingHorizontal (spec: a 680px prose
   // column with 56px padding) reach the wrapper and .bn-editor as CSS variables.
   const { cssVars } = useEditorTheme()
 
   return (
     <div className="fuwa-card" data-testid="editor-card">
-      <div className="fuwa-card__top" data-tauri-drag-region aria-hidden="true" />
       {activeTab ? (
         <>
+          <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
           <PathRow filename={activeTab.entry.filename} savedAt={savedAt} />
           <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
             <div className="editor-content-wrapper">
@@ -223,7 +227,10 @@ export const Editor = memo(function Editor(props: EditorProps) {
           </EditorFindScope>
         </>
       ) : (
-        <EmptyCard />
+        <>
+          <div className="fuwa-card__top" data-tauri-drag-region aria-hidden="true" />
+          <EmptyCard />
+        </>
       )}
     </div>
   )
