@@ -9,10 +9,12 @@ A small desktop app for viewing and editing Markdown files. Open a `.md` directl
 **Document**:
 A single `.md` file opened in Fuwa. Fuwa reads and writes the file on disk; it never owns a copy that outlives the session.
 _Avoid_: Note, page, file (when you mean the Markdown content)
+_In code_: `note`, the word the kernel inherited from Tolaria. Code says note; people and UI say Document.
 
 **Folder**:
 The one directory the sidebar is currently rooted at. Fuwa never writes configuration into a Folder; only Documents and their attachments live there.
 _Avoid_: Vault, workspace, project, root
+_In code_: `vault`, the word the kernel inherited from Tolaria. Code says vault; people and UI say Folder.
 
 **Attachment**:
 An image pasted or dropped into a Document, stored in an `attachments/` directory beside that Document.
