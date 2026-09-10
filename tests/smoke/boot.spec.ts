@@ -1,19 +1,14 @@
 import { expect, test } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+import { watchForErrors } from './harness'
 
 // Spec 1 of the smoke plan: the app boots to the empty window in a plain
 // browser, with the Folder fixture answering the command boundary. Later specs
 // seed the fixture through `window.__fuwaMockVault` before navigating.
 
 test('boots to the empty window with the Folder fixture installed', async ({ page }) => {
-  const pageErrors: string[] = []
-  const consoleErrors: string[] = []
-  page.on('pageerror', (error) => pageErrors.push(error.message))
-  page.on('console', (message) => {
-    // Fuwa ships no favicon; a headed Chromium asks for one and Vite answers 404.
-    if (message.type() === 'error' && !message.text().includes('favicon.ico')) consoleErrors.push(message.text())
-  })
+  const { pageErrors, consoleErrors } = watchForErrors(page)
 
   await page.goto('/')
 

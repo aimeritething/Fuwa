@@ -1,47 +1,18 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
 // Spec 3 of the smoke plan: File → Open Document… (⌘⇧O) renders the chosen
 // Document in Rich mode inside the card. The system dialog has no browser
 // equivalent, so the spec queues the "chosen" path on the Folder fixture.
 
-const WELCOME_PATH = '/Users/fuwa/Documents/Notes/Welcome.md'
-
-// Playwright's tracing (on for every run so it can be kept on failure) injects
-// a script into each frame; the HTML block's sandboxed srcdoc frame refuses it
-// and Chromium logs that refusal. It is the harness, not the app.
-const TRACING_SANDBOX_NOTICE = "Blocked script execution in 'about:srcdoc'"
-
-function isHarnessNoise(text: string): boolean {
-  return text.includes('favicon.ico') || text.includes(TRACING_SANDBOX_NOTICE)
-}
-
-function watchForErrors(page: Page) {
-  const pageErrors: string[] = []
-  const consoleErrors: string[] = []
-  page.on('pageerror', (error) => pageErrors.push(error.message))
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !isHarnessNoise(message.text())) consoleErrors.push(message.text())
-  })
-  return { pageErrors, consoleErrors }
-}
-
-async function queueDialogSelection(page: Page, path: string) {
-  await page.evaluate((selected) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
-    if (!vault) throw new Error('The Folder fixture is not installed')
-    vault.queueDialogSelection([selected])
-  }, path)
-}
-
 test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
-  await queueDialogSelection(page, WELCOME_PATH)
 
-  await page.keyboard.press('Meta+Shift+o')
+  await openDocumentThroughDialog(page, WELCOME_PATH)
 
   const editor = page.locator('.bn-editor')
   await expect(editor).toBeVisible()
@@ -55,7 +26,7 @@ test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ p
     window.__fuwaMockVault?.calls.filter((call) => call.command === 'get_note_content') ?? [],
   )
   expect(readCalls).toEqual([
-    { command: 'get_note_content', args: { path: WELCOME_PATH, vaultPath: '/Users/fuwa/Documents/Notes' } },
+    { command: 'get_note_content', args: { path: WELCOME_PATH, vaultPath: MOCK_FOLDER } },
   ])
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -75,7 +46,7 @@ test('a cancelled dialog leaves the empty card in place', async ({ page }) => {
 
 // Acceptance: a Document using every dialect feature (spec section 3) renders
 // without console errors; tldraw and Mermaid arrive as their own lazy chunks.
-const DIALECT_PATH = '/Users/fuwa/Documents/Notes/Dialect.md'
+const DIALECT_PATH = `${MOCK_FOLDER}/Dialect.md`
 const DIALECT_DOCUMENT = [
   '---',
   'title: Dialect',

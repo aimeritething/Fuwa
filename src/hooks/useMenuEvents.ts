@@ -8,14 +8,6 @@ import {
 } from './appCommandDispatcher'
 import { cleanupTauriEventListener, type TauriUnlisten } from '../utils/tauriEventCleanup'
 
-/**
- * Tolaria's native-menu bridge, trimmed to Fuwa's manifest: the Rust menu
- * emits `menu-event` with a command id, the renderer dispatches it, and the
- * renderer pushes the enable state of the manifest's state groups back with
- * `update_menu_state`. The window-event and `__laputaTest` paths let the
- * browser smoke specs drive the same handlers without a native menu.
- */
-
 export interface MenuEventHandlers extends AppCommandHandlers {
   activeTabPath: string | null
 }
@@ -29,6 +21,17 @@ function readCustomEventDetail(event: Event): string | null {
     return null
   }
   return event.detail
+}
+
+function createWindowCommandListener(
+  dispatch: (id: string) => void,
+): (event: Event) => void {
+  return (event: Event) => {
+    const detail = readCustomEventDetail(event)
+    if (detail) {
+      dispatch(detail)
+    }
+  }
 }
 
 function syncNativeMenuState(state: MenuStatePayload): void {
@@ -59,8 +62,8 @@ function useNativeMenuEventListener(handlersRef: { current: MenuEventHandlers })
 
         unlisten = teardown
       })
-      .catch((err) => {
-        console.warn('[menu] Failed to subscribe to native menu events:', err)
+      .catch(() => {
+        /* not in Tauri */
       })
 
     return () => {
@@ -72,12 +75,11 @@ function useNativeMenuEventListener(handlersRef: { current: MenuEventHandlers })
 
 function useWindowAppCommandListener(handlersRef: { current: MenuEventHandlers }) {
   useEffect(() => {
-    const handleCommandEvent = (event: Event) => {
-      const detail = readCustomEventDetail(event)
-      if (detail && isAppCommandId(detail)) {
+    const handleCommandEvent = createWindowCommandListener((detail) => {
+      if (isAppCommandId(detail)) {
         executeAppCommand(detail, handlersRef.current, 'app-event')
       }
-    }
+    })
 
     window.addEventListener(APP_COMMAND_EVENT_NAME, handleCommandEvent)
     return () => window.removeEventListener(APP_COMMAND_EVENT_NAME, handleCommandEvent)
@@ -109,13 +111,13 @@ function useNativeMenuStateSync(state: MenuStatePayload) {
   }, [state])
 }
 
-/** Dispatch a native menu event id to the matching handler. Exported for testing. */
-export function dispatchMenuEvent(id: string, handlers: MenuEventHandlers): void {
+/** Dispatch a Tauri menu event ID to the matching handler. Exported for testing. */
+export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
   if (!isAppCommandId(id)) return
-  executeAppCommand(id, handlers, 'native-menu')
+  executeAppCommand(id, h, 'native-menu')
 }
 
-/** Listen for native menu events and dispatch them to the app's command handlers. */
+/** Listen for native macOS menu events and dispatch them to the appropriate handlers. */
 export function useMenuEvents(handlers: MenuEventHandlers) {
   const ref = useRef(handlers)
   const hasActiveNote = handlers.activeTabPath !== null

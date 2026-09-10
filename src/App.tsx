@@ -55,10 +55,22 @@ export default function App() {
   })
   const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePending)
 
+  /** Push the rich editor's fresh keystrokes into the save buffer, so nothing is younger than 1.5 s. */
+  const flushOpenNote = useCallback(() => {
+    if (activeTabPath) flushPendingEditorContentRef.current?.(activeTabPath)
+  }, [activeTabPath])
+
   const onOpenNote = useCallback(() => {
     void (async () => {
       const path = await pickNoteToOpen()
       if (!path) return
+      // With one Document at a time every open is a close, and a dirty
+      // Document flushes before it closes (spec section 3): write it while
+      // its own directory is still the persistence scope.
+      flushOpenNote()
+      await savePending().catch((error: unknown) => {
+        console.error('Autosave failed:', error)
+      })
       try {
         await openNote(path)
         setSavedAt(null)
@@ -66,12 +78,15 @@ export default function App() {
         console.error(`Failed to open ${path}:`, error)
       }
     })()
-  }, [openNote])
+  }, [flushOpenNote, openNote, savePending])
 
+  // Save is disabled with no Document open: the native menu item through
+  // update_menu_state, the ⌘S keydown here.
   const onSave = useCallback(() => {
-    if (activeTabPath) flushPendingEditorContentRef.current?.(activeTabPath)
+    if (!activeTabPath) return
+    flushOpenNote()
     void handleSave()
-  }, [activeTabPath, handleSave])
+  }, [activeTabPath, flushOpenNote, handleSave])
 
   // Only Open Document… and Save are wired in this slice; the other manifest
   // commands get their handlers with their own tickets.

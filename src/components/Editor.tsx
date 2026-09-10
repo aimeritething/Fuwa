@@ -9,7 +9,6 @@ import {
   emptyImageUploadResult,
   isUnsupportedImageFormatError,
   uploadImageFile,
-  type ImageImportError,
   type UploadImageFileResult,
 } from '../hooks/useImageDrop'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
@@ -54,7 +53,6 @@ const RICH_EDITOR_BIDI_DOM_ATTRIBUTES = {
 
 const NO_WIKILINK_NAVIGATION = () => {}
 
-type ImageImportErrorHandler = (error: ImageImportError) => void
 type FlushPendingContentRef = MutableRefObject<((path: string) => void) | null>
 
 export interface EditorProps {
@@ -68,17 +66,13 @@ export interface EditorProps {
   onContentChange?: (path: string, content: string) => void
   /** Registers a flush of the rich editor's pending edits, so ⌘S saves the latest keystrokes. */
   flushPendingEditorContentRef?: FlushPendingContentRef
-  onImageImportError?: ImageImportErrorHandler
 }
 
-function handleEditorImageUploadFailure(
-  file: File,
-  error: unknown,
-  onImageImportError: ImageImportErrorHandler | undefined,
-): UploadImageFileResult {
+/** Images arrive with AIM-384; until then an unsupported format is logged, not surfaced. */
+function handleEditorImageUploadFailure(file: File, error: unknown): UploadImageFileResult {
   if (!isUnsupportedImageFormatError(error)) throw error
 
-  onImageImportError?.(error)
+  console.warn('[editor] Unsupported image format:', error.message)
   return emptyImageUploadResult(file)
 }
 
@@ -90,14 +84,9 @@ function useLatestRef<T>(value: T): MutableRefObject<T> {
   return ref
 }
 
-function useRichEditor(options: {
-  activeTabPath: string | null
-  vaultPath?: string
-  onImageImportError?: ImageImportErrorHandler
-}) {
+function useRichEditor(options: { activeTabPath: string | null; vaultPath?: string }) {
   const vaultPathRef = useLatestRef(options.vaultPath)
   const activeTabPathRef = useLatestRef(options.activeTabPath)
-  const onImageImportErrorRef = useLatestRef(options.onImageImportError)
 
   const editor = useCreateBlockNote({
     ...RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS,
@@ -107,7 +96,7 @@ function useRichEditor(options: {
       try {
         return await uploadImageFile(file, vaultPathRef.current)
       } catch (error) {
-        return handleEditorImageUploadFailure(file, error, onImageImportErrorRef.current)
+        return handleEditorImageUploadFailure(file, error)
       }
     },
     pasteHandler: createRichEditorPasteHandler(),
@@ -138,8 +127,8 @@ function useRichEditor(options: {
 }
 
 function useEditorRuntime(props: EditorProps) {
-  const { tabs, activeTabPath, vaultPath, onContentChange, onImageImportError, flushPendingEditorContentRef } = props
-  const editor = useRichEditor({ activeTabPath, vaultPath, onImageImportError })
+  const { tabs, activeTabPath, vaultPath, onContentChange, flushPendingEditorContentRef } = props
+  const editor = useRichEditor({ activeTabPath, vaultPath })
   const activeTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
   const { handleEditorChange, flushPendingEditorChange, editorMountedRef } = useEditorTabSwap({
     tabs,
@@ -210,7 +199,7 @@ function EmptyCard() {
 
 export const Editor = memo(function Editor(props: EditorProps) {
   const { editor, activeTab, handleEditorChange } = useEditorRuntime(props)
-  const { vaultPath, savedAt, onImageImportError } = props
+  const { vaultPath, savedAt } = props
   // theme.json's editor.maxWidth and paddingHorizontal (spec: a 680px prose
   // column with 56px padding) reach the wrapper and .bn-editor as CSS variables.
   const { cssVars } = useEditorTheme()
@@ -227,7 +216,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
                 editor={editor}
                 onNavigateWikilink={NO_WIKILINK_NAVIGATION}
                 onChange={handleEditorChange}
-                onImageImportError={onImageImportError}
                 sourceEntry={activeTab.entry}
                 vaultPath={vaultPath}
               />

@@ -67,7 +67,9 @@ export interface MockVault {
   queueDialogSelection(paths: string[]): void
   /** The next queued dialog selection, or null for a cancelled dialog. */
   takeDialogSelection(): string | null
-  /** Restore the seed (or a new one), clear the watcher, the pending opens, the dialog queue and the call log. */
+  /** Make `save_note_content` refuse these paths, as a read-only file would; an empty list lifts it. */
+  markReadOnly(paths: string[]): void
+  /** Restore the seed (or a new one), clear the watcher, the pending opens, the dialog queue, the read-only marks and the call log. */
   reset(seed?: MockVaultFile[]): void
 }
 
@@ -82,6 +84,7 @@ const ACTIVE_VAULT_PATH_ERROR = 'Path must stay inside the active vault'
 const ACTIVE_VAULT_UNAVAILABLE_ERROR = 'Active vault is not available'
 const FILE_DOES_NOT_EXIST_ERROR = 'File does not exist'
 const NOT_A_NOTE_ERROR = 'Path is not a note'
+const READ_ONLY_ERROR = 'Failed to write file: Permission denied (os error 13)'
 
 export const DEFAULT_MOCK_VAULT_FILES: MockVaultFile[] = [
   file('Welcome.md', 'note', '# Welcome\n\nThis Folder lives in memory. Edits stay for the life of the page.\n', 1_757_500_000),
@@ -147,6 +150,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
   let watched: string | null = null
   let pendingOpen: string[] = []
   let dialogSelections: string[] = []
+  let readOnlyPaths = new Set<string>()
   const calls: MockVaultCall[] = []
 
   function ensureFolders(path: string, modifiedAt: number): void {
@@ -165,6 +169,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     watched = null
     pendingOpen = []
     dialogSelections = []
+    readOnlyPaths = new Set()
     calls.length = 0
   }
 
@@ -200,7 +205,9 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
         return note.content ?? ''
       }
       case 'save_note_content': {
-        writeNote(args?.path, typeof args?.content === 'string' ? args.content : '')
+        const path = requireInsideVault(args?.path)
+        if (readOnlyPaths.has(path)) throw new Error(READ_ONLY_ERROR)
+        writeNote(path, typeof args?.content === 'string' ? args.content : '')
         return undefined
       }
       case 'list_vault_folders': {
@@ -248,6 +255,9 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
       const [next, ...rest] = dialogSelections
       dialogSelections = rest
       return next ?? null
+    },
+    markReadOnly: (paths) => {
+      readOnlyPaths = new Set(paths)
     },
     reset,
   }

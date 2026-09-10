@@ -20,3 +20,4 @@ The Rust side is unchanged: the parent directory is an ordinary root, so the con
 - `useSaveNote` and `useEditorSave` carry the root through to the command: the save hook sends the persistence-scope entry that contains the path as `vaultPath`, and omits it when no scope is configured (the carried tests' shape).
 - When a Folder is open and contains the Document, the Folder is the root as before; the parent-directory rule applies only to Documents outside it. The Explorer and Session tickets keep that distinction when they choose the root per Tab.
 - A Document at a filesystem root (`/x.md`) has no parent to name; the boundary refuses it, which is acceptable for v0.1.
+- The carried rename hook (`useNoteRename.ts`) still reads `get_note_content` without a root; it is dormant until Explorer rename ([AIM-387](https://linear.app/aimerite/issue/AIM-387)), which has to pass the root when it wires the hook.
