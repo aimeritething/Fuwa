@@ -24,6 +24,8 @@ export type AppCommandDispatchSource =
 type SuppressedShortcutSource = Extract<AppCommandDispatchSource, 'renderer-keyboard'>
 
 export interface AppCommandHandlers {
+  /** ⌘Q: write every pending edit, then exit (AIM-385). */
+  onQuit?: () => void
   onCreateNote: () => void
   onOpenVault?: () => void
   onOpenNote?: () => void
@@ -59,6 +61,7 @@ export interface AppCommandHandlers {
 
 type SimpleHandlerKey = keyof Pick<
   AppCommandHandlers,
+  | 'onQuit'
   | 'onCreateNote'
   | 'onOpenVault'
   | 'onOpenNote'
@@ -95,6 +98,7 @@ type SimpleHandlerKey = keyof Pick<
 type SimpleHandlerExecutor = (handlers: AppCommandHandlers) => void
 
 const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecutor][] = [
+  ['onQuit', (handlers) => handlers.onQuit?.()],
   ['onCreateNote', (handlers) => handlers.onCreateNote()],
   ['onOpenVault', (handlers) => handlers.onOpenVault?.()],
   ['onOpenNote', (handlers) => handlers.onOpenNote?.()],

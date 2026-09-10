@@ -190,4 +190,34 @@ describe('useNoteTabs', () => {
 
     expect(result.current.activeTab?.content).toBe('# A\n\nEdited\n')
   })
+
+  it('reloadTab replaces a Tab\'s content with the bytes on disk and leaves the other Tabs alone', async () => {
+    const { result } = await openThree()
+    const files: Record<string, string> = { [A]: '# A\n', [B]: '# B\n', [C]: '# C\n' }
+    seedFiles(files)
+    act(() => {
+      result.current.setTabs((tabs) => tabs.map((tab) => (tab.entry.path === B ? { ...tab, content: '# B\n\nUnsaved\n' } : tab)))
+    })
+    files[B] = '# B\n\nOn disk\n'
+
+    await act(async () => {
+      await result.current.reloadTab(B)
+    })
+
+    expect(runtime.invoke).toHaveBeenLastCalledWith('get_note_content', { path: B, vaultPath: '/n' })
+    expect(result.current.tabs.map((tab) => tab.content)).toEqual(['# A\n', '# B\n\nOn disk\n', '# C\n'])
+    expect(openPaths(result)).toEqual([A, B, C])
+    expect(result.current.activeTabPath).toBe(C)
+  })
+
+  it('reloadTab is a no-op for a Document that is not open', async () => {
+    const { result } = await openThree()
+    runtime.invoke.mockClear()
+
+    await act(async () => {
+      await result.current.reloadTab('/n/elsewhere.md')
+    })
+
+    expect(runtime.invoke).not.toHaveBeenCalled()
+  })
 })

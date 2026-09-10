@@ -79,6 +79,20 @@ export function useNoteTabs() {
     if (activeTab) announceOpened(activeTab)
   }, [])
 
+  /**
+   * Put the bytes on disk back into an open Document's Tab (the error bar's
+   * Discard changes, AIM-385). The Tab keeps its place and the active Tab
+   * does not move; a Document that is not open is left alone.
+   */
+  const reloadTab = useCallback(async (path: string): Promise<void> => {
+    if (!stateRef.current.tabs.some((tab) => tab.entry.path === path)) return
+    const content = await readNoteContent(path, noteRootForPath(path))
+    setState((prev) => ({
+      ...prev,
+      tabs: prev.tabs.map((tab) => (tab.entry.path === path ? { ...tab, content } : tab)),
+    }))
+  }, [])
+
   const closeTab = useCallback((path: string) => setState((prev) => tabsState.closeTab(prev, path)), [])
   const activateTab = useCallback((path: string) => setState((prev) => tabsState.activateTab(prev, path)), [])
   const activateTabAt = useCallback((index: number) => setState((prev) => tabsState.activateTabAt(prev, index)), [])
@@ -107,6 +121,7 @@ export function useNoteTabs() {
     activeTabPath,
     openNote,
     closeTab,
+    reloadTab,
     activateTab,
     activateTabAt,
     activateAdjacentTab,

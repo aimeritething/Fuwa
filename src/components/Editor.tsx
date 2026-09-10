@@ -15,6 +15,7 @@ import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { Tab } from '../types'
 import { dispatchEditorFindAvailability } from '../utils/editorFindEvents'
 import { installRichEditorMarkdownSerializer } from '../utils/richEditorMarkdown'
+import type { WriteFailure } from '../hooks/useWriteFailures'
 import { useRegisterEditorContentFlushes } from './editorContentFlushRegistration'
 import { schema } from './editorSchema'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
@@ -36,6 +37,7 @@ import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTra
 import { SingleEditorView } from './SingleEditorView'
 import { createTodoBlockShortcutExtension } from './todoBlockShortcutExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
+import { WriteFailureBar } from './WriteFailureBar'
 import './Editor.css'
 import './EditorTheme.css'
 import './EditorShell.css'
@@ -70,6 +72,10 @@ export interface EditorProps {
   /** The tab bar's clicks. */
   onActivateTab: (path: string) => void
   onCloseTab: (path: string) => void
+  /** The active Document's refused write, if its last write failed; the error bar's reason to exist. */
+  writeFailure: WriteFailure | null
+  onRetryWrite: (path: string) => void
+  onDiscardWrite: (path: string) => void
 }
 
 /** Images arrive with AIM-384; until then an unsupported format is logged, not surfaced. */
@@ -203,7 +209,7 @@ function EmptyCard() {
 
 export const Editor = memo(function Editor(props: EditorProps) {
   const { editor, activeTab, handleEditorChange } = useEditorRuntime(props)
-  const { tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab } = props
+  const { tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite } = props
   // theme.json's editor.maxWidth and paddingHorizontal (spec: a 680px prose
   // column with 56px padding) reach the wrapper and .bn-editor as CSS variables.
   const { cssVars } = useEditorTheme()
@@ -214,6 +220,14 @@ export const Editor = memo(function Editor(props: EditorProps) {
         <>
           <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
           <PathRow filename={activeTab.entry.filename} savedAt={savedAt} />
+          {writeFailure?.path === activeTab.entry.path && (
+            <WriteFailureBar
+              path={writeFailure.path}
+              message={writeFailure.message}
+              onRetry={() => onRetryWrite(writeFailure.path)}
+              onDiscard={() => onDiscardWrite(writeFailure.path)}
+            />
+          )}
           <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
             <div className="editor-content-wrapper">
               <SingleEditorView

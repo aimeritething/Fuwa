@@ -40,6 +40,10 @@ _Avoid_: Source mode, code mode, plain mode
 **Autosave**:
 Writing a Document's pending edits to disk after a short idle delay. Disk is written first; in-memory state updates only after the write succeeds.
 
+**Write failure**:
+A refused Autosave. The buffer keeps the edit and the Tab shows an error bar with Retry and Discard changes; closing that Tab, or quitting, asks the same instead of going ahead silently. The only prompt in the app; never on an Image file's Tab.
+_Avoid_: Save error, unsaved changes, dirty
+
 ### Shell
 
 **Explorer**:

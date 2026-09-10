@@ -1,6 +1,7 @@
 mod clipboard;
 mod folders;
 mod menu_state;
+mod quit;
 mod session_file;
 mod vault;
 
@@ -9,6 +10,7 @@ use std::borrow::Cow;
 pub use clipboard::*;
 pub use folders::*;
 pub use menu_state::*;
+pub use quit::*;
 pub use session_file::*;
 pub use vault::*;
 

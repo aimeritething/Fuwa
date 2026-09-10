@@ -1,5 +1,18 @@
 {
   "commands": {
+    "appQuit": {
+      "id": "app-quit",
+      "route": { "kind": "handler", "handler": "onQuit" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl",
+        "key": "q",
+        "code": "KeyQ",
+        "display": "⌘Q",
+        "accelerator": "CmdOrCtrl+Q",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
     "fileNewNote": {
       "id": "file-new-note",
       "route": { "kind": "handler", "handler": "onCreateNote" },
@@ -425,7 +438,9 @@
       ]
     }
   ],
-  "appMenu": [],
+  "appMenu": [
+    { "kind": "command", "command": "appQuit", "label": { "macos": "Quit Fuwa", "default": "Quit" } }
+  ],
   "menuStateGroups": {
     "noteDependent": [
       { "command": "fileSave" },

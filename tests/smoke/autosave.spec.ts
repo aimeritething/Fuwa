@@ -64,7 +64,7 @@ test('opening a Document and saving without edits leaves the bytes untouched', a
   expect(await savedContent(page, WELCOME_PATH)).toBe(before)
 })
 
-test('a refused write logs, keeps the buffer and leaves the saved time alone', async ({ page }) => {
+test('a refused write is reported, keeps the buffer and leaves the saved time alone', async ({ page }) => {
   const errors = watchForErrors(page)
   await openWelcome(page)
   await typeAtEnd(page, ' First.')
@@ -79,7 +79,7 @@ test('a refused write logs, keeps the buffer and leaves the saved time alone', a
 
   expect(await savedContent(page, WELCOME_PATH)).toBe(written)
   await expect(page.getByTestId('path-row-saved')).not.toHaveText('saved just now')
-  expect(errors.consoleErrors.some((text) => text.includes('Autosave failed'))).toBe(true)
+  expect(errors.consoleErrors.some((text) => text.includes('Could not save'))).toBe(true)
 
   // The buffer survived: once the path is writable again, ⌘S lands it.
   await page.evaluate(() => window.__fuwaMockVault?.markReadOnly([]))

@@ -115,6 +115,18 @@ describe('useMenuEvents', () => {
       expect(handlers.onSave).toHaveBeenCalledTimes(1)
     })
 
+    it('the app menu\'s Quit item reaches onQuit, so the renderer flushes before the app exits (AIM-385)', async () => {
+      const handlers = makeHandlers({ onQuit: vi.fn() })
+      renderHook(() => useMenuEvents(handlers))
+      await flushMicrotasks()
+
+      act(() => {
+        runtime.listeners.get('menu-event')?.({ payload: 'app-quit' })
+      })
+
+      expect(handlers.onQuit).toHaveBeenCalledTimes(1)
+    })
+
     it('keeps the Document-dependent menu items in step with the active Document', async () => {
       const { rerender } = renderHook(
         ({ activeTabPath }: { activeTabPath: string | null }) => useMenuEvents(makeHandlers({ activeTabPath })),

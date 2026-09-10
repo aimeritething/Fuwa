@@ -178,3 +178,73 @@
   font-weight: 400;
   color: var(--text-secondary);
 }
+
+/* The error bar (AIM-385): a Linear callout in the red chromatic role (accent
+   at 2% background, 20% border, hairline, 6px radius) between the path row and
+   the content. Retry is the primary control, Discard changes the secondary. */
+.fuwa-write-failure {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent-red) 2%, transparent);
+  box-shadow: 0 0 0 var(--hairline, 0.5px) color-mix(in srgb, var(--accent-red) 20%, transparent);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+}
+
+.fuwa-write-failure__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fuwa-write-failure__title {
+  overflow: hidden;
+  color: var(--accent-red);
+  font-weight: 510;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fuwa-write-failure__detail {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fuwa-write-failure__actions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* The same choices as a dialog when the Tab is closed or the app quits. */
+.fuwa-write-failure-dialog {
+  background: var(--surface-dialog);
+  border-color: var(--border-dialog);
+  box-shadow: 0 8px 24px var(--shadow-dialog);
+}
+
+.fuwa-write-failure-dialog [data-slot="dialog-title"] {
+  font-size: 14px;
+  font-weight: 510;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.fuwa-write-failure-dialog [data-slot="dialog-description"] {
+  font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}

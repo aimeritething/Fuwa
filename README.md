@@ -22,8 +22,8 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
   live in `tests/smoke`. Outside Tauri every command goes to the in-memory Folder fixture in
   `src/mock-tauri/vaultFixture.ts`, which answers `list_files`, `get_note_content`,
   `save_note_content`, `list_vault_folders`, `start_vault_watcher`, `stop_vault_watcher`,
-  `take_pending_open`, `read_session` and `update_session` from memory and rejects anything
-  else. Argument and result shapes follow the Rust commands; `list_files` and
+  `take_pending_open`, `read_session`, `update_session` and `quit_app` from memory and
+  rejects anything else. Argument and result shapes follow the Rust commands; `list_files` and
   `take_pending_open` have no Rust side yet, so the fixture's shape is the one their Rust
   commands should match. A spec reaches it as `window.__fuwaMockVault`: call `reset(seed)`
   to seed files, `writeNote(path, content)` to add one, `queuePendingOpen(paths)` to
@@ -33,7 +33,9 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
   `seedSession(session)` to plant the Session file the next page load restores (the fixture
   keeps it in localStorage, so a reload stands in for a relaunch), and read `calls` to assert
   what the app invoked. Shared helpers live in `tests/smoke/harness.ts`. Add a case to the
-  fixture's `answer` switch when a spec needs a command it does not answer yet.
+  fixture's `answer` switch when a spec needs a command it does not answer yet. The dev
+  server runs on port 5202; set `FUWA_SMOKE_PORT` to run the specs against a second checkout
+  while another dev server holds that port.
 
 CI (`.github/workflows/ci.yml`) runs the type-check, ESLint, Vitest, clippy and `cargo test`
 on macOS for every push to `main` and every pull request. Smoke and the bundle build are run
