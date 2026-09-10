@@ -34,6 +34,12 @@ export function subscribeNoteContentResolved(listener: NoteContentResolvedListen
   }
 }
 
+/**
+ * Tolaria's LRU reset. Fuwa keeps no cache, so there is nothing to clear; the
+ * export stays because the carried parsed-block preload test calls it.
+ */
+export function clearNoteContentCache(): void {}
+
 export function cacheNoteContent(
   path: string,
   content: string,

@@ -1,0 +1,54 @@
+name: CI
+
+# The one workflow (spec section 8, item 9; https://linear.app/aimerite/issue/AIM-378):
+# type-check, ESLint, Vitest, clippy and cargo test on a macOS runner. No build
+# artifact, no Playwright; the smoke harness and the bundle build are run by hand.
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: tsc, ESLint, Vitest, clippy, cargo test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pnpm/action-setup reads the version from package.json's packageManager field.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Type-check
+        run: pnpm tsc
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Vitest
+        run: pnpm test
+
+      - name: Clippy
+        run: cargo clippy --all-targets
+        working-directory: src-tauri
+
+      - name: Cargo test
+        run: cargo test
+        working-directory: src-tauri

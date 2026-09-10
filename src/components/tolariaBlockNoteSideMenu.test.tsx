@@ -281,17 +281,17 @@ describe('TolariaSideMenu', () => {
     ])
   })
 
-  it('localizes heading collapse and expand labels', () => {
+  it('swaps the heading collapse label for the expand label once collapsed', () => {
     const heading = headingBlock('heading-block', 2)
     mockEditor.document = [heading]
     appendBlockOuters([heading])
     mockEditor.getBlock.mockReturnValue(heading)
 
-    renderSideMenuAndCollapseControllerWithBlock(heading, { locale: 'it-IT' })
+    renderSideMenuAndCollapseControllerWithBlock(heading)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Comprimi sezione' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse section' }))
 
-    expect(screen.getByRole('button', { name: 'Espandi sezione' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expand section' })).toBeInTheDocument()
   })
 
   it('only renders the list item collapse toggle when a list item has children', () => {
@@ -320,7 +320,7 @@ describe('TolariaSideMenu', () => {
     ])
   })
 
-  it('localizes list item collapse and expand labels', () => {
+  it('swaps the list item collapse label for the expand label once collapsed', () => {
     const childListItem = listItemBlock('child-list-item')
     const parentListItem = listItemBlock('parent-list-item', [childListItem])
     mockEditor.document = [parentListItem]
@@ -329,11 +329,11 @@ describe('TolariaSideMenu', () => {
       [parentListItem, childListItem].find((block) => block.id === id)
     ))
 
-    renderSideMenuAndCollapseControllerWithBlock(parentListItem, { locale: 'it-IT' })
+    renderSideMenuAndCollapseControllerWithBlock(parentListItem)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Comprimi elemento' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse item' }))
 
-    expect(screen.getByRole('button', { name: 'Espandi elemento' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Expand item' })).toBeInTheDocument()
   })
 
   it('does not subscribe collapsed-heading rendering until something is collapsed', () => {

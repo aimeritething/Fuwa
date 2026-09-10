@@ -349,7 +349,7 @@ describe('TldrawWhiteboard', () => {
     })
 
     expect(screen.getByTestId('tldraw-whiteboard-permission-error')).toHaveTextContent('Whiteboard permission blocked')
-    expect(screen.getByTestId('tldraw-whiteboard-permission-error')).toHaveTextContent('reopen the note')
+    expect(screen.getByTestId('tldraw-whiteboard-permission-error')).toHaveTextContent('reopen the Document')
 
     cleanup()
   })

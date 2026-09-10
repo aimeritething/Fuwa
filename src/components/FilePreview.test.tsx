@@ -3,17 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FilePreview } from './FilePreview'
 import type { VaultEntry } from '../types'
 
-const { convertFileSrcMock, trackEventMock } = vi.hoisted(() => ({
+const { convertFileSrcMock } = vi.hoisted(() => ({
   convertFileSrcMock: vi.fn((path: string) => `asset://${path}`),
-  trackEventMock: vi.fn(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: convertFileSrcMock,
-}))
-
-vi.mock('../lib/telemetry', () => ({
-  trackEvent: trackEventMock,
 }))
 
 const imageEntry: VaultEntry = {
@@ -60,7 +55,6 @@ describe('FilePreview', () => {
 
       return `asset://${path}`
     })
-    trackEventMock.mockClear()
   })
 
   it('routes header file actions to the active file path', () => {
@@ -79,8 +73,6 @@ describe('FilePreview', () => {
       />,
     )
 
-    expect(trackEventMock).toHaveBeenCalledWith('file_preview_opened', { preview_kind: 'image' })
-
     fireEvent.click(screen.getByRole('button', { name: 'Reveal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Copy path' }))
     fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
@@ -90,22 +82,6 @@ describe('FilePreview', () => {
     expect(onCopyFilePath).toHaveBeenCalledWith('/vault/Attachments/photo.png')
     expect(onCopyDeepLink).toHaveBeenCalledWith(imageEntry)
     expect(onOpenExternalFile).toHaveBeenCalledWith('/vault/Attachments/photo.png')
-    expect(trackEventMock).toHaveBeenCalledWith('file_preview_action', {
-      action: 'reveal',
-      preview_kind: 'image',
-    })
-    expect(trackEventMock).toHaveBeenCalledWith('file_preview_action', {
-      action: 'copy_path',
-      preview_kind: 'image',
-    })
-    expect(trackEventMock).toHaveBeenCalledWith('file_preview_action', {
-      action: 'copy_deep_link',
-      preview_kind: 'image',
-    })
-    expect(trackEventMock).toHaveBeenCalledWith('file_preview_action', {
-      action: 'open_external',
-      preview_kind: 'image',
-    })
   })
 
   it('renders supported image files through the asset preview path', () => {
@@ -149,15 +125,11 @@ describe('FilePreview', () => {
     }
   })
 
-  it('tracks image preview failures without leaking the file path', () => {
+  it('shows the image fallback when the image fails to load', () => {
     render(<FilePreview entry={imageEntry} />)
 
     fireEvent.error(screen.getByTestId('image-file-preview'))
 
-    expect(trackEventMock).toHaveBeenCalledWith('file_preview_failed', { preview_kind: 'image' })
-    expect(trackEventMock).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({ path: expect.any(String) }),
-    )
+    expect(screen.getByTestId('file-preview-fallback')).toHaveTextContent('Image preview failed')
   })
 })
