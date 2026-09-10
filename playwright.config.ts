@@ -3,8 +3,9 @@ import { defineConfig, devices } from '@playwright/test'
 // Smoke harness: Chromium against `pnpm dev` with the in-memory Folder fixture
 // standing in for the Rust side (see src/mock-tauri/vaultFixture.ts). One
 // worker, local-only; CI does not run it. `pnpm smoke` starts the dev server
-// on the Vite port unless one is already listening there.
-const DEV_SERVER_PORT = 5202 // must match server.port in vite.config.ts
+// on the Vite port unless one is already listening there; set FUWA_SMOKE_PORT
+// to run against a second checkout while another dev server holds the port.
+const DEV_SERVER_PORT = Number(process.env.FUWA_SMOKE_PORT ?? 5202) // the default is server.port in vite.config.ts
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`
 
 export default defineConfig({
@@ -22,7 +23,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium' }],
   webServer: {
-    command: 'pnpm dev',
+    command: `pnpm dev --port ${DEV_SERVER_PORT}`,
     url: DEV_SERVER_URL,
     reuseExistingServer: true,
     timeout: 60_000,

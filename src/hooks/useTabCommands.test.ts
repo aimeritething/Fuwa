@@ -67,17 +67,14 @@ describe('useTabCommands', () => {
     expect(order).toEqual(['settle', 'settle', 'activate /n/b.md', 'close /n/a.md'])
   })
 
-  it('still switches when the pending write fails, and logs it', async () => {
+  it('still switches when the pending write is refused; reporting it is the settle\'s job (the error bar)', async () => {
     const { commands, deps, order } = renderCommands('/n/a.md')
     deps.settleActiveNote.mockRejectedValueOnce(new Error('Permission denied'))
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await act(async () => {
       commands.handlers.onNextTab()
     })
 
     expect(order).toEqual(['adjacent 1'])
-    expect(error).toHaveBeenCalled()
-    error.mockRestore()
   })
 })

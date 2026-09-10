@@ -660,3 +660,86 @@ describe('useEditorSave', () => {
     })
   })
 })
+
+describe('the Write failure paths (Fuwa: the error bar, AIM-385)', () => {
+  let updateVaultContent: Mock
+  let setTabs: Mock
+  let setToastMessage: Mock
+  let consoleSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    updateVaultContent = vi.fn()
+    setTabs = vi.fn()
+    setToastMessage = vi.fn()
+    mockInvokeFn.mockReset()
+    mockInvokeFn.mockResolvedValue(null)
+    consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleSpy.mockRestore()
+  })
+
+  function renderSaveHook() {
+    return renderHook(() => useEditorSave({ updateVaultContent, setTabs, setToastMessage }))
+  }
+
+  it('a refused write rejects savePending, keeps the buffer, and savePendingForPath retries it', async () => {
+    mockInvokeFn.mockRejectedValueOnce(new Error('Failed to write file: Permission denied (os error 13)'))
+    const { result } = renderSaveHook()
+
+    act(() => {
+      result.current.handleContentChange('/n/a.md', '# A\n\nKept.')
+    })
+    await act(async () => {
+      await expect(result.current.savePending()).rejects.toThrow('Permission denied')
+    })
+    expect(updateVaultContent).not.toHaveBeenCalled()
+
+    let saved = false
+    await act(async () => {
+      saved = await result.current.savePendingForPath('/n/a.md')
+    })
+
+    expect(saved).toBe(true)
+    expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', { path: '/n/a.md', content: '# A\n\nKept.' })
+    expect(updateVaultContent).toHaveBeenCalledWith('/n/a.md', '# A\n\nKept.')
+  })
+
+  it('discardPending drops the buffered edits of that Document so nothing is written for it', async () => {
+    mockInvokeFn.mockRejectedValueOnce(new Error('Permission denied'))
+    const { result } = renderSaveHook()
+
+    act(() => {
+      result.current.handleContentChange('/n/a.md', '# A\n\nDiscarded.')
+    })
+    await act(async () => {
+      await result.current.savePending().catch(() => {})
+    })
+
+    act(() => {
+      result.current.discardPending('/n/a.md')
+    })
+    let saved = true
+    await act(async () => {
+      saved = await result.current.savePending()
+    })
+
+    expect(saved).toBe(false)
+    expect(mockInvokeFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('discardPending leaves another Document\'s buffered edits alone', async () => {
+    const { result } = renderSaveHook()
+
+    act(() => {
+      result.current.handleContentChange('/n/b.md', '# B')
+      result.current.discardPending('/n/a.md')
+    })
+    await act(async () => {
+      await result.current.savePending()
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', { path: '/n/b.md', content: '# B' })
+  })
+})

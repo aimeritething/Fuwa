@@ -165,7 +165,9 @@ fn handle_run_event(app: &AppHandle, event: RunEvent) {
             #[cfg(not(target_os = "macos"))]
             let _ = api;
         }
-        // ⌘Q reaches the event loop as `Exit`; `app.exit()` as `ExitRequested`.
+        // ⌘Q ends in the renderer's `quit_app`, which is `app.exit()` and
+        // reaches here as `ExitRequested { code: Some(0) }`; a termination
+        // from outside the app (Dock, shutdown) arrives as `Exit` alone.
         RunEvent::ExitRequested { .. } | RunEvent::Exit => session::flush_now(app),
         #[cfg(target_os = "macos")]
         RunEvent::Reopen {
@@ -207,6 +209,7 @@ pub fn run() {
             commands::copy_text_to_clipboard,
             commands::read_text_from_clipboard,
             commands::update_menu_state,
+            commands::quit_app,
         ])
         .on_window_event(handle_window_event)
         .setup(setup_app)

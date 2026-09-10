@@ -40,8 +40,9 @@ const JUMP_KEYS = [
  * The Tab commands behind ⌘W, ⌘⇧[ / ⌘⇧], ⌘1–9 and the two lists' clicks.
  * Every one of them first writes the active Document's pending edits (spec
  * section 3 flushes a Document before it closes, and the save hook's scope
- * follows the active Tab), then moves. A failed write is logged and does not
- * hold the switch; the error bar is AIM-385.
+ * follows the active Tab), then moves. A refused write is the settle's to
+ * report (the error bar, AIM-385) and does not hold the switch; `closeTab`
+ * is the guarded close, which asks instead of closing such a Tab.
  */
 export function useTabCommands(deps: TabCommandDeps): TabCommands {
   const { activeTabPath, settleActiveNote, closeTab, activateTab, activateTabAt, activateAdjacentTab, closeWindow } = deps
@@ -49,8 +50,8 @@ export function useTabCommands(deps: TabCommandDeps): TabCommands {
   return useMemo(() => {
     const afterSettling = (action: () => void) => {
       settleActiveNote()
-        .catch((error: unknown) => {
-          console.error('Autosave failed:', error)
+        .catch(() => {
+          // Recorded by the settle; the move goes ahead.
         })
         .then(action)
     }

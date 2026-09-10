@@ -9,6 +9,7 @@ import {
 
 export type KeyboardActions = Pick<
   AppCommandHandlers,
+  | 'onQuit'
   | 'onQuickOpen'
   | 'onCommandPalette'
   | 'onCreateNote'

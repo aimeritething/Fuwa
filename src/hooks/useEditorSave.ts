@@ -455,6 +455,8 @@ function useSavePendingCommands(
   cancelAutoSave: () => void,
   canPersistRef: MutableRefObject<boolean>,
   flushPending: (pathFilter?: string) => Promise<boolean>,
+  pendingContentRef: MutableRefObject<PendingContent | null>,
+  resolvePath?: EditorSaveConfig['resolvePath'],
 ) {
   const savePendingForPath = useCallback(
     (path: string): Promise<boolean> => {
@@ -467,7 +469,20 @@ function useSavePendingCommands(
     cancelAutoSave()
     return canPersistRef.current ? flushPending() : Promise.resolve(false)
   }, [canPersistRef, cancelAutoSave, flushPending])
-  return { savePendingForPath, savePending }
+  /**
+   * Forget the buffered edits of `path` without writing them (Fuwa: the error
+   * bar's Discard changes reverts the Tab to the disk bytes, AIM-385). Other
+   * Documents' buffered edits are untouched.
+   */
+  const discardPending = useCallback(
+    (path: string): void => {
+      if (!matchesPendingPath(pendingContentRef.current, path, resolvePath)) return
+      cancelAutoSave()
+      pendingContentRef.current = null
+    },
+    [cancelAutoSave, pendingContentRef, resolvePath],
+  )
+  return { savePendingForPath, savePending, discardPending }
 }
 
 function useImmediateSaveCommands(options: {
@@ -531,9 +546,15 @@ function useImmediateSaveCommands(options: {
     ],
   )
 
-  const { savePendingForPath, savePending } = useSavePendingCommands(cancelAutoSave, canPersistRef, flushPending)
+  const { savePendingForPath, savePending, discardPending } = useSavePendingCommands(
+    cancelAutoSave,
+    canPersistRef,
+    flushPending,
+    pendingContentRef,
+    resolvePath,
+  )
 
-  return { handleSave, savePendingForPath, savePending }
+  return { handleSave, savePendingForPath, savePending, discardPending }
 }
 
 function useContentChangeCommand(options: {
@@ -600,7 +621,7 @@ function useEditorSaveCommands(options: EditorSaveCommandsParams) {
     pendingContentRef,
     persistenceScope,
   })
-  const { handleSave, savePendingForPath, savePending } = useImmediateSaveCommands({
+  const { handleSave, savePendingForPath, savePending, discardPending } = useImmediateSaveCommands({
     pendingContentRef,
     cancelAutoSave,
     flushPending,
@@ -630,7 +651,7 @@ function useEditorSaveCommands(options: EditorSaveCommandsParams) {
     t,
   })
 
-  return { handleSave, handleContentChange, savePendingForPath, savePending }
+  return { handleSave, handleContentChange, savePendingForPath, savePending, discardPending }
 }
 
 export function useEditorSave(options: EditorSaveConfig) {

@@ -323,6 +323,11 @@ fn build_manifest_menu(app: &App, label: &str) -> MenuResult {
     build_manifest_submenu(app, section.label.as_str(), &section.items)
 }
 
+/// The app menu: About, the macOS service and hide items, then the manifest's
+/// `appMenu` items. Quit is one of those rather than the predefined item: the
+/// predefined one terminates through `applicationWillTerminate`, which reaches
+/// the event loop as `Exit` with no way to hold it, while a manifest command
+/// lets the renderer write every pending edit first (AIM-385, ADR-0005).
 fn build_app_menu(app: &App) -> MenuResult {
     let mut builder = SubmenuBuilder::new(app, APP_NAME)
         .about_with_text(format!("About {APP_NAME}"), None)
@@ -338,7 +343,11 @@ fn build_app_menu(app: &App) -> MenuResult {
             .separator();
     }
 
-    Ok(builder.quit().build()?)
+    for item in &manifest().app_menu {
+        builder = append_manifest_item(app, builder, item)?;
+    }
+
+    Ok(builder.build()?)
 }
 
 fn build_file_menu(app: &App) -> MenuResult {
@@ -560,8 +569,31 @@ mod tests {
     }
 
     #[test]
-    fn app_menu_has_no_manifest_items() {
-        assert!(manifest().app_menu.is_empty());
+    fn app_menu_holds_the_quit_item_with_its_accelerator() {
+        let items: Vec<_> = manifest()
+            .app_menu
+            .iter()
+            .map(|item| {
+                (
+                    item.menu_item_id(manifest()),
+                    item.label("macos"),
+                    item.label("linux"),
+                    item.accelerator(manifest()),
+                )
+            })
+            .collect();
+
+        assert_eq!(
+            items,
+            [(
+                Some("app-quit"),
+                Some("Quit Fuwa"),
+                Some("Quit"),
+                Some("CmdOrCtrl+Q")
+            )]
+        );
+        assert!(custom_menu_ids().contains("app-quit"));
+        assert_eq!(emitted_menu_event_id("app-quit"), Some("app-quit"));
     }
 
     #[test]
@@ -796,11 +828,13 @@ mod tests {
 
     #[test]
     fn manifest_menu_labels_are_native_menu_safe() {
-        for section in &manifest().menus {
-            for item in &section.items {
-                if let Some(label) = item.label("macos") {
-                    assert_eq!(native_menu_label(label), label, "{label} needs escaping");
-                }
+        let sections = manifest()
+            .menus
+            .iter()
+            .flat_map(|section| section.items.iter());
+        for item in sections.chain(manifest().app_menu.iter()) {
+            if let Some(label) = item.label("macos") {
+                assert_eq!(native_menu_label(label), label, "{label} needs escaping");
             }
         }
     }

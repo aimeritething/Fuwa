@@ -53,6 +53,7 @@ export interface MockVaultCommands {
   take_pending_open: { args?: undefined; result: string[] }
   read_session: { args?: undefined; result: unknown }
   update_session: { args: { session: unknown }; result: void }
+  quit_app: { args?: undefined; result: void }
 }
 
 export interface MockVault {
@@ -263,6 +264,10 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
         writeStoredSession(args?.session ?? null)
         return undefined
       }
+      // The renderer's last step of ⌘Q; in a browser there is nothing to exit,
+      // so the call log is the whole effect.
+      case 'quit_app':
+        return undefined
       default:
         throw new Error(`No mock handler for command: ${command}`)
     }
