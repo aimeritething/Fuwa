@@ -1,8 +1,11 @@
 # Fuwa v0.1 — Specification
 
-Status: **draft for the walk-through** (Assemble the v0.1 spec, AIM-371).
-Assembled 2026-09-10 from the resolutions of every ticket under the map
+Status: **confirmed** in the walk-through on 2026-09-10 (Assemble the v0.1
+spec, AIM-371). Assembled from the resolutions of every ticket under the map
 *Fuwa v0.1 — Linear-styled Markdown viewer/editor on Tolaria's kernel* (AIM-361).
+Implementation is broken into 15 `ready-for-agent` tickets, AIM-377 to AIM-391,
+linked by native blocked-by relations; the frontier starts at
+[AIM-377](https://linear.app/aimerite/issue/AIM-377).
 
 This document is the hand-off to implementation. Each decision lives in one
 ticket; this spec gists them in one place and links back. Where two tickets
@@ -854,5 +857,6 @@ Not decisions, only a reading of the blocking structure:
 5. Command Menu and Quick Open; menu bar and manifest trim.
 6. Smoke specs and the local `.app` build.
 
-The natural next step after the walk-through is `/to-tickets` over this
-document.
+`/to-tickets` was run over this document on 2026-09-10; the resulting tickets
+and their blocking edges are listed on
+[Assemble the v0.1 spec](https://linear.app/aimerite/issue/AIM-371).
