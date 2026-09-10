@@ -332,6 +332,68 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn validated_paths_reject_a_symlink_inside_the_root_that_points_outside() {
+        let vault = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let outside_note = outside.path().join("outside.md");
+        fs::write(&outside_note, "# Outside\n").unwrap();
+        let outside_dir = outside.path().join("Shared");
+        fs::create_dir(&outside_dir).unwrap();
+        fs::write(outside_dir.join("shared.md"), "# Shared\n").unwrap();
+        // Both a file link and a directory link sit inside the root but
+        // resolve outside it.
+        let file_link = vault.path().join("link.md");
+        let dir_link = vault.path().join("Linked");
+        std::os::unix::fs::symlink(&outside_note, &file_link).unwrap();
+        std::os::unix::fs::symlink(&outside_dir, &dir_link).unwrap();
+        let root = root_arg(&vault);
+
+        for mode in [ValidatedPathMode::Existing, ValidatedPathMode::Writable] {
+            let err = validate(&file_link, &root, mode).unwrap_err();
+            assert_eq!(err, ACTIVE_VAULT_PATH_ERROR, "file link should be rejected");
+            let err = validate(&dir_link.join("shared.md"), &root, mode).unwrap_err();
+            assert_eq!(
+                err, ACTIVE_VAULT_PATH_ERROR,
+                "path through a dir link should be rejected"
+            );
+        }
+
+        // A new leaf under the linked directory is rejected before it exists.
+        let err =
+            validate(&dir_link.join("new.md"), &root, ValidatedPathMode::Writable).unwrap_err();
+        assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
+
+        // `child_path` follows the same rule for relative segments.
+        let boundary = VaultBoundary::from_request(Some(&root)).unwrap();
+        assert_eq!(
+            boundary.child_path("Linked/New Folder").unwrap_err(),
+            ACTIVE_VAULT_PATH_ERROR
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn validated_paths_accept_a_symlink_inside_the_root_that_stays_inside() {
+        let vault = TempDir::new().unwrap();
+        let real_dir = vault.path().join("Real");
+        fs::create_dir(&real_dir).unwrap();
+        fs::write(real_dir.join("note.md"), "# Note\n").unwrap();
+        let dir_link = vault.path().join("Alias");
+        std::os::unix::fs::symlink(&real_dir, &dir_link).unwrap();
+        let root = root_arg(&vault);
+
+        let through_link = dir_link.join("note.md");
+        let validated = validate(&through_link, &root, ValidatedPathMode::Existing).unwrap();
+        // The caller's spelling is kept; only the containment check resolves the link.
+        assert_eq!(validated, through_link.to_string_lossy());
+
+        let new_note = dir_link.join("new.md");
+        let validated = validate(&new_note, &root, ValidatedPathMode::Writable).unwrap();
+        assert_eq!(validated, new_note.to_string_lossy());
+    }
+
     #[test]
     fn validated_paths_reject_parent_traversal_in_both_modes() {
         let vault = TempDir::new().unwrap();

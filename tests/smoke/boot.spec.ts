@@ -1,0 +1,36 @@
+import { expect, test } from '@playwright/test'
+// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+
+// Spec 1 of the smoke plan: the app boots to the empty window in a plain
+// browser, with the Folder fixture answering the command boundary. Later specs
+// seed the fixture through `window.__fuwaMockVault` before navigating.
+
+test('boots to the empty window with the Folder fixture installed', async ({ page }) => {
+  const pageErrors: string[] = []
+  const consoleErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  page.on('console', (message) => {
+    // Fuwa ships no favicon; a headed Chromium asks for one and Vite answers 404.
+    if (message.type() === 'error' && !message.text().includes('favicon.ico')) consoleErrors.push(message.text())
+  })
+
+  await page.goto('/')
+
+  await expect(page).toHaveTitle('Fuwa')
+  await expect(page.locator('#root > *').first()).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+
+  const fixture = await page.evaluate(async () => {
+    const vault: MockVault | undefined = window.__fuwaMockVault
+    if (!vault) return null
+    const files = await vault.invoke('list_files', { vaultPath: vault.vaultPath })
+    return { vaultPath: vault.vaultPath, fileCount: files.length, pendingOpen: await vault.invoke('take_pending_open') }
+  })
+
+  expect(fixture).not.toBeNull()
+  expect(fixture?.fileCount).toBeGreaterThan(0)
+  expect(fixture?.pendingOpen).toEqual([])
+  expect(pageErrors).toEqual([])
+  expect(consoleErrors).toEqual([])
+})

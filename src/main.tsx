@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import './index.css'
 import App from './App.tsx'
 import { applyStoredThemeMode } from './lib/themeMode'
+import { installMockVault, isTauri } from './mock-tauri'
 
 const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
 
@@ -40,11 +41,17 @@ document.addEventListener('drop', preventFileDropNavigation, true)
 // at native level before React's synthetic events can call preventDefault).
 // Capture phase fires first → prevents native menu; React bubble phase still fires
 // → our custom context menus (e.g. sidebar right-click) work correctly.
-if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
+if (isTauri()) {
   document.addEventListener('contextmenu', preventNativeContextMenu, true)
 }
 
 applyStoredThemeMode(document, window.localStorage)
+
+// Outside Tauri the in-memory Folder fixture stands in for the Rust side; the
+// smoke specs reach it through window.__fuwaMockVault.
+if (import.meta.env.DEV && !isTauri()) {
+  installMockVault()
+}
 
 function getRequiredRootElement(): HTMLElement {
   const root = document.getElementById('root')
