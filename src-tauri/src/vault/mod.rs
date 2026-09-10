@@ -3,15 +3,12 @@ mod file;
 pub(crate) mod filename_rules;
 mod folders;
 mod image;
-pub mod path_identity;
+pub(crate) mod path_identity;
 mod rename;
 mod trash;
 
 pub use entry::FolderNode;
-pub use file::{
-    create_note_content, get_note_content, note_content_matches, read_file_metadata,
-    save_note_content,
-};
+pub use file::{create_note_content, get_note_content, note_content_matches, save_note_content};
 pub use folders::{delete_folder, rename_folder, FolderRenameResult};
 pub use image::{copy_image_to_vault, save_image};
 pub use rename::{

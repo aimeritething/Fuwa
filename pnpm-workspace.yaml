@@ -1,5 +1,15 @@
+# pnpm settings (pnpm 10 reads them here, not from package.json).
 ignoredBuiltDependencies:
   - esbuild
+
+# The two uuid overrides carried from Tolaria, plus exact pins on the three
+# transitive packages that carry pnpm patches (BlockNote asks for ranges).
+overrides:
+  '@blocknote/core>uuid': 11.1.1
+  'mermaid>uuid': 11.1.1
+  '@tiptap/extension-code': 3.19.0
+  '@tiptap/extension-link': 3.19.0
+  'prosemirror-tables': 1.8.5
 
 patchedDependencies:
   '@blocknote/code-block@0.46.2': patches/@blocknote__code-block@0.46.2.patch

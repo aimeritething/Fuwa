@@ -3,27 +3,9 @@ use std::fs;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
 use std::thread;
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::Duration;
 
 const SAVE_RETRY_DELAYS_MS: [u64; 4] = [25, 50, 100, 200];
-
-/// Read file metadata (modified_at timestamp, created_at timestamp, file size).
-/// Creation time is sourced from filesystem metadata (birthtime on macOS).
-pub fn read_file_metadata(path: &Path) -> Result<(Option<u64>, Option<u64>, u64), String> {
-    let metadata =
-        fs::metadata(path).map_err(|e| format!("Failed to stat {}: {}", path.display(), e))?;
-    let modified_at = metadata
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map(|d| d.as_secs());
-    let created_at = metadata
-        .created()
-        .ok()
-        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-        .map(|d| d.as_secs());
-    Ok((modified_at, created_at, metadata.len()))
-}
 
 fn invalid_utf8_text_error(path: &Path) -> String {
     format!("File is not valid UTF-8 text: {}", path.display())
