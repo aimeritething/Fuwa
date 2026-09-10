@@ -318,21 +318,50 @@
 }
 
 /* --- Checkbox / check list items --- */
-/* BlockNote renders checkbox as: div > input[type=checkbox] inside .bn-block-content */
+/* BlockNote renders checkbox as: div > input[type=checkbox] inside .bn-block-content.
+   Drawn here rather than by the platform (spec section 6 item 4): 14px, radius
+   3, a 1px faint border, filled with the body colour when checked with the
+   tick cut from the editor surface. */
 .editor__blocknote-container [data-content-type="checkListItem"] {
   margin-bottom: var(--lists-item-spacing);
   gap: var(--checkboxes-gap) !important;
 }
 
 .editor__blocknote-container [data-content-type="checkListItem"] input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
   width: var(--checkboxes-size) !important;
   height: var(--checkboxes-size) !important;
   min-width: var(--checkboxes-size) !important;
   min-height: var(--checkboxes-size) !important;
+  margin: 0 !important;
   border-radius: var(--checkboxes-border-radius) !important;
-  accent-color: var(--checkboxes-checked-color) !important;
-  border-color: var(--checkboxes-unchecked-border-color) !important;
+  border: 1px solid var(--checkboxes-unchecked-border-color) !important;
+  background: transparent;
   cursor: pointer;
+}
+
+.editor__blocknote-container [data-content-type="checkListItem"] input[type="checkbox"]:checked {
+  border-color: var(--checkboxes-checked-color) !important;
+  background: var(--checkboxes-checked-color);
+}
+
+.editor__blocknote-container [data-content-type="checkListItem"] input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 7px;
+  border: solid var(--surface-editor);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.editor__blocknote-container [data-content-type="checkListItem"] input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
 }
 
 /* Checkbox container div — control spacing, align to first line */

@@ -75,7 +75,7 @@
   --border-subtle: #dedede;
   --border-strong: #d2d2d2;
   --border-input: #dedede;
-  --border-dialog: #e3e3e3;
+  --border-dialog: #e3e3e3; /* the menu sub-theme border */
   --border-focus: #6d78d5;
 
   /* --- Interaction states (light mode) --- */
@@ -89,7 +89,9 @@
   --state-drag-target: color-mix(in srgb, var(--accent-blue) 12%, transparent);
   --state-disabled: #f0f0f0;
 
-  /* --- Fuwa chrome (light mode): sidebar rows, tabs, controls, menus --- */
+  /* --- Fuwa chrome (light mode): sidebar rows, tabs, controls, menus.
+     Rows and controls are the light generator's sidebar and control slots;
+     the tab tokens are derived (Linear's desktop tabs are dark-only). --- */
   --sidebar-row-hover: #dfdfe0;
   --sidebar-row-active: #d4d4d4;
   --tab-hover: #eaeaeb;
@@ -100,7 +102,6 @@
   --control-tertiary-hover: #eaeaeb;
   --menu-item-hover: #efefef;
   --menu-shortcut: #5e5e5f;
-  --menu-border: #e3e3e3;
 
   /* --- Content chroma (light mode): Linear's seven roles as base / text / bg.
      The text forms are the base darkened for a light ground; the dark theme
@@ -131,7 +132,7 @@
      the rest alias the chromatic roles. --- */
   --accent-blue: #6d78d5;
   --accent-blue-bg: color-mix(in srgb, var(--accent-blue) 12%, transparent);
-  --accent-blue-hover: #6974e1;
+  --accent-blue-hover: color-mix(in oklab, var(--accent-blue) 92%, black);
   --accent-blue-light: color-mix(in srgb, var(--accent-blue) 10%, transparent);
   --accent-green: var(--chroma-green);
   --accent-green-light: var(--chroma-green-bg);
@@ -277,7 +278,7 @@
   --border-subtle: #232325;
   --border-strong: #27282a;
   --border-input: #232325;
-  --border-dialog: #323336;
+  --border-dialog: #323336; /* the menu sub-theme border */
   --border-focus: #5e69d1;
 
   /* --- Interaction states (dark mode) --- */
@@ -302,7 +303,6 @@
   --control-tertiary-hover: #232324;
   --menu-item-hover: #303133;
   --menu-shortcut: #9c9d9f;
-  --menu-border: #323336;
 
   /* --- Content chroma (dark mode) --- */
   --chroma-teal: #00b8cb;
@@ -620,7 +620,7 @@
 .fuwa-menu-surface,
 .bn-shadcn .bn-menu-dropdown,
 .bn-shadcn .bn-toolbar {
-  border: var(--hairline) solid var(--menu-border);
+  border: var(--hairline) solid var(--border-dialog);
   box-shadow: var(--shadow-menu);
 }
 
