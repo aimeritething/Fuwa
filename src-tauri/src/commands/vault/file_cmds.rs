@@ -1,15 +1,11 @@
 use crate::commands::expand_tilde;
 use crate::vault::filename_rules::validate_folder_name;
-use crate::vault::{self, FolderNode, VaultEntry};
+use crate::vault::{self, FolderNode};
 use std::path::{Path, PathBuf};
 
 use super::boundary::{
     with_boundary, with_existing_paths, with_requested_root, with_validated_path, ValidatedPathMode,
 };
-
-const LOCALIZED_ERROR_PREFIX: &str = "tolaria:i18n-error:";
-const FILE_ACTION_INSPECT_PATH_ERROR_KEY: &str = "fileActions.error.inspectPath";
-const FILE_ACTION_PATH_MISSING_ERROR_KEY: &str = "fileActions.error.pathMissing";
 
 fn with_note_path<T>(
     path: &Path,
@@ -56,13 +52,7 @@ fn sync_image_asset_scope(
     app_handle: &tauri::AppHandle,
     requested_root: &str,
 ) -> Result<(), String> {
-    #[cfg(desktop)]
-    crate::sync_vault_asset_scope(app_handle, Path::new(requested_root))?;
-    #[cfg(not(desktop))]
-    let _ = requested_root;
-    #[cfg(not(desktop))]
-    let _ = app_handle;
-    Ok(())
+    crate::sync_vault_asset_scope(app_handle, Path::new(requested_root))
 }
 
 fn with_image_asset_scope(
@@ -140,16 +130,11 @@ fn file_manager_reveal_action(
     path: &Path,
     platform: RevealPlatform,
 ) -> Result<FileManagerRevealAction, String> {
-    if !path.try_exists().map_err(|error| {
-        localized_reveal_error(
-            FILE_ACTION_INSPECT_PATH_ERROR_KEY,
-            serde_json::json!({ "error": error.to_string() }),
-        )
-    })? {
-        return Err(localized_reveal_error(
-            FILE_ACTION_PATH_MISSING_ERROR_KEY,
-            serde_json::json!({ "path": path.display().to_string() }),
-        ));
+    if !path
+        .try_exists()
+        .map_err(|error| format!("Failed to inspect path: {error}"))?
+    {
+        return Err(format!("Path does not exist: {}", path.display()));
     }
 
     if platform == RevealPlatform::Windows && path.is_dir() {
@@ -157,14 +142,6 @@ fn file_manager_reveal_action(
     }
 
     Ok(FileManagerRevealAction::RevealItemInDir(path.to_path_buf()))
-}
-
-fn localized_reveal_error(key: &str, values: serde_json::Value) -> String {
-    let payload = serde_json::json!({
-        "key": key,
-        "values": values,
-    });
-    format!("{LOCALIZED_ERROR_PREFIX}{payload}")
 }
 
 fn perform_file_manager_reveal(
@@ -250,23 +227,30 @@ pub fn create_note_content(
     })
 }
 
+/// Move a note to the Trash. Unlike Tolaria, `vault_path` is required: the
+/// boundary has no registry to look a bare path up in.
 #[tauri::command]
-pub fn delete_note(path: PathBuf) -> Result<String, String> {
-    with_validated_path(
-        path.to_string_lossy().as_ref(),
-        None,
+pub fn delete_note(path: PathBuf, vault_path: Option<PathBuf>) -> Result<String, String> {
+    with_note_path(
+        path.as_path(),
+        vault_path.as_deref(),
         ValidatedPathMode::Existing,
-        vault::delete_note,
+        |validated_path| vault::delete_note(&validated_path.to_string_lossy()),
     )
 }
 
+/// Move several notes to the Trash. `vault_path` is required (see [`delete_note`]).
 #[tauri::command]
-pub fn batch_delete_notes(paths: Vec<PathBuf>) -> Result<Vec<String>, String> {
+pub fn batch_delete_notes(
+    paths: Vec<PathBuf>,
+    vault_path: Option<PathBuf>,
+) -> Result<Vec<String>, String> {
     let raw_paths = paths
         .iter()
         .map(|path| path.to_string_lossy().into_owned())
         .collect::<Vec<_>>();
-    with_existing_paths(&raw_paths, None, |validated_paths| {
+    let raw_vault_path = vault_path.as_ref().map(|value| value.to_string_lossy());
+    with_existing_paths(&raw_paths, raw_vault_path.as_deref(), |validated_paths| {
         vault::batch_delete_notes(&validated_paths)
     })
 }
@@ -300,49 +284,6 @@ fn ensure_missing_folder(folder_path: &Path, folder_name: &str) -> Result<(), St
     Ok(())
 }
 
-fn scan_visible_vault_entries(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
-    let entries = vault::scan_vault_cached(vault_path)?;
-    Ok(filter_visible_vault_entries(
-        vault_path,
-        entries,
-        crate::settings::hide_gitignored_files_enabled(),
-    ))
-}
-
-fn filter_visible_vault_entries(
-    vault_path: &Path,
-    entries: Vec<VaultEntry>,
-    hide_gitignored: bool,
-) -> Vec<VaultEntry> {
-    vault::filter_gitignored_entries(vault_path, entries, hide_gitignored)
-}
-
-fn scan_visible_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> {
-    let folders = vault::scan_vault_folders(vault_path)?;
-    Ok(vault::filter_gitignored_folders(
-        vault_path,
-        folders,
-        crate::settings::hide_gitignored_files_enabled(),
-    ))
-}
-
-/// Sync the `title` frontmatter field with the filename on note open.
-/// Returns `true` if the file was modified (title was absent or desynced).
-#[tauri::command]
-pub fn sync_note_title(path: PathBuf, vault_path: Option<PathBuf>) -> Result<bool, String> {
-    use vault::SyncAction;
-
-    with_note_path(
-        path.as_path(),
-        vault_path.as_deref(),
-        ValidatedPathMode::Existing,
-        |validated_path| {
-            let action = vault::sync_title_on_open(validated_path)?;
-            Ok(matches!(action, SyncAction::Updated { .. }))
-        },
-    )
-}
-
 #[tauri::command]
 pub fn save_image(
     app_handle: tauri::AppHandle,
@@ -367,47 +308,9 @@ pub fn copy_image_to_vault(
 }
 
 #[tauri::command]
-pub async fn download_remote_image_to_vault(
-    app_handle: tauri::AppHandle,
-    vault_path: PathBuf,
-    url: String,
-) -> Result<String, String> {
-    tokio::task::spawn_blocking(move || {
-        with_image_asset_scope(&app_handle, vault_path.as_path(), |requested_root| {
-            vault::download_remote_image(requested_root, &url)
-        })
-    })
-    .await
-    .map_err(|error| format!("Remote image task failed: {error}"))?
-}
-
-#[tauri::command]
-pub async fn list_vault(path: PathBuf) -> Result<Vec<VaultEntry>, String> {
-    tokio::task::spawn_blocking(move || {
-        with_expanded_vault_root(path.as_path(), scan_visible_vault_entries)
-    })
-    .await
-    .map_err(|e| format!("Task panicked: {e}"))?
-}
-
-#[tauri::command]
-pub async fn read_vault_snapshot(path: PathBuf) -> Result<Option<Vec<VaultEntry>>, String> {
-    let hide_gitignored = crate::settings::hide_gitignored_files_enabled();
-    tokio::task::spawn_blocking(move || {
-        with_expanded_vault_root(path.as_path(), |vault_path| {
-            let snapshot = vault::read_vault_snapshot(vault_path)?;
-            Ok(snapshot
-                .map(|entries| filter_visible_vault_entries(vault_path, entries, hide_gitignored)))
-        })
-    })
-    .await
-    .map_err(|e| format!("Task panicked: {e}"))?
-}
-
-#[tauri::command]
 pub async fn list_vault_folders(path: PathBuf) -> Result<Vec<FolderNode>, String> {
     tokio::task::spawn_blocking(move || {
-        with_expanded_vault_root(path.as_path(), scan_visible_vault_folders)
+        with_expanded_vault_root(path.as_path(), vault::scan_vault_folders)
     })
     .await
     .map_err(|e| format!("Task panicked: {e}"))?
@@ -446,24 +349,15 @@ mod tests {
 
         save_note_content(
             note.clone(),
-            "---\ntitle: Command Note\n---\n# Command Note\nBody\n".to_string(),
-            Some(root.clone()),
-        )
-        .await
-        .unwrap();
-        assert!(!sync_note_title(note.clone(), Some(root.clone())).unwrap());
-
-        save_note_content(
-            note.clone(),
             "# Updated Command Note\n".to_string(),
             Some(root.clone()),
         )
         .await
         .unwrap();
-        assert!(sync_note_title(note.clone(), Some(root.clone())).unwrap());
-        assert!(get_note_content(note, Some(root))
-            .unwrap()
-            .contains("title: Command Note"));
+        assert_eq!(
+            get_note_content(note, Some(root)).unwrap(),
+            "# Updated Command Note\n"
+        );
     }
 
     #[tokio::test]
@@ -501,31 +395,8 @@ mod tests {
         );
         fs::write(dir.path().join("Projects/project.md"), "# Project\n").unwrap();
 
-        let entries = list_vault(root.clone()).await.unwrap();
-        assert!(entries.iter().any(|entry| entry.filename == "root.md"));
-        assert!(entries.iter().any(|entry| entry.filename == "project.md"));
-
         let folders = list_vault_folders(root).await.unwrap();
         assert!(folders.iter().any(|folder| folder.name == "Projects"));
-    }
-
-    #[test]
-    fn startup_snapshot_visibility_keeps_snapshot_and_filters_ignored_entries() {
-        let dir = TempDir::new().unwrap();
-        fs::write(dir.path().join("visible.md"), "# Visible\n").unwrap();
-        fs::write(dir.path().join("ignored.md"), "# Ignored\n").unwrap();
-        fs::write(dir.path().join(".gitignore"), "ignored.md\n").unwrap();
-        std::process::Command::new("git")
-            .arg("init")
-            .current_dir(dir.path())
-            .output()
-            .unwrap();
-        let entries = vault::scan_vault_cached(dir.path()).unwrap();
-
-        let visible = filter_visible_vault_entries(dir.path(), entries, true);
-
-        assert!(visible.iter().any(|entry| entry.filename == "visible.md"));
-        assert!(!visible.iter().any(|entry| entry.filename == "ignored.md"));
     }
 
     #[test]
@@ -542,6 +413,32 @@ mod tests {
             create_vault_folder(vault.path().to_path_buf(), PathBuf::from("../escape"), None)
                 .unwrap_err();
         assert!(folder_error.contains("Path must stay inside the active vault"));
+    }
+
+    #[test]
+    fn delete_commands_require_a_vault_and_reject_paths_outside_it() {
+        let vault = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let inside_note = vault.path().join("inside.md");
+        let outside_note = outside.path().join("outside.md");
+        fs::write(&inside_note, "# Inside\n").unwrap();
+        fs::write(&outside_note, "# Outside\n").unwrap();
+
+        let error = delete_note(inside_note.clone(), None).unwrap_err();
+        assert_eq!(error, super::super::boundary::NO_ACTIVE_VAULT_ERROR);
+
+        let error =
+            delete_note(outside_note.clone(), Some(vault.path().to_path_buf())).unwrap_err();
+        assert!(error.contains("Path must stay inside the active vault"));
+
+        let error = batch_delete_notes(
+            vec![inside_note.clone(), outside_note],
+            Some(vault.path().to_path_buf()),
+        )
+        .unwrap_err();
+        assert!(error.contains("Path must stay inside the active vault"));
+
+        assert!(inside_note.exists());
     }
 
     #[test]
@@ -621,8 +518,7 @@ mod tests {
         let error =
             file_manager_reveal_action(missing.as_path(), RevealPlatform::Windows).unwrap_err();
 
-        assert!(error.starts_with(LOCALIZED_ERROR_PREFIX));
-        assert!(error.contains(FILE_ACTION_PATH_MISSING_ERROR_KEY));
+        assert!(error.starts_with("Path does not exist: "));
         assert!(error.contains("missing"));
     }
 

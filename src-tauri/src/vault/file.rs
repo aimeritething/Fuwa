@@ -9,7 +9,7 @@ const SAVE_RETRY_DELAYS_MS: [u64; 4] = [25, 50, 100, 200];
 
 /// Read file metadata (modified_at timestamp, created_at timestamp, file size).
 /// Creation time is sourced from filesystem metadata (birthtime on macOS).
-pub(crate) fn read_file_metadata(path: &Path) -> Result<(Option<u64>, Option<u64>, u64), String> {
+pub fn read_file_metadata(path: &Path) -> Result<(Option<u64>, Option<u64>, u64), String> {
     let metadata =
         fs::metadata(path).map_err(|e| format!("Failed to stat {}: {}", path.display(), e))?;
     let modified_at = metadata
