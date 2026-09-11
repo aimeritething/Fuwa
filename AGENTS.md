@@ -7,8 +7,7 @@ Guidance for AI coding agents working in this repository.
 Fuwa is a small macOS desktop app for reading and editing Markdown Documents in a Folder
 on disk. 
 
-- `src/` — the React app. Ported Tolaria files keep Tolaria's layout and identifiers so
-  `git diff upstream/main -- <path>` stays meaningful; Fuwa-authored code lives beside them.
+- `src/` — the React app. Fuwa-authored code lives beside the ported Tolaria files.
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
 - `src/mock-tauri/` — the in-memory Folder fixture that stands in for Rust outside Tauri.
 - `tests/smoke/` — Playwright specs. Unit tests sit beside the code as `*.test.ts(x)`.
