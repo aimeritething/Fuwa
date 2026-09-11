@@ -1,30 +1,29 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import { useCallback, useState } from 'react'
+import type { EditorMode } from '../types'
 import { useRawMode } from './useRawMode'
-import * as store from '../utils/vaultConfigStore'
+
+type Extra = { onFlushPending?: () => Promise<boolean>; onBeforeRawEnd?: () => void }
+
+/** The hook over a per-Tab mode store, the way the Tab state holds it in the app. */
+function useRawModeOverTabs(path: string | null, extra: Extra) {
+  const [modes, setModes] = useState<Record<string, EditorMode>>({})
+  const setMode = useCallback((target: string, mode: EditorMode) => {
+    setModes((prev) => ({ ...prev, [target]: mode }))
+  }, [])
+  const mode = path === null ? null : modes[path] ?? 'rich'
+  return useRawMode({ activeTabPath: path, mode, setMode, ...extra })
+}
 
 describe('useRawMode', () => {
-  let onFlushPending: ReturnType<typeof vi.fn>
-
-  beforeEach(() => {
-    onFlushPending = vi.fn().mockResolvedValue(true)
-    // Reset vault config to defaults before each test
-    store.resetVaultConfigStore()
-    store.bindVaultConfigStore(
-      { zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
-      vi.fn(),
-    )
-  })
-
-  afterEach(() => {
-    store.resetVaultConfigStore()
-  })
-
-  function renderRawHook(activeTabPath: string | null = '/note.md') {
-    return renderHook(
-      ({ path }) => useRawMode({ activeTabPath: path, onFlushPending }),
+  function renderRawHook(activeTabPath: string | null = '/note.md', extra: Extra = {}) {
+    const onFlushPending = extra.onFlushPending ?? vi.fn().mockResolvedValue(true)
+    const rendered = renderHook(
+      ({ path }) => useRawModeOverTabs(path, { ...extra, onFlushPending }),
       { initialProps: { path: activeTabPath } },
     )
+    return { ...rendered, onFlushPending }
   }
 
   it('starts with raw mode off', () => {
@@ -41,7 +40,7 @@ describe('useRawMode', () => {
   })
 
   it('flushes pending edits when activating raw mode', async () => {
-    const { result } = renderRawHook()
+    const { result, onFlushPending } = renderRawHook()
 
     await act(async () => { await result.current.handleToggleRaw() })
 
@@ -49,10 +48,10 @@ describe('useRawMode', () => {
   })
 
   it('does not flush pending edits when deactivating raw mode', async () => {
-    const { result } = renderRawHook()
+    const { result, onFlushPending } = renderRawHook()
 
     await act(async () => { await result.current.handleToggleRaw() })
-    onFlushPending.mockClear()
+    vi.mocked(onFlushPending).mockClear()
 
     await act(async () => { await result.current.handleToggleRaw() })
 
@@ -69,39 +68,39 @@ describe('useRawMode', () => {
     expect(result.current.rawMode).toBe(false)
   })
 
-  it('persists raw mode across tab switches', async () => {
+  it('remembers the mode per Tab: another Tab opens Rich, and the Raw Tab is Raw again on return (AIM-381)', async () => {
     const { result, rerender } = renderRawHook('/note-a.md')
 
     await act(async () => { await result.current.handleToggleRaw() })
     expect(result.current.rawMode).toBe(true)
 
     rerender({ path: '/note-b.md' })
+    expect(result.current.rawMode).toBe(false)
+
+    rerender({ path: '/note-a.md' })
     expect(result.current.rawMode).toBe(true)
   })
 
   it('works without onFlushPending callback', async () => {
-    const { result } = renderHook(() => useRawMode({ activeTabPath: '/note.md' }))
+    const { result } = renderHook(() => useRawModeOverTabs('/note.md', {}))
 
     await act(async () => { await result.current.handleToggleRaw() })
 
     expect(result.current.rawMode).toBe(true)
   })
 
-  it('does not activate raw mode when activeTabPath is null', async () => {
-    const { result } = renderRawHook(null)
+  it('does nothing when activeTabPath is null', async () => {
+    const { result, onFlushPending } = renderRawHook(null)
 
     await act(async () => { await result.current.handleToggleRaw() })
 
-    // rawMode is false because there's no active tab, even though preference is enabled
     expect(result.current.rawMode).toBe(false)
+    expect(onFlushPending).not.toHaveBeenCalled()
   })
 
   it('calls onBeforeRawEnd when deactivating raw mode', async () => {
     const onBeforeRawEnd = vi.fn()
-    const { result } = renderHook(
-      ({ path }) => useRawMode({ activeTabPath: path, onFlushPending, onBeforeRawEnd }),
-      { initialProps: { path: '/note.md' } },
-    )
+    const { result } = renderRawHook('/note.md', { onBeforeRawEnd })
 
     await act(async () => { await result.current.handleToggleRaw() })
     expect(result.current.rawMode).toBe(true)
@@ -114,41 +113,15 @@ describe('useRawMode', () => {
 
   it('does not call onBeforeRawEnd when activating raw mode', async () => {
     const onBeforeRawEnd = vi.fn()
-    const { result } = renderHook(
-      ({ path }) => useRawMode({ activeTabPath: path, onFlushPending, onBeforeRawEnd }),
-      { initialProps: { path: '/note.md' } },
-    )
+    const { result } = renderRawHook('/note.md', { onBeforeRawEnd })
 
     await act(async () => { await result.current.handleToggleRaw() })
 
     expect(onBeforeRawEnd).not.toHaveBeenCalled()
   })
 
-  it('persists editor_mode to vault config on toggle', async () => {
-    const saveFn = vi.fn()
-    store.resetVaultConfigStore()
-    store.bindVaultConfigStore(
-      { zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
-      saveFn,
-    )
-
-    const { result } = renderRawHook()
-
-    await act(async () => { await result.current.handleToggleRaw() })
-    expect(store.getVaultConfig().editor_mode).toBe('raw')
-
-    await act(async () => { await result.current.handleToggleRaw() })
-    expect(store.getVaultConfig().editor_mode).toBe('preview')
-  })
-
-  it('restores raw mode from vault config on init', () => {
-    store.resetVaultConfigStore()
-    store.bindVaultConfigStore(
-      { zoom: null, view_mode: null, editor_mode: 'raw', tag_colors: null, status_colors: null, property_display_modes: null },
-      vi.fn(),
-    )
-
-    const { result } = renderRawHook()
+  it('reads a Raw mode the Tab already carries, as a restored Session gives it', () => {
+    const { result } = renderHook(() => useRawMode({ activeTabPath: '/note.md', mode: 'raw', setMode: vi.fn() }))
     expect(result.current.rawMode).toBe(true)
   })
 })

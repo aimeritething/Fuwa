@@ -174,6 +174,100 @@
   cursor: default;
 }
 
+/* The Frontmatter badge (AIM-381): mono, a hairline pill, in the saved
+   label's colour; hovering says it can be clicked, which lands in Raw mode. */
+.fuwa-path-row__frontmatter {
+  flex: none;
+  height: 20px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  box-shadow: 0 0 0 var(--hairline) var(--border-default);
+  color: var(--text-secondary);
+  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.fuwa-path-row__frontmatter:hover {
+  background: var(--control-tertiary-hover);
+  color: var(--text-primary);
+}
+
+.fuwa-path-row__frontmatter:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
+}
+
+/* The Rich | Raw segmented control (spec section 7): a hairline-ringed track
+   at the right end of the row, the current segment raised like the active
+   tab. An unavailable segment (invalid Frontmatter) fades but keeps the
+   pointer, so its tooltip can say why. */
+.fuwa-mode {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--surface-shade);
+  box-shadow: 0 0 0 var(--hairline) var(--border-default);
+}
+
+.fuwa-mode__segment {
+  height: 18px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 18px;
+  cursor: default;
+}
+
+.fuwa-mode__segment:hover {
+  color: var(--text-heading);
+}
+
+.fuwa-mode__segment[data-active] {
+  background: var(--tab-active);
+  color: var(--text-heading);
+  box-shadow:
+    0 0 0 var(--hairline) var(--border-default),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fuwa-mode__segment[aria-disabled="true"] {
+  color: var(--text-faint);
+}
+
+.fuwa-mode__segment:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
+}
+
+.fuwa-mode__tip {
+  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+/* Raw mode (AIM-381): CodeMirror fills the card below the path row and
+   scrolls itself; the find scope around it stays a flex column so the
+   carried find bar sits above the editor. */
+.fuwa-card .fuwa-raw-scope {
+  overflow: hidden;
+}
+
 /* An Image Tab's slot: the picture's dimensions and byte size, then the two
    ghost buttons that hand the file to a real image app. */
 .fuwa-path-row__image-meta {

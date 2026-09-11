@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { Tab } from '../types'
+import type { EditorMode, Tab } from '../types'
 import { noteEntryForPath } from '../utils/noteEntry'
 import { imageEntryForPath, isImageFilePath } from '../utils/imageFile'
 import { restoreOpenEditors as restoreSurvivingEditors, type SessionEditor } from '../utils/sessionSchema'
@@ -9,7 +9,7 @@ import { documentRoot, documentLocation } from '../utils/explorer'
 import { allowVaultAssets } from '../utils/vaultAssetScope'
 import { cacheNoteContent } from './noteContentCache'
 import * as tabsState from './noteTabsState'
-import { EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsState'
+import { applyModeRule, EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsState'
 
 /**
  * The open Documents and Image files, in the kernel's `Tab` shape, under the
@@ -22,6 +22,11 @@ import { EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsState'
  * picture reaches the view through the asset protocol and its metadata
  * through the Folder listing. Nothing here reads one, reloads one or writes
  * one — an Image Tab is a name and a path.
+ *
+ * A Document Tab carries its Rich or Raw mode (AIM-381). It is the Tab rule
+ * in `noteTabsState` that decides it: whatever a Tab is given, invalid
+ * Frontmatter makes it Raw, so every path that changes a Tab's content (a
+ * save, a reload from disk, a restore) passes through that rule.
  */
 
 async function readNoteContent(path: string, vaultPath: string, allowAssets = true): Promise<string> {
@@ -89,14 +94,15 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
    * falls to its successor. A Document survives by reading; an Image file by
    * still being listed in the Folder, there being nothing to read. An entry's
    * kind is its extension, so a hand-edited `mode` on an Image file entry
-   * changes nothing. A Document opened before the restore settles (a Finder
-   * launch) keeps its Tab and stays active.
+   * changes nothing. Each Document comes back in the mode its entry names
+   * (Rich when it names none), under the Tab rule. A Document opened before
+   * the restore settles (a Finder launch) keeps its Tab and stays active.
    */
   const restoreOpenEditors = useCallback(async (editors: SessionEditor[], activePath: string | null, restoredFolder?: string | null) => {
     const opening = editors.filter((editor) => !isImageFilePath(editor.path) || folderLists(editor.path))
     const survivors = await readSurvivingTabs(opening, restoredFolder)
     const restored = restoreSurvivingEditors({ openEditors: opening, activePath }, new Set(survivors.keys()))
-    const tabs = restored.openEditors.map((editor) => survivors.get(editor.path) as Tab)
+    const tabs = applyModeRule(restored.openEditors.map((editor) => ({ ...survivors.get(editor.path) as Tab, mode: editor.mode })))
     setState((prev) => {
       const openedMeanwhile = prev.tabs.filter((tab) => !survivors.has(tab.entry.path))
       return { tabs: [...tabs, ...openedMeanwhile], activeTabPath: prev.activeTabPath ?? restored.activePath }
@@ -130,7 +136,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     if (!canReload() || request !== generation.current) return
     setState((prev) => ({
       ...prev,
-      tabs: prev.tabs.map((tab) => tab === original && canReload() && tab.content !== content ? { ...tab, content } : tab),
+      tabs: applyModeRule(prev.tabs.map((tab) => tab === original && canReload() && tab.content !== content ? { ...tab, content } : tab)),
     }))
   }, [folder])
 
@@ -156,9 +162,14 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     [],
   )
 
+  /** ⌘\, the segmented control and the Frontmatter badge: the mode of one Document Tab. */
+  const setTabMode = useCallback((path: string, mode: EditorMode) => {
+    setState((prev) => tabsState.setTabMode(prev, path, mode))
+  }, [])
+
   const setTabs = useCallback((action: SetStateAction<Tab[]>) => {
     setState((prev) => {
-      const tabs = typeof action === 'function' ? action(prev.tabs) : action
+      const tabs = applyModeRule(typeof action === 'function' ? action(prev.tabs) : action)
       return tabs === prev.tabs ? prev : { ...prev, tabs }
     })
   }, [])
@@ -182,6 +193,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     activateTab,
     activateTabAt,
     activateAdjacentTab,
+    setTabMode,
     restoreOpenEditors,
   }
 }

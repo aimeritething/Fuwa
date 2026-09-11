@@ -87,7 +87,7 @@ test('a committed rename re-sorts the row and moves the Tab with it', async ({ p
   await expect(explorer.locator('.fuwa-sidebar-row'))
     .toHaveText(['Notes', 'Attachments', 'Projects', 'Aardvark.md', 'Reading list.md'])
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('aria-label', 'Aardvark.md')
-  await expect(page.getByTestId('path-row')).toHaveText('Notes › Aardvark.md')
+  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Aardvark.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('data-active', 'true')
 })
@@ -142,7 +142,7 @@ test('renaming a folder retargets every Tab beneath it', async ({ page }) => {
   await page.keyboard.press('Enter')
 
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Fuwa.md`)).toBeVisible()
-  await expect(page.getByTestId('path-row')).toHaveText('Notes › Work › Fuwa.md')
+  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Work › Fuwa.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
   // The folder is what was renamed, so the folder row keeps the selection —
   // not the Document that moved with it.

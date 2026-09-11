@@ -1,4 +1,5 @@
 import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '../lib/themeMode'
+import type { EditorMode } from '../types'
 import { isImageFilePath } from './imageFile'
 
 /**
@@ -13,7 +14,7 @@ import { isImageFilePath } from './imageFile'
 
 export const SESSION_VERSION = 1
 
-export type SessionEditorMode = 'rich' | 'raw'
+export type SessionEditorMode = EditorMode
 
 export interface SessionEditor {
   path: string
@@ -129,13 +130,20 @@ export function restoreOpenEditors(
   return { openEditors, activePath: nearestSurvivor(paths, activeIndex, survives) }
 }
 
+/** What the shell hands over per open Tab: its path and, for a Document, the mode it is in. */
+export interface OpenEditorInput {
+  path: string
+  mode?: SessionEditorMode
+}
+
 /**
- * The Session for the open Tabs (every Document in Rich mode until AIM-381
- * remembers a mode per Tab), the chosen appearance and the sidebar state. An
- * Image file entry carries no `mode`: its kind comes from the extension.
+ * The Session for the open Tabs, each Document with its Rich or Raw mode
+ * (AIM-381), the chosen appearance and the sidebar state. An Image file entry
+ * carries no `mode`: its kind comes from the extension. A Document with no
+ * mode named is written as Rich, the default for a freshly opened one.
  */
 export function sessionForOpenEditors(
-  openPaths: readonly string[],
+  openEditors: readonly OpenEditorInput[],
   activePath: string | null,
   theme: ThemeMode,
   folder: string | null = null,
@@ -144,7 +152,7 @@ export function sessionForOpenEditors(
   return {
     version: SESSION_VERSION,
     folder,
-    openEditors: openPaths.map((path) => (isImageFilePath(path) ? { path } : { path, mode: 'rich' })),
+    openEditors: openEditors.map(({ path, mode }) => (isImageFilePath(path) ? { path } : { path, mode: mode ?? 'rich' })),
     activePath,
     theme,
     sidebar,

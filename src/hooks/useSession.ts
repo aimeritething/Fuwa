@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useState } from 'react'
 import type { ThemeMode } from '../lib/themeMode'
 import type { Tab } from '../types'
 import { readSessionFile, updateSessionFile } from '../utils/sessionFile'
-import { parseSession, sessionForOpenEditors, type SessionEditor, type SessionSidebar } from '../utils/sessionSchema'
+import { parseSession, sessionForOpenEditors, type OpenEditorInput, type SessionEditor, type SessionSidebar } from '../utils/sessionSchema'
 
 interface UseSessionOptions {
   folder?: string | null
@@ -20,9 +20,15 @@ interface UseSessionOptions {
   restoreSidebar: (sidebar: SessionSidebar) => void
 }
 
+/** The Tabs as the Session file sees them, as one string so the write effect keys on it. */
+function openEditorsKey(tabs: Tab[]): string {
+  return JSON.stringify(tabs.map((tab): OpenEditorInput => ({ path: tab.entry.path, mode: tab.mode })))
+}
+
 /**
  * Restores the Session once at launch and hands every later change of the
- * Folder, open Tabs, appearance and sidebar to the Session file. Nothing is written before
+ * Folder, open Tabs (each Document with its mode, AIM-381), appearance and
+ * sidebar to the Session file. Nothing is written before
  * the restore has settled, so a launch never overwrites the file with the
  * empty initial state. A file with an unknown version restores nothing and
  * is rewritten in the current schema by the first write.
@@ -58,17 +64,17 @@ export function useSession({
     }
   }, [])
 
-  // Folder, Tab order, active Tab, appearance and sidebar are what the file
-  // holds; a content change inside a Tab does not touch it.
-  const openPathsKey = tabs.map((tab) => tab.entry.path).join('\n')
+  // Folder, Tab order, each Tab's mode, active Tab, appearance and sidebar
+  // are what the file holds; a content change inside a Tab does not touch it.
+  const editorsKey = openEditorsKey(tabs)
   const { collapsed, width } = sidebar
   useEffect(() => {
     if (!restored) return
-    const openPaths = openPathsKey === '' ? [] : openPathsKey.split('\n')
-    updateSessionFile(sessionForOpenEditors(openPaths, activeTabPath, theme, folder, { collapsed, width })).catch((error: unknown) => {
+    const openEditors = JSON.parse(editorsKey) as OpenEditorInput[]
+    updateSessionFile(sessionForOpenEditors(openEditors, activeTabPath, theme, folder, { collapsed, width })).catch((error: unknown) => {
       console.warn('[session] Failed to hand the Session to the file:', error)
     })
-  }, [activeTabPath, collapsed, folder, openPathsKey, restored, theme, width])
+  }, [activeTabPath, collapsed, editorsKey, folder, restored, theme, width])
 
   return { restored }
 }

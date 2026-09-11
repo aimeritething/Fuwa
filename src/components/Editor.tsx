@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import 'katex/dist/katex.min.css'
 import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
@@ -6,9 +6,10 @@ import { useEditorFocus } from '../hooks/useEditorFocus'
 import { useEditorTheme } from '../hooks/useTheme'
 import { useEditorFocusScope } from '../hooks/editorFocusOwnership'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
-import type { Tab } from '../types'
+import type { EditorMode, Tab } from '../types'
 import type { ListedFile } from '../utils/explorer'
 import { documentRoot } from '../utils/explorer'
+import { documentFrontmatter, frontmatterBadgeLabel } from '../utils/frontmatterStatus'
 import { activeTabPaths, imageFetchVersion, imageMetadataLabel, type ImageNaturalSize } from '../utils/imageFile'
 import { noteRootForPath } from '../utils/noteEntry'
 import { notePathFilename } from '../utils/notePathIdentity'
@@ -16,6 +17,7 @@ import { dispatchEditorFindAvailability } from '../utils/editorFindEvents'
 import { installRichEditorMarkdownSerializer } from '../utils/richEditorMarkdown'
 import type { WriteFailure } from '../hooks/useWriteFailures'
 import { useRegisterEditorContentFlushes } from './editorContentFlushRegistration'
+import { applyPendingRawExitContent, resolvePendingRawExitContent, resolveRawModeContent } from './editorRawModeSync'
 import { uploadEditorImage } from './editorImageUpload'
 import { schema } from './editorSchema'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
@@ -23,7 +25,8 @@ import { createMarkdownHighlightShortcutExtension } from './markdownHighlightSho
 import { copyImagePath, openImageExternally } from './imageTabActions'
 import { EmptyCard } from './EmptyCard'
 import { ImageView } from './ImageView'
-import { PathRow } from './PathRow'
+import { PathRow, type PathRowMode } from './PathRow'
+import { RawEditorView } from './RawEditorView'
 import { Toast } from './Toast'
 import { TabBar } from './TabBar'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
@@ -41,6 +44,7 @@ import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTra
 import { SingleEditorView } from './SingleEditorView'
 import { createTodoBlockShortcutExtension } from './todoBlockShortcutExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
+import { useRawModeWithFlush } from './useRawModeWithFlush'
 import { WriteFailureBar } from './WriteFailureBar'
 import './Editor.css'
 import './EditorTheme.css'
@@ -59,6 +63,10 @@ const RICH_EDITOR_BIDI_DOM_ATTRIBUTES = {
 }
 
 const NO_WIKILINK_NAVIGATION = () => {}
+const noop = () => {}
+/** ⌘S in CodeMirror is the app's fileSave, which the window keydown already dispatches. */
+const RAW_SAVE_HANDLED_BY_APP = () => {}
+const RICH_UNAVAILABLE_REASON = 'Fix the frontmatter to use Rich mode'
 
 type FlushPendingContentRef = MutableRefObject<((path: string) => void) | null>
 
@@ -75,8 +83,16 @@ export interface EditorProps {
   savedAt: number | null
   /** Receives the serialized Markdown after the rich editor's idle debounce. */
   onContentChange?: (path: string, content: string) => void
+  /** Receives the Raw editor's bytes after its own idle debounce, and on every flush. */
+  onRawContentChange?: (path: string, content: string) => void
   /** Registers a flush of the rich editor's pending edits, so ⌘S saves the latest keystrokes. */
   flushPendingEditorContentRef?: FlushPendingContentRef
+  /** Registers the same for the Raw editor's keystrokes (AIM-381). */
+  flushPendingRawContentRef?: FlushPendingContentRef
+  /** Toggle Rich/Raw (⌘\, View menu): the editor registers the switch here, since only it can map the caret. */
+  rawToggleRef?: MutableRefObject<(() => void) | null>
+  /** Puts a Document Tab in Rich or Raw mode; the Tab rules decide whether it takes. */
+  onSetTabMode: (path: string, mode: EditorMode) => void
   /** The tab bar's clicks. */
   onActivateTab: (path: string) => void
   onCloseTab: (path: string) => void
@@ -137,42 +153,117 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
   return editor
 }
 
+/** Registers a callback into an optional ref for as long as it is current. */
+function useRegisteredRef<T>(ref: MutableRefObject<T | null> | undefined, value: T) {
+  useEffect(() => {
+    if (!ref) return
+    ref.current = value
+    return () => {
+      if (ref.current === value) ref.current = null
+    }
+  }, [ref, value])
+}
+
+/**
+ * Rich/Raw switching (AIM-381), carried from Tolaria: the kernel's hook
+ * serializes the rich editor into the raw buffer on the way in, maps the
+ * caret both ways, and remembers raw edits the Tab state has not caught up
+ * with on the way out. Fuwa's deviation is where the mode lives: the active
+ * Tab's `mode`, set through the Tab rules, so two Tabs can differ and the
+ * Session restores each. A Document whose Frontmatter is invalid cannot
+ * leave Raw; the toggle is a no-op there and the Rich segment says why.
+ */
+function useRawModeRuntime(options: {
+  editor: ReturnType<typeof useRichEditor>
+  tabs: Tab[]
+  activeTab: Tab | null
+  activeTabPath: string | null
+  vaultPath?: string
+  onRawContentChange?: (path: string, content: string) => void
+  onSetTabMode: (path: string, mode: EditorMode) => void
+  flushPendingEditorChangeRef: MutableRefObject<(() => boolean) | null>
+}) {
+  const { editor, tabs, activeTab, activeTabPath, vaultPath, onRawContentChange, onSetTabMode, flushPendingEditorChangeRef } = options
+  const tabMode = useMemo(() => ({ mode: activeTab?.mode ?? null, setMode: onSetTabMode }), [activeTab?.mode, onSetTabMode])
+  const {
+    rawMode,
+    handleToggleRaw,
+    rawLatestContentRef,
+    pendingRawExitContent,
+    setPendingRawExitContent,
+    rawModeContentOverride,
+  } = useRawModeWithFlush(editor, activeTabPath, activeTab?.content ?? null, onRawContentChange, vaultPath, flushPendingEditorChangeRef, tabMode)
+
+  // Raw edits are handed to the rich editor's swap before the Tab state has
+  // them; once it does, the hand-over is cleared (derived, not effected).
+  const resolvedExit = resolvePendingRawExitContent({ activeTabPath, tabs, pendingRawExitContent })
+  if (resolvedExit !== pendingRawExitContent) setPendingRawExitContent(resolvedExit)
+  const tabsForEditorSwap = useMemo(() => applyPendingRawExitContent(tabs, resolvedExit), [resolvedExit, tabs])
+  const rawModeContent = resolveRawModeContent({ activeTab, rawModeContentOverride })
+
+  const frontmatter = useMemo(() => documentFrontmatter(activeTab?.content ?? ''), [activeTab?.content])
+  const richUnavailable = frontmatter.kind === 'invalid'
+  const toggleRaw = useCallback(() => {
+    if (rawMode && richUnavailable) return
+    void handleToggleRaw()
+  }, [handleToggleRaw, rawMode, richUnavailable])
+
+  const pathRowMode = useMemo<PathRowMode>(() => ({
+    value: rawMode ? 'raw' : 'rich',
+    onChange: (mode) => {
+      if ((mode === 'raw') !== rawMode) toggleRaw()
+    },
+    richDisabledReason: richUnavailable ? RICH_UNAVAILABLE_REASON : null,
+    frontmatterLabel: frontmatterBadgeLabel(frontmatter),
+  }), [frontmatter, rawMode, richUnavailable, toggleRaw])
+
+  return { rawMode, toggleRaw, rawLatestContentRef, rawModeContent, tabsForEditorSwap, pathRowMode }
+}
+
 /**
  * An Image Tab has no editor under it, so the kernel is told there is no
  * active Document: the swap machinery blanks rather than trying to parse a
  * picture, and nothing registers a flush for a Tab that is never written.
  */
 function useEditorRuntime(props: EditorProps) {
-  const { tabs, vaultPath, onContentChange, flushPendingEditorContentRef, hasPendingEditorContentRef } = props
+  const { tabs, vaultPath, onContentChange, onRawContentChange, onSetTabMode, flushPendingEditorContentRef, flushPendingRawContentRef, hasPendingEditorContentRef } = props
   const { documentPath: activeTabPath, imagePath: imageTabPath } = activeTabPaths(props.activeTabPath)
   const editor = useRichEditor({ activeTabPath, vaultPath })
   const activeTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
+  const flushPendingEditorChangeRef = useRef<(() => boolean) | null>(null)
+  const raw = useRawModeRuntime({ editor, tabs, activeTab, activeTabPath, vaultPath, onRawContentChange, onSetTabMode, flushPendingEditorChangeRef })
   const { handleEditorChange, flushPendingEditorChange, hasPendingEditorChange, editorMountedRef } = useEditorTabSwap({
-    tabs,
+    tabs: raw.tabsForEditorSwap,
     activeTabPath,
     editor,
     onContentChange,
-    rawMode: false,
+    rawMode: raw.rawMode,
     vaultPath,
   })
-  useEffect(() => {
-    if (!hasPendingEditorContentRef) return
-    hasPendingEditorContentRef.current = (path) => path === activeTabPath && hasPendingEditorChange()
-    return () => { hasPendingEditorContentRef.current = null }
-  }, [activeTabPath, hasPendingEditorChange, hasPendingEditorContentRef])
+  useRegisteredRef(flushPendingEditorChangeRef, flushPendingEditorChange)
+  const { rawMode, rawLatestContentRef } = raw
+  const activeTabContent = activeTab?.content ?? null
+  // Whether the active Document has keystrokes its Tab does not hold yet, on whichever surface is showing.
+  const hasPendingEditorContent = useCallback((path: string) => {
+    if (path !== activeTabPath) return false
+    if (rawMode) return rawLatestContentRef.current !== null && rawLatestContentRef.current !== activeTabContent
+    return hasPendingEditorChange()
+  }, [activeTabContent, activeTabPath, hasPendingEditorChange, rawLatestContentRef, rawMode])
+  useRegisteredRef(hasPendingEditorContentRef, hasPendingEditorContent)
   useEditorFocus(editor, editorMountedRef)
+  useRegisteredRef(props.rawToggleRef, raw.toggleRaw)
 
-  // Raw mode arrives with AIM-381; until then the raw flush has nothing to register.
-  const rawLatestContentRef = useRef<string | null>(null)
   useRegisterEditorContentFlushes({
     activeTab,
     flushPendingEditorChange,
     flushPendingEditorContentRef,
     rawLatestContentRef,
-    rawMode: false,
+    rawMode,
+    onContentChange: onRawContentChange,
+    flushPendingRawContentRef,
   })
 
-  return { editor, activeTab, handleEditorChange, imageTabPath }
+  return { editor, activeTab, handleEditorChange, imageTabPath, raw }
 }
 
 /**
@@ -272,7 +363,7 @@ function ImageTab({ path, folder, imageFile, reloads }: {
 }
 
 export const Editor = memo(function Editor(props: EditorProps) {
-  const { editor, activeTab, handleEditorChange, imageTabPath } = useEditorRuntime(props)
+  const { editor, activeTab, handleEditorChange, imageTabPath, raw } = useEditorRuntime(props)
   const {
     tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
     sidebarCollapsed, onShowSidebar,
@@ -308,7 +399,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       )}
       {activeTab && (
         <>
-          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} savedAt={savedAt} />
+          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} savedAt={savedAt} mode={raw.pathRowMode} />
           {writeFailure && (
             <WriteFailureBar
               path={writeFailure.path}
@@ -317,18 +408,32 @@ export const Editor = memo(function Editor(props: EditorProps) {
               onDiscard={() => onDiscardWrite(writeFailure.path)}
             />
           )}
-          <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
-            <div className="editor-content-wrapper">
-              <SingleEditorView
-                editor={editor}
-                onNavigateWikilink={NO_WIKILINK_NAVIGATION}
-                onChange={handleEditorChange}
-                sourceEntry={activeTab.entry}
-                attachmentVaultPath={noteRootForPath(activeTab.entry.path)}
-                vaultPath={vaultPath}
+          {/* The two surfaces are exclusive: Raw mode shows the exact bytes in CodeMirror and BlockNote is not mounted. */}
+          {raw.rawMode ? (
+            <EditorFindScope className="editor-scroll-area fuwa-raw-scope" style={cssVars as React.CSSProperties}>
+              <RawEditorView
+                key={activeTab.entry.path}
+                content={raw.rawModeContent ?? activeTab.content}
+                path={activeTab.entry.path}
+                onContentChange={props.onRawContentChange ?? noop}
+                onSave={RAW_SAVE_HANDLED_BY_APP}
+                latestContentRef={raw.rawLatestContentRef}
               />
-            </div>
-          </EditorFindScope>
+            </EditorFindScope>
+          ) : (
+            <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
+              <div className="editor-content-wrapper">
+                <SingleEditorView
+                  editor={editor}
+                  onNavigateWikilink={NO_WIKILINK_NAVIGATION}
+                  onChange={handleEditorChange}
+                  sourceEntry={activeTab.entry}
+                  attachmentVaultPath={noteRootForPath(activeTab.entry.path)}
+                  vaultPath={vaultPath}
+                />
+              </div>
+            </EditorFindScope>
+          )}
         </>
       )}
       <Toast message={props.toast} />

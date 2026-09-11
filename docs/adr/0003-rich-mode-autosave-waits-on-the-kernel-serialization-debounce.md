@@ -1,6 +1,7 @@
 ---
 status: accepted
 date: 2026-09-10
+amended: 2026-09-11 (Raw mode, AIM-381)
 ---
 
 # Rich-mode Autosave waits on the kernel's serialization debounce
@@ -13,7 +14,7 @@ Tolaria reaches disk through two timers in a row. The rich editor serialises its
 
 The kernel's serialization debounce **is** the idle wait. When the rich editor delivers content, the shell buffers it through `handleContentChange` and immediately calls `savePending()`, which cancels the save hook's timer and writes now. Everything else in the save hook is unchanged: ⌘S flushes the editor first and reuses the in-flight write, `onNotePersisted` fires only after a successful write, and a failed write leaves the buffer in place and is logged (the error bar is AIM-385).
 
-Raw mode (AIM-381) reports every keystroke with no inner debounce; there the save hook's own timer stays the idle wait, so the two modes both write 1.5 s after the last edit.
+Raw mode (AIM-381) turned out to have an inner debounce of its own: the carried `RawEditorView` reports 500 ms after the last keystroke. Its reports take the same road as Rich mode's (buffer, then write now) rather than the save hook's timer, so that a refused write is recorded as the Document's error bar (AIM-385) on both surfaces. Raw mode therefore writes about 0.5 s after the last edit, Rich mode 1.5 s; see ADR-0009.
 
 ## Consequences
 

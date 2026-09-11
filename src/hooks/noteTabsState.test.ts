@@ -1,18 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import type { Tab } from '../types'
 import { noteEntryForPath } from '../utils/noteEntry'
+import { imageEntryForPath } from '../utils/imageFile'
 import {
   activateAdjacentTab,
   activateTab,
   activateTabAt,
+  applyModeRule,
   closeTab,
   EMPTY_NOTE_TABS,
   openTab,
   retargetTabs,
+  setTabMode,
   type NoteTabsState,
 } from './noteTabsState'
 
-const tab = (path: string): Tab => ({ entry: noteEntryForPath(path, ''), content: '' })
+const tab = (path: string, content = ''): Tab => ({ entry: noteEntryForPath(path, content), content })
+const INVALID_FRONTMATTER = '---\nnot yaml\n---\n# A\n'
+const VALID_FRONTMATTER = '---\ntitle: A\n---\n# A\n'
 const paths = (state: NoteTabsState) => state.tabs.map((entry) => entry.entry.path)
 
 function threeOpen(): NoteTabsState {
@@ -130,5 +135,62 @@ describe('retargetTabs', () => {
 
     expect(retargetTabs(state, '/n/zzz.md', '/n/yyy.md')).toBe(state)
     expect(retargetTabs(state, '/n/a.md', '/n/a.md')).toBe(state)
+  })
+})
+
+describe('the mode of a Tab (AIM-381)', () => {
+  it('opens a fresh Document in Rich mode and an Image file with no mode', () => {
+    const state = openTab(openTab(EMPTY_NOTE_TABS, tab('/n/a.md')), { entry: imageEntryForPath('/n/cover.png'), content: '' })
+
+    expect(state.tabs[0].mode).toBe('rich')
+    expect(state.tabs[1].mode).toBeUndefined()
+  })
+
+  it('keeps the mode a Document was opened with', () => {
+    const state = openTab(EMPTY_NOTE_TABS, { ...tab('/n/a.md'), mode: 'raw' })
+
+    expect(state.tabs[0].mode).toBe('raw')
+  })
+
+  it('switches one Tab without touching the others', () => {
+    const state = setTabMode(threeOpen(), '/n/b.md', 'raw')
+
+    expect(state.tabs.map((entry) => entry.mode)).toEqual(['rich', 'raw', 'rich'])
+    expect(setTabMode(state, '/n/b.md', 'rich').tabs.map((entry) => entry.mode)).toEqual(['rich', 'rich', 'rich'])
+  })
+
+  it('returns the same state when the mode is already set or the path is not open', () => {
+    const state = threeOpen()
+
+    expect(setTabMode(state, '/n/a.md', 'rich')).toBe(state)
+    expect(setTabMode(state, '/n/zzz.md', 'raw')).toBe(state)
+  })
+
+  it('forces Raw on a Document whose Frontmatter is invalid and refuses Rich until it is fixed', () => {
+    const opened = openTab(EMPTY_NOTE_TABS, tab('/n/a.md', INVALID_FRONTMATTER))
+    expect(opened.tabs[0].mode).toBe('raw')
+    expect(setTabMode(opened, '/n/a.md', 'rich')).toBe(opened)
+
+    const fixed = applyModeRule([{ ...opened.tabs[0], content: VALID_FRONTMATTER }])
+    expect(fixed[0].mode).toBe('raw')
+    expect(setTabMode({ tabs: fixed, activeTabPath: '/n/a.md' }, '/n/a.md', 'rich').tabs[0].mode).toBe('rich')
+  })
+
+  it('moves a Rich Tab to Raw when its content turns invalid, and leaves untouched Tabs as they are', () => {
+    const state = threeOpen()
+    const reloaded = state.tabs.map((entry) => (entry.entry.path === '/n/b.md' ? { ...entry, content: INVALID_FRONTMATTER } : entry))
+
+    const ruled = applyModeRule(reloaded)
+
+    expect(ruled.map((entry) => entry.mode)).toEqual(['rich', 'raw', 'rich'])
+    expect(ruled[0]).toBe(state.tabs[0])
+    expect(applyModeRule(ruled)).toBe(ruled)
+  })
+
+  it('keeps the mode through a rename', () => {
+    const state = retargetTabs(setTabMode(threeOpen(), '/n/b.md', 'raw'), '/n/b.md', '/n/renamed.md')
+
+    expect(state.tabs[1].entry.path).toBe('/n/renamed.md')
+    expect(state.tabs[1].mode).toBe('raw')
   })
 })

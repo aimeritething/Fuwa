@@ -106,7 +106,7 @@ describe('restoreOpenEditors', () => {
 
 describe('sessionForOpenEditors', () => {
   it('writes the Tabs in order as Rich Documents and the chosen theme, the other fields at their defaults', () => {
-    expect(sessionForOpenEditors([B, A], A, 'light')).toEqual({
+    expect(sessionForOpenEditors([{ path: B }, { path: A }], A, 'light')).toEqual({
       version: 1,
       folder: null,
       openEditors: [{ path: B, mode: 'rich' }, { path: A, mode: 'rich' }],
@@ -116,8 +116,14 @@ describe('sessionForOpenEditors', () => {
     })
   })
 
+  it('writes each Document with its own mode (AIM-381)', () => {
+    const session = sessionForOpenEditors([{ path: A, mode: 'raw' }, { path: B, mode: 'rich' }], A, 'dark')
+
+    expect(session.openEditors).toEqual([{ path: A, mode: 'raw' }, { path: B, mode: 'rich' }])
+  })
+
   it('leaves an Image file entry without a mode, its kind being the extension', () => {
-    const session = sessionForOpenEditors([A, '/Users/x/notes/cover.png'], A, 'dark')
+    const session = sessionForOpenEditors([{ path: A }, { path: '/Users/x/notes/cover.png', mode: 'raw' }], A, 'dark')
 
     expect(session.openEditors).toEqual([{ path: A, mode: 'rich' }, { path: '/Users/x/notes/cover.png' }])
   })
@@ -127,7 +133,7 @@ describe('sessionForOpenEditors', () => {
   })
 
   it('writes the sidebar state it is given', () => {
-    const session = sessionForOpenEditors([A], A, 'dark', '/Users/x/notes', { collapsed: true, width: 320 })
+    const session = sessionForOpenEditors([{ path: A }], A, 'dark', '/Users/x/notes', { collapsed: true, width: 320 })
 
     expect(session.folder).toBe('/Users/x/notes')
     expect(session.sidebar).toEqual({ collapsed: true, width: 320 })

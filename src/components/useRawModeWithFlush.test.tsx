@@ -1,7 +1,8 @@
 import { renderHook, act } from '@testing-library/react'
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
+import { useCallback, useState } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import type { EditorMode } from '../types'
 import { useRawModeWithFlush } from './useRawModeWithFlush'
-import * as store from '../utils/vaultConfigStore'
 
 const notePath = '/vault/project/test.md'
 const originalContent = '# Test\n\nOriginal body\n'
@@ -14,42 +15,36 @@ function makeEditor() {
   }
 }
 
+/** The hook over the per-Tab mode the app keeps in its Tab state (AIM-381). */
+function useRawModeWithFlushOverTab(
+  editor: ReturnType<typeof makeEditor>,
+  onContentChange: (path: string, content: string) => void,
+  flushPendingEditorChangeRef: { current: () => boolean },
+) {
+  const [mode, setModeState] = useState<EditorMode>('rich')
+  const setMode = useCallback((_path: string, next: EditorMode) => setModeState(next), [])
+  return useRawModeWithFlush(
+    editor as never,
+    notePath,
+    originalContent,
+    onContentChange,
+    undefined,
+    flushPendingEditorChangeRef,
+    { mode, setMode },
+  )
+}
+
 describe('useRawModeWithFlush', () => {
-  beforeEach(() => {
-    store.resetVaultConfigStore()
-    store.bindVaultConfigStore(
-      {
-        zoom: null,
-        view_mode: null,
-        editor_mode: null,
-        tag_colors: null,
-        status_colors: null,
-        property_display_modes: null,
-      },
-      vi.fn(),
-    )
-  })
-
-  afterEach(() => {
-    store.resetVaultConfigStore()
-  })
-
   it('re-enters raw mode with pending raw edits while tab state is still stale', async () => {
     const onContentChange = vi.fn()
     const flushPendingEditorChangeRef = { current: vi.fn(() => false) }
     const editor = makeEditor()
-    const { result } = renderHook(() => useRawModeWithFlush(
-      editor as never,
-      notePath,
-      originalContent,
-      onContentChange,
-      undefined,
-      flushPendingEditorChangeRef,
-    ))
+    const { result } = renderHook(() => useRawModeWithFlushOverTab(editor, onContentChange, flushPendingEditorChangeRef))
 
     await act(async () => {
       await result.current.handleToggleRaw()
     })
+    expect(result.current.rawMode).toBe(true)
     act(() => {
       result.current.rawLatestContentRef.current = rawEditedContent
     })
@@ -57,6 +52,7 @@ describe('useRawModeWithFlush', () => {
     await act(async () => {
       await result.current.handleToggleRaw()
     })
+    expect(result.current.rawMode).toBe(false)
     await act(async () => {
       await result.current.handleToggleRaw()
     })

@@ -1,8 +1,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PathRow } from './PathRow'
+import { PathRow, type PathRowMode } from './PathRow'
+import { TooltipProvider } from './ui/tooltip'
 
 const imageSlot = { metadata: '1920 × 1080 · 240 KB', onOpenExternal: vi.fn(), onCopyPath: vi.fn() }
+
+function richMode(overrides: Partial<PathRowMode> = {}): PathRowMode {
+  return { value: 'rich', onChange: vi.fn(), richDisabledReason: null, frontmatterLabel: null, ...overrides }
+}
+
+function renderWithTooltips(ui: React.ReactElement) {
+  return render(<TooltipProvider>{ui}</TooltipProvider>)
+}
 
 describe('PathRow', () => {
   beforeEach(() => {
@@ -71,5 +80,77 @@ describe('PathRow', () => {
 
     expect(onOpenExternal).toHaveBeenCalledTimes(1)
     expect(onCopyPath).toHaveBeenCalledTimes(1)
+  })
+
+  describe('the Rich | Raw control (AIM-381)', () => {
+    it('shows both segments with the current one checked and asks for the other on click', () => {
+      const onChange = vi.fn()
+      renderWithTooltips(<PathRow filename="Welcome.md" savedAt={null} mode={richMode({ onChange })} />)
+
+      const rich = screen.getByRole('radio', { name: 'Rich' })
+      const raw = screen.getByRole('radio', { name: 'Raw' })
+      expect(rich).toBeChecked()
+      expect(raw).not.toBeChecked()
+
+      fireEvent.click(raw)
+      expect(onChange).toHaveBeenCalledWith('raw')
+      fireEvent.click(rich)
+      expect(onChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('names the shortcut in a mono tooltip', async () => {
+      vi.useRealTimers()
+      renderWithTooltips(<PathRow filename="Welcome.md" savedAt={null} mode={richMode()} />)
+
+      fireEvent.focus(screen.getByRole('radio', { name: 'Raw' }))
+
+      const tip = await screen.findByRole('tooltip')
+      expect(tip).toHaveTextContent('Raw ⌘\\')
+      expect(tip).toHaveClass('fuwa-mode__tip')
+    })
+
+    it('disables the Rich segment with the reason as its tooltip while the Frontmatter is invalid', async () => {
+      vi.useRealTimers()
+      const onChange = vi.fn()
+      renderWithTooltips(
+        <PathRow
+          filename="Welcome.md"
+          savedAt={null}
+          mode={richMode({ value: 'raw', onChange, richDisabledReason: 'Fix the frontmatter to use Rich mode', frontmatterLabel: 'frontmatter · invalid' })}
+        />,
+      )
+
+      const rich = screen.getByRole('radio', { name: 'Rich' })
+      expect(rich).toHaveAttribute('aria-disabled', 'true')
+      fireEvent.click(rich)
+      expect(onChange).not.toHaveBeenCalled()
+
+      fireEvent.focus(rich)
+      expect(await screen.findByRole('tooltip')).toHaveTextContent('Fix the frontmatter to use Rich mode')
+    })
+
+    it('shows the Frontmatter badge between the save state and the control, and switches to Raw on click', () => {
+      const onChange = vi.fn()
+      renderWithTooltips(
+        <PathRow filename="Fuwa.md" savedAt={Date.now()} mode={richMode({ onChange, frontmatterLabel: 'frontmatter · 2 keys' })} />,
+      )
+
+      const badge = screen.getByTestId('path-row-frontmatter')
+      expect(badge).toHaveTextContent('frontmatter · 2 keys')
+      const meta = badge.parentElement as HTMLElement
+      const order = Array.from(meta.children).map((child) => child.getAttribute('data-testid'))
+      expect(order).toEqual(['path-row-saved', 'path-row-frontmatter', 'path-row-mode'])
+
+      fireEvent.click(badge)
+      expect(onChange).toHaveBeenCalledWith('raw')
+    })
+
+    it('shows no badge and no control on a Document without Frontmatter and an Image Tab', () => {
+      const { rerender } = renderWithTooltips(<PathRow filename="Welcome.md" savedAt={null} mode={richMode()} />)
+      expect(screen.queryByTestId('path-row-frontmatter')).toBeNull()
+
+      rerender(<TooltipProvider><PathRow filename="lake.png" savedAt={null} image={imageSlot} /></TooltipProvider>)
+      expect(screen.queryByTestId('path-row-mode')).toBeNull()
+    })
   })
 })

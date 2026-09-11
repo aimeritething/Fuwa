@@ -17,7 +17,7 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   await explorer.getByRole('button', { name: 'Expand Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
-  await expect(page.getByTestId('path-row')).toHaveText('Notes › Projects › Fuwa.md')
+  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Projects › Fuwa.md')
   await explorer.getByRole('button', { name: 'Collapse Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
@@ -87,7 +87,7 @@ test('outside Documents show their dimmed parent, stay out of Explorer, and relo
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
   await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Welcome.md`)
-  await expect(page.getByTestId('path-row')).toHaveText('Notes › Welcome.md')
+  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Welcome.md')
   await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).locator('.fuwa-sidebar-row__parent')).toHaveText('Notes')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toHaveCount(0)
   await page.evaluate((path) => {
