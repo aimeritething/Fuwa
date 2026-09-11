@@ -17,9 +17,8 @@ import type { FolderNode } from '../types'
  * tree, every ancestor folder of a seeded or saved path exists implicitly. Shapes follow the Rust commands:
  * absolute paths in, Folder-relative `/`-separated paths in `list_vault_folders`,
  * `modifiedAt` in seconds, errors as the Rust boundary's strings. `list_files`
- * and `take_pending_open` are Fuwa-owned and have no Rust side yet (spec
- * section 4 fixes only their fields), so their shapes here are the proposal the
- * Rust commands should match when they land.
+ * is shared with the Fuwa-owned Rust scanner. `take_pending_open` remains
+ * the browser stand-in for Finder opens.
  */
 
 export const MOCK_VAULT_PATH = '/Users/fuwa/Documents/Notes'
@@ -64,6 +63,8 @@ export interface MockVault {
   files(): MockVaultFile[]
   /** Write a note directly, without going through (or logging) a command. */
   writeNote(path: string, content: string): void
+  removeFile(path: string): void
+  emitExternalChange(paths: string[]): void
   watchedPath(): string | null
   queuePendingOpen(paths: string[]): void
   /** Queue what the next Open Document… dialogs "return", in order. */
@@ -205,7 +206,9 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
   }
 
   function requireRoot(candidate: unknown): void {
-    if (candidate !== vaultPath) throw new Error(ACTIVE_VAULT_UNAVAILABLE_ERROR)
+    if (candidate !== vaultPath && (typeof candidate !== 'string' || files.get(candidate)?.kind !== 'folder')) {
+      throw new Error(ACTIVE_VAULT_UNAVAILABLE_ERROR)
+    }
   }
 
   function requireInsideVault(candidate: unknown): string {
@@ -228,7 +231,10 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     switch (command) {
       case 'list_files': {
         requireRoot(args?.vaultPath)
-        return Array.from(files.values(), listing)
+        const root = args?.vaultPath as string
+        return Array.from(files.values()).filter((file) => file.path !== root && isInsideVault(file.path, root))
+          .filter((file) => !file.path.slice(root.length + 1).split('/').some((part) => part.startsWith('.') || part === 'node_modules'))
+          .map(listing)
       }
       case 'get_note_content': {
         const note = files.get(requireInsideVault(args?.path))
@@ -285,6 +291,10 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     },
     files: () => Array.from(files.values(), (entry) => ({ ...entry })),
     writeNote,
+    removeFile: (path) => { files.delete(requireInsideVault(path)) },
+    emitExternalChange: (paths) => {
+      window.dispatchEvent(new CustomEvent('fuwa:external-change', { detail: paths }))
+    },
     watchedPath: () => watched,
     queuePendingOpen: (paths) => {
       pendingOpen = [...pendingOpen, ...paths]

@@ -44,7 +44,8 @@ export function useDebouncedEditorChange({
     }
   }, [clearTimer, flushPendingEditorChange])
 
-  return { handleEditorChange, flushPendingEditorChange }
+  const hasPendingEditorChange = useCallback(() => pendingRef.current, [])
+  return { handleEditorChange, flushPendingEditorChange, hasPendingEditorChange }
 }
 
 export function consumeRawModeTransition(

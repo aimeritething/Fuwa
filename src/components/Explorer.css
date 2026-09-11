@@ -1,0 +1,42 @@
+.fuwa-explorer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 12px;
+}
+
+.fuwa-explorer__tree {
+  overflow: auto;
+  min-height: 0;
+}
+
+.fuwa-explorer__row {
+  margin-bottom: 1px;
+}
+
+.fuwa-explorer__disclosure {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.fuwa-explorer__message {
+  padding: 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.fuwa-sidebar-row__parent {
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}

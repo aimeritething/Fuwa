@@ -3,14 +3,18 @@ import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } 
 
 // Spec 6 of the smoke plan (AIM-380): several Documents open as Tabs and Open
 // Editors rows, the successor rule on close, positional navigation and ⌘W.
+// With no Folder open every Tab is out-of-Folder (spec section 2, empty-state
+// table), so each row carries its dimmed parent after the name; the name
+// assertions here read the name span rather than the whole row.
 
 const READING_LIST_PATH = `${MOCK_FOLDER}/Reading list.md`
 const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
 
 const tabNames = (page: Page) => page.getByRole('tab').allTextContents()
-const rowNames = (page: Page) => page.getByRole('option').allTextContents()
+const rowNames = (page: Page) => page.getByRole('option').locator('.fuwa-sidebar-row__name').allTextContents()
+const rowParents = (page: Page) => page.getByRole('option').locator('.fuwa-sidebar-row__parent').allTextContents()
 const activeTab = (page: Page) => page.getByRole('tab', { selected: true })
-const activeRow = (page: Page) => page.getByRole('option', { selected: true })
+const activeRow = (page: Page) => page.getByRole('option', { selected: true }).locator('.fuwa-sidebar-row__name')
 
 async function openThree(page: Page) {
   await page.goto('/')
@@ -27,6 +31,7 @@ test('three Documents give three Tabs and three Open Editors rows, with the acti
 
   expect(await tabNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Fuwa.md'])
   expect(await rowNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Fuwa.md'])
+  expect(await rowParents(page)).toEqual(['Notes', 'Notes', 'Projects'])
   await expect(activeTab(page)).toHaveText('Fuwa.md')
   await expect(activeRow(page)).toHaveText('Fuwa.md')
   await expect(page.getByTestId('tab-bar')).toHaveCSS('height', '44px')

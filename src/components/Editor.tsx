@@ -7,6 +7,7 @@ import { useEditorTheme } from '../hooks/useTheme'
 import { useEditorFocusScope } from '../hooks/editorFocusOwnership'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { Tab } from '../types'
+import { noteRootForPath } from '../utils/noteEntry'
 import { dispatchEditorFindAvailability } from '../utils/editorFindEvents'
 import { installRichEditorMarkdownSerializer } from '../utils/richEditorMarkdown'
 import type { WriteFailure } from '../hooks/useWriteFailures'
@@ -58,6 +59,8 @@ export interface EditorProps {
   activeTabPath: string | null
   /** The boundary root of the active Document: its Folder, or its own directory. */
   vaultPath?: string
+  folder?: string | null
+  hasPendingEditorContentRef?: MutableRefObject<((path: string) => boolean) | null>
   /** When the active Document's last write landed on disk. */
   savedAt: number | null
   /** Receives the serialized Markdown after the rich editor's idle debounce. */
@@ -91,7 +94,7 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
     domAttributes: RICH_EDITOR_BIDI_DOM_ATTRIBUTES,
     // A pasted image lands in `attachments/` beside the Document; the block
     // holds its asset URL, which Autosave writes back as a relative path.
-    uploadFile: (file: File) => uploadEditorImage(file, vaultPathRef.current),
+    uploadFile: (file: File) => uploadEditorImage(file, activeTabPathRef.current ? noteRootForPath(activeTabPathRef.current) : vaultPathRef.current),
     pasteHandler: createRichEditorPasteHandler(),
     tabBehavior: 'prefer-indent',
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
@@ -120,10 +123,10 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
 }
 
 function useEditorRuntime(props: EditorProps) {
-  const { tabs, activeTabPath, vaultPath, onContentChange, flushPendingEditorContentRef } = props
+  const { tabs, activeTabPath, vaultPath, onContentChange, flushPendingEditorContentRef, hasPendingEditorContentRef } = props
   const editor = useRichEditor({ activeTabPath, vaultPath })
   const activeTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
-  const { handleEditorChange, flushPendingEditorChange, editorMountedRef } = useEditorTabSwap({
+  const { handleEditorChange, flushPendingEditorChange, hasPendingEditorChange, editorMountedRef } = useEditorTabSwap({
     tabs,
     activeTabPath,
     editor,
@@ -131,6 +134,11 @@ function useEditorRuntime(props: EditorProps) {
     rawMode: false,
     vaultPath,
   })
+  useEffect(() => {
+    if (!hasPendingEditorContentRef) return
+    hasPendingEditorContentRef.current = (path) => path === activeTabPath && hasPendingEditorChange()
+    return () => { hasPendingEditorContentRef.current = null }
+  }, [activeTabPath, hasPendingEditorChange, hasPendingEditorContentRef])
   useEditorFocus(editor, editorMountedRef)
 
   // Raw mode arrives with AIM-381; until then the raw flush has nothing to register.
@@ -202,7 +210,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       {activeTab ? (
         <>
           <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
-          <PathRow filename={activeTab.entry.filename} savedAt={savedAt} />
+          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} savedAt={savedAt} />
           {writeFailure && (
             <WriteFailureBar
               path={writeFailure.path}
@@ -218,6 +226,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
                 onNavigateWikilink={NO_WIKILINK_NAVIGATION}
                 onChange={handleEditorChange}
                 sourceEntry={activeTab.entry}
+                attachmentVaultPath={noteRootForPath(activeTab.entry.path)}
                 vaultPath={vaultPath}
               />
             </div>

@@ -185,6 +185,7 @@ pub fn run() {
         )))
         .manage(vault_watcher::VaultWatcherState::new())
         .invoke_handler(tauri::generate_handler![
+            commands::list_files,
             commands::read_session,
             commands::update_session,
             commands::get_note_content,

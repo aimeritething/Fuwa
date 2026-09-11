@@ -209,11 +209,12 @@ export function SingleEditorView(options: {
   onChange?: () => void
   onImageImportError?: (error: ImageImportError) => void
   sourceEntry?: VaultEntry | null
+  attachmentVaultPath?: string
   vaultPath?: string
   editable?: boolean
   locale?: AppLocale
 }) {
-  const { editor, onNavigateWikilink, onChange, onImageImportError, sourceEntry, vaultPath, editable = true, locale = 'en' } = options
+  const { editor, onNavigateWikilink, onChange, onImageImportError, sourceEntry, vaultPath, attachmentVaultPath, editable = true, locale = 'en' } = options
   const { cssVars } = useEditorTheme()
   const themeMode = useDocumentThemeMode()
   const previousThemeModeRef = useRef(themeMode)
@@ -240,7 +241,7 @@ export function SingleEditorView(options: {
     containerRef,
     onImageImportError,
     onImageUrl,
-    vaultPath,
+    vaultPath: attachmentVaultPath ?? vaultPath,
   })
   const lightbox = useImageLightbox({ containerRef })
   const {
