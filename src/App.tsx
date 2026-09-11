@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Tab } from './types'
+import { CommandMenu } from './components/CommandMenu'
 import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
 import { Explorer } from './components/Explorer'
@@ -13,7 +14,10 @@ import { isWithinPrefix } from './hooks/folder-actions/folderActionUtils'
 import { Sidebar } from './components/Sidebar'
 import { useAppearance } from './hooks/useAppearance'
 import { WriteFailureDialog } from './components/WriteFailureDialog'
+import { dispatchAppCommand, isAppCommandId } from './hooks/appCommandDispatcher'
+import { commandMenuCommandEntries, commandMenuFileEntries } from './hooks/commandMenuEntries'
 import { useAppKeyboard } from './hooks/useAppKeyboard'
+import { useCommandMenu } from './hooks/useCommandMenu'
 import { useDocumentDrop } from './hooks/useDocumentDrop'
 import { useEditorSave } from './hooks/useEditorSave'
 import { useFinderOpen } from './hooks/useFinderOpen'
@@ -28,6 +32,7 @@ import { useWriteFailureRecord, useWriteFailures } from './hooks/useWriteFailure
 import { closeAppWindow, exitApp } from './utils/appWindow'
 import { pickNoteToOpen } from './utils/noteOpenDialog'
 import { openNotesSettled } from './utils/noteOpenRequest'
+import { requestPlainTextPaste } from './utils/plainTextPaste'
 
 const noop = () => {}
 
@@ -136,6 +141,8 @@ export default function App() {
   const hasPendingEditorContentRef = useRef<((path: string) => boolean) | null>(null)
   // Toggle Rich/Raw lives in the editor, which registers it here (AIM-381).
   const rawToggleRef = useRef<(() => void) | null>(null)
+  // Find in the current Document lives there too, on whichever surface is showing (AIM-389).
+  const findRef = useRef<(() => void) | null>(null)
   /** Push whichever surface is showing the Document's fresh keystrokes into the save buffer. */
   const flushEditorBuffers = useCallback((path: string) => {
     flushPendingEditorContentRef.current?.(path)
@@ -374,14 +381,30 @@ export default function App() {
   // Save: an undefined handler is how the dispatcher reads disabled, and the
   // native menu follows through update_menu_state.
   const onToggleRawEditor = useCallback(() => rawToggleRef.current?.(), [])
+  // Find (⌘F, Edit menu) follows the same rule: no Document, no handler.
+  const onFindInNote = useCallback(() => findRef.current?.(), [])
 
-  // Folder, Document, Save, Quit, Appearance, Sidebar, Tab and Rich/Raw
-  // commands are wired; the other manifest commands get their handlers with
-  // their own tickets. ⌘[ toggles the sidebar in both states; in Raw mode it
-  // shadows CodeMirror's indent-less (⌘] stays the editor's).
+  // Paste without Formatting (⌘⇧V, Edit menu): the clipboard's text, read
+  // through the carried Rust clipboard module in Tauri, inserted as plain
+  // Markdown text into whichever surface holds the caret.
+  const onPastePlainText = useCallback(() => {
+    requestPlainTextPaste().catch((error: unknown) => console.warn('Paste without Formatting failed:', error))
+  }, [])
+
+  // The Command Menu (⌘K) and Quick Open (⌘P) are one palette in two modes
+  // (spec section 7). ⌘K always opens; with no Folder it lists commands only.
+  // Quick Open searches the Folder, so with none it is disabled like its menu
+  // item, by handing the dispatcher no handler.
+  const { open: commandMenuOpen, mode: commandMenuMode, openCommands: openCommandMenu, openFiles: openQuickOpen, close: closeCommandMenu } = useCommandMenu()
+  const hasFolder = folder !== null
+  const hasTab = activeTabPath !== null
+
+  // ⌘[ toggles the sidebar in both states; in Raw mode it shadows CodeMirror's
+  // indent-less (⌘] stays the editor's). Zoom is not wired in v0.1.
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeDocumentPath,
-    hasFolder: folder !== null,
+    hasFolder,
+    hasTab,
     onOpenNote,
     onOpenVault: onOpenFolder,
     onCloseVault: onCloseFolder,
@@ -389,18 +412,40 @@ export default function App() {
     onQuit: quit,
     onToggleSidebar: toggleSidebar,
     onToggleRawEditor: activeDocumentPath ? onToggleRawEditor : undefined,
+    onFindInNote: activeDocumentPath ? onFindInNote : undefined,
     ...tabCommands.handlers,
     ...appearance.handlers,
     onCreateNote: explorerActions.createDocument,
-    onQuickOpen: noop,
-    onPastePlainText: noop,
-    onCommandPalette: noop,
+    onQuickOpen: hasFolder ? openQuickOpen : undefined,
+    onCommandPalette: openCommandMenu,
+    onPastePlainText,
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, folder, onOpenNote, onOpenFolder, onCloseFolder, onSave, onToggleRawEditor, quit, tabCommands, toggleSidebar])
+  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, toggleSidebar])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
+
+  // The palette's rows: every menu-bar command with its enable state, and the
+  // Folder's Documents and Image files by name (CONTEXT.md, Command Menu).
+  const commandMenuEntries = useMemo(() => [
+    ...commandMenuCommandEntries({ hasDocument: activeDocumentPath !== null, hasFolder, hasTab }),
+    ...commandMenuFileEntries(folderState.files, folder),
+  ], [activeDocumentPath, folder, folderState.files, hasFolder, hasTab])
+  // A command row runs the same handler its menu item and shortcut would.
+  const runCommandMenuCommand = useCallback((id: string) => {
+    closeCommandMenu()
+    if (isAppCommandId(id)) dispatchAppCommand(id, handlers)
+  }, [closeCommandMenu, handlers])
+  // ↵ opens a Tab as the Explorer would; ⌘↵ opens a Document straight into Raw.
+  const openCommandMenuFile = useCallback((path: string, { raw }: { raw: boolean }) => {
+    closeCommandMenu()
+    void openNotesSettled({
+      openNote: (target) => openNote(target, raw ? 'raw' : undefined),
+      paths: [path],
+      settleActiveNote: settleAndRecord,
+    })
+  }, [closeCommandMenu, openNote, settleAndRecord])
   // A `.md` dropped on the window opens like File → Open Document…; an image
   // dropped over a Document is the editor's, and nothing else is picked up.
   useDocumentDrop({ openNote: openLoneNote, settleActiveNote: settleAndRecord })
@@ -451,6 +496,7 @@ export default function App() {
         flushPendingEditorContentRef={flushPendingEditorContentRef}
         flushPendingRawContentRef={flushPendingRawContentRef}
         rawToggleRef={rawToggleRef}
+        findRef={findRef}
         onSetTabMode={setTabMode}
         onActivateTab={tabCommands.activateTabSettled}
         onCloseTab={tabCommands.closeTabSettled}
@@ -462,6 +508,14 @@ export default function App() {
         onShowSidebar={toggleSidebar}
       />
       <WriteFailureDialog prompt={writeFailures.prompt} onAnswer={answerPrompt} onDismiss={dismissPrompt} />
+      <CommandMenu
+        open={commandMenuOpen}
+        mode={commandMenuMode}
+        entries={commandMenuEntries}
+        onClose={closeCommandMenu}
+        onRunCommand={runCommandMenuCommand}
+        onOpenFile={openCommandMenuFile}
+      />
     </div>
   )
 }

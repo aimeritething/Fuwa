@@ -147,6 +147,28 @@ describe('useNoteTabs', () => {
     expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['rich', 'raw', 'rich'])
   })
 
+  it('opens a Document straight into Raw when asked (⌘↵ in Quick Open), and switches one that is already open', async () => {
+    seedFiles({ [A]: '# A\n', [B]: '# B\n' })
+    const { result } = renderHook(() => useNoteTabs())
+
+    await act(async () => {
+      await result.current.openNote(A, 'raw')
+      await result.current.openNote(B)
+    })
+    expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['raw', 'rich'])
+
+    await act(async () => {
+      await result.current.openNote(B, 'raw')
+    })
+    expect(result.current.activeTabPath).toBe(B)
+    expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['raw', 'raw'])
+    // Opening again without a mode activates and leaves the mode alone.
+    await act(async () => {
+      await result.current.openNote(A)
+    })
+    expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['raw', 'raw'])
+  })
+
   it('forces Raw on a Document whose Frontmatter is invalid, on open, on reload and on restore', async () => {
     const invalid = '---\nnot yaml\n---\n# A\n'
     seedFiles({ [A]: invalid, [B]: '# B\n' })

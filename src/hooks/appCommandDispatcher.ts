@@ -30,7 +30,8 @@ export interface AppCommandHandlers {
   onOpenVault?: () => void
   onOpenNote?: () => void
   onCloseVault?: () => void
-  onQuickOpen: () => void
+  /** ⌘P: disabled with no Folder, like its menu item, by handing no handler (AIM-389). */
+  onQuickOpen?: () => void
   onSave: () => void
   onCloseTab?: () => void
   onUndo?: () => void
@@ -103,7 +104,7 @@ const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecuto
   ['onOpenVault', (handlers) => handlers.onOpenVault?.()],
   ['onOpenNote', (handlers) => handlers.onOpenNote?.()],
   ['onCloseVault', (handlers) => handlers.onCloseVault?.()],
-  ['onQuickOpen', (handlers) => handlers.onQuickOpen()],
+  ['onQuickOpen', (handlers) => handlers.onQuickOpen?.()],
   ['onSave', (handlers) => handlers.onSave()],
   ['onCloseTab', (handlers) => handlers.onCloseTab?.()],
   ['onUndo', (handlers) => handlers.onUndo?.()],
