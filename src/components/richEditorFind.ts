@@ -2,7 +2,7 @@ import { createExtension } from '@blocknote/core'
 import type { Node as ProsemirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { findEditorMatches, type EditorFindOptions } from '../utils/editorFind'
+import { clampEditorFindIndex, findEditorMatches, type EditorFindOptions } from '../utils/editorFind'
 
 /**
  * Find in the current Document, Rich mode (spec section 7: ⌘F works in both
@@ -82,11 +82,6 @@ export function collectRichFindMatches(doc: ProsemirrorNode, query: string, opti
   return error === null ? { matches, error: null } : { matches: [], error }
 }
 
-function clampIndex(index: number, count: number): number {
-  if (count <= 0) return 0
-  return Math.min(Math.max(index, 0), count - 1)
-}
-
 function decorate(doc: ProsemirrorNode, matches: readonly RichFindMatch[], activeIndex: number): DecorationSet {
   if (matches.length === 0) return DecorationSet.empty
   return DecorationSet.create(doc, matches.map((match, index) => {
@@ -98,7 +93,7 @@ function decorate(doc: ProsemirrorNode, matches: readonly RichFindMatch[], activ
 
 function computeState(doc: ProsemirrorNode, request: RichFindQuery): RichFindPluginState {
   const { matches, error } = collectRichFindMatches(doc, request.query, request.options)
-  const activeIndex = clampIndex(request.activeIndex, matches.length)
+  const activeIndex = clampEditorFindIndex(request.activeIndex, matches.length)
   return { ...request, activeIndex, matches, error, decorations: decorate(doc, matches, activeIndex) }
 }
 

@@ -23,6 +23,11 @@ export interface CommandMenuProps {
   onOpenFile: (path: string, options: { raw: boolean }) => void
 }
 
+interface CommandMenuPanelProps extends Omit<CommandMenuProps, 'open' | 'onClose'> {
+  /** Called before a row's command or file is handed on, so the dialog knows not to hand focus back. */
+  onBeforePick: () => void
+}
+
 const ROW_ICONS: Record<CommandMenuEntryKind, Icon> = {
   command: CommandIcon,
   document: FileText,
@@ -112,13 +117,11 @@ function CommandMenuRow({ match, index, active, onHover, onPick }: CommandMenuRo
   )
 }
 
-type CommandMenuPanelProps = Omit<CommandMenuProps, 'open' | 'onClose'>
-
 /**
  * The palette's body. Mounted only while open, so the query and the selection
  * start fresh every time; a mode switch while open keeps the query.
  */
-function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile }: CommandMenuPanelProps) {
+function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePick }: CommandMenuPanelProps) {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const listRef = useRef<HTMLUListElement | null>(null)
@@ -132,11 +135,10 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile }: CommandMe
   }, [activeIndex])
 
   const pick = (entry: CommandMenuEntry, raw: boolean) => {
-    if (entry.kind === 'command') {
-      if (isEnabled(entry)) onRunCommand(entry.id)
-      return
-    }
-    onOpenFile(entry.id, { raw: raw && entry.kind === 'document' })
+    if (entry.kind === 'command' && !isEnabled(entry)) return
+    onBeforePick()
+    if (entry.kind === 'command') onRunCommand(entry.id)
+    else onOpenFile(entry.id, { raw: raw && entry.kind === 'document' })
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -203,6 +205,13 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile }: CommandMe
  * on the shared command manifest; Tolaria's palette is not ported.
  */
 export function CommandMenu({ open, mode, entries, onClose, onRunCommand, onOpenFile }: CommandMenuProps) {
+  // Esc and a click outside hand focus back to where it was (the editor); a
+  // picked row does not, so whatever the row ran (a find bar, a rename field)
+  // keeps the focus it took.
+  const pickedRef = useRef(false)
+  const markPicked = () => {
+    pickedRef.current = true
+  }
   return (
     <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (!next) onClose() }}>
       <DialogPrimitive.Portal>
@@ -213,8 +222,12 @@ export function CommandMenu({ open, mode, entries, onClose, onRunCommand, onOpen
           data-mode={mode}
           data-command-palette="true"
           aria-describedby={undefined}
+          onCloseAutoFocus={(event) => {
+            if (pickedRef.current) event.preventDefault()
+            pickedRef.current = false
+          }}
         >
-          <CommandMenuPanel mode={mode} entries={entries} onRunCommand={onRunCommand} onOpenFile={onOpenFile} />
+          <CommandMenuPanel mode={mode} entries={entries} onRunCommand={onRunCommand} onOpenFile={onOpenFile} onBeforePick={markPicked} />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

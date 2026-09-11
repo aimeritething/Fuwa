@@ -105,12 +105,35 @@ function activateRichEditorCreateLink(): boolean {
   return true
 }
 
+/**
+ * ⌘K over a non-empty Rich selection is the editor's link command (spec
+ * section 7). With no link button mounted to press, the chord falls through
+ * to the Command Menu rather than doing nothing.
+ */
 function handleRichEditorCreateLinkShortcut(event: KeyboardEvent): boolean {
   if (!hasActiveRichEditorTextSelection()) return false
-  if (activateRichEditorCreateLink()) {
-    event.preventDefault()
-    event.stopPropagation()
-  }
+  if (!activateRichEditorCreateLink()) return false
+  event.preventDefault()
+  event.stopPropagation()
+  return true
+}
+
+/** The chords the Command Menu lets through while it is open: its own two, so they switch or close it, and Quit. */
+const COMMAND_MENU_PASSTHROUGH = new Set<AppCommandId>([
+  APP_COMMAND_IDS.viewCommandPalette,
+  APP_COMMAND_IDS.fileQuickOpen,
+  APP_COMMAND_IDS.appQuit,
+])
+
+function isCommandMenuFocused(): boolean {
+  const active = document.activeElement
+  return active instanceof HTMLElement && active.closest('[data-command-palette="true"]') !== null
+}
+
+/** The palette is modal: ⌘W, ⌘N and the rest must not act on the window behind it. */
+function handleCommandMenuModalCommand(event: KeyboardEvent, commandId: AppCommandId): boolean {
+  if (!isCommandMenuFocused() || COMMAND_MENU_PASSTHROUGH.has(commandId)) return false
+  event.preventDefault()
   return true
 }
 
@@ -126,6 +149,7 @@ export function handleAppKeyboardEvent(actions: KeyboardActions, event: Keyboard
     && handleRichEditorCreateLinkShortcut(event)
   ) return
 
+  if (handleCommandMenuModalCommand(event, commandId)) return
   if (handleFocusedTextCommand(event, commandId)) return
 
   event.preventDefault()

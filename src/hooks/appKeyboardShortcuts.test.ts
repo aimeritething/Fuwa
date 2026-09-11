@@ -59,6 +59,40 @@ describe('handleAppKeyboardEvent', () => {
     expect(handlers.onCommandPalette).not.toHaveBeenCalled()
   })
 
+  it('⌘K with a selection but no link button to press falls through to the Command Menu', () => {
+    document.body.innerHTML = '<div class="bn-editor" contenteditable="true" tabindex="0"><p>Some text</p></div>'
+    const editor = document.querySelector<HTMLElement>('.bn-editor')!
+    editor.focus()
+    const range = document.createRange()
+    range.selectNodeContents(editor.firstElementChild!)
+    window.getSelection()!.removeAllRanges()
+    window.getSelection()!.addRange(range)
+
+    const handlers = actions()
+    handleAppKeyboardEvent(handlers, press('k'))
+    expect(handlers.onCommandPalette).toHaveBeenCalledTimes(1)
+  })
+
+  it('while the Command Menu has focus, only ⌘K, ⌘P and ⌘Q get through', () => {
+    document.body.innerHTML = '<div data-command-palette="true"><input type="text" /></div>'
+    document.querySelector('input')!.focus()
+    const handlers = actions({ onCloseTab: vi.fn(), onCreateNote: vi.fn(), onQuit: vi.fn() })
+
+    const closeTab = press('w')
+    handleAppKeyboardEvent(handlers, closeTab)
+    expect(handlers.onCloseTab).not.toHaveBeenCalled()
+    expect(closeTab.defaultPrevented).toBe(true)
+    handleAppKeyboardEvent(handlers, press('n'))
+    expect(handlers.onCreateNote).not.toHaveBeenCalled()
+
+    handleAppKeyboardEvent(handlers, press('k'))
+    handleAppKeyboardEvent(handlers, press('p'))
+    handleAppKeyboardEvent(handlers, press('q'))
+    expect(handlers.onCommandPalette).toHaveBeenCalledTimes(1)
+    expect(handlers.onQuickOpen).toHaveBeenCalledTimes(1)
+    expect(handlers.onQuit).toHaveBeenCalledTimes(1)
+  })
+
   it('⌘K with a collapsed selection in Rich mode still opens the Command Menu', () => {
     document.body.innerHTML = '<div class="bn-editor" contenteditable="true" tabindex="0"><p>Some text</p></div>'
     const editor = document.querySelector<HTMLElement>('.bn-editor')!

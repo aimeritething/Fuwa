@@ -258,7 +258,7 @@ function useEditorRuntime(props: EditorProps) {
   useRegisteredRef(hasPendingEditorContentRef, hasPendingEditorContent)
   useEditorFocus(editor, editorMountedRef)
   useRegisteredRef(props.rawToggleRef, raw.toggleRaw)
-  const findRequest = useFindRequests(activeTabPath, props.findRef)
+  const findRequest = useFindRequests(activeTabPath, raw.rawMode, props.findRef)
 
   useRegisterEditorContentFlushes({
     activeTab,
@@ -277,21 +277,25 @@ function useEditorRuntime(props: EditorProps) {
  * ⌘F and Edit → Find ask for the find bar through the registered ref; each
  * ask is a fresh request for the active Document, so a bar that is already
  * open refocuses its input and a closed one opens. Raw mode's carried bar and
- * the Rich bar both read the same request.
+ * the Rich bar both read the same request. A request belongs to the surface
+ * it was made on (this Tab, in this mode): switching Tab or mode drops it, so
+ * a bar that mounts later does not reopen on a stale ask.
  */
 function useFindRequests(
   activeTabPath: string | null,
+  rawMode: boolean,
   findRef: MutableRefObject<(() => void) | null> | undefined,
 ): RawEditorFindRequest | null {
-  const [findRequest, setFindRequest] = useState<RawEditorFindRequest | null>(null)
+  const surface = `${activeTabPath ?? ''}\n${rawMode ? 'raw' : 'rich'}`
+  const [request, setRequest] = useState<{ surface: string; value: RawEditorFindRequest } | null>(null)
   const sequence = useRef(0)
   const requestFind = useCallback(() => {
     if (!activeTabPath) return
     sequence.current += 1
-    setFindRequest({ id: sequence.current, path: activeTabPath, replace: false })
-  }, [activeTabPath])
+    setRequest({ surface, value: { id: sequence.current, path: activeTabPath, replace: false } })
+  }, [activeTabPath, surface])
   useRegisteredRef(findRef, requestFind)
-  return findRequest
+  return request !== null && request.surface === surface ? request.value : null
 }
 
 /**
@@ -451,7 +455,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
             </EditorFindScope>
           ) : (
             <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
-              <RichEditorFindBar editor={editor} path={activeTab.entry.path} request={findRequest} />
+              <RichEditorFindBar key={activeTab.entry.path} editor={editor} path={activeTab.entry.path} request={findRequest} />
               <div className="editor-content-wrapper">
                 <SingleEditorView
                   editor={editor}
