@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   applyStoredThemeMode,
   applyThemeModeToDocument,
-  LEGACY_THEME_MODE_STORAGE_KEY,
   normalizeThemeMode,
   readStoredThemeMode,
   resolveThemeMode,
@@ -39,13 +38,6 @@ describe('themeMode', () => {
 
     expect(readStoredThemeMode(storage)).toBe('system')
     expect(storage.setItem).toHaveBeenCalledWith(THEME_MODE_STORAGE_KEY, 'system')
-  })
-
-  it('migrates the legacy storage key', () => {
-    const storage = makeStorage({ [LEGACY_THEME_MODE_STORAGE_KEY]: 'dark' })
-
-    expect(readStoredThemeMode(storage)).toBe('dark')
-    expect(storage.setItem).toHaveBeenCalledWith(THEME_MODE_STORAGE_KEY, 'dark')
   })
 
   it('applies theme attributes and shadcn dark class', () => {
