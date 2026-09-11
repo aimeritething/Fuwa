@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 // Type-only: brings the browser menu bridge's `window.__laputaTest` declaration into the spec program.
-import type {} from '../../src/types/laputaTestBridge'
+import type {} from '../../src/hooks/useMenuEvents'
 import {
   MOCK_FOLDER,
   openDocumentThroughDialog,

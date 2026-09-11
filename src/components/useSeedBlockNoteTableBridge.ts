@@ -7,6 +7,12 @@ const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 | D | E | F |
 `
 
+declare global {
+  interface LaputaTestBridge {
+    seedBlockNoteTable?: (columnWidths?: Array<number | null>) => Promise<void> | void
+  }
+}
+
 type TestTableBlock = {
   type?: string
   content?: { type?: string; columnWidths?: Array<number | null> }

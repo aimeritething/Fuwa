@@ -17,6 +17,17 @@ export interface MenuEventHandlers extends AppCommandHandlers {
   hasTab: boolean
 }
 
+declare global {
+  /** The `window.__laputaTest` hooks the unit and smoke specs drive the app through. */
+  interface LaputaTestBridge {
+    dispatchBrowserMenuCommand?: (id: string) => void
+  }
+
+  interface Window {
+    __laputaTest?: LaputaTestBridge
+  }
+}
+
 interface MenuStatePayload {
   hasActiveNote: boolean
   hasVault: boolean
