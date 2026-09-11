@@ -195,6 +195,7 @@ pub fn run() {
             commands::delete_note,
             commands::batch_delete_notes,
             commands::rename_note_filename,
+            commands::rename_vault_file,
             commands::move_note_to_folder,
             commands::create_vault_folder,
             commands::rename_vault_folder,

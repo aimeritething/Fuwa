@@ -12,8 +12,8 @@ pub use file::{create_note_content, get_note_content, note_content_matches, save
 pub use folders::{delete_folder, rename_folder, FolderRenameResult};
 pub use image::{copy_image_to_vault, save_image};
 pub use rename::{
-    move_note_to_folder, rename_note_filename, MoveNoteToFolderRequest, RenameNoteFilenameRequest,
-    RenameResult,
+    move_note_to_folder, rename_note_filename, rename_vault_file, MoveNoteToFolderRequest,
+    RenameNoteFilenameRequest, RenameResult, RenameVaultFileRequest,
 };
 pub use trash::{batch_delete_notes, delete_note};
 

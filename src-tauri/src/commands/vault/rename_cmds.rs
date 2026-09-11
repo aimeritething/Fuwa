@@ -51,6 +51,14 @@ pub struct RenameNoteFilenameCommandArgs {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RenameVaultFileCommandArgs {
+    vault_path: String,
+    old_path: String,
+    new_stem: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MoveNoteToFolderCommandArgs {
     vault_path: String,
     old_path: String,
@@ -65,6 +73,19 @@ pub fn rename_note_filename(args: RenameNoteFilenameCommandArgs) -> Result<Renam
             vault_path: note.vault_path,
             old_path: note.note_path,
             new_filename_stem: &args.new_filename_stem,
+        })
+    })
+}
+
+/// The Explorer's Rename…: a Document or an Image file keeps its folder and
+/// its extension, and only the stem changes (spec section 4).
+#[tauri::command]
+pub fn rename_vault_file(args: RenameVaultFileCommandArgs) -> Result<RenameResult, String> {
+    let request = RequestedNotePath::new(&args.vault_path, &args.old_path);
+    with_note_path_in_vault(request, |file| {
+        vault::rename_vault_file(vault::RenameVaultFileRequest {
+            old_path: file.note_path,
+            new_stem: &args.new_stem,
         })
     })
 }
@@ -147,6 +168,38 @@ mod tests {
         assert!(fs::read_to_string(moved.new_path)
             .unwrap()
             .contains("Draft Title"));
+    }
+
+    #[test]
+    fn rename_vault_file_renames_an_image_inside_the_vault() {
+        let dir = TempDir::new().unwrap();
+        let vault = vault_path(&dir);
+        let old_path = write_note(&dir, "Attachments/lake.png", "PNG");
+
+        let renamed = rename_vault_file(RenameVaultFileCommandArgs {
+            vault_path: vault,
+            old_path,
+            new_stem: "Lake".to_string(),
+        })
+        .unwrap();
+
+        assert!(renamed.new_path.ends_with("Attachments/Lake.png"));
+    }
+
+    #[test]
+    fn rename_vault_file_rejects_files_outside_the_vault() {
+        let dir = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let outside_file = write_note(&outside, "outside.png", "PNG");
+
+        let error = rename_vault_file(RenameVaultFileCommandArgs {
+            vault_path: vault_path(&dir),
+            old_path: outside_file,
+            new_stem: "renamed".to_string(),
+        })
+        .unwrap_err();
+
+        assert_eq!(error, "Path must stay inside the active vault");
     }
 
     #[test]

@@ -1,109 +1,215 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { CaretDown, CaretRight, FileText, Folder, Image } from '@phosphor-icons/react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { CaretDown, CaretRight } from '@phosphor-icons/react'
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import type { SidebarSelection } from '../types'
-import { buildExplorerTree, type ExplorerNode, type ListedFile } from '../utils/explorer'
+import type { ExplorerNode } from '../utils/explorer'
+import type { ExplorerActions } from '../hooks/useExplorerActions'
 import { isPathInsideVaultRoot } from '../utils/vaultPathContainment'
 import { ancestorTreePaths } from './folder-tree/folderTreeUtils'
 import { useFolderTreeDisclosure } from './folder-tree/useFolderTreeDisclosure'
+import { ExplorerContextMenu } from './explorer/ExplorerContextMenu'
+import { ExplorerHeaderActions } from './explorer/ExplorerHeaderActions'
+import { ExplorerNameInput } from './explorer/ExplorerNameInput'
+import { EXPLORER_ROW_ICONS, explorerRowIndent } from './explorer/explorerRow'
+import type { ExplorerMenuAction, ExplorerMenuTargetKind } from './explorer/explorerMenuItems'
 import './Explorer.css'
 
 const NO_FOLDER_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
 
 interface ExplorerProps {
   folder: string | null
-  files: ListedFile[]
+  /** The tree App builds from the Folder listing; null with no Folder open. */
+  tree: ExplorerNode | null
   activeTabPath: string | null
   /** A Document or an Image file row was activated; both open a real Tab. */
   onOpenFile: (path: string) => void
+  actions: ExplorerActions
+  onCloseFolder: () => void
   error?: string | null
 }
 
-export const Explorer = memo(function Explorer({ folder, files, activeTabPath, onOpenFile, error }: ExplorerProps) {
+type LoadedProps = ExplorerProps & { folder: string; tree: ExplorerNode }
+
+/**
+ * The Explorer (spec sections 2 and 4): the Folder as a tree of Documents,
+ * sub-folders and Image files, with the write operations AIM-387 adds —
+ * creation, inline rename, and the Linear-styled context menu.
+ */
+export const Explorer = memo(function Explorer(props: ExplorerProps) {
+  const { folder, tree, error } = props
   return (
     <section className="fuwa-explorer" data-testid="explorer">
-      <div className="fuwa-sidebar__label">Explorer</div>
+      {folder && tree
+        ? <ExplorerBody key={folder} {...props} folder={folder} tree={tree} />
+        : <div className="fuwa-sidebar__label fuwa-explorer__header">Explorer</div>}
       {error && <div className="fuwa-explorer__message" role="status">{error}</div>}
-      {folder && <ExplorerTree key={folder} folder={folder} files={files} activeTabPath={activeTabPath} onOpenFile={onOpenFile} />}
     </section>
   )
 })
 
-function ExplorerTree({ folder, files, activeTabPath, onOpenFile }: ExplorerProps & { folder: string }) {
-  const root = useMemo(() => buildExplorerTree(folder, files), [folder, files])
-  const [selected, setSelected] = useState<string | null>(activeTabPath)
-  const [followedPath, setFollowedPath] = useState(activeTabPath)
-  if (followedPath !== activeTabPath) {
-    setFollowedPath(activeTabPath)
-    setSelected(activeTabPath && isPathInsideVaultRoot(activeTabPath, folder) ? activeTabPath : null)
-  }
-  const { expanded, expandFolder, toggleFolder } = useFolderTreeDisclosure({ selection: NO_FOLDER_SELECTION })
-  const treeRef = useRef<HTMLDivElement>(null)
+/** Every folder's tree key, so Collapse All shuts the ones never touched too. */
+function folderKeys(node: ExplorerNode, folder: string, keys: string[] = []): string[] {
+  if (node.kind !== 'folder') return keys
+  keys.push(node.path === folder ? '' : node.path.slice(folder.length + 1))
+  for (const child of node.children) folderKeys(child, folder, keys)
+  return keys
+}
+
+/** Open every folder above a path, so the row it names is on screen. */
+function useRevealedInTree(path: string | null | undefined, folder: string, expandFolder: (key: string) => void) {
   useEffect(() => {
-    if (!activeTabPath || !isPathInsideVaultRoot(activeTabPath, folder)) return
+    if (!path || !isPathInsideVaultRoot(path, folder)) return
     expandFolder('')
-    for (const path of ancestorTreePaths(activeTabPath.slice(folder.length + 1))) expandFolder(path)
-  }, [activeTabPath, expandFolder, folder])
+    for (const ancestor of ancestorTreePaths(path.slice(folder.length + 1))) expandFolder(ancestor)
+  }, [expandFolder, folder, path])
+}
+
+/**
+ * The Folder's tree and the header actions over it, remounted per Folder so
+ * the disclosure state starts fresh when the Folder changes.
+ */
+function ExplorerBody(props: LoadedProps) {
+  const { folder, tree, activeTabPath, actions, onCloseFolder } = props
+  const { collapseAll, expanded, expandFolder, toggleFolder } = useFolderTreeDisclosure({ selection: NO_FOLDER_SELECTION })
+  const treeRef = useRef<HTMLDivElement>(null)
+  const keys = useMemo(() => folderKeys(tree, folder), [folder, tree])
+  const handleCollapseAll = useCallback(() => collapseAll(keys), [collapseAll, keys])
+
+  useRevealedInTree(activeTabPath, folder, expandFolder)
+  useRevealedInTree(actions.editing?.path, folder, expandFolder)
+
+  // A row that has just been created, renamed or opened is brought into view.
   useEffect(() => {
     const row = treeRef.current?.querySelector('[aria-selected="true"]')
     row?.scrollIntoView?.({ block: 'nearest' })
-  }, [activeTabPath, expanded, files])
+  }, [actions.selected, activeTabPath, expanded, tree])
 
   return (
-    <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={root.name}>
-      <ExplorerRow node={root} folder={folder} depth={0} expanded={expanded} selected={selected}
-        onSelect={setSelected} onToggle={toggleFolder} onOpenFile={onOpenFile} />
-    </div>
+    <>
+      <div className="fuwa-sidebar__label fuwa-explorer__header">
+        Explorer
+        <ExplorerHeaderActions
+          onNewDocument={actions.createDocument}
+          onNewFolder={actions.createFolder}
+          onCollapseAll={handleCollapseAll}
+          onReveal={() => actions.reveal(folder)}
+          onCloseFolder={onCloseFolder}
+        />
+      </div>
+      <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={tree.name}>
+        <ExplorerRow {...props} node={tree} depth={0} expanded={expanded} onToggle={toggleFolder} />
+        <EmptyAreaMenu actions={actions} folder={folder} />
+      </div>
+    </>
   )
 }
 
-interface RowProps {
+/** The area below the tree: New Document and New Folder, both at the Folder root. */
+function EmptyAreaMenu({ actions, folder }: { actions: ExplorerActions; folder: string }) {
+  const onAction = useCallback((action: ExplorerMenuAction) => {
+    if (action === 'newDocument') actions.createDocumentIn(folder)
+    if (action === 'newFolder') actions.createFolderIn(folder)
+  }, [actions, folder])
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="fuwa-explorer__empty-area" data-testid="explorer-empty-area" />
+      </ContextMenuTrigger>
+      <ExplorerContextMenu target="empty" onAction={onAction} />
+    </ContextMenu>
+  )
+}
+
+interface RowProps extends LoadedProps {
   node: ExplorerNode
-  folder: string
   depth: number
   expanded: Record<string, boolean>
-  selected: string | null
-  onSelect: (path: string) => void
   onToggle: (path: string) => void
-  /** A Document or an Image file row was activated; both open a real Tab. */
-  onOpenFile: (path: string) => void
+}
+
+function useRowMenuAction(node: ExplorerNode, actions: ExplorerActions) {
+  return useCallback((action: ExplorerMenuAction) => {
+    switch (action) {
+      case 'newDocument': return actions.createDocumentIn(node.path)
+      case 'newFolder': return actions.createFolderIn(node.path)
+      case 'rename': return actions.startRename(node.path, node.kind)
+      case 'reveal': return actions.reveal(node.path)
+      case 'copyPath': return actions.copyPath(node.path)
+      // Move to Trash is AIM-390's and sits disabled until then.
+      case 'trash': return
+    }
+  }, [actions, node.kind, node.path])
 }
 
 function ExplorerRow(props: RowProps) {
-  const { node, folder, depth, expanded, selected, onSelect, onToggle, onOpenFile } = props
+  const { node, folder, depth, expanded, onToggle, onOpenFile, actions } = props
   const isFolder = node.kind === 'folder'
-  const relative = node.path === folder ? '' : node.path.slice(folder.length + 1)
+  const isRoot = node.path === folder
+  const relative = isRoot ? '' : node.path.slice(folder.length + 1)
   const isExpanded = expanded[relative] ?? depth === 0
-  const active = selected === node.path
-  const Icon = isFolder ? Folder : node.kind === 'image' ? Image : FileText
+  const selected = actions.selected === node.path
+  const Icon = EXPLORER_ROW_ICONS[node.kind]
+  const onMenuAction = useRowMenuAction(node, actions)
+  const target: ExplorerMenuTargetKind = isRoot ? 'root' : node.kind
+  const editing = actions.editing?.path === node.path ? actions.editing : null
+
   // A Document and an Image file both open a real Tab (spec section 4);
-  // clicking a folder only selects it.
+  // clicking a folder only selects it. Right-click does neither.
   const select = () => {
-    onSelect(node.path)
+    actions.select(node.path)
     if (!isFolder) onOpenFile(node.path)
   }
-  return (
-    <div role="treeitem" aria-label={node.name} aria-selected={active} aria-expanded={isFolder ? isExpanded : undefined}
-      aria-level={depth + 1}>
-      <div className="fuwa-sidebar-row fuwa-explorer__row" style={{ paddingLeft: 8 + depth * 14 }}
-        data-active={active || undefined} data-testid={`explorer-row:${node.path}`} tabIndex={0} title={node.path}
-        onClick={select} onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select() }
-          if (isFolder && ((event.key === 'ArrowRight' && !isExpanded) || (event.key === 'ArrowLeft' && isExpanded))) {
-            event.preventDefault(); onToggle(relative)
-          }
-        }}>
-        {isFolder ? (
-          <button className="fuwa-explorer__disclosure" tabIndex={-1} aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
-            onClick={(event) => { event.stopPropagation(); onToggle(relative) }}>
-            {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
-          </button>
-        ) : <span className="fuwa-explorer__disclosure" />}
-        <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
-        <span className="fuwa-sidebar-row__name">{node.name}</span>
+
+  const children = isFolder && isExpanded && (
+    <div role="group">
+      {node.children.map((child) => <ExplorerRow key={child.path} {...props} node={child} depth={depth + 1} />)}
+    </div>
+  )
+
+  if (editing) {
+    return (
+      <div role="treeitem" aria-label={node.name} aria-level={depth + 1}>
+        <ExplorerNameInput
+          stem={editing.stem}
+          extension={editing.extension}
+          kind={editing.kind}
+          depth={depth}
+          error={actions.error}
+          onSubmit={actions.commitRename}
+          onCancel={actions.cancelRename}
+        />
+        {children}
       </div>
-      {isFolder && isExpanded && <div role="group">
-        {node.children.map((child) => <ExplorerRow key={child.path} {...props} node={child} depth={depth + 1} />)}
-      </div>}
+    )
+  }
+
+  return (
+    <div role="treeitem" aria-label={node.name} aria-selected={selected} aria-expanded={isFolder ? isExpanded : undefined}
+      aria-level={depth + 1}>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div className="fuwa-sidebar-row fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}
+            data-active={selected || undefined} data-testid={`explorer-row:${node.path}`} tabIndex={0} title={node.path}
+            onClick={select} onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select() }
+              if (isFolder && ((event.key === 'ArrowRight' && !isExpanded) || (event.key === 'ArrowLeft' && isExpanded))) {
+                event.preventDefault(); onToggle(relative)
+              }
+            }}>
+            {isFolder ? (
+              <button className="fuwa-explorer__disclosure" tabIndex={-1} aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
+                onClick={(event) => { event.stopPropagation(); onToggle(relative) }}>
+                {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
+              </button>
+            ) : <span className="fuwa-explorer__disclosure" />}
+            <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
+            <span className="fuwa-sidebar-row__name">{node.name}</span>
+          </div>
+        </ContextMenuTrigger>
+        <ExplorerContextMenu target={target} onAction={onMenuAction} />
+      </ContextMenu>
+      {children}
     </div>
   )
 }

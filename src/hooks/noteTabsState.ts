@@ -1,4 +1,7 @@
 import type { Tab } from '../types'
+import { isWithinPrefix, replaceFolderPrefix } from './folder-actions/folderActionUtils'
+import { noteStem } from '../utils/noteEntry'
+import { notePathFilename } from '../utils/notePathIdentity'
 
 /**
  * The Tab rules (spec section 5), as pure transitions over the open Tabs in
@@ -49,6 +52,32 @@ export function activateTab(state: NoteTabsState, path: string): NoteTabsState {
 export function activateTabAt(state: NoteTabsState, index: number): NoteTabsState {
   const target = state.tabs[index]
   return target ? activateTab(state, target.entry.path) : state
+}
+
+/** The same Tab at a new path: its bytes are untouched, only its name moves. */
+function movedTab(tab: Tab, path: string): Tab {
+  const filename = notePathFilename(path)
+  return { ...tab, entry: { ...tab.entry, path, filename, title: noteStem(filename) } }
+}
+
+/**
+ * Follow a rename: an open Document or Image file moves to its new path, and a
+ * renamed folder takes every Tab beneath it along (spec section 4). The Tabs
+ * keep their order and their content, so nothing is re-read; the active Tab
+ * stays active at its new path.
+ */
+export function retargetTabs(state: NoteTabsState, oldPath: string, newPath: string): NoteTabsState {
+  if (oldPath === newPath) return state
+  const moved = (path: string) => replaceFolderPrefix({ path, oldPrefix: oldPath, newPrefix: newPath })
+  if (!state.tabs.some((tab) => isWithinPrefix({ path: tab.entry.path, prefix: oldPath }))) return state
+
+  const tabs = state.tabs.map((tab) => (
+    isWithinPrefix({ path: tab.entry.path, prefix: oldPath }) ? movedTab(tab, moved(tab.entry.path)) : tab
+  ))
+  const activeTabPath = state.activeTabPath && isWithinPrefix({ path: state.activeTabPath, prefix: oldPath })
+    ? moved(state.activeTabPath)
+    : state.activeTabPath
+  return { tabs, activeTabPath }
 }
 
 /** Previous (-1) or next (+1) Tab positionally, wrapping at either end. */

@@ -198,6 +198,27 @@ function isUntitledRenameTransition(
   })
 }
 
+/**
+ * An Explorer rename (AIM-387): the path the editor is showing has left the
+ * Tab list, and the Tab that took its place holds exactly the bytes already on
+ * screen. Nothing was re-read, so nothing is re-parsed — the live session
+ * follows the new path and the caret and scroll stay where they were.
+ *
+ * A blank body is no evidence of anything, since every blank Document matches
+ * every other; it takes the ordinary swap, which has nothing to preserve.
+ */
+function isRenamedTabTransition(
+  prevPath: string,
+  tabs: Tab[],
+  activeTab: Tab | undefined,
+  editor: ReturnType<typeof useCreateBlockNote>,
+): boolean {
+  if (!activeTab || tabs.some(tab => tab.entry.path === prevPath)) return false
+  const currentBody = trySerializeEditorBody(editor, 'rename comparison')
+  if (currentBody === null || currentBody.trim() === '') return false
+  return currentBody.trimEnd() === normalizeTabBody({ content: activeTab.content }).trimEnd()
+}
+
 function activeEditorChangePath(options: {
   prevActivePathRef: MutableRefObject<string | null>
   editorContentPathRef: EditorContentPathRef
@@ -330,6 +351,7 @@ function syncActivePathTransition(options: {
   activeTabPath: string | null
   activeTab: Tab | undefined
   previousTab: Tab | undefined
+  tabs: Tab[]
   cache: Map<string, CachedTabState>
   editor: ReturnType<typeof useCreateBlockNote>
   editorMountedRef: MutableRefObject<boolean>
@@ -342,6 +364,7 @@ function syncActivePathTransition(options: {
     activeTabPath,
     activeTab,
     previousTab,
+    tabs,
     cache,
     editor,
     editorMountedRef,
@@ -360,10 +383,11 @@ function syncActivePathTransition(options: {
   })
   if (shouldWaitForActiveTab({ pathChanged, activeTabPath, activeTab })) return true
 
-  if (!preserveUntitledRenameState({
+  if (!preserveRenameState({
     prevPath,
     activeTabPath,
     activeTab,
+    tabs,
     cache,
     editor,
     editorMountedRef,
@@ -625,10 +649,11 @@ function cacheStableActivePath(options: {
   })
 }
 
-function preserveUntitledRenameState(options: {
+function preserveRenameState(options: {
   prevPath: string | null
   activeTabPath: string | null
   activeTab: Tab | undefined
+  tabs: Tab[]
   cache: Map<string, CachedTabState>
   editor: ReturnType<typeof useCreateBlockNote>
   editorMountedRef: MutableRefObject<boolean>
@@ -638,6 +663,7 @@ function preserveUntitledRenameState(options: {
     prevPath,
     activeTabPath,
     activeTab,
+    tabs,
     cache,
     editor,
     editorMountedRef,
@@ -645,7 +671,10 @@ function preserveUntitledRenameState(options: {
   } = options
 
   if (!prevPath || !activeTabPath) return false
-  if (!isUntitledRenameTransition(prevPath, activeTabPath, activeTab, editor)) return false
+  if (
+    !isUntitledRenameTransition(prevPath, activeTabPath, activeTab, editor)
+    && !isRenamedTabTransition(prevPath, tabs, activeTab, editor)
+  ) return false
 
   cache.delete(prevPath)
   cacheStableActivePath({
@@ -912,6 +941,7 @@ function resolveTabSwapState(options: {
 
 function shouldSkipScheduledTabSwap(options: {
   state: TabSwapState
+  tabs: Tab[]
   activeTabPath: string | null
   editor: ReturnType<typeof useCreateBlockNote>
   editorMountedRef: MutableRefObject<boolean>
@@ -922,6 +952,7 @@ function shouldSkipScheduledTabSwap(options: {
 }) {
   const {
     state,
+    tabs,
     activeTabPath,
     editor,
     editorMountedRef,
@@ -941,6 +972,7 @@ function shouldSkipScheduledTabSwap(options: {
     activeTabPath,
     activeTab: state.activeTab,
     previousTab: state.previousTab,
+    tabs,
     cache: state.cache,
     editor,
     editorMountedRef,
@@ -983,6 +1015,7 @@ function runTabSwapEffect(options: RunTabSwapEffectOptions) {
 
   if (shouldSkipScheduledTabSwap({
     state,
+    tabs: options.tabs,
     activeTabPath: options.activeTabPath,
     editor: options.editor,
     editorMountedRef: options.editorMountedRef,

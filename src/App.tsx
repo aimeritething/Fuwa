@@ -4,8 +4,9 @@ import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
 import { Explorer } from './components/Explorer'
 import { useFolder, pickFolderToOpen } from './hooks/useFolder'
+import { useExplorerActions } from './hooks/useExplorerActions'
 import { useDocumentWatcher } from './hooks/useDocumentWatcher'
-import { documentRoot } from './utils/explorer'
+import { buildExplorerTree, documentRoot } from './utils/explorer'
 import { activeTabPaths } from './utils/imageFile'
 import { findByNotePath } from './utils/notePathIdentity'
 import { Sidebar } from './components/Sidebar'
@@ -101,6 +102,7 @@ export default function App() {
     activateTab,
     activateTabAt,
     activateAdjacentTab,
+    retargetTabs,
     restoreOpenEditors,
   } = useNoteTabs(folder, folderState.listsFile)
   const appearance = useAppearance()
@@ -207,6 +209,23 @@ export default function App() {
     void openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
   }, [openNote, settleAndRecord])
 
+  // The Explorer's write operations (AIM-387). The tree is built here because
+  // the placement rule behind ⌘N reads the selected row, and ⌘N is an app
+  // command rather than the Explorer's own.
+  const explorerTree = useMemo(
+    () => (folder ? buildExplorerTree(folder, folderState.files) : null),
+    [folder, folderState.files],
+  )
+  const explorerActions = useExplorerActions({
+    folder,
+    tree: explorerTree,
+    activeTabPath,
+    refresh: folderState.refresh,
+    openNote: openExplorerFile,
+    settleActiveDocument: settleAndRecord,
+    retargetTabs,
+  })
+
   const settleAndCloseAll = useCallback(async () => {
     try {
       await settleAndRecord()
@@ -261,6 +280,7 @@ export default function App() {
   // the other manifest commands get their handlers with their own tickets.
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeDocumentPath,
+    hasFolder: folder !== null,
     onOpenNote,
     onOpenVault: onOpenFolder,
     onCloseVault: onCloseFolder,
@@ -268,14 +288,14 @@ export default function App() {
     onQuit: quit,
     ...tabCommands.handlers,
     ...appearance.handlers,
-    onCreateNote: noop,
+    onCreateNote: explorerActions.createDocument,
     onQuickOpen: noop,
     onPastePlainText: noop,
     onCommandPalette: noop,
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands])
+  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, folder, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
   // A `.md` dropped on the window opens like File → Open Document…; an image
@@ -294,7 +314,15 @@ export default function App() {
           onActivate={tabCommands.activateTabSettled}
           onClose={tabCommands.closeTabSettled}
         />
-        <Explorer folder={folder} files={folderState.files} activeTabPath={activeTabPath} onOpenFile={openExplorerFile} error={folderState.error} />
+        <Explorer
+          folder={folder}
+          tree={explorerTree}
+          activeTabPath={activeTabPath}
+          onOpenFile={openExplorerFile}
+          actions={explorerActions}
+          onCloseFolder={onCloseFolder}
+          error={folderState.error}
+        />
       </Sidebar>
       <Editor
         tabs={tabs}

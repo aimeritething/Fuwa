@@ -140,6 +140,14 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     setState(EMPTY_NOTE_TABS)
   }, [])
 
+  /**
+   * An Explorer rename moved a file, or a folder above one (AIM-387). The Tab
+   * follows the new path without re-reading: its bytes did not change.
+   */
+  const retargetTabs = useCallback((oldPath: string, newPath: string) => {
+    setState((prev) => tabsState.retargetTabs(prev, oldPath, newPath))
+  }, [])
+
   const closeTab = useCallback((path: string) => setState((prev) => tabsState.closeTab(prev, path)), [])
   const activateTab = useCallback((path: string) => setState((prev) => tabsState.activateTab(prev, path)), [])
   const activateTabAt = useCallback((index: number) => setState((prev) => tabsState.activateTabAt(prev, index)), [])
@@ -170,6 +178,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     closeTab,
     closeAllTabs,
     reloadTab,
+    retargetTabs,
     activateTab,
     activateTabAt,
     activateAdjacentTab,
