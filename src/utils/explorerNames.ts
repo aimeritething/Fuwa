@@ -108,6 +108,11 @@ function hasControlCharacter(value: string): boolean {
   return /[\u0000-\u001f\u007f]/u.test(value)
 }
 
+/** Whether a folder already holds a name. The filesystem under Fuwa is case-insensitive, so the check is too. */
+export function isNameTaken(siblings: readonly string[], name: string): boolean {
+  return siblings.some((sibling) => sibling.toLocaleLowerCase() === name.toLocaleLowerCase())
+}
+
 /**
  * What is wrong with a name, exactly as it was typed, reported inline under the
  * row on commit — or null when the name will do. An empty stem is not an
@@ -133,6 +138,5 @@ export function nameCommitError(options: {
   if (RESERVED_DEVICE_NAMES.has(trimmed.split('.')[0].toUpperCase())) return `${trimmed} is a reserved name`
 
   const name = `${trimmed}${extension}`
-  const held = siblings.some((sibling) => sibling.toLocaleLowerCase() === name.toLocaleLowerCase())
-  return held ? `${ROW_KIND_LABELS[kind]} named ${name} already exists` : null
+  return isNameTaken(siblings, name) ? `${ROW_KIND_LABELS[kind]} named ${name} already exists` : null
 }

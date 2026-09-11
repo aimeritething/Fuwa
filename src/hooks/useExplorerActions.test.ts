@@ -10,6 +10,9 @@ vi.mock('../utils/explorerCommands', () => ({
   createFolderDirectory: vi.fn(async () => 'New Folder'),
   renameFile: vi.fn(async () => ''),
   renameFolderDirectory: vi.fn(async () => ''),
+  moveFileToFolder: vi.fn(async () => ''),
+  moveFileToTrash: vi.fn(async () => ''),
+  moveFolderToTrash: vi.fn(async () => ''),
   revealPath: vi.fn(async () => {}),
   copyPathToClipboard: vi.fn(async () => {}),
 }))
@@ -19,6 +22,9 @@ const createDocumentFile = vi.mocked(commands.createDocumentFile)
 const createFolderDirectory = vi.mocked(commands.createFolderDirectory)
 const renameFile = vi.mocked(commands.renameFile)
 const renameFolderDirectory = vi.mocked(commands.renameFolderDirectory)
+const moveFileToFolder = vi.mocked(commands.moveFileToFolder)
+const moveFileToTrash = vi.mocked(commands.moveFileToTrash)
+const moveFolderToTrash = vi.mocked(commands.moveFolderToTrash)
 
 const FOLDER = '/Notes'
 
@@ -44,6 +50,12 @@ function setup(files: ListedFile[] = FILES, initialActiveTabPath: string | null 
   const openNote = vi.fn()
   const retargetTabs = vi.fn()
   const settleActiveDocument = vi.fn(async () => {})
+  const settleTabsUnder = vi.fn(async () => {})
+  const dropTabsUnder = vi.fn()
+  const showToast = vi.fn()
+  const order: string[] = []
+  settleTabsUnder.mockImplementation(async () => { order.push('settle') })
+  dropTabsUnder.mockImplementation(() => { order.push('drop') })
   const tree = buildExplorerTree(FOLDER, files)
   const hook = renderHook(() => {
     const [activeTabPath, setActiveTabPath] = useState(initialActiveTabPath)
@@ -63,15 +75,20 @@ function setup(files: ListedFile[] = FILES, initialActiveTabPath: string | null 
       openNote,
       settleActiveDocument,
       retargetTabs: retarget,
+      settleTabsUnder,
+      dropTabsUnder,
+      showToast,
     })
   })
-  return { ...hook, refresh, openNote, retargetTabs, settleActiveDocument }
+  return { ...hook, refresh, openNote, retargetTabs, settleActiveDocument, settleTabsUnder, dropTabsUnder, showToast, order }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   createDocumentFile.mockImplementation(async () => {})
   createFolderDirectory.mockImplementation(async () => 'New Folder')
+  moveFileToTrash.mockImplementation(async (params) => params.path)
+  moveFolderToTrash.mockImplementation(async (params) => params.path)
 })
 
 describe('creating a Document', () => {
@@ -302,5 +319,108 @@ describe('renaming', () => {
 
     expect(result.current.editing).toBeNull()
     expect(result.current.error).toBeNull()
+  })
+})
+
+describe('Move to Trash', () => {
+  it('flushes the open Document, trashes the file, then closes its Tab', async () => {
+    const { result, order, settleTabsUnder, dropTabsUnder, refresh } = setup()
+
+    await act(async () => { result.current.trash(`${FOLDER}/Welcome.md`, 'note') })
+
+    await waitFor(() => expect(moveFileToTrash).toHaveBeenCalledWith({ folder: FOLDER, path: `${FOLDER}/Welcome.md` }))
+    expect(settleTabsUnder).toHaveBeenCalledWith(`${FOLDER}/Welcome.md`)
+    expect(dropTabsUnder).toHaveBeenCalledWith(`${FOLDER}/Welcome.md`)
+    expect(order).toEqual(['settle', 'drop'])
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('trashes a folder whole, so every Tab under it closes', async () => {
+    const { result, dropTabsUnder } = setup()
+
+    await act(async () => { result.current.trash(`${FOLDER}/Projects`, 'folder') })
+
+    await waitFor(() => expect(moveFolderToTrash).toHaveBeenCalledWith({ folder: FOLDER, path: `${FOLDER}/Projects` }))
+    expect(moveFileToTrash).not.toHaveBeenCalled()
+    expect(dropTabsUnder).toHaveBeenCalledWith(`${FOLDER}/Projects`)
+  })
+
+  it('leaves the Tabs open and says so when the Trash refuses the file', async () => {
+    moveFileToTrash.mockRejectedValue(new Error('Failed to move to the Trash'))
+    const { result, dropTabsUnder, showToast } = setup()
+
+    await act(async () => { result.current.trash(`${FOLDER}/Welcome.md`, 'note') })
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Failed to move to the Trash'))
+    expect(dropTabsUnder).not.toHaveBeenCalled()
+  })
+
+  it('drops the selection when the trashed row held it', async () => {
+    const { result } = setup()
+    act(() => { result.current.select(`${FOLDER}/Projects/Fuwa.md`) })
+
+    await act(async () => { result.current.trash(`${FOLDER}/Projects`, 'folder') })
+
+    await waitFor(() => expect(result.current.selected).toBeNull())
+  })
+})
+
+describe('a drag-and-drop move', () => {
+  it('moves the file, retargets its Tab and leaves the row selected', async () => {
+    moveFileToFolder.mockResolvedValue(`${FOLDER}/Projects/Welcome.md`)
+    const { result, retargetTabs, refresh } = setup()
+
+    await act(async () => { result.current.moveInto(`${FOLDER}/Welcome.md`, `${FOLDER}/Projects`) })
+
+    await waitFor(() => expect(moveFileToFolder).toHaveBeenCalledWith({
+      folder: FOLDER, path: `${FOLDER}/Welcome.md`, destination: `${FOLDER}/Projects`,
+    }))
+    expect(retargetTabs).toHaveBeenCalledWith(`${FOLDER}/Welcome.md`, `${FOLDER}/Projects/Welcome.md`)
+    expect(result.current.selected).toBe(`${FOLDER}/Projects/Welcome.md`)
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('writes the Document\'s pending edits before the move', async () => {
+    moveFileToFolder.mockResolvedValue(`${FOLDER}/Projects/Welcome.md`)
+    const { result, settleActiveDocument } = setup()
+
+    await act(async () => { result.current.moveInto(`${FOLDER}/Welcome.md`, `${FOLDER}/Projects`) })
+
+    await waitFor(() => expect(settleActiveDocument).toHaveBeenCalled())
+  })
+
+  it('moves an Image file up to the Folder root like a Document', async () => {
+    moveFileToFolder.mockResolvedValue(`${FOLDER}/lake.png`)
+    const { result, retargetTabs } = setup()
+
+    await act(async () => { result.current.moveInto(`${FOLDER}/Projects/lake.png`, FOLDER) })
+
+    await waitFor(() => expect(moveFileToFolder).toHaveBeenCalledWith({
+      folder: FOLDER, path: `${FOLDER}/Projects/lake.png`, destination: FOLDER,
+    }))
+    expect(retargetTabs).toHaveBeenCalledWith(`${FOLDER}/Projects/lake.png`, `${FOLDER}/lake.png`)
+  })
+
+  it('names the destination folder in the collision toast', async () => {
+    const { result, showToast } = setup([
+      listed('Welcome.md', 'note'),
+      listed('docs', 'folder'),
+      listed('docs/adr', 'folder'),
+      listed('docs/adr/Welcome.md', 'note'),
+    ])
+
+    await act(async () => { result.current.moveInto(`${FOLDER}/Welcome.md`, `${FOLDER}/docs/adr`) })
+
+    expect(showToast).toHaveBeenCalledWith('docs/adr already has Welcome.md')
+    expect(moveFileToFolder).not.toHaveBeenCalled()
+  })
+
+  it('says nothing and does nothing when the file is dropped on the folder it is already in', async () => {
+    const { result, showToast } = setup()
+
+    await act(async () => { result.current.moveInto(`${FOLDER}/Projects/Fuwa.md`, `${FOLDER}/Projects`) })
+
+    expect(moveFileToFolder).not.toHaveBeenCalled()
+    expect(showToast).not.toHaveBeenCalled()
   })
 })

@@ -92,5 +92,12 @@ export function useFolder() {
    */
   const listsFile = useCallback((path: string) => findByNotePath(filesRef.current, path) !== undefined, [])
 
-  return { folder, files, error, changeFolder, restoreFolder, refresh, listsFile }
+  /**
+   * Every path the Folder holds, as of now. The watcher reads it straight
+   * after its refresh, before the listing has reached React's state, to decide
+   * whether an open Tab's file is still there (spec section 5).
+   */
+  const listedPaths = useCallback(() => filesRef.current.map((file) => file.path), [])
+
+  return { folder, files, error, changeFolder, restoreFolder, refresh, listsFile, listedPaths }
 }

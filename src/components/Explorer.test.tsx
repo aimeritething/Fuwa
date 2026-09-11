@@ -30,6 +30,8 @@ function stubActions(overrides: Partial<ExplorerActions> = {}): ExplorerActions 
     startRename: vi.fn(),
     commitRename: vi.fn(async () => true),
     cancelRename: vi.fn(),
+    trash: vi.fn(),
+    moveInto: vi.fn(),
     reveal: vi.fn(),
     copyPath: vi.fn(),
     ...overrides,
@@ -60,14 +62,14 @@ function menuLabels(menu: HTMLElement): string[] {
 }
 
 describe('the context menu', () => {
-  it('gives a Document its own items and leaves Move to Trash for AIM-390', async () => {
+  it('gives a Document its own items', async () => {
     renderExplorer(stubActions())
 
     rightClick(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`))
 
     const menu = await screen.findByTestId('explorer-menu:note')
     expect(menuLabels(menu)).toEqual(['Rename…', 'Move to Trash', 'Reveal in Finder', 'Copy Path'])
-    expect(within(menu).getByText('Move to Trash')).toHaveAttribute('data-disabled')
+    expect(within(menu).getByText('Move to Trash')).not.toHaveAttribute('data-disabled')
   })
 
   it('gives a folder the creation items as well', async () => {
@@ -233,5 +235,114 @@ describe('the header actions', () => {
 
     const menu = await screen.findByTestId('explorer-header-menu')
     expect(menuLabels(menu)).toEqual(['New Folder', 'Collapse All', 'Reveal in Finder', 'Close Folder'])
+  })
+})
+
+/** jsdom has no DataTransfer, and a protected one answers `getData` with '' anyway. */
+function dataTransfer(readable = true) {
+  const held: Record<string, string> = {}
+  return {
+    effectAllowed: '',
+    dropEffect: '',
+    setData: (type: string, value: string) => { held[type] = value },
+    getData: (type: string) => (readable ? held[type] ?? '' : ''),
+  }
+}
+
+/** The tree opens with only the root expanded, so nested rows are revealed first. */
+function expandProjects() {
+  fireEvent.click(screen.getByLabelText('Expand Projects'))
+}
+
+describe('Move to Trash', () => {
+  it('trashes the row under the cursor, with its kind', async () => {
+    const trash = vi.fn()
+    renderExplorer(stubActions({ trash }))
+
+    rightClick(screen.getByTestId(`explorer-row:${FOLDER}/Projects`))
+    const menu = await screen.findByTestId('explorer-menu:folder')
+    fireEvent.click(within(menu).getByText('Move to Trash'))
+
+    await waitFor(() => expect(trash).toHaveBeenCalledWith(`${FOLDER}/Projects`, 'folder'))
+  })
+
+  it('trashes an Image file as a file', async () => {
+    const trash = vi.fn()
+    renderExplorer(stubActions({ trash }))
+    expandProjects()
+
+    rightClick(screen.getByTestId(`explorer-row:${FOLDER}/Projects/lake.png`))
+    const menu = await screen.findByTestId('explorer-menu:image')
+    fireEvent.click(within(menu).getByText('Move to Trash'))
+
+    await waitFor(() => expect(trash).toHaveBeenCalledWith(`${FOLDER}/Projects/lake.png`, 'image'))
+  })
+})
+
+describe('drag-and-drop', () => {
+  it('lets a Document and an Image file be dragged, and never a folder or the root', () => {
+    renderExplorer(stubActions())
+    expandProjects()
+
+    expect(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`)).toHaveAttribute('draggable', 'true')
+    expect(screen.getByTestId(`explorer-row:${FOLDER}/Projects/lake.png`)).toHaveAttribute('draggable', 'true')
+    expect(screen.getByTestId(`explorer-row:${FOLDER}/Projects`)).not.toHaveAttribute('draggable', 'true')
+    expect(screen.getByTestId(`explorer-row:${FOLDER}`)).not.toHaveAttribute('draggable', 'true')
+  })
+
+  it('moves the dragged file into the folder row it is dropped on', () => {
+    const moveInto = vi.fn()
+    renderExplorer(stubActions({ moveInto }))
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`), { dataTransfer: transfer })
+    const target = screen.getByTestId(`explorer-row:${FOLDER}/Projects`)
+    fireEvent.dragOver(target, { dataTransfer: transfer })
+    expect(target).toHaveAttribute('data-drop-target')
+    fireEvent.drop(target, { dataTransfer: transfer })
+
+    expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Welcome.md`, `${FOLDER}/Projects`)
+    expect(target).not.toHaveAttribute('data-drop-target')
+  })
+
+  it('moves it to the Folder root when the root row takes the drop', () => {
+    const moveInto = vi.fn()
+    renderExplorer(stubActions({ moveInto }))
+    expandProjects()
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Fuwa.md`), { dataTransfer: transfer })
+    fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}`), { dataTransfer: transfer })
+
+    expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Projects/Fuwa.md`, FOLDER)
+  })
+
+  it('reads the dragged path from the drag in progress when the browser hides the data', () => {
+    const moveInto = vi.fn()
+    renderExplorer(stubActions({ moveInto }))
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`), { dataTransfer: transfer })
+    fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}/Projects`), { dataTransfer: dataTransfer(false) })
+
+    expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Welcome.md`, `${FOLDER}/Projects`)
+  })
+
+  it('takes no drop on a Document row, and none with nothing being dragged', () => {
+    const moveInto = vi.fn()
+    renderExplorer(stubActions({ moveInto }))
+    expandProjects()
+    const transfer = dataTransfer()
+
+    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`), { dataTransfer: transfer })
+    fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Fuwa.md`), { dataTransfer: transfer })
+    expect(moveInto).not.toHaveBeenCalled()
+
+    fireEvent.dragEnd(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`), { dataTransfer: transfer })
+    const target = screen.getByTestId(`explorer-row:${FOLDER}/Projects`)
+    fireEvent.dragOver(target, { dataTransfer: dataTransfer(false) })
+    expect(target).not.toHaveAttribute('data-drop-target')
+    fireEvent.drop(target, { dataTransfer: dataTransfer(false) })
+    expect(moveInto).not.toHaveBeenCalled()
   })
 })

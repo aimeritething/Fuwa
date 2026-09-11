@@ -135,7 +135,9 @@ describe('createMockVault', () => {
     const vault = createMockVault(seed)
     await vault.invoke('save_note_content', { path: `${MOCK_VAULT_PATH}/Welcome.md`, content: 'changed' })
 
-    await expect(vault.invoke('delete_note', { path: 'x' })).rejects.toThrow('No mock handler for command: delete_note')
+    await expect(vault.invoke('validate_note_content', { path: 'x' })).rejects.toThrow(
+      'No mock handler for command: validate_note_content',
+    )
 
     vault.reset()
     expect(vault.calls).toEqual([])
@@ -283,5 +285,76 @@ describe('the Explorer write operations in the fixture', () => {
 
     expect(vault.revealedPath()).toBe(`${MOCK_VAULT_PATH}/Welcome.md`)
     expect(vault.clipboardText()).toBe(`${MOCK_VAULT_PATH}/Welcome.md`)
+  })
+  it('moves a file to the Trash and takes a folder\'s whole subtree with it', async () => {
+    const vault = createMockVault(seed)
+
+    await vault.invoke('delete_note', { path: `${MOCK_VAULT_PATH}/Welcome.md`, vaultPath: MOCK_VAULT_PATH })
+    await vault.invoke('delete_vault_folder', { vaultPath: MOCK_VAULT_PATH, folderPath: 'Projects' })
+
+    const paths = vault.files().map((file) => file.path)
+    expect(paths).not.toContain(`${MOCK_VAULT_PATH}/Welcome.md`)
+    expect(paths).not.toContain(`${MOCK_VAULT_PATH}/Projects`)
+    expect(paths).not.toContain(`${MOCK_VAULT_PATH}/Projects/Plan.md`)
+    expect(paths).toContain(`${MOCK_VAULT_PATH}/Attachments/photo.png`)
+  })
+
+  it('refuses to Trash a file that is not there', async () => {
+    const vault = createMockVault(seed)
+
+    await expect(vault.invoke('delete_note', { path: `${MOCK_VAULT_PATH}/gone.md`, vaultPath: MOCK_VAULT_PATH }))
+      .rejects.toThrow('File does not exist')
+  })
+
+  it('moves a file into another folder, keeping its name and its bytes', async () => {
+    const vault = createMockVault(seed)
+
+    const moved = await vault.invoke('move_note_to_folder', {
+      vaultPath: MOCK_VAULT_PATH,
+      oldPath: `${MOCK_VAULT_PATH}/Welcome.md`,
+      folderPath: 'Projects',
+    })
+
+    expect(moved).toEqual({ new_path: `${MOCK_VAULT_PATH}/Projects/Welcome.md` })
+    await expect(vault.invoke('get_note_content', { path: `${MOCK_VAULT_PATH}/Projects/Welcome.md` }))
+      .resolves.toBe('# Welcome\n')
+  })
+
+  it('refuses a move onto a name the destination already holds', async () => {
+    const vault = createMockVault(seed)
+    await vault.invoke('create_note_content', {
+      path: `${MOCK_VAULT_PATH}/Projects/Welcome.md`,
+      content: 'taken\n',
+      vaultPath: MOCK_VAULT_PATH,
+    })
+
+    await expect(vault.invoke('move_note_to_folder', {
+      vaultPath: MOCK_VAULT_PATH,
+      oldPath: `${MOCK_VAULT_PATH}/Welcome.md`,
+      folderPath: 'Projects',
+    })).rejects.toThrow('A file with that name already exists')
+    await expect(vault.invoke('get_note_content', { path: `${MOCK_VAULT_PATH}/Welcome.md` })).resolves.toBe('# Welcome\n')
+  })
+
+  it('takes the empty folder path as the Folder root', async () => {
+    const vault = createMockVault(seed)
+
+    const moved = await vault.invoke('move_note_to_folder', {
+      vaultPath: MOCK_VAULT_PATH,
+      oldPath: `${MOCK_VAULT_PATH}/Projects/Plan.md`,
+      folderPath: '',
+    })
+
+    expect(moved).toEqual({ new_path: `${MOCK_VAULT_PATH}/Plan.md` })
+  })
+  it('moves a path outside any command, the way another app would', () => {
+    const vault = createMockVault(seed)
+
+    vault.movePath(`${MOCK_VAULT_PATH}/Projects`, `${MOCK_VAULT_PATH}/Work`)
+
+    const paths = vault.files().map((file) => file.path)
+    expect(paths).toContain(`${MOCK_VAULT_PATH}/Work/Plan.md`)
+    expect(paths).not.toContain(`${MOCK_VAULT_PATH}/Projects/Plan.md`)
+    expect(vault.calls).toEqual([])
   })
 })

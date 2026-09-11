@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { ExplorerNode } from '../utils/explorer'
 import {
   creationParentPath,
+  isNameTaken,
   lockedExtension,
   nameCommitError,
   nextAvailableName,
@@ -12,22 +13,31 @@ import {
   copyPathToClipboard,
   createDocumentFile,
   createFolderDirectory,
+  moveFileToFolder,
+  moveFileToTrash,
+  moveFolderToTrash,
   renameFile,
   renameFolderDirectory,
   revealPath,
 } from '../utils/explorerCommands'
+import { noteRootForPath } from '../utils/noteEntry'
 import { notePathFilename } from '../utils/notePathIdentity'
 import { isPathInsideVaultRoot } from '../utils/vaultPathContainment'
 import { isWithinPrefix, replaceFolderPrefix } from './folder-actions/folderActionUtils'
 
 /**
- * The Explorer's write operations and the state behind them (spec section 4,
- * AIM-387): the selected row, the row in inline rename, and the inline error.
+ * The Explorer's write operations and the state behind them (spec section 4):
+ * the selected row, the row in inline rename, and the inline error.
  *
  * Creation writes to disk before anything is named: `Untitled.md` lands, its
  * Tab opens, and the new row enters rename with the stem selected. Rename is a
  * single `fs::rename` on the Rust side, with the name checked here first so
- * the reason shows under the row rather than as a thrown string.
+ * the reason shows under the row rather than as a thrown string. A move is the
+ * same single `fs::rename` into another folder, and Move to Trash hands the
+ * file to the macOS Trash with nothing to confirm.
+ *
+ * What the Tabs do about all this is App's: this hook says which paths moved
+ * and which went away, and the Tab rules are applied there.
  */
 
 export interface ExplorerEditing {
@@ -53,6 +63,10 @@ export interface ExplorerActions {
   startRename: (path: string, kind: ExplorerRowKind) => void
   commitRename: (stem: string) => Promise<boolean>
   cancelRename: () => void
+  /** Move to Trash: no confirmation, and every Tab at or under the row closes. */
+  trash: (path: string, kind: ExplorerRowKind) => void
+  /** A dragged Document or Image file dropped on a folder row or the root row. */
+  moveInto: (path: string, destination: string) => void
   reveal: (path: string) => void
   copyPath: (path: string) => void
 }
@@ -72,6 +86,19 @@ interface Options {
   settleActiveDocument: () => Promise<void>
   /** Move an open Tab, and every Tab under a renamed folder, to the new path. */
   retargetTabs: (oldPath: string, newPath: string) => void
+  /**
+   * Write the pending edits of every open Document at or under a path, so a
+   * Document about to be trashed reaches the Trash holding its last edit.
+   */
+  settleTabsUnder: (prefix: string) => Promise<void>
+  /**
+   * Cancel the pending Autosave of every Tab at or under a path and close
+   * them (spec section 5, rule 1). Fuwa never recreates a removed file, so the
+   * cancellation is the point: the Tab's buffered edits go with it.
+   */
+  dropTabsUnder: (prefix: string) => void
+  /** The one toast surface: a refused move, and a refused Trash. */
+  showToast: (message: string) => void
 }
 
 /** How many suffixes to try before giving up; creation never errors, so it gives up quietly. */
@@ -134,8 +161,17 @@ function useSelectionFollowingActiveTab(activeTabPath: string | null, folder: st
   return { selected, setSelected, selectThroughRename }
 }
 
+/** How a folder is named in a toast: its path under the Folder, or the Folder's own name. */
+function destinationLabel(folder: string, destination: string): string {
+  const root = folder.replace(/\/+$/u, '')
+  return destination === root ? notePathFilename(root) || root : destination.slice(root.length + 1)
+}
+
 export function useExplorerActions(options: Options): ExplorerActions {
-  const { folder, tree, activeTabPath, refresh, openNote, settleActiveDocument, retargetTabs } = options
+  const {
+    folder, tree, activeTabPath, refresh, openNote, settleActiveDocument, retargetTabs,
+    settleTabsUnder, dropTabsUnder, showToast,
+  } = options
   const { selected, setSelected, selectThroughRename } = useSelectionFollowingActiveTab(activeTabPath, folder)
   const [editing, setEditing] = useState<ExplorerEditing | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -236,6 +272,48 @@ export function useExplorerActions(options: Options): ExplorerActions {
     }
   }, [cancelRename, editing, folder, refresh, retargetTabs, selectThroughRename, settleActiveDocument, tree])
 
+  /**
+   * Move to Trash (spec section 4): no confirmation, and no going back through
+   * Fuwa. The order is what the rules ask for — the open Documents write their
+   * pending edits while the file is still there, the file leaves, and only
+   * then do the Tabs close with their Autosave cancelled. A refusal leaves
+   * every Tab where it was.
+   */
+  const trash = useCallback((path: string, kind: ExplorerRowKind) => {
+    void (async () => {
+      if (!folder) return
+      await settleTabsUnder(path)
+      if (kind === 'folder') await moveFolderToTrash({ folder, path })
+      else await moveFileToTrash({ folder, path })
+      dropTabsUnder(path)
+      setSelected((current) => (current && isWithinPrefix({ path: current, prefix: path }) ? null : current))
+      await refresh()
+    })().catch((cause: unknown) => showToast(failureMessage(cause)))
+  }, [dropTabsUnder, folder, refresh, setSelected, settleTabsUnder, showToast])
+
+  /**
+   * A drag-and-drop move (spec section 4): one `fs::rename` into the folder
+   * the row was dropped on. A name the destination already holds refuses the
+   * move with a toast rather than suffixing, so nothing is silently renamed;
+   * the listing answers that, and the Rust side is the backstop.
+   */
+  const moveInto = useCallback((path: string, destination: string) => {
+    void (async () => {
+      if (!folder || !tree) return
+      if (noteRootForPath(path) === destination) return
+      const filename = notePathFilename(path)
+      if (isNameTaken(siblingNames(tree, destination, { of: 'children' }), filename)) {
+        showToast(`${destinationLabel(folder, destination)} already has ${filename}`)
+        return
+      }
+      await settleActiveDocument().catch(() => {})
+      const newPath = await moveFileToFolder({ folder, path, destination })
+      retargetTabs(path, newPath)
+      selectThroughRename(path, newPath)
+      await refresh()
+    })().catch((cause: unknown) => showToast(failureMessage(cause)))
+  }, [folder, refresh, retargetTabs, selectThroughRename, settleActiveDocument, showToast, tree])
+
   const reveal = useCallback((path: string) => {
     revealPath(path).catch((cause: unknown) => console.warn('Could not reveal the path:', cause))
   }, [])
@@ -256,10 +334,12 @@ export function useExplorerActions(options: Options): ExplorerActions {
     startRename,
     commitRename,
     cancelRename,
+    trash,
+    moveInto,
     reveal,
     copyPath,
   }), [
     cancelRename, commitRename, copyPath, createDocument, createDocumentIn, createFolder,
-    createFolderIn, editing, error, reveal, selected, setSelected, startRename,
+    createFolderIn, editing, error, moveInto, reveal, selected, setSelected, startRename, trash,
   ])
 }

@@ -246,6 +246,25 @@ mod tests {
         assert_eq!(result.unwrap_err(), expected_error.as_ref());
     }
 
+    #[test]
+    fn move_note_to_folder_moves_an_image_file_keeping_its_bytes() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        create_test_file(vault, "lake.png", "PNG");
+        fs::create_dir(vault.join("Attachments")).unwrap();
+
+        let moved = move_note_to_folder(MoveNoteToFolderRequest {
+            vault_path: vault.to_str().unwrap(),
+            old_path: vault.join("lake.png").to_str().unwrap(),
+            destination_folder_path: vault.join("Attachments").to_str().unwrap(),
+        })
+        .unwrap();
+
+        assert!(moved.new_path.ends_with("Attachments/lake.png"));
+        assert_eq!(fs::read_to_string(moved.new_path).unwrap(), "PNG");
+        assert!(!vault.join("lake.png").exists());
+    }
+
     fn assert_move_note_to_folder_error(expected_error: impl AsRef<str>) {
         let dir = TempDir::new().unwrap();
         let vault = dir.path();

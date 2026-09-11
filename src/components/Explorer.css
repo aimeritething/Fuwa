@@ -126,6 +126,18 @@
   overflow-wrap: anywhere;
 }
 
+/* --- Drag-and-drop move (spec section 4): the folder row under the cursor
+   takes the ring, so it is clear which folder the file would land in. --- */
+.fuwa-explorer__row[data-drop-target] {
+  background: var(--sidebar-row-active);
+  color: var(--text-heading);
+  box-shadow: 0 0 0 1px var(--state-focus-ring) inset;
+}
+
+.fuwa-explorer__row[draggable='true'] {
+  -webkit-user-drag: element;
+}
+
 /* The right-click target below the tree; New Document and New Folder at root. */
 .fuwa-explorer__empty-area {
   flex: 1;

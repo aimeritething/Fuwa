@@ -9,6 +9,7 @@ import { useDocumentWatcher } from './hooks/useDocumentWatcher'
 import { buildExplorerTree, documentRoot } from './utils/explorer'
 import { activeTabPaths } from './utils/imageFile'
 import { findByNotePath } from './utils/notePathIdentity'
+import { isWithinPrefix } from './hooks/folder-actions/folderActionUtils'
 import { Sidebar } from './components/Sidebar'
 import { useAppearance } from './hooks/useAppearance'
 import { WriteFailureDialog } from './components/WriteFailureDialog'
@@ -18,6 +19,7 @@ import { useEditorSave } from './hooks/useEditorSave'
 import { useMenuEvents, type MenuEventHandlers } from './hooks/useMenuEvents'
 import { useNoteTabs } from './hooks/useNoteTabs'
 import { useSession } from './hooks/useSession'
+import { useToast } from './hooks/useToast'
 import { useTabCommands } from './hooks/useTabCommands'
 import { useThemeMode } from './hooks/useThemeMode'
 import { useWriteFailureRecord, useWriteFailures } from './hooks/useWriteFailures'
@@ -47,13 +49,18 @@ function useAutosaveOnEditorChange(
   handleContentChange: (path: string, content: string) => void,
   savePendingForPath: (path: string) => Promise<boolean>,
   recordFailure: (path: string, error: unknown) => void,
+  isOpen: (path: string) => boolean,
 ) {
   return useCallback(
     (path: string, content: string) => {
+      // A Document with no Tab is never written: the editor flushes its idle
+      // debounce as the Tab it belonged to goes away, and a file that has just
+      // been trashed or deleted in Finder must not come back (spec section 5).
+      if (!isOpen(path)) return
       handleContentChange(path, content)
       savePendingForPath(path).catch((error: unknown) => recordFailure(path, error))
     },
-    [handleContentChange, recordFailure, savePendingForPath],
+    [handleContentChange, isOpen, recordFailure, savePendingForPath],
   )
 }
 
@@ -89,6 +96,7 @@ function useSavedTimes() {
 }
 
 export default function App() {
+  const { toast, showToast } = useToast()
   const folderState = useFolder()
   const { folder, changeFolder } = folderState
   const {
@@ -192,7 +200,44 @@ export default function App() {
     exitApp,
   })
   const { settleAndRecord, closeTabOrAsk, retry, discard, quit, answerPrompt, dismissPrompt } = writeFailures
-  const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePendingForPath, recordWriteFailure)
+  // The open paths, so a flush that arrives after a Tab has gone is refused
+  // rather than recreating its file. The editor reaches this through a ref it
+  // refreshes before its own swap effect runs, so the set is never the stale one.
+  const openPaths = useMemo(() => new Set(tabs.map((tab) => tab.entry.path)), [tabs])
+  const isOpenPath = useCallback((path: string) => openPaths.has(path), [openPaths])
+  const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePendingForPath, recordWriteFailure, isOpenPath)
+
+  /** The open Tabs a path covers: the file itself, or everything under a folder. */
+  const pathsUnder = useCallback((prefix: string) => (
+    tabs.map((tab) => tab.entry.path).filter((path) => isWithinPrefix({ path, prefix }))
+  ), [tabs])
+
+  /**
+   * Write the pending edits of every open Document at or under a path. Move to
+   * Trash asks for this first, so a Document reaches the Trash holding the
+   * edit that was still in the buffer. A refused write is swallowed rather
+   * than recorded: the delete goes ahead either way, and the Tab that would
+   * carry the error bar is about to close.
+   */
+  const settleTabsUnder = useCallback(async (prefix: string) => {
+    for (const path of pathsUnder(prefix)) {
+      if (path === activeTabPath) flushPendingEditorContentRef.current?.(path)
+      await savePendingForPath(path).catch(() => {})
+    }
+  }, [activeTabPath, pathsUnder, savePendingForPath])
+
+  /**
+   * Cancel the pending Autosave of every Tab at or under a path and close them
+   * (spec section 5, rules 1, 3 and 5). The cancellation comes first: the
+   * buffered edits belong to a file that is not there any more.
+   */
+  const dropTabsUnder = useCallback((prefix: string) => {
+    for (const path of pathsUnder(prefix)) {
+      discardPending(path)
+      clearWriteFailure(path)
+      closeTabAndForget(path)
+    }
+  }, [clearWriteFailure, closeTabAndForget, discardPending, pathsUnder])
 
   const tabCommands = useTabCommands({
     activeTabPath,
@@ -224,6 +269,9 @@ export default function App() {
     openNote: openExplorerFile,
     settleActiveDocument: settleAndRecord,
     retargetTabs,
+    settleTabsUnder,
+    dropTabsUnder,
+    showToast,
   })
 
   const settleAndCloseAll = useCallback(async () => {
@@ -258,7 +306,16 @@ export default function App() {
   const isPending = useCallback((path: string) => Boolean(
     hasPendingEditorContentRef.current?.(path) || hasPendingSave(path) || writeFailureRecord.failuresRef.current[path]
   ), [hasPendingSave, writeFailureRecord.failuresRef])
-  useDocumentWatcher({ folder, paths: tabs.map((tab) => tab.entry.path), refresh: folderState.refresh, reload: reloadTab, isPending })
+  useDocumentWatcher({
+    folder,
+    paths: tabs.map((tab) => tab.entry.path),
+    refresh: folderState.refresh,
+    reload: reloadTab,
+    isPending,
+    listedPaths: folderState.listedPaths,
+    retargetTabs: retargetTabs,
+    dropTabsUnder: dropTabsUnder,
+  })
 
   const onOpenNote = useCallback(() => {
     void (async () => {
@@ -339,6 +396,7 @@ export default function App() {
         writeFailure={writeFailures.failureFor(activeTabPath)}
         onRetryWrite={retry}
         onDiscardWrite={discard}
+        toast={toast}
       />
       <WriteFailureDialog prompt={writeFailures.prompt} onAnswer={answerPrompt} onDismiss={dismissPrompt} />
     </div>

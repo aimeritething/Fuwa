@@ -23,6 +23,7 @@ import { createMarkdownHighlightShortcutExtension } from './markdownHighlightSho
 import { copyImagePath, openImageExternally } from './imageTabActions'
 import { ImageView } from './ImageView'
 import { PathRow } from './PathRow'
+import { Toast } from './Toast'
 import { TabBar } from './TabBar'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
 import { createRichEditorBlockSelectionExtension } from './richEditorBlockSelectionExtension'
@@ -82,6 +83,8 @@ export interface EditorProps {
   writeFailure: WriteFailure | null
   onRetryWrite: (path: string) => void
   onDiscardWrite: (path: string) => void
+  /** The Explorer's one line of bad news, at the bottom of the card. */
+  toast: string | null
 }
 
 function useLatestRef<T>(value: T): MutableRefObject<T> {
@@ -288,6 +291,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       <div className="fuwa-card" data-testid="editor-card">
         <div className="fuwa-card__top" data-tauri-drag-region aria-hidden="true" />
         <EmptyCard />
+        <Toast message={props.toast} />
       </div>
     )
   }
@@ -324,6 +328,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
           </EditorFindScope>
         </>
       )}
+      <Toast message={props.toast} />
     </div>
   )
 })

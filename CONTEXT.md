@@ -56,6 +56,10 @@ The sidebar section listing every Document and Image file currently open, includ
 **Tab**:
 One entry in the tab bar above the editor; one Tab per open Document or Image file. Clicking a Document or an Image file in the Explorer always opens a real Tab (there are no preview tabs). An Image file's Tab shows the picture, fitted to the card; it has no Rich or Raw mode.
 
+**Toast**:
+One line at the bottom of the editor card saying what an Explorer operation refused to do, such as a move onto a name the folder already holds. It dismisses itself and is never answered, which is what separates it from a Write failure.
+_Avoid_: Notification, alert, banner, snackbar
+
 **Command Menu**:
 The Cmd+K palette that lists Fuwa's commands and, as you type, fuzzy-matches commands, Document names, and Image file names. Every command in the native menu bar appears here and nothing else does.
 _Avoid_: Command palette, palette
