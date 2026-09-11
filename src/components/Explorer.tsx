@@ -13,21 +13,22 @@ interface ExplorerProps {
   folder: string | null
   files: ListedFile[]
   activeTabPath: string | null
-  onOpenNote: (path: string) => void
+  /** A Document or an Image file row was activated; both open a real Tab. */
+  onOpenFile: (path: string) => void
   error?: string | null
 }
 
-export const Explorer = memo(function Explorer({ folder, files, activeTabPath, onOpenNote, error }: ExplorerProps) {
+export const Explorer = memo(function Explorer({ folder, files, activeTabPath, onOpenFile, error }: ExplorerProps) {
   return (
     <section className="fuwa-explorer" data-testid="explorer">
       <div className="fuwa-sidebar__label">Explorer</div>
       {error && <div className="fuwa-explorer__message" role="status">{error}</div>}
-      {folder && <ExplorerTree key={folder} folder={folder} files={files} activeTabPath={activeTabPath} onOpenNote={onOpenNote} />}
+      {folder && <ExplorerTree key={folder} folder={folder} files={files} activeTabPath={activeTabPath} onOpenFile={onOpenFile} />}
     </section>
   )
 })
 
-function ExplorerTree({ folder, files, activeTabPath, onOpenNote }: ExplorerProps & { folder: string }) {
+function ExplorerTree({ folder, files, activeTabPath, onOpenFile }: ExplorerProps & { folder: string }) {
   const root = useMemo(() => buildExplorerTree(folder, files), [folder, files])
   const [selected, setSelected] = useState<string | null>(activeTabPath)
   const [followedPath, setFollowedPath] = useState(activeTabPath)
@@ -50,7 +51,7 @@ function ExplorerTree({ folder, files, activeTabPath, onOpenNote }: ExplorerProp
   return (
     <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={root.name}>
       <ExplorerRow node={root} folder={folder} depth={0} expanded={expanded} selected={selected}
-        onSelect={setSelected} onToggle={toggleFolder} onOpenNote={onOpenNote} />
+        onSelect={setSelected} onToggle={toggleFolder} onOpenFile={onOpenFile} />
     </div>
   )
 }
@@ -63,20 +64,22 @@ interface RowProps {
   selected: string | null
   onSelect: (path: string) => void
   onToggle: (path: string) => void
-  onOpenNote: (path: string) => void
+  /** A Document or an Image file row was activated; both open a real Tab. */
+  onOpenFile: (path: string) => void
 }
 
 function ExplorerRow(props: RowProps) {
-  const { node, folder, depth, expanded, selected, onSelect, onToggle, onOpenNote } = props
+  const { node, folder, depth, expanded, selected, onSelect, onToggle, onOpenFile } = props
   const isFolder = node.kind === 'folder'
   const relative = node.path === folder ? '' : node.path.slice(folder.length + 1)
   const isExpanded = expanded[relative] ?? depth === 0
   const active = selected === node.path
   const Icon = isFolder ? Folder : node.kind === 'image' ? Image : FileText
+  // A Document and an Image file both open a real Tab (spec section 4);
+  // clicking a folder only selects it.
   const select = () => {
-    if (node.kind === 'image') return
     onSelect(node.path)
-    if (node.kind === 'note') onOpenNote(node.path)
+    if (!isFolder) onOpenFile(node.path)
   }
   return (
     <div role="treeitem" aria-label={node.name} aria-selected={active} aria-expanded={isFolder ? isExpanded : undefined}

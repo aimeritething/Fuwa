@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, type MutableRefObject, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
 import 'katex/dist/katex.min.css'
 import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
@@ -7,7 +7,11 @@ import { useEditorTheme } from '../hooks/useTheme'
 import { useEditorFocusScope } from '../hooks/editorFocusOwnership'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { Tab } from '../types'
+import type { ListedFile } from '../utils/explorer'
+import { documentRoot } from '../utils/explorer'
+import { activeTabPaths, imageFetchVersion, imageMetadataLabel, type ImageNaturalSize } from '../utils/imageFile'
 import { noteRootForPath } from '../utils/noteEntry'
+import { notePathFilename } from '../utils/notePathIdentity'
 import { dispatchEditorFindAvailability } from '../utils/editorFindEvents'
 import { installRichEditorMarkdownSerializer } from '../utils/richEditorMarkdown'
 import type { WriteFailure } from '../hooks/useWriteFailures'
@@ -16,6 +20,8 @@ import { uploadEditorImage } from './editorImageUpload'
 import { schema } from './editorSchema'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
 import { createMarkdownHighlightShortcutExtension } from './markdownHighlightShortcutExtension'
+import { copyImagePath, openImageExternally } from './imageTabActions'
+import { ImageView } from './ImageView'
 import { PathRow } from './PathRow'
 import { TabBar } from './TabBar'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
@@ -57,6 +63,8 @@ type FlushPendingContentRef = MutableRefObject<((path: string) => void) | null>
 export interface EditorProps {
   tabs: Tab[]
   activeTabPath: string | null
+  /** The active Image Tab's row in the Folder listing: its byte size, and the version its picture is fetched at. */
+  imageFile?: ListedFile | null
   /** The boundary root of the active Document: its Folder, or its own directory. */
   vaultPath?: string
   folder?: string | null
@@ -122,8 +130,14 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
   return editor
 }
 
+/**
+ * An Image Tab has no editor under it, so the kernel is told there is no
+ * active Document: the swap machinery blanks rather than trying to parse a
+ * picture, and nothing registers a flush for a Tab that is never written.
+ */
 function useEditorRuntime(props: EditorProps) {
-  const { tabs, activeTabPath, vaultPath, onContentChange, flushPendingEditorContentRef, hasPendingEditorContentRef } = props
+  const { tabs, vaultPath, onContentChange, flushPendingEditorContentRef, hasPendingEditorContentRef } = props
+  const { documentPath: activeTabPath, imagePath: imageTabPath } = activeTabPaths(props.activeTabPath)
   const editor = useRichEditor({ activeTabPath, vaultPath })
   const activeTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
   const { handleEditorChange, flushPendingEditorChange, hasPendingEditorChange, editorMountedRef } = useEditorTabSwap({
@@ -151,7 +165,23 @@ function useEditorRuntime(props: EditorProps) {
     rawMode: false,
   })
 
-  return { editor, activeTab, handleEditorChange }
+  return { editor, activeTab, handleEditorChange, imageTabPath }
+}
+
+/**
+ * The picture's natural size, which the path row's `1920 × 1080` half comes
+ * from. There is none until the image has loaded, and none again the moment
+ * the Tab or the file behind it changes — which is what `shownPicture`, the
+ * path and fetch version together, identifies.
+ */
+function useImageNaturalSize(shownPicture: string) {
+  const [naturalSize, setNaturalSize] = useState<ImageNaturalSize | null>(null)
+  const [shown, setShown] = useState(shownPicture)
+  if (shown !== shownPicture) {
+    setShown(shownPicture)
+    setNaturalSize(null)
+  }
+  return { naturalSize, setNaturalSize }
 }
 
 function EditorFindScope({
@@ -198,18 +228,79 @@ function EmptyCard() {
   )
 }
 
+/**
+ * An Image Tab's path row and body (spec section 4). The Folder listing is
+ * where the byte size comes from and what says the file has changed on disk,
+ * so a picture overwritten in another app is fetched again the moment the
+ * watcher refreshes the Folder. There is no save state, no Frontmatter badge,
+ * no Rich/Raw and no error bar: an Image Tab is never written.
+ */
+function ImageTab({ path, folder, imageFile, reloads }: {
+  path: string
+  folder?: string | null
+  imageFile?: ListedFile | null
+  reloads: number
+}) {
+  const fileSize = imageFile?.fileSize ?? 0
+  const version = imageFetchVersion(imageFile ?? null, reloads)
+  const { naturalSize, setNaturalSize } = useImageNaturalSize(`${path}@${version}`)
+  const { cssVars } = useEditorTheme()
+  const root = documentRoot(path, folder)
+  const filename = notePathFilename(path)
+  const openExternally = useCallback(() => openImageExternally(path, root), [path, root])
+
+  return (
+    <>
+      <PathRow
+        filename={filename}
+        path={path}
+        folder={folder}
+        savedAt={null}
+        image={{
+          metadata: imageMetadataLabel(naturalSize, fileSize),
+          onOpenExternal: openExternally,
+          onCopyPath: () => copyImagePath(path),
+        }}
+      />
+      <div className="fuwa-image-view-scope" style={cssVars as React.CSSProperties}>
+        <ImageView
+          path={path}
+          filename={filename}
+          version={version}
+          onNaturalSize={setNaturalSize}
+          onOpenExternal={openExternally}
+        />
+      </div>
+    </>
+  )
+}
+
 export const Editor = memo(function Editor(props: EditorProps) {
-  const { editor, activeTab, handleEditorChange } = useEditorRuntime(props)
+  const { editor, activeTab, handleEditorChange, imageTabPath } = useEditorRuntime(props)
   const { tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite } = props
   // theme.json's editor.maxWidth and paddingHorizontal (spec: a 680px prose
   // column with 56px padding) reach the wrapper and .bn-editor as CSS variables.
   const { cssVars } = useEditorTheme()
+  const openTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
+
+  if (!openTab) {
+    return (
+      <div className="fuwa-card" data-testid="editor-card">
+        <div className="fuwa-card__top" data-tauri-drag-region aria-hidden="true" />
+        <EmptyCard />
+      </div>
+    )
+  }
 
   return (
     <div className="fuwa-card" data-testid="editor-card">
-      {activeTab ? (
+      <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
+      {/* The two bodies are exclusive: an Image Tab leaves the runtime with no active Document. */}
+      {imageTabPath !== null && (
+        <ImageTab path={imageTabPath} folder={props.folder} imageFile={props.imageFile} reloads={openTab.reloads ?? 0} />
+      )}
+      {activeTab && (
         <>
-          <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
           <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} savedAt={savedAt} />
           {writeFailure && (
             <WriteFailureBar
@@ -231,11 +322,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
               />
             </div>
           </EditorFindScope>
-        </>
-      ) : (
-        <>
-          <div className="fuwa-card__top" data-tauri-drag-region aria-hidden="true" />
-          <EmptyCard />
         </>
       )}
     </div>

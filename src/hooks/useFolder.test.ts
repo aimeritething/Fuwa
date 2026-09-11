@@ -69,3 +69,20 @@ it('ignores a refresh from the previous Folder that finishes after switching', a
   expect(result.current.folder).toBe('/Other')
   expect(result.current.files).toEqual([])
 })
+
+it('lets a second Folder change wait for the one in flight, then reports what it settled on', async () => {
+  const { result } = renderHook(() => useFolder())
+  invoke.mockResolvedValue([{ path: '/Notes/cover.png', kind: 'image', fileSize: 12, modifiedAt: 3 }])
+  let finish!: () => void
+  const settle = vi.fn(() => new Promise<void>((resolve) => { finish = resolve }))
+  let opening!: Promise<void>
+  let waiting!: Promise<string | null>
+  await act(async () => { opening = result.current.changeFolder('/Notes', settle) })
+
+  await act(async () => { waiting = result.current.restoreFolder('/Elsewhere') })
+  await act(async () => { finish(); await opening })
+
+  expect(await waiting).toBe('/Notes')
+  expect(result.current.listsFile('/Notes/cover.png')).toBe(true)
+  expect(result.current.listsFile('/Notes/gone.png')).toBe(false)
+})

@@ -88,6 +88,15 @@
   box-shadow: 0 0 0 1px var(--state-focus-ring) inset;
 }
 
+.fuwa-tab__icon {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.fuwa-tab[data-active] .fuwa-tab__icon {
+  color: var(--text-secondary);
+}
+
 .fuwa-tab__name {
   min-width: 0;
   overflow: hidden;
@@ -140,6 +149,26 @@
   letter-spacing: 0;
   color: var(--text-secondary);
   cursor: default;
+}
+
+/* An Image Tab's slot: the picture's dimensions and byte size, then the two
+   ghost buttons that hand the file to a real image app. */
+.fuwa-path-row__image-meta {
+  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.fuwa-path-row__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: -4px;
 }
 
 /* The prose column: the kernel's .bn-editor already centres itself at

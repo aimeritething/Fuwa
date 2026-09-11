@@ -78,6 +78,12 @@ export interface WorkspaceIdentity {
 export interface Tab {
   entry: VaultEntry
   content: string
+  /**
+   * Image Tabs only: how many times the watcher has reported the file changed.
+   * An Image Tab holds no content to reload, so this is what it reloads
+   * instead — the picture is fetched again at the new count (ADR-0007).
+   */
+  reloads?: number
 }
 
 export type NoteStatus = 'new' | 'modified' | 'clean' | 'pendingSave' | 'unsaved'

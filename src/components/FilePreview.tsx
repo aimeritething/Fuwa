@@ -1,385 +1,53 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { convertFileSrc } from '@tauri-apps/api/core'
-import {
-  ArrowSquareOut,
-  ClipboardText,
-  FileDashed,
-  FolderOpen,
-  ImageSquare,
-  Link,
-  WarningCircle,
-} from '@phosphor-icons/react'
-import type { VaultEntry } from '../types'
-import { translate, type AppLocale } from '../lib/i18n'
-import { trackFilePreviewAction, trackFilePreviewFailed, trackFilePreviewOpened } from '../lib/productAnalytics'
-import { filePreviewKind, previewFileTypeLabel, type FilePreviewKind } from '../utils/filePreview'
-import { openLocalFile } from '../utils/url'
+import { ArrowSquareOut, WarningCircle } from '@phosphor-icons/react'
 import { Button } from './ui/button'
 
-interface FilePreviewProps {
-  entry: VaultEntry
-  locale?: AppLocale
-  onCopyFilePath?: (path: string) => void
-  onCopyDeepLink?: (entry: VaultEntry) => void
-  onOpenExternalFile?: (path: string) => void
-  onRevealFile?: (path: string) => void
+/**
+ * Tolaria's file preview, trimmed to the image branch (AIM-388): the fitted
+ * picture and the fallback shown when it will not render. Fuwa's `ImageView`
+ * is what mounts them and owns the centring and the padding; the header and
+ * its actions are gone, the path row carrying the hand-off buttons instead,
+ * and so are the pdf, audio and video branches.
+ */
+
+export interface FilePreviewImageProps {
+  src: string
+  alt: string
+  onLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void
+  onError: () => void
 }
 
-interface FilePreviewFallbackProps {
-  icon: 'warning' | 'file'
-  title: string
-  description: string
-  canOpenExternal?: boolean
-  onOpenExternal: () => void
-}
-
-interface FilePreviewState {
-  canUseFileActions: boolean
-  previewKind: FilePreviewKind | null
-  previewPath: string | null
-}
-
-function filePreviewPath(path: unknown): string | null {
-  if (typeof path !== 'string') return null
-  return path.trim().length > 0 ? path : null
-}
-
-function filePreviewState(entry: VaultEntry): FilePreviewState {
-  const previewPath = filePreviewPath(entry.path)
-  if (previewPath === null) {
-    return { canUseFileActions: false, previewKind: null, previewPath }
-  }
-
-  const previewEntry = previewPath === entry.path ? entry : { ...entry, path: previewPath }
-  return {
-    canUseFileActions: true,
-    previewKind: filePreviewKind(previewEntry),
-    previewPath,
-  }
-}
-
-function filePreviewAssetSrc(
-  previewKind: FilePreviewKind | null,
-  previewPath: string | null,
-): string | null {
-  if (!previewKind || previewPath === null) return null
-
-  let src: string
-  try {
-    src = convertFileSrc(previewPath)
-  } catch (error) {
-    console.warn('[file-preview] Failed to prepare asset preview source:', error)
-    return null
-  }
-
-  return src
-}
-
-function fallbackContentForPreviewKind(
-  previewKind: FilePreviewKind | null,
-): Omit<FilePreviewFallbackProps, 'onOpenExternal'> {
-  if (previewKind === 'image') {
-    return {
-      icon: 'warning',
-      title: 'Image preview failed',
-      description: 'Tolaria could not render this image file in the preview.',
-    }
-  }
-
-  return {
-    icon: 'file',
-    title: 'Preview unavailable',
-    description: 'Tolaria does not have an in-app preview for this file type.',
-  }
-}
-
-function FilePreviewHeaderIcon({ previewKind }: { previewKind: FilePreviewKind | null }) {
-  if (previewKind === 'image') {
-    return <ImageSquare size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-  }
-
-  return <FileDashed size={17} className="shrink-0 text-muted-foreground" aria-hidden="true" />
-}
-
-function FilePreviewFallback({
-  icon,
-  title,
-  description,
-  canOpenExternal = true,
-  onOpenExternal,
-}: FilePreviewFallbackProps) {
-  const Icon = icon === 'warning' ? WarningCircle : FileDashed
-
+/** Scaled down to fit its box and never up: no width of its own, only a ceiling. */
+export function FilePreviewImage({ src, alt, onLoad, onError }: FilePreviewImageProps) {
   return (
-    <div
-      className="flex h-full min-h-[260px] flex-col items-center justify-center gap-4 px-8 text-center"
-      data-testid="file-preview-fallback"
-    >
-      <Icon size={34} className="text-muted-foreground" aria-hidden="true" />
-      <div className="space-y-1">
-        <h2 className="m-0 text-[15px] font-semibold text-foreground">{title}</h2>
-        <p className="m-0 max-w-md text-[13px] leading-6 text-muted-foreground">{description}</p>
-      </div>
-      <Button type="button" variant="outline" size="sm" onClick={onOpenExternal} disabled={!canOpenExternal}>
-        <ArrowSquareOut size={15} />
-        Open in default app
-      </Button>
-    </div>
-  )
-}
-
-function FilePreviewHeader(options: {
-  entry: VaultEntry
-  previewKind: FilePreviewKind | null
-  canUseFileActions: boolean
-  fileTypeLabel: string
-  locale?: AppLocale
-  onOpenExternal: () => void
-  onRevealFile?: () => void
-  onCopyFilePath?: () => void
-  onCopyDeepLink?: () => void
-}) {
-  const {
-    entry,
-    previewKind,
-    canUseFileActions,
-    fileTypeLabel,
-    locale = 'en',
-    onOpenExternal,
-    onRevealFile,
-    onCopyFilePath,
-    onCopyDeepLink,
-  } = options
-  return (
-    <div
-      className="flex h-[52px] shrink-0 items-center justify-between border-b border-border px-4"
-      data-tauri-drag-region
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <FilePreviewHeaderIcon previewKind={previewKind} />
-        <div className="min-w-0">
-          <h1 className="m-0 truncate text-[14px] font-semibold text-foreground">{entry.title}</h1>
-          <p className="m-0 text-[11px] text-muted-foreground">{fileTypeLabel}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-1">
-        {onRevealFile && (
-          <Button type="button" variant="ghost" size="sm" onClick={onRevealFile} disabled={!canUseFileActions}>
-            <FolderOpen size={15} />
-            Reveal
-          </Button>
-        )}
-        {onCopyFilePath && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCopyFilePath} disabled={!canUseFileActions}>
-            <ClipboardText size={15} />
-            Copy path
-          </Button>
-        )}
-        {onCopyDeepLink && (
-          <Button type="button" variant="ghost" size="sm" onClick={onCopyDeepLink} disabled={!canUseFileActions}>
-            <Link size={15} />
-            {translate(locale, 'filePreview.copyDeepLink')}
-          </Button>
-        )}
-        <Button type="button" variant="ghost" size="sm" onClick={onOpenExternal} disabled={!canUseFileActions}>
-          <ArrowSquareOut size={15} />
-          Open
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function FilePreviewImage({
-  entry,
-  imageSrc,
-  onImageError,
-}: {
-  entry: VaultEntry
-  imageSrc: string
-  onImageError: () => void
-}) {
-  return (
-    <div className="flex h-full min-h-[260px] items-center justify-center p-6">
-      <img
-        src={imageSrc}
-        alt={entry.title}
-        className="max-h-full max-w-full object-contain"
-        data-testid="image-file-preview"
-        onError={onImageError}
-      />
-    </div>
-  )
-}
-
-function shouldRenderImagePreview(isImage: boolean, imageSrc: string | null, imageFailed: boolean): imageSrc is string {
-  return isImage && imageSrc !== null && !imageFailed
-}
-
-function FilePreviewBody(options: {
-  entry: VaultEntry
-  previewKind: FilePreviewKind | null
-  assetSrc: string | null
-  imageFailed: boolean
-  canOpenExternal: boolean
-  onImageError: () => void
-  onOpenExternal: () => void
-}) {
-  const {
-    entry,
-    previewKind,
-    assetSrc,
-    imageFailed,
-    canOpenExternal,
-    onImageError,
-    onOpenExternal,
-  } = options
-  if (shouldRenderImagePreview(previewKind === 'image', assetSrc, imageFailed)) {
-    return <FilePreviewImage entry={entry} imageSrc={assetSrc} onImageError={onImageError} />
-  }
-
-  const fallback = fallbackContentForPreviewKind(previewKind)
-
-  return (
-    <FilePreviewFallback
-      icon={fallback.icon}
-      title={fallback.title}
-      description={fallback.description}
-      canOpenExternal={canOpenExternal}
-      onOpenExternal={onOpenExternal}
+    <img
+      src={src}
+      alt={alt}
+      className="max-h-full max-w-full object-contain"
+      data-testid="image-file-preview"
+      onLoad={onLoad}
+      onError={onError}
     />
   )
 }
 
-function useFilePreviewFailureState(entryPath: string) {
-  const [failedImagePath, setFailedImagePath] = useState<string | null>(null)
-
-  const handleImageError = useCallback(() => {
-    setFailedImagePath(entryPath)
-    trackFilePreviewFailed('image')
-  }, [entryPath])
-
-  return {
-    imageFailed: failedImagePath === entryPath,
-    handleImageError,
-  }
+export interface FilePreviewFallbackProps {
+  title: string
+  description: string
+  onOpenExternal: () => void
 }
 
-function useFilePreviewActions({
-  entry,
-  entryPath,
-  onCopyFilePath,
-  onCopyDeepLink,
-  onOpenExternalFile,
-  onRevealFile,
-  previewKind,
-}: {
-  entry: VaultEntry
-  entryPath: string
-  onCopyFilePath?: (path: string) => void
-  onCopyDeepLink?: (entry: VaultEntry) => void
-  onOpenExternalFile?: (path: string) => void
-  onRevealFile?: (path: string) => void
-  previewKind: FilePreviewKind | null
-}) {
-  const handleOpenExternal = useCallback(() => {
-    trackFilePreviewAction('open_external', previewKind)
-    if (onOpenExternalFile) {
-      onOpenExternalFile(entryPath)
-      return
-    }
-
-    void openLocalFile(entryPath).catch((error) => {
-      console.warn('Failed to open file with default app:', error)
-    })
-  }, [entryPath, onOpenExternalFile, previewKind])
-
-  const handleRevealFile = useCallback(() => {
-    trackFilePreviewAction('reveal', previewKind)
-    onRevealFile?.(entryPath)
-  }, [entryPath, onRevealFile, previewKind])
-
-  const handleCopyFilePath = useCallback(() => {
-    trackFilePreviewAction('copy_path', previewKind)
-    onCopyFilePath?.(entryPath)
-  }, [entryPath, onCopyFilePath, previewKind])
-
-  const handleCopyDeepLink = useCallback(() => {
-    trackFilePreviewAction('copy_deep_link', previewKind)
-    onCopyDeepLink?.(entry)
-  }, [entry, onCopyDeepLink, previewKind])
-
-  return {
-    handleOpenExternal,
-    handleRevealFile,
-    handleCopyFilePath,
-    handleCopyDeepLink,
-  }
-}
-
-export function FilePreview({
-  entry,
-  locale = 'en',
-  onCopyFilePath,
-  onCopyDeepLink,
-  onOpenExternalFile,
-  onRevealFile,
-}: FilePreviewProps) {
-  const previewRef = useRef<HTMLElement | null>(null)
-  const { canUseFileActions, previewKind, previewPath } = filePreviewState(entry)
-  const assetSrc = useMemo(() => {
-    return filePreviewAssetSrc(previewKind, previewPath)
-  }, [previewKind, previewPath])
-  const fileTypeLabel = previewFileTypeLabel(entry)
-  const failures = useFilePreviewFailureState(previewPath ?? '')
-  const actions = useFilePreviewActions({
-    entry,
-    entryPath: previewPath ?? '',
-    onCopyFilePath,
-    onCopyDeepLink,
-    onOpenExternalFile,
-    onRevealFile,
-    previewKind,
-  })
-
-  useEffect(() => {
-    void previewPath
-    trackFilePreviewOpened(previewKind)
-  }, [previewPath, previewKind])
-
-  useEffect(() => {
-    previewRef.current?.setAttribute('tabindex', '0')
-  }, [])
-
+export function FilePreviewFallback({ title, description, onOpenExternal }: FilePreviewFallbackProps) {
   return (
-    <section
-      ref={previewRef}
-      className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground"
-      data-testid="file-preview"
-      aria-label={`Preview ${entry.title}`}
-    >
-      <FilePreviewHeader
-        entry={entry}
-        previewKind={previewKind}
-        canUseFileActions={canUseFileActions}
-        fileTypeLabel={fileTypeLabel}
-        locale={locale}
-        onOpenExternal={actions.handleOpenExternal}
-        onRevealFile={onRevealFile ? actions.handleRevealFile : undefined}
-        onCopyFilePath={onCopyFilePath ? actions.handleCopyFilePath : undefined}
-        onCopyDeepLink={onCopyDeepLink ? actions.handleCopyDeepLink : undefined}
-      />
-      <div className="min-h-0 flex-1 overflow-auto bg-background">
-        <FilePreviewBody
-          entry={entry}
-          previewKind={previewKind}
-          assetSrc={assetSrc}
-          imageFailed={failures.imageFailed}
-          canOpenExternal={canUseFileActions}
-          onImageError={failures.handleImageError}
-          onOpenExternal={actions.handleOpenExternal}
-        />
+    <div className="flex flex-col items-center justify-center gap-4 px-8 text-center" data-testid="file-preview-fallback">
+      <WarningCircle size={34} className="text-muted-foreground" aria-hidden="true" />
+      <div className="space-y-1">
+        <h2 className="m-0 text-[15px] font-semibold text-foreground">{title}</h2>
+        <p className="m-0 max-w-md text-[13px] leading-6 text-muted-foreground">{description}</p>
       </div>
-    </section>
+      <Button type="button" variant="outline" size="sm" onClick={onOpenExternal}>
+        <ArrowSquareOut size={15} />
+        Open in default app
+      </Button>
+    </div>
   )
 }

@@ -1,6 +1,8 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PathRow } from './PathRow'
+
+const imageSlot = { metadata: '1920 × 1080 · 240 KB', onOpenExternal: vi.fn(), onCopyPath: vi.fn() }
 
 describe('PathRow', () => {
   beforeEach(() => {
@@ -41,5 +43,33 @@ describe('PathRow', () => {
     rerender(<PathRow filename="Welcome.md" savedAt={Date.now()} />)
 
     expect(screen.getByText('saved just now')).toBeInTheDocument()
+  })
+
+  it('replaces the save state on an Image Tab with its dimensions, size and two hand-offs', () => {
+    render(<PathRow filename="lake.png" savedAt={Date.now()} image={imageSlot} />)
+
+    expect(screen.getByTestId('path-row-image-meta')).toHaveTextContent('1920 × 1080 · 240 KB')
+    expect(screen.queryByTestId('path-row-saved')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open ↗' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy path' })).toBeInTheDocument()
+  })
+
+  it('keeps the metadata slot empty until the picture has loaded, buttons and all in place', () => {
+    render(<PathRow filename="lake.png" savedAt={null} image={{ ...imageSlot, metadata: null }} />)
+
+    expect(screen.queryByTestId('path-row-image-meta')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open ↗' })).toBeInTheDocument()
+  })
+
+  it('hands the file over from either button', () => {
+    const onOpenExternal = vi.fn()
+    const onCopyPath = vi.fn()
+    render(<PathRow filename="lake.png" savedAt={null} image={{ metadata: null, onOpenExternal, onCopyPath }} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open ↗' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Copy path' }))
+
+    expect(onOpenExternal).toHaveBeenCalledTimes(1)
+    expect(onCopyPath).toHaveBeenCalledTimes(1)
   })
 })

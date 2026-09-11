@@ -1,5 +1,7 @@
 import { memo } from 'react'
+import { Image } from '@phosphor-icons/react'
 import type { Tab } from '../types'
+import { isImageFilePath } from '../utils/imageFile'
 import { CloseAffordance } from './CloseAffordance'
 
 export interface TabBarProps {
@@ -11,9 +13,10 @@ export interface TabBarProps {
 
 /**
  * The tab bar (spec section 2): the card's 44px top row, tabs only, one per
- * open Document, the selected one raised, a close affordance on hover. Hidden
- * with no Tab open. The row itself is the window drag region; the tabs are
- * not, so a click on one lands on the Tab.
+ * open Document or Image file, the selected one raised, a close affordance on
+ * hover. Hidden with no Tab open. The row itself is the window drag region;
+ * the tabs are not, so a click on one lands on the Tab. An Image file's Tab
+ * carries the image icon before its name, a Document's nothing.
  */
 export const TabBar = memo(function TabBar({ tabs, activeTabPath, onActivate, onClose }: TabBarProps) {
   if (tabs.length === 0) return null
@@ -43,6 +46,7 @@ interface TabPillProps {
 }
 
 function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) {
+  const isImage = isImageFilePath(path)
   return (
     <div
       className="fuwa-tab"
@@ -58,6 +62,7 @@ function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) 
         if (event.key === 'Enter' || event.key === ' ') onActivate(path)
       }}
     >
+      {isImage && <Image size={13} className="fuwa-tab__icon" aria-hidden="true" />}
       <span className="fuwa-tab__name">{filename}</span>
       <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>

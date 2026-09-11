@@ -6,6 +6,8 @@ import { Explorer } from './components/Explorer'
 import { useFolder, pickFolderToOpen } from './hooks/useFolder'
 import { useDocumentWatcher } from './hooks/useDocumentWatcher'
 import { documentRoot } from './utils/explorer'
+import { activeTabPaths } from './utils/imageFile'
+import { findByNotePath } from './utils/notePathIdentity'
 import { Sidebar } from './components/Sidebar'
 import { useAppearance } from './hooks/useAppearance'
 import { WriteFailureDialog } from './components/WriteFailureDialog'
@@ -100,7 +102,7 @@ export default function App() {
     activateTabAt,
     activateAdjacentTab,
     restoreOpenEditors,
-  } = useNoteTabs(folder)
+  } = useNoteTabs(folder, folderState.listsFile)
   const appearance = useAppearance()
   const { restored } = useSession({
     folder,
@@ -116,6 +118,11 @@ export default function App() {
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
   const hasPendingEditorContentRef = useRef<((path: string) => boolean) | null>(null)
   const vaultPath = activeTabPath ? documentRoot(activeTabPath, folder) : undefined
+  // Save, Toggle Rich/Raw and Find in Document follow the active Document;
+  // an Image Tab leaves all three disabled (spec section 4). Its row in the
+  // Folder listing is its byte size and the version its picture is fetched at.
+  const { documentPath: activeDocumentPath, imagePath: activeImagePath } = activeTabPaths(activeTabPath)
+  const activeImageFile = findByNotePath(folderState.files, activeImagePath) ?? null
   const persistenceScope = useOpenNoteRoots(tabs, folder)
 
   // A write that lands, from any path, clears the Document's error bar.
@@ -195,7 +202,8 @@ export default function App() {
     closeWindow: closeAppWindow,
   })
 
-  const openExplorerNote = useCallback((path: string) => {
+  // A Document or an Image file row: both open a real Tab (spec section 4).
+  const openExplorerFile = useCallback((path: string) => {
     void openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
   }, [openNote, settleAndRecord])
 
@@ -241,17 +249,18 @@ export default function App() {
     })()
   }, [openNote, settleAndRecord])
 
-  // Save is disabled with no Document open: the native menu item through
-  // update_menu_state, the ⌘S keydown here. A refusal is the error bar's.
+  // Save is disabled with no Document open — and an Image Tab is not one, so
+  // ⌘S over a picture does nothing. The native menu item goes the same way
+  // through update_menu_state. A refusal is the error bar's.
   const onSave = useCallback(() => {
-    if (!activeTabPath) return
+    if (!activeDocumentPath) return
     settleAndRecord().catch(noop)
-  }, [activeTabPath, settleAndRecord])
+  }, [activeDocumentPath, settleAndRecord])
 
   // Folder, Document, Save, Quit, Appearance and Tab commands are wired;
   // the other manifest commands get their handlers with their own tickets.
   const handlers = useMemo<MenuEventHandlers>(() => ({
-    activeTabPath,
+    activeDocumentPath,
     onOpenNote,
     onOpenVault: onOpenFolder,
     onCloseVault: onCloseFolder,
@@ -266,7 +275,7 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeTabPath, appearance.handlers, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands])
+  }), [activeDocumentPath, appearance.handlers, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
   // A `.md` dropped on the window opens like File → Open Document…; an image
@@ -285,11 +294,12 @@ export default function App() {
           onActivate={tabCommands.activateTabSettled}
           onClose={tabCommands.closeTabSettled}
         />
-        <Explorer folder={folder} files={folderState.files} activeTabPath={activeTabPath} onOpenNote={openExplorerNote} error={folderState.error} />
+        <Explorer folder={folder} files={folderState.files} activeTabPath={activeTabPath} onOpenFile={openExplorerFile} error={folderState.error} />
       </Sidebar>
       <Editor
         tabs={tabs}
         activeTabPath={activeTabPath}
+        imageFile={activeImageFile}
         vaultPath={vaultPath}
         folder={folder}
         hasPendingEditorContentRef={hasPendingEditorContentRef}
