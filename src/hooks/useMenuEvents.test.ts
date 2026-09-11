@@ -28,6 +28,7 @@ function makeHandlers(overrides: Partial<MenuEventHandlers> = {}): MenuEventHand
   return {
     activeDocumentPath: null,
     hasFolder: false,
+    hasTab: false,
     onCreateNote: vi.fn(),
     onOpenNote: vi.fn(),
     onQuickOpen: vi.fn(),
@@ -135,12 +136,12 @@ describe('useMenuEvents', () => {
       )
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false } })
+      expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
 
       rerender({ activeDocumentPath: '/n/a.md' })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true, hasVault: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true, hasVault: false, hasTab: false } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
 
       // Save, Toggle Rich/Raw and Find in Document go back to disabled over an
@@ -148,7 +149,7 @@ describe('useMenuEvents', () => {
       rerender({ activeDocumentPath: null })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
     })
 
     // New Document, Quick Open and Close Folder follow the open Folder
@@ -160,12 +161,28 @@ describe('useMenuEvents', () => {
       )
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
 
       rerender({ hasFolder: true })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: true } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: true, hasTab: false } })
+      expect(runtime.invoke).toHaveBeenCalledTimes(2)
+    })
+
+    // Close Tab follows any open Tab, an Image Tab included (spec section 7);
+    // with zero Tabs its item is greyed while ⌘W still closes the window.
+    it('keeps the Tab-dependent menu item in step with the open Tabs', async () => {
+      const { rerender } = renderHook(
+        ({ hasTab }: { hasTab: boolean }) => useMenuEvents(makeHandlers({ hasTab })),
+        { initialProps: { hasTab: false } },
+      )
+      await flushMicrotasks()
+
+      rerender({ hasTab: true })
+      await flushMicrotasks()
+
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: true } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
     })
   })

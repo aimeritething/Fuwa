@@ -447,6 +447,9 @@
       { "command": "editToggleRawEditor" },
       { "command": "editFindInNote" }
     ],
+    "tabDependent": [
+      { "command": "fileCloseTab" }
+    ],
     "vaultDependent": [
       { "command": "fileNewNote" },
       { "command": "fileQuickOpen" },

@@ -76,16 +76,25 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     stateRef.current = state
   }, [state])
 
-  const openNote = useCallback(async (path: string): Promise<void> => {
+  /**
+   * Open a Document or an Image file as a Tab, or activate its Tab. A `mode`
+   * puts a Document straight into Raw (⌘↵ in Quick Open, AIM-389) so Rich
+   * never mounts for it, or switches an open one; the Tab rules still decide
+   * whether it takes, and an Image Tab has no mode to set.
+   */
+  const openNote = useCallback(async (path: string, mode?: EditorMode): Promise<void> => {
     const alreadyOpen = stateRef.current.tabs.some((tab) => tab.entry.path === path)
     if (alreadyOpen) {
-      setState((prev) => tabsState.activateTab(prev, path))
+      setState((prev) => {
+        const activated = tabsState.activateTab(prev, path)
+        return mode ? tabsState.setTabMode(activated, path, mode) : activated
+      })
       return
     }
     const request = generation.current
     const tab = await readTab(path, folder)
     if (request !== generation.current) return
-    setState((prev) => tabsState.openTab(prev, tab))
+    setState((prev) => tabsState.openTab(prev, mode ? { ...tab, mode } : tab))
     announceOpened(tab)
   }, [folder])
 

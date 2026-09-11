@@ -1,0 +1,161 @@
+/* The Command Menu and Quick Open palette (spec section 2, AIM-389): centred,
+   its top at about a quarter of the window, 560px wide, on the popover
+   surface of the menu sub-theme with a hairline ring and a large shadow, over
+   the dimmed backdrop. */
+
+.fuwa-command-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--surface-overlay);
+}
+
+.fuwa-command-menu {
+  position: fixed;
+  top: 24%;
+  left: 50%;
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(76% - 24px);
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: var(--hairline) solid var(--border-dialog);
+  border-radius: 12px;
+  background: var(--surface-popover);
+  color: var(--text-primary);
+  box-shadow: 0 24px 64px -12px var(--shadow-dialog), var(--shadow-menu);
+  outline: none;
+}
+
+/* 56px input row, 17px light text, no search icon. */
+.fuwa-command-menu__input {
+  flex: none;
+  height: 56px;
+  padding: 0 20px;
+  border: 0;
+  border-bottom: var(--hairline) solid var(--border-dialog);
+  background: transparent;
+  color: var(--text-heading);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+
+.fuwa-command-menu__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* No group header: the rows start right under the input. */
+.fuwa-command-menu__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 400px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.fuwa-command-menu__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.fuwa-command-menu__row[data-active] {
+  background: var(--menu-item-hover);
+  color: var(--text-heading);
+}
+
+.fuwa-command-menu__row[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+.fuwa-command-menu__icon {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.fuwa-command-menu__row[data-active] .fuwa-command-menu__icon {
+  color: var(--text-primary);
+}
+
+.fuwa-command-menu__name {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The matched substring, emphasised without a highlight box. */
+.fuwa-command-menu__name mark {
+  background: transparent;
+  color: var(--text-heading);
+  font-weight: 600;
+}
+
+.fuwa-command-menu__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+/* Inter 11px/500, the menu sub-theme's shortcut column, not mono. */
+.fuwa-command-menu__shortcut {
+  flex: none;
+  margin-left: auto;
+  font-family: 'Inter Variable', 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--menu-shortcut);
+}
+
+.fuwa-command-menu__name + .fuwa-command-menu__type,
+.fuwa-command-menu__detail + .fuwa-command-menu__type {
+  margin-left: auto;
+}
+
+.fuwa-command-menu__type {
+  flex: none;
+  width: 64px;
+  text-align: right;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.fuwa-command-menu__empty {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 10px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* Footer in mono. */
+.fuwa-command-menu__footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 16px;
+  border-top: var(--hairline) solid var(--border-dialog);
+  color: var(--text-tertiary);
+  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+}
