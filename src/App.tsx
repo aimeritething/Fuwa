@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar'
 import { useAppearance } from './hooks/useAppearance'
 import { WriteFailureDialog } from './components/WriteFailureDialog'
 import { useAppKeyboard } from './hooks/useAppKeyboard'
+import { useDocumentDrop } from './hooks/useDocumentDrop'
 import { useEditorSave } from './hooks/useEditorSave'
 import { useMenuEvents, type MenuEventHandlers } from './hooks/useMenuEvents'
 import { useNoteTabs } from './hooks/useNoteTabs'
@@ -16,6 +17,7 @@ import { useWriteFailureRecord, useWriteFailures } from './hooks/useWriteFailure
 import { closeAppWindow, exitApp } from './utils/appWindow'
 import { noteRootForPath } from './utils/noteEntry'
 import { pickNoteToOpen } from './utils/noteOpenDialog'
+import { openNotesSettled } from './utils/noteOpenRequest'
 
 const noop = () => {}
 
@@ -188,13 +190,7 @@ export default function App() {
     void (async () => {
       const path = await pickNoteToOpen()
       if (!path) return
-      // A refused write is recorded against its Tab; opening goes ahead.
-      await settleAndRecord().catch(noop)
-      try {
-        await openNote(path)
-      } catch (error) {
-        console.error(`Failed to open ${path}:`, error)
-      }
+      await openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
     })()
   }, [openNote, settleAndRecord])
 
@@ -224,6 +220,9 @@ export default function App() {
   }), [activeTabPath, appearance.handlers, onOpenNote, onSave, quit, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
+  // A `.md` dropped on the window opens like File → Open Document…; an image
+  // dropped over a Document is the editor's, and nothing else is picked up.
+  useDocumentDrop({ openNote, settleActiveNote: settleAndRecord })
 
   const savedAt = activeTabPath ? savedAtByPath[activeTabPath] ?? null : null
 

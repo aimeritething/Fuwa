@@ -42,6 +42,24 @@ function htmlCodeBlock(markup: string): string {
 }
 
 describe('handleRichEditorPaste', () => {
+  it('leaves a pasted image to the kernel, which writes it as an Attachment', () => {
+    // A screenshot on the clipboard arrives as files and nothing else; the
+    // default handler is BlockNote's file branch, and `uploadFile` puts the
+    // Attachment in `attachments/` beside the Document (AIM-384).
+    const context = pasteContext({})
+    context.event = {
+      clipboardData: {
+        getData: vi.fn(() => ''),
+        types: ['Files'],
+      },
+    } as unknown as ClipboardEvent
+
+    expect(handleRichEditorPaste(context)).toBe(true)
+
+    expect(context.defaultPasteHandler).toHaveBeenCalledWith()
+    expect(context.editor.pasteText).not.toHaveBeenCalled()
+  })
+
   it('turns a selected label into a link when a URL is pasted', () => {
     const createLink = vi.fn()
     const context = pasteContext({

@@ -4,6 +4,7 @@ import { isTauri, mockInvoke } from '../mock-tauri'
 import type { Tab } from '../types'
 import { isDocumentPath, noteEntryForPath, noteRootForPath } from '../utils/noteEntry'
 import { restoreOpenEditors as restoreSurvivingEditors, type SessionEditor } from '../utils/sessionSchema'
+import { allowVaultAssets } from '../utils/vaultAssetScope'
 import { cacheNoteContent } from './noteContentCache'
 import * as tabsState from './noteTabsState'
 import { EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsState'
@@ -18,9 +19,12 @@ import { EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsState'
 
 async function readNoteContent(path: string, vaultPath: string): Promise<string> {
   const args = { path, vaultPath }
-  return isTauri()
-    ? invoke<string>('get_note_content', args)
-    : mockInvoke<string>('get_note_content', args)
+  if (!isTauri()) return mockInvoke<string>('get_note_content', args)
+
+  // Before the read, so the content reaches the editor with the Document's
+  // Attachments already viewable rather than a paint later.
+  await allowVaultAssets(vaultPath)
+  return invoke<string>('get_note_content', args)
 }
 
 async function readTab(path: string): Promise<Tab> {
@@ -62,7 +66,7 @@ export function useNoteTabs() {
 
   /**
    * Restore rule (spec section 5): missing files are dropped, the active Tab
-   * falls to its successor. Documents only until AIM-384 gives Image files
+   * falls to its successor. Documents only until AIM-388 gives Image files
    * Tabs. A Document opened before the restore settles (a Finder launch)
    * keeps its Tab and stays active.
    */

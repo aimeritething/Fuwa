@@ -138,7 +138,7 @@ describe('useNoteTabs', () => {
     expect(result.current.activeTabPath).toBe(C)
   })
 
-  it('restores Documents only: an Image file entry is left for AIM-384', async () => {
+  it('restores Documents only: an Image file entry is left for AIM-388', async () => {
     seedFiles({ [A]: '# A\n' })
     const { result } = renderHook(() => useNoteTabs())
 

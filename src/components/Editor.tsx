@@ -5,18 +5,13 @@ import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { useEditorFocus } from '../hooks/useEditorFocus'
 import { useEditorTheme } from '../hooks/useTheme'
 import { useEditorFocusScope } from '../hooks/editorFocusOwnership'
-import {
-  emptyImageUploadResult,
-  isUnsupportedImageFormatError,
-  uploadImageFile,
-  type UploadImageFileResult,
-} from '../hooks/useImageDrop'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { Tab } from '../types'
 import { dispatchEditorFindAvailability } from '../utils/editorFindEvents'
 import { installRichEditorMarkdownSerializer } from '../utils/richEditorMarkdown'
 import type { WriteFailure } from '../hooks/useWriteFailures'
 import { useRegisterEditorContentFlushes } from './editorContentFlushRegistration'
+import { uploadEditorImage } from './editorImageUpload'
 import { schema } from './editorSchema'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
 import { createMarkdownHighlightShortcutExtension } from './markdownHighlightShortcutExtension'
@@ -78,14 +73,6 @@ export interface EditorProps {
   onDiscardWrite: (path: string) => void
 }
 
-/** Images arrive with AIM-384; until then an unsupported format is logged, not surfaced. */
-function handleEditorImageUploadFailure(file: File, error: unknown): UploadImageFileResult {
-  if (!isUnsupportedImageFormatError(error)) throw error
-
-  console.warn('[editor] Unsupported image format:', error.message)
-  return emptyImageUploadResult(file)
-}
-
 function useLatestRef<T>(value: T): MutableRefObject<T> {
   const ref = useRef(value)
   useEffect(() => {
@@ -102,13 +89,9 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
     ...RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS,
     schema,
     domAttributes: RICH_EDITOR_BIDI_DOM_ATTRIBUTES,
-    uploadFile: async (file: File) => {
-      try {
-        return await uploadImageFile(file, vaultPathRef.current)
-      } catch (error) {
-        return handleEditorImageUploadFailure(file, error)
-      }
-    },
+    // A pasted image lands in `attachments/` beside the Document; the block
+    // holds its asset URL, which Autosave writes back as a relative path.
+    uploadFile: (file: File) => uploadEditorImage(file, vaultPathRef.current),
     pasteHandler: createRichEditorPasteHandler(),
     tabBehavior: 'prefer-indent',
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },

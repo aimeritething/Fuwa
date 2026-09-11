@@ -1,17 +1,13 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import type { Event as TauriEvent, UnlistenFn } from '@tauri-apps/api/event'
-import type { DragDropEvent as TauriDragDropPayload } from '@tauri-apps/api/webview'
 import { isTauri } from '../mock-tauri'
-import { cleanupTauriEventListeners } from '../utils/tauriEventCleanup'
+import { IMAGE_FILE_EXTENSIONS } from '../utils/filePreview'
 import { attachmentAssetUrlFromPath } from '../utils/vaultAttachments'
+import { useTauriDragDropEvent, type TauriDragDropEvent } from './useTauriDragDropEvent'
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif']
-const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff']
 const UNSUPPORTED_HEIC_EXTENSIONS = ['heic', 'heif']
 const UNSUPPORTED_HEIC_MIME_TYPES = ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence']
-const TAURI_DRAG_DROP_EVENT = 'tauri://drag-drop'
-const TAURI_DRAG_LEAVE_EVENT = 'tauri://drag-leave'
 
 type ImageUrlHandler = (url: string) => void
 type UnsupportedImageImportError = {
@@ -25,7 +21,6 @@ export type ImageImportError = UnsupportedImageImportError | {
   totalCount: number
 }
 type ImageImportErrorHandler = (error: ImageImportError) => void
-type TauriDropEvent = TauriEvent<TauriDragDropPayload>
 export type UploadImageFileResult = string | { props: { name: string; url: string } }
 type CopyImageToVaultRequest = {
   sourcePath: string
@@ -44,7 +39,7 @@ type HtmlDroppedImagesRequest = {
   vaultPath: string | undefined
 }
 type NativeDropEventRequest = {
-  event: TauriDropEvent
+  event: TauriDragDropEvent
   onImageImportError: ImageImportErrorHandler | undefined
   onImageUrl: ImageUrlHandler | undefined
   setIsDragOver: (isDragOver: boolean) => void
@@ -65,10 +60,6 @@ export class UnsupportedImageFormatError extends Error implements UnsupportedIma
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string')
 }
 
 function filenameFromPath(path: string): string {
@@ -106,14 +97,6 @@ export function isUnsupportedImageFormatError(error: unknown): error is Unsuppor
     )
 }
 
-function isNativeDropPayload(payload: unknown): payload is TauriDragDropPayload {
-  if (!isRecord(payload)) return false
-  const type = Reflect.get(payload, 'type')
-  if (typeof type !== 'string') return false
-  if (type !== 'drop') return true
-  return isStringArray(Reflect.get(payload, 'paths'))
-}
-
 function hasImageFiles(dt: DataTransfer): boolean {
   for (let i = 0; i < dt.items.length; i++) {
     const item = Reflect.get(dt.items, i) as DataTransferItem | undefined
@@ -123,7 +106,7 @@ function hasImageFiles(dt: DataTransfer): boolean {
 }
 
 function isImagePath(path: string): boolean {
-  return IMAGE_EXTENSIONS.includes(extensionFromFilename(path))
+  return IMAGE_FILE_EXTENSIONS.includes(extensionFromFilename(path))
 }
 
 function isDroppedImageFile(file: File): boolean {
@@ -274,11 +257,17 @@ function handleNativeDropEvent({
   setIsDragOver,
   vaultPath,
 }: NativeDropEventRequest): void {
-  if (!isNativeDropPayload(event.payload)) {
-    setIsDragOver(false)
+  const { payload } = event
+  // Native drag-drop is on, so the HTML5 `dragover` that used to raise the
+  // affordance never fires for a file from Finder; the enter event does, and
+  // it names the paths, so a `.md` being dragged past does not claim to be one.
+  // The over event repeats for every pointer move and names nothing, so it is
+  // left alone rather than taking the affordance back down each time.
+  if (payload.type === 'over') return
+  if (payload.type === 'enter') {
+    setIsDragOver(payload.paths.some(isImagePath))
     return
   }
-  const { payload } = event
   if (payload.type === 'drop') {
     setIsDragOver(false)
     insertDroppedImages({
@@ -290,23 +279,6 @@ function handleNativeDropEvent({
     return
   }
   setIsDragOver(false)
-}
-
-async function registerNativeDropListeners(
-  handler: (event: TauriDropEvent) => void,
-): Promise<UnlistenFn[]> {
-  const { getCurrentWebview } = await import('@tauri-apps/api/webview')
-  const webview = getCurrentWebview()
-  const unlisteners: UnlistenFn[] = []
-
-  try {
-    unlisteners.push(await webview.listen<TauriDragDropPayload>(TAURI_DRAG_DROP_EVENT, handler))
-    unlisteners.push(await webview.listen<TauriDragDropPayload>(TAURI_DRAG_LEAVE_EVENT, handler))
-    return unlisteners
-  } catch (error) {
-    cleanupTauriEventListeners(unlisteners)
-    throw error
-  }
 }
 
 interface UseImageDropOptions {
@@ -327,7 +299,9 @@ export function useImageDrop({ containerRef, onImageImportError, onImageUrl, vau
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
 
-  // HTML5 DnD handles OS image files while allowing internal editor drags through.
+  // HTML5 DnD handles OS image files while allowing internal editor drags
+  // through. Under Tauri nothing external reaches it — the drop is the native
+  // branch's below — so this is the browser's path, and the editor's own drags.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -373,37 +347,21 @@ export function useImageDrop({ containerRef, onImageImportError, onImageUrl, vau
     }
   }, [containerRef])
 
-  // Tauri native file drop intercepts OS file drops that bypass HTML5 DnD.
-  useEffect(() => {
-    if (!isTauri()) return
-
-    let unlisteners: UnlistenFn[] = []
-    let mounted = true
-
-    void (async () => {
-      try {
-        const nextUnlisteners = await registerNativeDropListeners((event) => {
-          handleNativeDropEvent({
-            event,
-            onImageImportError: onImageImportErrorRef.current,
-            onImageUrl: onImageUrlRef.current,
-            setIsDragOver,
-            vaultPath: vaultPathRef.current,
-          })
-        })
-        if (mounted) unlisteners = nextUnlisteners
-        else cleanupTauriEventListeners(nextUnlisteners)
-      } catch {
-        // Tauri webview API not available.
-      }
-    })()
-
-    return () => {
-      mounted = false
-      cleanupTauriEventListeners(unlisteners)
-      unlisteners = []
-    }
-  }, [])
+  /**
+   * Native drag-drop is where an OS file drop actually lands: `dragDropEnabled`
+   * is on, so WKWebView keeps such a drop away from the page and no HTML5 `drop`
+   * follows. The raw `tauri://drag-*` payloads carry only paths and a position,
+   * so the intake hook is the one that names the kind of drag.
+   */
+  useTauriDragDropEvent((event: TauriDragDropEvent) => {
+    handleNativeDropEvent({
+      event,
+      onImageImportError: onImageImportErrorRef.current,
+      onImageUrl: onImageUrlRef.current,
+      setIsDragOver,
+      vaultPath: vaultPathRef.current,
+    })
+  })
 
   return { isDragOver }
 }
