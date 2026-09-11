@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSession, restoreOpenEditors, sessionForOpenEditors } from './sessionSchema'
+import { clampSidebarWidth, parseSession, restoreOpenEditors, sessionForOpenEditors } from './sessionSchema'
 
 const A = '/Users/x/notes/a.md'
 const B = '/Users/x/notes/b.md'
@@ -124,5 +124,21 @@ describe('sessionForOpenEditors', () => {
 
   it('writes system when the appearance follows the OS', () => {
     expect(sessionForOpenEditors([], null, 'system').theme).toBe('system')
+  })
+
+  it('writes the sidebar state it is given', () => {
+    const session = sessionForOpenEditors([A], A, 'dark', '/Users/x/notes', { collapsed: true, width: 320 })
+
+    expect(session.folder).toBe('/Users/x/notes')
+    expect(session.sidebar).toEqual({ collapsed: true, width: 320 })
+  })
+})
+
+describe('the sidebar width', () => {
+  it('is clamped to the range the sidebar can actually take, whether restored or written', () => {
+    expect(clampSidebarWidth(20)).toBe(180)
+    expect(clampSidebarWidth(9000)).toBe(480)
+    expect(clampSidebarWidth(300.6)).toBe(301)
+    expect(parseSession({ version: 1, sidebar: { collapsed: true, width: 20 } })?.sidebar).toEqual({ collapsed: true, width: 180 })
   })
 })

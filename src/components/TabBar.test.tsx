@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Tab } from '../types'
 import { noteEntryForPath } from '../utils/noteEntry'
 import { TabBar } from './TabBar'
+import { TooltipProvider } from './ui/tooltip'
 
 const tab = (path: string): Tab => ({ entry: noteEntryForPath(path, ''), content: '' })
 const tabs = [tab('/n/a.md'), tab('/n/b.md'), tab('/n/c.md')]
@@ -33,5 +34,27 @@ describe('TabBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close b.md' }))
     expect(onClose).toHaveBeenCalledWith('/n/b.md')
     expect(onActivate).toHaveBeenCalledTimes(1)
+  })
+
+  it('with the sidebar collapsed, seats the traffic lights and the sidebar icon before the first tab', () => {
+    const onShowSidebar = vi.fn()
+    render(
+      <TooltipProvider>
+        <TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} sidebarCollapsed onShowSidebar={onShowSidebar} />
+      </TooltipProvider>,
+    )
+
+    const bar = screen.getByTestId('tab-bar')
+    const chrome = screen.getByTestId('collapsed-chrome')
+    expect(bar).toContainElement(chrome)
+    expect(chrome.compareDocumentPosition(screen.getByRole('tab', { name: 'a.md' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show sidebar' }))
+    expect(onShowSidebar).toHaveBeenCalledTimes(1)
+  })
+
+  it('carries no chrome while the sidebar is shown', () => {
+    render(<TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} sidebarCollapsed={false} onShowSidebar={vi.fn()} />)
+
+    expect(screen.queryByTestId('collapsed-chrome')).toBeNull()
   })
 })

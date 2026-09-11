@@ -15,6 +15,12 @@
   color: var(--text-primary);
 }
 
+/* Until the Session is restored the shell is laid out but not painted, so the
+   sidebar and card appear once, in their restored state. */
+.fuwa-shell[data-restoring] {
+  visibility: hidden;
+}
+
 .fuwa-card {
   position: relative;
   display: flex;
@@ -32,9 +38,20 @@
   container: editor / inline-size;
 }
 
-/* The empty card keeps a drag strip where the tab bar would be. */
+/* Collapsed ("Flush", spec section 2): the card goes edge-to-edge, no margin,
+   no radius, no ring. The traffic lights then sit inside the tab bar's row. */
+.fuwa-card[data-collapsed] {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The empty card keeps a drag strip where the tab bar would be; collapsed, it
+   seats the traffic lights and the sidebar icon like the tab bar does. */
 .fuwa-card__top {
+  display: flex;
   flex: none;
+  align-items: center;
   height: 44px;
   -webkit-app-region: drag;
 }
@@ -51,6 +68,11 @@
   border-bottom: var(--hairline) solid var(--border-subtle);
   -webkit-app-region: drag;
   user-select: none;
+}
+
+/* Collapsed, the lights' room starts at the window edge. */
+.fuwa-card[data-collapsed] .fuwa-tabs {
+  padding-left: 0;
 }
 
 .fuwa-tab {
@@ -207,6 +229,15 @@
   margin-right: 6px;
   font-weight: 400;
   color: var(--text-secondary);
+}
+
+.fuwa-empty__hint-group {
+  display: flex;
+  gap: 22px;
+}
+
+.fuwa-empty__dot {
+  color: var(--text-faint);
 }
 
 /* The error bar (AIM-385): a Linear callout in the red chromatic role (accent

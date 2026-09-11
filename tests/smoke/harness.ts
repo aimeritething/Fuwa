@@ -28,6 +28,23 @@ export function watchForErrors(page: Page) {
   return { pageErrors, consoleErrors }
 }
 
+/** The Session file as the fixture holds it. */
+export function storedSession(page: Page): Promise<unknown> {
+  return page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+}
+
+/** Queue `path` as the directory dialog's answer, so the next ⌘O or Open Folder click opens it. */
+export async function queueFolderSelection(page: Page, path: string) {
+  await page.evaluate((chosen) => window.__fuwaMockVault?.queueDialogSelection([chosen]), path)
+}
+
+/** Queue `path` as the directory dialog's answer, press ⌘O and wait for the Explorer tree. */
+export async function openFolderThroughDialog(page: Page, path: string) {
+  await queueFolderSelection(page, path)
+  await page.keyboard.press('Meta+o')
+  await expect(page.getByRole('tree')).toBeVisible()
+}
+
 /** Queue `path` as the dialog's answer and press ⌘⇧O. */
 export async function openDocumentThroughDialog(page: Page, path: string) {
   await page.evaluate((selected) => {

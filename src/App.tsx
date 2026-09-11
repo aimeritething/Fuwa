@@ -19,6 +19,7 @@ import { useEditorSave } from './hooks/useEditorSave'
 import { useMenuEvents, type MenuEventHandlers } from './hooks/useMenuEvents'
 import { useNoteTabs } from './hooks/useNoteTabs'
 import { useSession } from './hooks/useSession'
+import { useSidebar } from './hooks/useSidebar'
 import { useToast } from './hooks/useToast'
 import { useTabCommands } from './hooks/useTabCommands'
 import { useThemeMode } from './hooks/useThemeMode'
@@ -114,6 +115,7 @@ export default function App() {
     restoreOpenEditors,
   } = useNoteTabs(folder, folderState.listsFile)
   const appearance = useAppearance()
+  const { sidebar, toggle: toggleSidebar, collapse: collapseSidebar, setWidth: setSidebarWidth, restore: restoreSidebar } = useSidebar()
   const { restored } = useSession({
     folder,
     restoreFolder: folderState.restoreFolder,
@@ -122,6 +124,8 @@ export default function App() {
     theme: appearance.themeMode,
     restoreOpenEditors,
     restoreTheme: appearance.restoreTheme,
+    sidebar,
+    restoreSidebar,
   })
   useThemeMode(appearance.themeMode, restored)
   const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
@@ -317,13 +321,25 @@ export default function App() {
     dropTabsUnder: dropTabsUnder,
   })
 
+  /**
+   * Opening a Document with no Folder open collapses the sidebar (spec
+   * section 2): there is nothing to browse, so the card takes the window. With
+   * a Folder open the sidebar stays as it is. File → Open Document… and a
+   * `.md` dropped on the window both open this way; the Explorer's rows
+   * cannot, there being no Folder to click in.
+   */
+  const openLoneNote = useCallback(async (path: string) => {
+    await openNote(path)
+    if (folder === null) collapseSidebar()
+  }, [collapseSidebar, folder, openNote])
+
   const onOpenNote = useCallback(() => {
     void (async () => {
       const path = await pickNoteToOpen()
       if (!path) return
-      await openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
+      await openNotesSettled({ openNote: openLoneNote, paths: [path], settleActiveNote: settleAndRecord })
     })()
-  }, [openNote, settleAndRecord])
+  }, [openLoneNote, settleAndRecord])
 
   // Save is disabled with no Document open — and an Image Tab is not one, so
   // ⌘S over a picture does nothing. The native menu item goes the same way
@@ -333,8 +349,10 @@ export default function App() {
     settleAndRecord().catch(noop)
   }, [activeDocumentPath, settleAndRecord])
 
-  // Folder, Document, Save, Quit, Appearance and Tab commands are wired;
-  // the other manifest commands get their handlers with their own tickets.
+  // Folder, Document, Save, Quit, Appearance, Sidebar and Tab commands are
+  // wired; the other manifest commands get their handlers with their own
+  // tickets. ⌘[ toggles the sidebar in both states; in Raw mode it shadows
+  // CodeMirror's indent-less (⌘] stays the editor's).
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeDocumentPath,
     hasFolder: folder !== null,
@@ -343,6 +361,7 @@ export default function App() {
     onCloseVault: onCloseFolder,
     onSave,
     onQuit: quit,
+    onToggleSidebar: toggleSidebar,
     ...tabCommands.handlers,
     ...appearance.handlers,
     onCreateNote: explorerActions.createDocument,
@@ -352,18 +371,22 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, folder, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands])
+  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, folder, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands, toggleSidebar])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
   // A `.md` dropped on the window opens like File → Open Document…; an image
   // dropped over a Document is the editor's, and nothing else is picked up.
-  useDocumentDrop({ openNote, settleActiveNote: settleAndRecord })
+  useDocumentDrop({ openNote: openLoneNote, settleActiveNote: settleAndRecord })
 
   const savedAt = activeTabPath ? savedAtByPath[activeTabPath] ?? null : null
 
+  // Nothing is painted until the Session is back, so a launch never shows the
+  // expanded sidebar for a frame before collapsing it (the window's own
+  // background colour is the canvas until then).
   return (
-    <div className="fuwa-shell">
-      <Sidebar>
+    <div className="fuwa-shell" data-restoring={!restored || undefined}>
+      {!sidebar.collapsed && (
+      <Sidebar width={sidebar.width} onWidthChange={setSidebarWidth} onToggle={toggleSidebar}>
         <OpenEditors
           folder={folder}
           tabs={tabs}
@@ -378,9 +401,11 @@ export default function App() {
           onOpenFile={openExplorerFile}
           actions={explorerActions}
           onCloseFolder={onCloseFolder}
+          onOpenFolder={onOpenFolder}
           error={folderState.error}
         />
       </Sidebar>
+      )}
       <Editor
         tabs={tabs}
         activeTabPath={activeTabPath}
@@ -397,6 +422,8 @@ export default function App() {
         onRetryWrite={retry}
         onDiscardWrite={discard}
         toast={toast}
+        sidebarCollapsed={sidebar.collapsed}
+        onShowSidebar={toggleSidebar}
       />
       <WriteFailureDialog prompt={writeFailures.prompt} onAnswer={answerPrompt} onDismiss={dismissPrompt} />
     </div>

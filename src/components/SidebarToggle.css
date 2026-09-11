@@ -1,0 +1,50 @@
+/* The sidebar toggle: a 24px icon button on the sidebar's top row and, when
+   collapsed, on the tab bar right after the traffic lights. Both rows drag
+   the window; the button does not. */
+.fuwa-sidebar-toggle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+  -webkit-app-region: no-drag;
+}
+
+.fuwa-sidebar-toggle:hover {
+  background: var(--control-tertiary-hover);
+  color: var(--text-primary);
+}
+
+.fuwa-sidebar-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
+}
+
+/* The tooltip is mono, so the shortcut reads as one. */
+.fuwa-sidebar-toggle__tip {
+  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+/* Collapsed: the traffic lights' room (macOS draws them at x 13, three 12px
+   lights 8px apart) and the icon after it, before the first tab. */
+.fuwa-collapsed-chrome {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 100%;
+  margin-right: 8px;
+}
+
+.fuwa-collapsed-chrome__lights {
+  flex: none;
+  width: 71px;
+}

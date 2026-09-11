@@ -5,7 +5,9 @@ import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } 
 // Editors rows, the successor rule on close, positional navigation and ⌘W.
 // With no Folder open every Tab is out-of-Folder (spec section 2, empty-state
 // table), so each row carries its dimmed parent after the name; the name
-// assertions here read the name span rather than the whole row.
+// assertions here read the name span rather than the whole row. Opening a
+// Document with no Folder collapses the sidebar (AIM-386), so the rows are
+// read after ⌘[ brings it back.
 
 const READING_LIST_PATH = `${MOCK_FOLDER}/Reading list.md`
 const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
@@ -23,6 +25,8 @@ async function openThree(page: Page) {
   await openDocumentThroughDialog(page, READING_LIST_PATH)
   await openDocumentThroughDialog(page, FUWA_PATH)
   await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await page.keyboard.press('Meta+BracketLeft')
+  await expect(page.getByTestId('sidebar')).toBeVisible()
 }
 
 test('three Documents give three Tabs and three Open Editors rows, with the active pair matching', async ({ page }) => {
