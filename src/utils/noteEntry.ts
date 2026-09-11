@@ -12,7 +12,7 @@ export function noteRootForPath(path: string): string {
   return separatorIndex > 0 ? path.slice(0, separatorIndex) : path
 }
 
-/** A Document is a `.md` file; Image files get their own Tabs with AIM-384. */
+/** A Document is a `.md` file; Image files get their own Tabs with AIM-388. */
 export function isDocumentPath(path: string): boolean {
   return /\.md$/iu.test(path)
 }

@@ -14,8 +14,11 @@ fn sanitize_filename(name: &str) -> String {
         .collect()
 }
 
-/// Image file extensions considered valid for drag-drop import.
-const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff"];
+/// What makes a file an Image file (CONTEXT.md), and so what a drop may turn
+/// into an Attachment. Kept in step with `IMAGE_FILE_EXTENSIONS` in the renderer.
+const IMAGE_EXTENSIONS: &[&str] = &[
+    "apng", "avif", "bmp", "gif", "ico", "jpeg", "jpg", "png", "svg", "tif", "tiff", "webp",
+];
 
 /// Prepare the attachments directory and generate a unique target path.
 pub(super) fn prepare_attachment_path(
@@ -189,7 +192,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        for ext in &["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff"] {
+        for ext in IMAGE_EXTENSIONS {
             let source_path = dir.path().join(format!("img.{}", ext));
             fs::write(&source_path, b"data").unwrap();
             let result = copy_image_to_vault(vault_path, source_path.to_str().unwrap());

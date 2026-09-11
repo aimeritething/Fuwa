@@ -2,7 +2,11 @@ import type { VaultEntry } from '../types'
 
 export type FilePreviewKind = 'image' | 'pdf' | 'audio' | 'video'
 
-const IMAGE_PREVIEW_EXTENSIONS = new Set([
+/**
+ * What makes a file an Image file (CONTEXT.md): Fuwa shows it and never edits
+ * it. The same list decides what a drop may turn into an Attachment.
+ */
+export const IMAGE_FILE_EXTENSIONS: readonly string[] = [
   'apng',
   'avif',
   'bmp',
@@ -15,7 +19,8 @@ const IMAGE_PREVIEW_EXTENSIONS = new Set([
   'tif',
   'tiff',
   'webp',
-])
+]
+const IMAGE_PREVIEW_EXTENSIONS = new Set(IMAGE_FILE_EXTENSIONS)
 const PDF_PREVIEW_EXTENSIONS = new Set(['pdf'])
 const AUDIO_PREVIEW_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'mp3', 'oga', 'ogg', 'opus', 'wav', 'wave'])
 const VIDEO_PREVIEW_EXTENSIONS = new Set(['m4v', 'mov', 'mp4', 'ogv', 'webm'])
