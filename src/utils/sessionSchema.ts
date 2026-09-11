@@ -1,4 +1,5 @@
 import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '../lib/themeMode'
+import { isImageFilePath } from './imageFile'
 
 /**
  * The Session file (spec section 5): one `session.json` in the app's config
@@ -121,8 +122,9 @@ export function restoreOpenEditors(
 }
 
 /**
- * The Session for the open Documents (every one in Rich mode until AIM-381
- * remembers a mode per Tab) and the chosen appearance.
+ * The Session for the open Tabs (every Document in Rich mode until AIM-381
+ * remembers a mode per Tab) and the chosen appearance. An Image file entry
+ * carries no `mode`: its kind comes from the extension.
  */
 export function sessionForOpenEditors(
   openPaths: readonly string[],
@@ -133,7 +135,7 @@ export function sessionForOpenEditors(
   return {
     version: SESSION_VERSION,
     folder,
-    openEditors: openPaths.map((path) => ({ path, mode: 'rich' })),
+    openEditors: openPaths.map((path) => (isImageFilePath(path) ? { path } : { path, mode: 'rich' })),
     activePath,
     theme,
     sidebar: DEFAULT_SESSION_SIDEBAR,

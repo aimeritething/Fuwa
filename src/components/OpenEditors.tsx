@@ -1,6 +1,7 @@
 import { memo } from 'react'
-import { FileText } from '@phosphor-icons/react'
+import { FileText, Image } from '@phosphor-icons/react'
 import type { Tab } from '../types'
+import { isImageFilePath } from '../utils/imageFile'
 import { documentLocation } from '../utils/explorer'
 import { CloseAffordance } from './CloseAffordance'
 import './Sidebar.css'
@@ -19,7 +20,8 @@ const LABEL = 'Open Editors'
  * The Open Editors sidebar group (spec section 2): a quiet label, one row per
  * open Tab mirroring the tab bar, the active row selected, a close affordance
  * on hover. Not rendered at all with zero Tabs. Outside the Folder, rows
- * show the parent directory dimmed after the file name.
+ * show the parent directory dimmed after the file name. A row's icon is the
+ * Explorer's: a Document's page, an Image file's picture.
  */
 export const OpenEditors = memo(function OpenEditors({ tabs, folder, activeTabPath, onActivate, onClose }: OpenEditorsProps) {
   if (tabs.length === 0) return null
@@ -54,6 +56,7 @@ interface OpenEditorRowProps {
 }
 
 function OpenEditorRow({ path, filename, parent, active, onActivate, onClose }: OpenEditorRowProps) {
+  const Icon = isImageFilePath(path) ? Image : FileText
   return (
     <div
       className="fuwa-sidebar-row"
@@ -69,7 +72,7 @@ function OpenEditorRow({ path, filename, parent, active, onActivate, onClose }: 
         if (event.key === 'Enter' || event.key === ' ') onActivate(path)
       }}
     >
-      <FileText size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
+      <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
       <span className="fuwa-sidebar-row__name">{filename}</span>
       {parent && <span className="fuwa-sidebar-row__parent">{parent}</span>}
       <CloseAffordance name={filename} onClose={() => onClose(path)} />

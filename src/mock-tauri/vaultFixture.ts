@@ -30,12 +30,24 @@ export interface MockVaultFile {
   kind: MockVaultFileKind
   /** Present for notes only. */
   content?: string
+  /** Present for images only: what the asset protocol would serve, as a data URL. */
+  dataUrl?: string
   /** Seconds since the epoch, as the Rust side reports it. */
   modifiedAt: number
   fileSize: number
 }
 
 export type MockVaultListing = Pick<MockVaultFile, 'path' | 'kind' | 'modifiedAt' | 'fileSize'>
+
+/** A picture the fixture can serve: an SVG of the given natural size, weighing the given bytes. */
+export interface MockVaultImage {
+  width: number
+  height: number
+  fileSize: number
+  fill?: string
+  /** Extra SVG markup inside the picture, so a spec can plant a `<script>` an `<img>` must not run. */
+  markup?: string
+}
 
 export interface MockVaultCall {
   command: string
@@ -63,6 +75,10 @@ export interface MockVault {
   files(): MockVaultFile[]
   /** Write a note directly, without going through (or logging) a command. */
   writeNote(path: string, content: string): void
+  /** Write an Image file directly: the stand-in for a picture saved from another app. */
+  writeImage(path: string, image: MockVaultImage): void
+  /** What the asset protocol would serve for an Image file, or null when there is no such picture. */
+  assetUrl(path: string): string | null
   removeFile(path: string): void
   emitExternalChange(paths: string[]): void
   watchedPath(): string | null
@@ -90,6 +106,7 @@ const ACTIVE_VAULT_PATH_ERROR = 'Path must stay inside the active vault'
 const ACTIVE_VAULT_UNAVAILABLE_ERROR = 'Active vault is not available'
 const FILE_DOES_NOT_EXIST_ERROR = 'File does not exist'
 const NOT_A_NOTE_ERROR = 'Path is not a note'
+const NOT_AN_IMAGE_ERROR = 'Path is not an Image file'
 const READ_ONLY_ERROR = 'Failed to write file: Permission denied (os error 13)'
 const SESSION_STORAGE_KEY = 'fuwa:mock-session'
 
@@ -99,7 +116,7 @@ export const DEFAULT_MOCK_VAULT_FILES: MockVaultFile[] = [
   file('Projects', 'folder', undefined, 1_757_500_200),
   file('Projects/Fuwa.md', 'note', '---\ntitle: Fuwa\n---\n# Fuwa\n\nA small desktop app for Markdown files.\n', 1_757_500_300),
   file('Attachments', 'folder', undefined, 1_757_500_400),
-  file('Attachments/lake.png', 'image', undefined, 1_757_500_500, 2_048),
+  image('Attachments/lake.png', { width: 1920, height: 1080, fileSize: 245_760 }, 1_757_500_500),
 ]
 
 function file(
@@ -110,6 +127,22 @@ function file(
   fileSize = content?.length ?? 0,
 ): MockVaultFile {
   return { path: `${MOCK_VAULT_PATH}/${relativePath}`, kind, content, modifiedAt, fileSize }
+}
+
+/** An SVG of the requested natural size; the extension the Folder shows is the app's business, not the bytes'. */
+function imageDataUrl({ width, height, fill = '#5b7cfa', markup = '' }: MockVaultImage): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/>${markup}</svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+function image(relativePath: string, picture: MockVaultImage, modifiedAt: number): MockVaultFile {
+  return {
+    path: `${MOCK_VAULT_PATH}/${relativePath}`,
+    kind: 'image',
+    dataUrl: imageDataUrl(picture),
+    modifiedAt,
+    fileSize: picture.fileSize,
+  }
 }
 
 function nowInSeconds(): number {
@@ -227,6 +260,15 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     files.set(path, { path, kind: 'note', content, modifiedAt, fileSize: content.length })
   }
 
+  function writeImage(candidate: unknown, picture: MockVaultImage): void {
+    const path = requireInsideVault(candidate)
+    const existing = files.get(path)
+    if (existing && existing.kind !== 'image') throw new Error(NOT_AN_IMAGE_ERROR)
+    const modifiedAt = nowInSeconds()
+    ensureFolders(path, modifiedAt)
+    files.set(path, { path, kind: 'image', dataUrl: imageDataUrl(picture), modifiedAt, fileSize: picture.fileSize })
+  }
+
   function answer(command: string, args: Record<string, unknown> | undefined): unknown {
     switch (command) {
       case 'list_files': {
@@ -291,6 +333,8 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     },
     files: () => Array.from(files.values(), (entry) => ({ ...entry })),
     writeNote,
+    writeImage,
+    assetUrl: (path) => files.get(path)?.dataUrl ?? null,
     removeFile: (path) => { files.delete(requireInsideVault(path)) },
     emitExternalChange: (paths) => {
       window.dispatchEvent(new CustomEvent('fuwa:external-change', { detail: paths }))

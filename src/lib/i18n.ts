@@ -98,7 +98,6 @@ export const EN_TRANSLATIONS = {
   "fileActions.error.openFile": "Failed to open file: {detail}",
   "fileActions.error.pathMissing": "Path does not exist: {path}",
   "fileActions.error.revealPath": "Failed to reveal path: {detail}",
-  "filePreview.copyDeepLink": "Copy link",
   "save.error.failed": "Save failed: {error}",
   "save.error.invalidPath": "Save failed: The note path is invalid on this platform. Rename the note or move it to a valid folder, then try again.",
   "save.toast.missingActiveVault": "Select or restore a vault before saving.",

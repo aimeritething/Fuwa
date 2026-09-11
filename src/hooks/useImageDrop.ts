@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri } from '../mock-tauri'
-import { IMAGE_FILE_EXTENSIONS } from '../utils/filePreview'
+import { isImageFilePath } from '../utils/imageFile'
 import { attachmentAssetUrlFromPath } from '../utils/vaultAttachments'
 import { useTauriDragDropEvent, type TauriDragDropEvent } from './useTauriDragDropEvent'
 
@@ -105,13 +105,9 @@ function hasImageFiles(dt: DataTransfer): boolean {
   return Array.from(dt.files).some(isDroppedImageFile)
 }
 
-function isImagePath(path: string): boolean {
-  return IMAGE_FILE_EXTENSIONS.includes(extensionFromFilename(path))
-}
-
 function isDroppedImageFile(file: File): boolean {
   return IMAGE_MIME_TYPES.includes(file.type.toLowerCase())
-    || isImagePath(file.name)
+    || isImageFilePath(file.name)
     || isUnsupportedHeicFile(file)
 }
 
@@ -245,7 +241,7 @@ function insertDroppedImages({
   reportUnsupportedDroppedImages(imagePaths, onImageImportError)
   if (!vaultPath || !onImageUrl) return
 
-  for (const sourcePath of imagePaths.filter(isImagePath)) {
+  for (const sourcePath of imagePaths.filter(isImageFilePath)) {
     void copyImageToVault({ sourcePath, vaultPath }).then(onImageUrl, logDroppedImageCopyFailure)
   }
 }
@@ -265,7 +261,7 @@ function handleNativeDropEvent({
   // left alone rather than taking the affordance back down each time.
   if (payload.type === 'over') return
   if (payload.type === 'enter') {
-    setIsDragOver(payload.paths.some(isImagePath))
+    setIsDragOver(payload.paths.some(isImageFilePath))
     return
   }
   if (payload.type === 'drop') {

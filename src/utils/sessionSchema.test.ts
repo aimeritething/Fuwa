@@ -116,6 +116,12 @@ describe('sessionForOpenEditors', () => {
     })
   })
 
+  it('leaves an Image file entry without a mode, its kind being the extension', () => {
+    const session = sessionForOpenEditors([A, '/Users/x/notes/cover.png'], A, 'dark')
+
+    expect(session.openEditors).toEqual([{ path: A, mode: 'rich' }, { path: '/Users/x/notes/cover.png' }])
+  })
+
   it('writes system when the appearance follows the OS', () => {
     expect(sessionForOpenEditors([], null, 'system').theme).toBe('system')
   })

@@ -26,7 +26,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 function makeHandlers(overrides: Partial<MenuEventHandlers> = {}): MenuEventHandlers {
   return {
-    activeTabPath: null,
+    activeDocumentPath: null,
     onCreateNote: vi.fn(),
     onOpenNote: vi.fn(),
     onQuickOpen: vi.fn(),
@@ -93,7 +93,7 @@ describe('useMenuEvents', () => {
   })
 
   it('outside Tauri it never talks to the native menu', () => {
-    renderHook(() => useMenuEvents(makeHandlers({ activeTabPath: '/n/a.md' })))
+    renderHook(() => useMenuEvents(makeHandlers({ activeDocumentPath: '/n/a.md' })))
 
     expect(runtime.invoke).not.toHaveBeenCalled()
   })
@@ -129,18 +129,25 @@ describe('useMenuEvents', () => {
 
     it('keeps the Document-dependent menu items in step with the active Document', async () => {
       const { rerender } = renderHook(
-        ({ activeTabPath }: { activeTabPath: string | null }) => useMenuEvents(makeHandlers({ activeTabPath })),
-        { initialProps: { activeTabPath: null } },
+        ({ activeDocumentPath }: { activeDocumentPath: string | null }) => useMenuEvents(makeHandlers({ activeDocumentPath })),
+        { initialProps: { activeDocumentPath: null } },
       )
       await flushMicrotasks()
 
       expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false } })
 
-      rerender({ activeTabPath: '/n/a.md' })
+      rerender({ activeDocumentPath: '/n/a.md' })
       await flushMicrotasks()
 
       expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
+
+      // Save, Toggle Rich/Raw and Find in Document go back to disabled over an
+      // Image Tab, which the App reports by having no active Document.
+      rerender({ activeDocumentPath: null })
+      await flushMicrotasks()
+
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false } })
     })
   })
 })

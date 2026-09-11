@@ -7,7 +7,7 @@
 
 import { createMockVault, type MockVault } from './vaultFixture'
 
-export type { MockVault, MockVaultCall, MockVaultFile, MockVaultListing } from './vaultFixture'
+export type { MockVault, MockVaultCall, MockVaultFile, MockVaultImage, MockVaultListing } from './vaultFixture'
 export { createMockVault, DEFAULT_MOCK_VAULT_FILES, MOCK_VAULT_PATH } from './vaultFixture'
 
 export function isTauri(): boolean {
@@ -34,6 +34,11 @@ export function installMockVault(): MockVault {
 
 export function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   return getMockVault().invoke<T>(cmd, args)
+}
+
+/** The browser's stand-in for the asset protocol: what an Image file's Tab shows outside Tauri. */
+export function mockAssetUrl(path: string): string | null {
+  return getMockVault().assetUrl(path)
 }
 
 /**

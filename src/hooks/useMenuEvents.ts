@@ -9,7 +9,8 @@ import {
 import { cleanupTauriEventListener, type TauriUnlisten } from '../utils/tauriEventCleanup'
 
 export interface MenuEventHandlers extends AppCommandHandlers {
-  activeTabPath: string | null
+  /** The active Tab's path when it is a Document; null with no Tab, or with an Image Tab. */
+  activeDocumentPath: string | null
 }
 
 interface MenuStatePayload {
@@ -120,7 +121,7 @@ export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
 /** Listen for native macOS menu events and dispatch them to the appropriate handlers. */
 export function useMenuEvents(handlers: MenuEventHandlers) {
   const ref = useRef(handlers)
-  const hasActiveNote = handlers.activeTabPath !== null
+  const hasActiveNote = handlers.activeDocumentPath !== null
   const menuState = useMemo(() => ({ hasActiveNote }), [hasActiveNote])
 
   useEffect(() => {

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getMockVault, isTauri, mockInvoke } from '../mock-tauri'
 import type { ListedFile } from '../utils/explorer'
+import { findByNotePath } from '../utils/notePathIdentity'
 import { allowVaultAssets } from '../utils/vaultAssetScope'
 
 async function listFiles(vaultPath: string): Promise<ListedFile[]> {
@@ -21,37 +22,53 @@ export function useFolder() {
   const [files, setFiles] = useState<ListedFile[]>([])
   const [error, setError] = useState<string | null>(null)
   const folderRef = useRef<string | null>(null)
+  const filesRef = useRef<ListedFile[]>([])
   const generation = useRef(0)
-  const changing = useRef(false)
+  const changing = useRef<Promise<void> | null>(null)
 
-  const changeFolder = useCallback(async (path: string | null, beforeChange: () => Promise<void>) => {
-    if (changing.current) return
-    changing.current = true
-    try {
-      const next = path?.replace(/\/+$/u, '') || (path === '/' ? '/' : null)
-      // A Folder that will not list is the reader's problem, so the Explorer
-      // says so (spec section 2); a Write failure in `beforeChange` is not,
-      // and keeps the Folder it already has without a message.
-      let listed: ListedFile[] = []
-      if (next) {
-        try {
-          listed = await listFiles(next)
-        } catch (error) {
-          setError(`Folder not found: ${next}`)
-          throw error
-        }
+  const applyFolderChange = useCallback(async (path: string | null, beforeChange: () => Promise<void>) => {
+    const next = path?.replace(/\/+$/u, '') || (path === '/' ? '/' : null)
+    // A Folder that will not list is the reader's problem, so the Explorer
+    // says so (spec section 2); a Write failure in `beforeChange` is not,
+    // and keeps the Folder it already has without a message.
+    let listed: ListedFile[] = []
+    if (next) {
+      try {
+        listed = await listFiles(next)
+      } catch (error) {
+        setError(`Folder not found: ${next}`)
+        throw error
       }
-      if (next) await allowVaultAssets(next)
-      await beforeChange()
-      generation.current += 1
-      folderRef.current = next
-      setFolder(next)
-      setFiles(listed)
-      setError(null)
-    } finally {
-      changing.current = false
     }
+    if (next) await allowVaultAssets(next)
+    await beforeChange()
+    generation.current += 1
+    folderRef.current = next
+    filesRef.current = listed
+    setFolder(next)
+    setFiles(listed)
+    setError(null)
   }, [])
+
+  /**
+   * The change already under way wins, and a second request waits for it
+   * rather than racing it: a caller that reads the Folder or its listing after
+   * the call sees them settled either way. The Session restore relies on that
+   * — it asks the listing whether an Image file's Tab still has a file.
+   */
+  const changeFolder = useCallback(async (path: string | null, beforeChange: () => Promise<void>) => {
+    if (changing.current) {
+      await changing.current.catch(() => {})
+      return
+    }
+    const change = applyFolderChange(path, beforeChange)
+    changing.current = change
+    try {
+      await change
+    } finally {
+      changing.current = null
+    }
+  }, [applyFolderChange])
 
   const restoreFolder = useCallback(async (path: string | null) => {
     await changeFolder(path, async () => {}).catch(() => {})
@@ -63,8 +80,17 @@ export function useFolder() {
     if (!path) return
     const request = ++generation.current
     const listed = await listFiles(path)
-    if (request === generation.current && path === folderRef.current) setFiles(listed)
+    if (request !== generation.current || path !== folderRef.current) return
+    filesRef.current = listed
+    setFiles(listed)
   }, [])
 
-  return { folder, files, error, changeFolder, restoreFolder, refresh }
+  /**
+   * Whether the Folder holds a file, as of now rather than as of the last
+   * render. The Session restore asks this about an Image file entry the
+   * moment the Folder is back, before `files` has reached React's state.
+   */
+  const listsFile = useCallback((path: string) => findByNotePath(filesRef.current, path) !== undefined, [])
+
+  return { folder, files, error, changeFolder, restoreFolder, refresh, listsFile }
 }

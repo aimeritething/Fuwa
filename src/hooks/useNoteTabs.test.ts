@@ -19,6 +19,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 const A = '/n/a.md'
 const B = '/n/b.md'
 const C = '/n/c.md'
+const COVER = '/n/cover.png'
 
 /** Answers get_note_content from `files`; a path outside it does not exist. */
 function seedFiles(files: Record<string, string>) {
@@ -138,16 +139,87 @@ describe('useNoteTabs', () => {
     expect(result.current.activeTabPath).toBe(C)
   })
 
-  it('restores Documents only: an Image file entry is left for AIM-388', async () => {
+  it('restores an Image file entry the Folder still lists, without reading it', async () => {
     seedFiles({ [A]: '# A\n' })
-    const { result } = renderHook(() => useNoteTabs())
+    const { result } = renderHook(() => useNoteTabs('/n', (path) => path === COVER))
 
     await act(async () => {
-      await result.current.restoreOpenEditors([{ path: '/n/cover.png' }, { path: A, mode: 'rich' }], A)
+      await result.current.restoreOpenEditors([{ path: COVER }, { path: A, mode: 'rich' }], COVER)
+    })
+
+    expect(openPaths(result)).toEqual([COVER, A])
+    expect(result.current.activeTabPath).toBe(COVER)
+    expect(runtime.invoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('drops an Image file the Folder no longer lists, its successor taking over', async () => {
+    seedFiles({ [A]: '# A\n' })
+    const { result } = renderHook(() => useNoteTabs('/n', () => false))
+
+    await act(async () => {
+      await result.current.restoreOpenEditors([{ path: COVER }, { path: A, mode: 'rich' }], COVER)
     })
 
     expect(openPaths(result)).toEqual([A])
-    expect(runtime.invoke).toHaveBeenCalledTimes(1)
+    expect(result.current.activeTabPath).toBe(A)
+  })
+
+  it('tolerates a hand-edited mode on an Image file entry, the extension deciding its kind', async () => {
+    const { result } = renderHook(() => useNoteTabs('/n', () => true))
+
+    await act(async () => {
+      await result.current.restoreOpenEditors([{ path: COVER, mode: 'raw' }], COVER)
+    })
+
+    expect(openPaths(result)).toEqual([COVER])
+    expect(runtime.invoke).not.toHaveBeenCalled()
+  })
+
+  it('opens an Image file as a Tab without reading a byte of it', async () => {
+    const { result } = renderHook(() => useNoteTabs('/n'))
+
+    await act(async () => {
+      await result.current.openNote(COVER)
+    })
+
+    expect(openPaths(result)).toEqual([COVER])
+    expect(result.current.activeTab?.entry.fileKind).toBe('binary')
+    expect(result.current.activeTab?.content).toBe('')
+    expect(runtime.invoke).not.toHaveBeenCalled()
+  })
+
+  it('activates the existing Tab when an Image file is opened again', async () => {
+    const { result } = renderHook(() => useNoteTabs('/n'))
+    seedFiles({ [A]: '# A\n' })
+
+    await act(async () => {
+      await result.current.openNote(COVER)
+      await result.current.openNote(A)
+      await result.current.openNote(COVER)
+    })
+
+    expect(openPaths(result)).toEqual([COVER, A])
+    expect(result.current.activeTabPath).toBe(COVER)
+  })
+
+  it('reloadTab counts an Image Tab\'s reload rather than reading bytes it has not got', async () => {
+    const { result } = renderHook(() => useNoteTabs('/n'))
+    await act(async () => { await result.current.openNote(COVER) })
+    runtime.invoke.mockClear()
+
+    await act(async () => { await result.current.reloadTab(COVER) })
+    await act(async () => { await result.current.reloadTab(COVER) })
+
+    expect(runtime.invoke).not.toHaveBeenCalled()
+    expect(result.current.tabs[0].reloads).toBe(2)
+  })
+
+  it('reloadTab leaves an Image file that is not open alone', async () => {
+    const { result } = renderHook(() => useNoteTabs('/n'))
+
+    await act(async () => { await result.current.reloadTab(COVER) })
+
+    expect(result.current.tabs).toEqual([])
   })
 
   it('announces the opened content on the note-content bus for the active Document', async () => {

@@ -1,10 +1,11 @@
 import type { VaultEntry } from '../types'
 
-export type FilePreviewKind = 'image' | 'pdf' | 'audio' | 'video'
-
 /**
  * What makes a file an Image file (CONTEXT.md): Fuwa shows it and never edits
- * it. The same list decides what a drop may turn into an Attachment.
+ * it. This one list decides what the Explorer lists, what a drop may turn into
+ * an Attachment, what the Rust scanner calls an image, and what opens as an
+ * Image Tab. Tolaria's pdf, audio and video branches are trimmed away
+ * (AIM-388): Fuwa previews nothing else.
  */
 export const IMAGE_FILE_EXTENSIONS: readonly string[] = [
   'apng',
@@ -20,10 +21,6 @@ export const IMAGE_FILE_EXTENSIONS: readonly string[] = [
   'tiff',
   'webp',
 ]
-const IMAGE_PREVIEW_EXTENSIONS = new Set(IMAGE_FILE_EXTENSIONS)
-const PDF_PREVIEW_EXTENSIONS = new Set(['pdf'])
-const AUDIO_PREVIEW_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'mp3', 'oga', 'ogg', 'opus', 'wav', 'wave'])
-const VIDEO_PREVIEW_EXTENSIONS = new Set(['m4v', 'mov', 'mp4', 'ogv', 'webm'])
 
 function extensionFromFilename(filename: string): string | null {
   const lastSegment = filename.split(/[\\/]/u).pop() ?? filename
@@ -36,41 +33,8 @@ export function previewExtension(entry: Pick<VaultEntry, 'filename' | 'path'>): 
   return extensionFromFilename(entry.filename) ?? extensionFromFilename(entry.path)
 }
 
+/** Kept for the carried editor-content state, which branches on it; Fuwa opens no `.html` Tab. */
 export function isHtmlFileEntry(entry: Pick<VaultEntry, 'filename' | 'path'>): boolean {
   const extension = previewExtension(entry)
   return extension === 'html' || extension === 'htm'
-}
-
-export function entrySupportsPreviewSourceToggle(entry: Pick<VaultEntry, 'filename' | 'path'>): boolean {
-  const extension = previewExtension(entry)
-  return extension === 'md' || extension === 'markdown' || extension === 'html' || extension === 'htm'
-}
-
-export function isImagePreviewEntry(entry: Pick<VaultEntry, 'fileKind' | 'filename' | 'path'>): boolean {
-  return filePreviewKind(entry) === 'image'
-}
-
-export function isPdfPreviewEntry(entry: Pick<VaultEntry, 'fileKind' | 'filename' | 'path'>): boolean {
-  return filePreviewKind(entry) === 'pdf'
-}
-
-export function filePreviewKind(entry: Pick<VaultEntry, 'fileKind' | 'filename' | 'path'>): FilePreviewKind | null {
-  if (entry.fileKind && entry.fileKind !== 'binary') return null
-
-  const extension = previewExtension(entry)
-  if (!extension) return null
-  if (IMAGE_PREVIEW_EXTENSIONS.has(extension)) return 'image'
-  if (PDF_PREVIEW_EXTENSIONS.has(extension)) return 'pdf'
-  if (AUDIO_PREVIEW_EXTENSIONS.has(extension)) return 'audio'
-  if (VIDEO_PREVIEW_EXTENSIONS.has(extension)) return 'video'
-  return null
-}
-
-export function isFilePreviewEntry(entry: Pick<VaultEntry, 'fileKind' | 'filename' | 'path'>): boolean {
-  return filePreviewKind(entry) !== null
-}
-
-export function previewFileTypeLabel(entry: Pick<VaultEntry, 'filename' | 'path'>): string {
-  const extension = previewExtension(entry)
-  return extension ? `${extension.toUpperCase()} file` : 'File'
 }
