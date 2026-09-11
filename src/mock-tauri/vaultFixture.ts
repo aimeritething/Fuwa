@@ -15,12 +15,16 @@ import { notePathFilename } from '../utils/notePathIdentity'
  * spec needs a command the fixture does not answer yet. The system file dialog
  * has no command behind it, so the fixture stands in for that too: a spec
  * queues the path the user "chooses" with `queueDialogSelection` and the shell
- * takes it with `takeDialogSelection`. Like a real directory
- * tree, every ancestor folder of a seeded or saved path exists implicitly. Shapes follow the Rust commands:
- * absolute paths in, Folder-relative `/`-separated paths in `list_vault_folders`,
- * `modifiedAt` in seconds, errors as the Rust boundary's strings. `list_files`
- * is shared with the Fuwa-owned Rust scanner. `take_pending_open` remains
- * the browser stand-in for Finder opens.
+ * takes it with `takeDialogSelection`. What another app does to the Folder
+ * behind Fuwa's back is `writeNote`, `removeFile` and `movePath`, each followed
+ * by `emitExternalChange` with the paths a watcher would have reported.
+ *
+ * Like a real directory tree, every ancestor folder of a seeded or saved path
+ * exists implicitly. Shapes follow the Rust commands: absolute paths in,
+ * Folder-relative `/`-separated paths in `list_vault_folders`, `modifiedAt` in
+ * seconds, errors as the Rust boundary's strings. `list_files` is shared with
+ * the Fuwa-owned Rust scanner. `take_pending_open` remains the browser stand-in
+ * for Finder opens.
  */
 
 export const MOCK_VAULT_PATH = '/Users/fuwa/Documents/Notes'
@@ -71,6 +75,9 @@ export interface MockVaultCommands {
   create_vault_folder: { args: { vaultPath: string; folderName: string; parentPath?: string }; result: string }
   rename_vault_file: { args: { vaultPath: string; oldPath: string; newStem: string }; result: { new_path: string } }
   rename_vault_folder: { args: { vaultPath: string; folderPath: string; newName: string }; result: { old_path: string; new_path: string } }
+  move_note_to_folder: { args: { vaultPath: string; oldPath: string; folderPath: string }; result: { new_path: string } }
+  delete_note: { args: { path: string; vaultPath: string }; result: string }
+  delete_vault_folder: { args: { vaultPath: string; folderPath: string }; result: string }
   reveal_path_in_file_manager: { args: { path: string }; result: void }
   copy_text_to_clipboard: { args: { text: string }; result: void }
 }
@@ -91,6 +98,8 @@ export interface MockVault {
   revealedPath(): string | null
   clipboardText(): string | null
   removeFile(path: string): void
+  /** Move a file or a whole folder without going through a command: Finder's stand-in. */
+  movePath(path: string, newPath: string): void
   emitExternalChange(paths: string[]): void
   watchedPath(): string | null
   queuePendingOpen(paths: string[]): void
@@ -391,6 +400,39 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
         if (next !== path) movePrefix(path, next)
         return { old_path: relative, new_path: nextRelative }
       }
+      case 'move_note_to_folder': {
+        requireRoot(args?.vaultPath)
+        const root = args?.vaultPath as string
+        const path = requireInsideVault(args?.oldPath)
+        if (!files.has(path)) throw new Error(FILE_DOES_NOT_EXIST_ERROR)
+        const relative = String(args?.folderPath ?? '').trim()
+        const destination = requireInsideVault(relative ? `${root}/${relative}` : root)
+        if (destination !== root && files.get(destination)?.kind !== 'folder') {
+          throw new Error(`Folder does not exist: ${relative}`)
+        }
+        const next = `${destination}/${notePathFilename(path)}`
+        if (next !== path) movePrefix(path, next)
+        return { new_path: next }
+      }
+      // Move to Trash: the fixture has no Trash to move anything into, so the
+      // entry simply leaves the Folder, which is all the Explorer can see.
+      case 'delete_note': {
+        requireRoot(args?.vaultPath)
+        const path = requireInsideVault(args?.path)
+        if (files.get(path)?.kind === 'folder') throw new Error(`Path is not a file: ${path}`)
+        if (!files.has(path)) throw new Error(FILE_DOES_NOT_EXIST_ERROR)
+        files.delete(path)
+        return path
+      }
+      case 'delete_vault_folder': {
+        requireRoot(args?.vaultPath)
+        const root = args?.vaultPath as string
+        const relative = String(args?.folderPath ?? '')
+        const path = requireInsideVault(`${root}/${relative}`)
+        if (files.get(path)?.kind !== 'folder') throw new Error(`Folder does not exist: ${relative}`)
+        for (const child of pathsUnder(path)) files.delete(child)
+        return relative
+      }
       case 'reveal_path_in_file_manager': {
         revealed = requireInsideVault(args?.path)
         return undefined
@@ -419,6 +461,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     writeImage,
     assetUrl: (path) => files.get(path)?.dataUrl ?? null,
     removeFile: (path) => { files.delete(requireInsideVault(path)) },
+    movePath: (path, newPath) => movePrefix(requireInsideVault(path), requireInsideVault(newPath)),
     emitExternalChange: (paths) => {
       window.dispatchEvent(new CustomEvent('fuwa:external-change', { detail: paths }))
     },

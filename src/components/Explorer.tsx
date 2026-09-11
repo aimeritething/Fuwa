@@ -1,10 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { CaretDown, CaretRight } from '@phosphor-icons/react'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import type { SidebarSelection } from '../types'
 import type { ExplorerNode } from '../utils/explorer'
 import type { ExplorerActions } from '../hooks/useExplorerActions'
 import { isPathInsideVaultRoot } from '../utils/vaultPathContainment'
+import { clearDraggedNotePath, readDraggedNotePath, writeNoteDragData } from '../utils/noteDragDrop'
 import { ancestorTreePaths } from './folder-tree/folderTreeUtils'
 import { useFolderTreeDisclosure } from './folder-tree/useFolderTreeDisclosure'
 import { ExplorerContextMenu } from './explorer/ExplorerContextMenu'
@@ -32,8 +33,9 @@ type LoadedProps = ExplorerProps & { folder: string; tree: ExplorerNode }
 
 /**
  * The Explorer (spec sections 2 and 4): the Folder as a tree of Documents,
- * sub-folders and Image files, with the write operations AIM-387 adds —
- * creation, inline rename, and the Linear-styled context menu.
+ * sub-folders and Image files, with the write operations over it — creation,
+ * inline rename, Move to Trash and the drag-and-drop move (AIM-387, AIM-390),
+ * all reached from the Linear-styled context menu or the row itself.
  */
 export const Explorer = memo(function Explorer(props: ExplorerProps) {
   const { folder, tree, error } = props
@@ -136,10 +138,47 @@ function useRowMenuAction(node: ExplorerNode, actions: ExplorerActions) {
       case 'rename': return actions.startRename(node.path, node.kind)
       case 'reveal': return actions.reveal(node.path)
       case 'copyPath': return actions.copyPath(node.path)
-      // Move to Trash is AIM-390's and sits disabled until then.
-      case 'trash': return
+      case 'trash': return actions.trash(node.path, node.kind)
     }
   }, [actions, node.kind, node.path])
+}
+
+/**
+ * Dragging a row (spec section 4): a Document or an Image file is the thing
+ * dragged, a folder row or the root row is the thing dropped on, and a folder
+ * is never dragged itself. The dragged path is written to the drag and kept
+ * beside it, because a browser hides the data from `dragover` and, on some
+ * platforms, from the drop as well.
+ */
+function useRowDragAndDrop(node: ExplorerNode, isFolder: boolean, actions: ExplorerActions) {
+  const [isDropTarget, setDropTarget] = useState(false)
+
+  const dragProps = useMemo(() => (isFolder ? {} : {
+    draggable: true,
+    onDragStart: (event: DragEvent<HTMLDivElement>) => writeNoteDragData(event.dataTransfer, node.path),
+    onDragEnd: () => clearDraggedNotePath(),
+  }), [isFolder, node.path])
+
+  const dropProps = useMemo(() => (isFolder ? {
+    onDragOver: (event: DragEvent<HTMLDivElement>) => {
+      if (!readDraggedNotePath(event.dataTransfer)) return
+      // Taking the event is what tells the browser this row accepts the drop.
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'move'
+      setDropTarget(true)
+    },
+    onDragLeave: () => setDropTarget(false),
+    onDrop: (event: DragEvent<HTMLDivElement>) => {
+      const dragged = readDraggedNotePath(event.dataTransfer)
+      setDropTarget(false)
+      clearDraggedNotePath()
+      if (!dragged) return
+      event.preventDefault()
+      actions.moveInto(dragged, node.path)
+    },
+  } : {}), [actions, isFolder, node.path])
+
+  return { dragProps, dropProps, isDropTarget }
 }
 
 function ExplorerRow(props: RowProps) {
@@ -153,6 +192,7 @@ function ExplorerRow(props: RowProps) {
   const onMenuAction = useRowMenuAction(node, actions)
   const target: ExplorerMenuTargetKind = isRoot ? 'root' : node.kind
   const editing = actions.editing?.path === node.path ? actions.editing : null
+  const { dragProps, dropProps, isDropTarget } = useRowDragAndDrop(node, isFolder, actions)
 
   // A Document and an Image file both open a real Tab (spec section 4);
   // clicking a folder only selects it. Right-click does neither.
@@ -190,7 +230,9 @@ function ExplorerRow(props: RowProps) {
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <div className="fuwa-sidebar-row fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}
-            data-active={selected || undefined} data-testid={`explorer-row:${node.path}`} tabIndex={0} title={node.path}
+            data-active={selected || undefined} data-drop-target={isDropTarget || undefined}
+            data-testid={`explorer-row:${node.path}`} tabIndex={0} title={node.path}
+            {...dragProps} {...dropProps}
             onClick={select} onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select() }
               if (isFolder && ((event.key === 'ArrowRight' && !isExpanded) || (event.key === 'ArrowLeft' && isExpanded))) {

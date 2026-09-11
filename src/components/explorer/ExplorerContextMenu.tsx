@@ -12,9 +12,6 @@ import {
  * and changes neither the selection nor the active Tab.
  */
 
-/** Move to Trash is AIM-390's; it is in the menu and disabled until then. */
-const UNWIRED_ACTIONS: readonly ExplorerMenuAction[] = ['trash']
-
 interface ExplorerContextMenuProps {
   target: ExplorerMenuTargetKind
   onAction: (action: ExplorerMenuAction) => void
@@ -27,11 +24,7 @@ export function ExplorerContextMenu({ target, onAction }: ExplorerContextMenuPro
         entry.kind === 'separator'
           ? <ContextMenuSeparator key={`separator-${index}`} />
           : (
-            <ContextMenuItem
-              key={entry.action}
-              disabled={UNWIRED_ACTIONS.includes(entry.action)}
-              onSelect={() => onAction(entry.action)}
-            >
+            <ContextMenuItem key={entry.action} onSelect={() => onAction(entry.action)}>
               {EXPLORER_MENU_LABELS[entry.action]}
             </ContextMenuItem>
           )

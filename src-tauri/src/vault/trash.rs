@@ -98,6 +98,30 @@ mod tests {
     }
 
     #[test]
+    fn test_delete_note_removes_an_image_file() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "Attachments/lake.png", "PNG");
+        let path = dir.path().join("Attachments/lake.png");
+
+        delete_note(path.to_str().unwrap()).unwrap();
+
+        assert!(!path.exists());
+        assert!(dir.path().join("Attachments").is_dir());
+    }
+
+    #[test]
+    fn test_delete_note_refuses_a_directory() {
+        let dir = TempDir::new().unwrap();
+        let folder = dir.path().join("Projects");
+        fs::create_dir(&folder).unwrap();
+
+        let error = delete_note(folder.to_str().unwrap()).unwrap_err();
+
+        assert!(error.contains("not a file"));
+        assert!(folder.exists());
+    }
+
+    #[test]
     fn test_delete_note_nonexistent_file() {
         let result = delete_note("/nonexistent/path/that/does/not/exist.md");
         assert!(result.is_err());

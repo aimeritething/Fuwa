@@ -16,6 +16,7 @@
 }
 
 .fuwa-card {
+  position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -255,6 +256,29 @@
   flex: none;
   gap: 6px;
   margin-left: auto;
+}
+
+/* The toast (AIM-390): one line at the bottom of the card, on the menu
+   surface with the menu's shadow, dismissing itself. It floats over the
+   content and takes no clicks. */
+.fuwa-toast {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  z-index: 20;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 7px 12px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  background: var(--surface-popover);
+  box-shadow:
+    0 0 0 var(--hairline, 0.5px) var(--border-dialog),
+    var(--shadow-menu);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  pointer-events: none;
 }
 
 /* The same choices as a dialog when the Tab is closed or the app quits. */
