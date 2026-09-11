@@ -13,11 +13,14 @@ export interface MenuEventHandlers extends AppCommandHandlers {
   activeDocumentPath: string | null
   /** Whether a Folder is open; New Document, Quick Open and Close Folder follow it (spec section 7). */
   hasFolder: boolean
+  /** Whether any Tab is open, an Image Tab included; Close Tab's menu item follows it. */
+  hasTab: boolean
 }
 
 interface MenuStatePayload {
   hasActiveNote: boolean
   hasVault: boolean
+  hasTab: boolean
 }
 
 function readCustomEventDetail(event: Event): string | null {
@@ -126,7 +129,8 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
   const ref = useRef(handlers)
   const hasActiveNote = handlers.activeDocumentPath !== null
   const hasVault = handlers.hasFolder
-  const menuState = useMemo(() => ({ hasActiveNote, hasVault }), [hasActiveNote, hasVault])
+  const hasTab = handlers.hasTab
+  const menuState = useMemo(() => ({ hasActiveNote, hasVault, hasTab }), [hasActiveNote, hasTab, hasVault])
 
   useEffect(() => {
     ref.current = handlers

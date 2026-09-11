@@ -117,7 +117,10 @@ function handleRichEditorCreateLinkShortcut(event: KeyboardEvent): boolean {
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
   const commandId = findShortcutCommandIdForEvent(event)
   if (commandId === null) return
-  if (commandId === APP_COMMAND_IDS.editFindInNote && !isEditorFindScopeFocused()) return
+  // ⌘F is the Document's find (both modes, spec section 7) unless the caret is
+  // in some other text field, the Command Menu's input or an Explorer rename,
+  // which keeps the chord.
+  if (commandId === APP_COMMAND_IDS.editFindInNote && isTextInputFocused() && !isEditorFindScopeFocused()) return
   if (
     commandId === APP_COMMAND_IDS.viewCommandPalette
     && handleRichEditorCreateLinkShortcut(event)

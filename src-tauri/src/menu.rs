@@ -22,6 +22,7 @@ const APP_NAME: &str = "Fuwa";
 #[cfg(not(target_os = "macos"))]
 const MAIN_WINDOW_LABEL: &str = "main";
 const NOTE_DEPENDENT_GROUP: &str = "noteDependent";
+const TAB_DEPENDENT_GROUP: &str = "tabDependent";
 const VAULT_DEPENDENT_GROUP: &str = "vaultDependent";
 
 type MenuResult = Result<Submenu<tauri::Wry>, Box<dyn Error>>;
@@ -518,6 +519,15 @@ pub fn set_note_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, NOTE_DEPENDENT_GROUP, enabled);
 }
 
+/// Enable or disable menu items that depend on having any Tab open: Close
+/// Tab is greyed with zero Tabs (spec section 7) while ⌘W itself still reaches
+/// the renderer, which closes the window, because a disabled item's
+/// accelerator is not consumed by the menu. An Image Tab counts, unlike for
+/// the note-dependent group.
+pub fn set_tab_items_enabled(app_handle: &AppHandle, enabled: bool) {
+    set_menu_state_group_enabled(app_handle, TAB_DEPENDENT_GROUP, enabled);
+}
+
 /// Enable or disable menu items that depend on having an open vault.
 pub fn set_vault_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, VAULT_DEPENDENT_GROUP, enabled);
@@ -627,14 +637,18 @@ mod tests {
     }
 
     #[test]
-    fn state_groups_are_note_and_vault_dependent() {
+    fn state_groups_are_note_tab_and_vault_dependent() {
         let groups: Vec<_> = manifest().menu_state_groups.keys().cloned().collect();
-        assert_eq!(groups, [NOTE_DEPENDENT_GROUP, VAULT_DEPENDENT_GROUP]);
+        assert_eq!(
+            groups,
+            [NOTE_DEPENDENT_GROUP, TAB_DEPENDENT_GROUP, VAULT_DEPENDENT_GROUP]
+        );
 
         assert_eq!(
             menu_state_group_ids(NOTE_DEPENDENT_GROUP),
             ["file-save", "edit-toggle-raw-editor", "edit-find-in-note"]
         );
+        assert_eq!(menu_state_group_ids(TAB_DEPENDENT_GROUP), ["file-close-tab"]);
         assert_eq!(
             menu_state_group_ids(VAULT_DEPENDENT_GROUP),
             ["file-new-note", "file-quick-open", "file-close-vault"]
