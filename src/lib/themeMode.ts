@@ -1,7 +1,6 @@
-import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
+import { APP_STORAGE_KEYS } from '../constants/appStorage'
 
 export const THEME_MODE_STORAGE_KEY = APP_STORAGE_KEYS.theme
-export const LEGACY_THEME_MODE_STORAGE_KEY = LEGACY_APP_STORAGE_KEYS.theme
 export const DEFAULT_THEME_MODE = 'dark'
 export const SYSTEM_THEME_MODE = 'system'
 export const SYSTEM_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)'
@@ -65,14 +64,7 @@ function safeSetThemeMode(storage: ThemeStorage, key: string, mode: ThemeMode): 
 }
 
 export function readStoredThemeMode(storage: ThemeStorage): ThemeMode | null {
-  const storedMode = safeGetThemeMode(storage, THEME_MODE_STORAGE_KEY)
-  if (storedMode) return storedMode
-
-  const legacyMode = safeGetThemeMode(storage, LEGACY_THEME_MODE_STORAGE_KEY)
-  if (!legacyMode) return null
-
-  safeSetThemeMode(storage, THEME_MODE_STORAGE_KEY, legacyMode)
-  return legacyMode
+  return safeGetThemeMode(storage, THEME_MODE_STORAGE_KEY)
 }
 
 export function writeStoredThemeMode(storage: ThemeStorage, mode: ThemeMode): void {

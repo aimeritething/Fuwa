@@ -60,7 +60,6 @@
     <script>
       (() => {
         var key = 'tolaria-theme';
-        var legacyKey = 'laputa-theme';
         var systemDarkQuery = '(prefers-color-scheme: dark)';
         function normalizeTheme(value) {
           return value === 'dark' || value === 'light' || value === 'system' ? value : null;
@@ -83,12 +82,7 @@
         }
         var mode;
         try {
-          mode = normalizeTheme(localStorage.getItem(key));
-          if (mode === null) {
-            mode = normalizeTheme(localStorage.getItem(legacyKey));
-            if (mode !== null) localStorage.setItem(key, mode);
-          }
-          applyTheme(mode);
+          applyTheme(normalizeTheme(localStorage.getItem(key)));
         } catch {
           applyTheme('dark');
         }
