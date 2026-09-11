@@ -21,6 +21,7 @@ import { schema } from './editorSchema'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
 import { createMarkdownHighlightShortcutExtension } from './markdownHighlightShortcutExtension'
 import { copyImagePath, openImageExternally } from './imageTabActions'
+import { EmptyCard } from './EmptyCard'
 import { ImageView } from './ImageView'
 import { PathRow } from './PathRow'
 import { Toast } from './Toast'
@@ -85,6 +86,9 @@ export interface EditorProps {
   onDiscardWrite: (path: string) => void
   /** The Explorer's one line of bad news, at the bottom of the card. */
   toast: string | null
+  /** Collapsed, the card goes edge-to-edge and its top row seats the traffic lights and the sidebar icon (spec section 2). */
+  sidebarCollapsed: boolean
+  onShowSidebar: () => void
 }
 
 function useLatestRef<T>(value: T): MutableRefObject<T> {
@@ -220,17 +224,6 @@ function EditorFindScope({
   )
 }
 
-function EmptyCard() {
-  return (
-    <div className="fuwa-empty" data-testid="editor-empty-state">
-      <span className="fuwa-empty__wordmark">Fuwa</span>
-      <div className="fuwa-empty__hints">
-        <span><b>⌘⇧O</b>open document</span>
-      </div>
-    </div>
-  )
-}
-
 /**
  * An Image Tab's path row and body (spec section 4). The Folder listing is
  * where the byte size comes from and what says the file has changed on disk,
@@ -280,25 +273,35 @@ function ImageTab({ path, folder, imageFile, reloads }: {
 
 export const Editor = memo(function Editor(props: EditorProps) {
   const { editor, activeTab, handleEditorChange, imageTabPath } = useEditorRuntime(props)
-  const { tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite } = props
+  const {
+    tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
+    sidebarCollapsed, onShowSidebar,
+  } = props
   // theme.json's editor.maxWidth and paddingHorizontal (spec: a 680px prose
   // column with 56px padding) reach the wrapper and .bn-editor as CSS variables.
   const { cssVars } = useEditorTheme()
   const openTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
+  const collapsed = sidebarCollapsed || undefined
 
   if (!openTab) {
     return (
-      <div className="fuwa-card" data-testid="editor-card">
-        <div className="fuwa-card__top" data-tauri-drag-region aria-hidden="true" />
-        <EmptyCard />
+      <div className="fuwa-card" data-testid="editor-card" data-collapsed={collapsed}>
+        <EmptyCard hasFolder={Boolean(props.folder)} sidebarCollapsed={sidebarCollapsed} onShowSidebar={onShowSidebar} />
         <Toast message={props.toast} />
       </div>
     )
   }
 
   return (
-    <div className="fuwa-card" data-testid="editor-card">
-      <TabBar tabs={tabs} activeTabPath={activeTabPath} onActivate={onActivateTab} onClose={onCloseTab} />
+    <div className="fuwa-card" data-testid="editor-card" data-collapsed={collapsed}>
+      <TabBar
+        tabs={tabs}
+        activeTabPath={activeTabPath}
+        onActivate={onActivateTab}
+        onClose={onCloseTab}
+        sidebarCollapsed={sidebarCollapsed}
+        onShowSidebar={onShowSidebar}
+      />
       {/* The two bodies are exclusive: an Image Tab leaves the runtime with no active Document. */}
       {imageTabPath !== null && (
         <ImageTab path={imageTabPath} folder={props.folder} imageFile={props.imageFile} reloads={openTab.reloads ?? 0} />

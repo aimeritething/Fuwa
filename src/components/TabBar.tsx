@@ -3,12 +3,16 @@ import { Image } from '@phosphor-icons/react'
 import type { Tab } from '../types'
 import { isImageFilePath } from '../utils/imageFile'
 import { CloseAffordance } from './CloseAffordance'
+import { CollapsedChrome } from './SidebarToggle'
 
 export interface TabBarProps {
   tabs: Tab[]
   activeTabPath: string | null
   onActivate: (path: string) => void
   onClose: (path: string) => void
+  /** Collapsed, the row seats the traffic lights and the sidebar icon before the first tab (spec section 2). */
+  sidebarCollapsed?: boolean
+  onShowSidebar?: () => void
 }
 
 /**
@@ -16,13 +20,16 @@ export interface TabBarProps {
  * open Document or Image file, the selected one raised, a close affordance on
  * hover. Hidden with no Tab open. The row itself is the window drag region;
  * the tabs are not, so a click on one lands on the Tab. An Image file's Tab
- * carries the image icon before its name, a Document's nothing.
+ * carries the image icon before its name, a Document's nothing. With the
+ * sidebar collapsed the card is edge-to-edge, so this row is where the
+ * traffic lights land and where the sidebar comes back from.
  */
-export const TabBar = memo(function TabBar({ tabs, activeTabPath, onActivate, onClose }: TabBarProps) {
+export const TabBar = memo(function TabBar({ tabs, activeTabPath, onActivate, onClose, sidebarCollapsed = false, onShowSidebar }: TabBarProps) {
   if (tabs.length === 0) return null
 
   return (
     <div className="fuwa-tabs" role="tablist" data-testid="tab-bar" data-tauri-drag-region>
+      {sidebarCollapsed && onShowSidebar && <CollapsedChrome onShowSidebar={onShowSidebar} />}
       {tabs.map(({ entry }) => (
         <TabPill
           key={entry.path}

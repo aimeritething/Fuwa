@@ -47,10 +47,64 @@ function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn()) {
       onOpenFile={onOpenFile}
       actions={actions}
       onCloseFolder={vi.fn()}
+      onOpenFolder={vi.fn()}
     />,
   )
   return { onOpenFile }
 }
+
+describe('the empty states (spec section 2)', () => {
+  function renderWithoutFolder(error: string | null = null) {
+    const onOpenFolder = vi.fn()
+    render(
+      <Explorer folder={null} tree={null} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
+        onCloseFolder={vi.fn()} onOpenFolder={onOpenFolder} error={error} />,
+    )
+    return { onOpenFolder }
+  }
+
+  it('with no Folder open says so under Explorer, with the Open Folder button and the drop hint', () => {
+    const { onOpenFolder } = renderWithoutFolder()
+
+    const block = screen.getByTestId('explorer-no-folder')
+    expect(block).toHaveTextContent('No folder open')
+    expect(block).toHaveTextContent('or drop a .md file onto the window')
+    expect(screen.queryByTestId('explorer-folder-missing')).toBeNull()
+    expect(screen.queryByRole('tree')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Folder ⌘O' }))
+    expect(onOpenFolder).toHaveBeenCalledTimes(1)
+  })
+
+  it('names the Folder that was not found above the button on a restore that lost it', () => {
+    renderWithoutFolder('Folder not found: /Users/x/Gone')
+
+    const block = screen.getByTestId('explorer-no-folder')
+    const missing = screen.getByTestId('explorer-folder-missing')
+    expect(missing).toHaveTextContent('Folder not found: /Users/x/Gone')
+    const button = screen.getByRole('button', { name: 'Open Folder ⌘O' })
+    expect(missing.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(block).toContainElement(missing)
+  })
+
+  it('shows one muted line in the tree area while the Folder holds no Document, and nothing once it does', () => {
+    const emptyTree = buildExplorerTree(FOLDER, [listed('Attachments', 'folder'), listed('Attachments/lake.png', 'image')])
+    const { rerender } = render(
+      <Explorer folder={FOLDER} tree={emptyTree} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
+        onCloseFolder={vi.fn()} onOpenFolder={vi.fn()} />,
+    )
+
+    expect(screen.getByRole('tree')).toContainElement(screen.getByTestId('explorer-no-documents'))
+    expect(screen.getByTestId('explorer-no-documents')).toHaveTextContent('No documents yet · ⌘N')
+    expect(screen.queryByRole('button', { name: /Open Folder/ })).toBeNull()
+
+    rerender(
+      <Explorer folder={FOLDER} tree={TREE} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
+        onCloseFolder={vi.fn()} onOpenFolder={vi.fn()} />,
+    )
+    expect(screen.queryByTestId('explorer-no-documents')).toBeNull()
+  })
+})
 
 /** Radix opens a context menu from a right-click on its trigger. */
 function rightClick(element: Element) {

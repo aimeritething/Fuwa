@@ -7,8 +7,8 @@ import { isImageFilePath } from './imageFile'
  * owns the file itself and the `window` frame, which it merges in when it
  * writes; the renderer sends everything else and never reads `window` back.
  *
- * `folder` roots the Explorer. `sidebar` stays at its default until sidebar
- * collapse lands; `theme` is the View → Appearance choice.
+ * `folder` roots the Explorer; `sidebar` is whether it is collapsed and how
+ * wide it is when shown (AIM-386); `theme` is the View → Appearance choice.
  */
 
 export const SESSION_VERSION = 1
@@ -43,6 +43,14 @@ export interface RestoredOpenEditors {
 
 export const DEFAULT_SESSION_SIDEBAR: SessionSidebar = { collapsed: false, width: 260 }
 
+/** The sidebar's drag range. A width outside it, restored or dragged, lands on the nearer end. */
+export const SIDEBAR_MIN_WIDTH = 180
+export const SIDEBAR_MAX_WIDTH = 480
+
+export function clampSidebarWidth(width: number): number {
+  return Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, Math.round(width)))
+}
+
 const EDITOR_MODES = new Set<SessionEditorMode>(['rich', 'raw'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -66,7 +74,7 @@ function parseSidebar(value: unknown): SessionSidebar {
   if (!isRecord(value)) return DEFAULT_SESSION_SIDEBAR
   return {
     collapsed: typeof value.collapsed === 'boolean' ? value.collapsed : DEFAULT_SESSION_SIDEBAR.collapsed,
-    width: typeof value.width === 'number' && Number.isFinite(value.width) ? value.width : DEFAULT_SESSION_SIDEBAR.width,
+    width: typeof value.width === 'number' && Number.isFinite(value.width) ? clampSidebarWidth(value.width) : DEFAULT_SESSION_SIDEBAR.width,
   }
 }
 
@@ -123,14 +131,15 @@ export function restoreOpenEditors(
 
 /**
  * The Session for the open Tabs (every Document in Rich mode until AIM-381
- * remembers a mode per Tab) and the chosen appearance. An Image file entry
- * carries no `mode`: its kind comes from the extension.
+ * remembers a mode per Tab), the chosen appearance and the sidebar state. An
+ * Image file entry carries no `mode`: its kind comes from the extension.
  */
 export function sessionForOpenEditors(
   openPaths: readonly string[],
   activePath: string | null,
   theme: ThemeMode,
   folder: string | null = null,
+  sidebar: SessionSidebar = DEFAULT_SESSION_SIDEBAR,
 ): Session {
   return {
     version: SESSION_VERSION,
@@ -138,6 +147,6 @@ export function sessionForOpenEditors(
     openEditors: openPaths.map((path) => (isImageFilePath(path) ? { path } : { path, mode: 'rich' })),
     activePath,
     theme,
-    sidebar: DEFAULT_SESSION_SIDEBAR,
+    sidebar,
   }
 }

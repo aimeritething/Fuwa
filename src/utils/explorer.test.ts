@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildExplorerTree, documentLocation, type ListedFile } from './explorer'
+import { buildExplorerTree, documentLocation, holdsDocument, type ListedFile } from './explorer'
 
 const file = (path: string, kind: ListedFile['kind']): ListedFile => ({ path, kind, modifiedAt: 1, fileSize: 3 })
 
@@ -22,5 +22,16 @@ describe('Explorer listing', () => {
     expect(documentLocation('/Notes-other/a.md', '/Notes')).toEqual({
       insideFolder: false, parents: ['Notes-other'], filename: 'a.md', parent: 'Notes-other',
     })
+  })
+
+  it('knows whether a Document exists anywhere under the root, folders and Image files not counting', () => {
+    const empty = buildExplorerTree('/Notes', [
+      file('/Notes/Attachments', 'folder'), file('/Notes/Attachments/lake.png', 'image'), file('/Notes/Drafts', 'folder'),
+    ])
+    const nested = buildExplorerTree('/Notes', [file('/Notes/Drafts', 'folder'), file('/Notes/Drafts/deep', 'folder'), file('/Notes/Drafts/deep/a.md', 'note')])
+
+    expect(holdsDocument(empty)).toBe(false)
+    expect(holdsDocument(nested)).toBe(true)
+    expect(holdsDocument(buildExplorerTree('/Notes', []))).toBe(false)
   })
 })

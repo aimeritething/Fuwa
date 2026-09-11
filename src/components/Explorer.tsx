@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent
 import { CaretDown, CaretRight } from '@phosphor-icons/react'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import type { SidebarSelection } from '../types'
-import type { ExplorerNode } from '../utils/explorer'
+import { holdsDocument, type ExplorerNode } from '../utils/explorer'
 import type { ExplorerActions } from '../hooks/useExplorerActions'
 import { isPathInsideVaultRoot } from '../utils/vaultPathContainment'
 import { clearDraggedNotePath, readDraggedNotePath, writeNoteDragData } from '../utils/noteDragDrop'
@@ -13,6 +13,7 @@ import { ExplorerHeaderActions } from './explorer/ExplorerHeaderActions'
 import { ExplorerNameInput } from './explorer/ExplorerNameInput'
 import { EXPLORER_ROW_ICONS, explorerRowIndent } from './explorer/explorerRow'
 import type { ExplorerMenuAction, ExplorerMenuTargetKind } from './explorer/explorerMenuItems'
+import { Button } from './ui/button'
 import './Explorer.css'
 
 const NO_FOLDER_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
@@ -26,6 +27,9 @@ interface ExplorerProps {
   onOpenFile: (path: string) => void
   actions: ExplorerActions
   onCloseFolder: () => void
+  /** The Open Folder button's click, the same as ⌘O. */
+  onOpenFolder: () => void
+  /** "Folder not found: <path>", from a restore that lost its Folder or an Open Folder that would not list. */
   error?: string | null
 }
 
@@ -38,16 +42,39 @@ type LoadedProps = ExplorerProps & { folder: string; tree: ExplorerNode }
  * all reached from the Linear-styled context menu or the row itself.
  */
 export const Explorer = memo(function Explorer(props: ExplorerProps) {
-  const { folder, tree, error } = props
+  const { folder, tree, error, onOpenFolder } = props
+  if (!folder || !tree) return <NoFolder error={error} onOpenFolder={onOpenFolder} />
   return (
     <section className="fuwa-explorer" data-testid="explorer">
-      {folder && tree
-        ? <ExplorerBody key={folder} {...props} folder={folder} tree={tree} />
-        : <div className="fuwa-sidebar__label fuwa-explorer__header">Explorer</div>}
+      <ExplorerBody key={folder} {...props} folder={folder} tree={tree} />
       {error && <div className="fuwa-explorer__message" role="status">{error}</div>}
     </section>
   )
 })
+
+/**
+ * The No-Folder state (spec section 2), identical on first launch: what to do
+ * next, as a button and the drop hint. A restore that lost its Folder names
+ * it above the button until any Folder is opened.
+ */
+function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder: () => void }) {
+  return (
+    <section className="fuwa-explorer" data-testid="explorer">
+      <div className="fuwa-sidebar__label fuwa-explorer__header">Explorer</div>
+      <div className="fuwa-explorer__no-folder" data-testid="explorer-no-folder">
+        <h4 className="fuwa-explorer__no-folder-title">No folder open</h4>
+        <p className="fuwa-explorer__no-folder-copy">Fuwa reads Markdown from one folder at a time. Open one to browse it here.</p>
+        {error && <p className="fuwa-explorer__folder-missing" role="status" data-testid="explorer-folder-missing">{error}</p>}
+        <div>
+          <Button type="button" aria-label="Open Folder ⌘O" onClick={onOpenFolder} data-testid="explorer-open-folder">
+            Open Folder<kbd className="fuwa-explorer__kbd">⌘O</kbd>
+          </Button>
+        </div>
+        <p className="fuwa-explorer__no-folder-or">or drop a <code>.md</code> file onto the window</p>
+      </div>
+    </section>
+  )
+}
 
 /** Every folder's tree key, so Collapse All shuts the ones never touched too. */
 function folderKeys(node: ExplorerNode, folder: string, keys: string[] = []): string[] {
@@ -100,6 +127,10 @@ function ExplorerBody(props: LoadedProps) {
       </div>
       <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={tree.name}>
         <ExplorerRow {...props} node={tree} depth={0} expanded={expanded} onToggle={toggleFolder} />
+        {/* The empty-Folder line (spec section 2): no `.md` anywhere under the root. It goes with the first ⌘N. */}
+        {!holdsDocument(tree) && (
+          <div className="fuwa-explorer__no-documents" data-testid="explorer-no-documents">No documents yet · ⌘N</div>
+        )}
         <EmptyAreaMenu actions={actions} folder={folder} />
       </div>
     </>

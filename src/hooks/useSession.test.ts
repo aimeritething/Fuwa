@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ThemeMode } from '../lib/themeMode'
 import type { Tab } from '../types'
 import { noteEntryForPath } from '../utils/noteEntry'
+import { DEFAULT_SESSION_SIDEBAR } from '../utils/sessionSchema'
 import { useSession } from './useSession'
 
 const runtime = vi.hoisted(() => ({
@@ -41,17 +42,19 @@ const sessionWrites = () =>
 
 describe('useSession', () => {
   const restoreTheme = vi.fn()
+  const restoreSidebar = vi.fn()
 
   beforeEach(() => {
     runtime.invoke.mockReset()
     restoreTheme.mockReset()
+    restoreSidebar.mockReset()
   })
 
   it('restores the stored Tabs and active Tab on launch', async () => {
     answerWith(STORED_SESSION)
     const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreOpenEditors).toHaveBeenCalledWith(
@@ -64,7 +67,7 @@ describe('useSession', () => {
     answerWith({ version: 7, openEditors: [{ path: A }] })
     const restoreOpenEditors = vi.fn()
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreOpenEditors).not.toHaveBeenCalled()
@@ -88,7 +91,7 @@ describe('useSession', () => {
     const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
     const { result, rerender } = renderHook(
       (props: { tabs: Tab[]; activeTabPath: string | null; theme: ThemeMode }) =>
-        useSession({ ...props, restoreOpenEditors, restoreTheme }),
+        useSession({ ...props, restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }),
       { initialProps: { tabs: [tab(A)], activeTabPath: A, theme: 'dark' as ThemeMode } },
     )
 
@@ -115,7 +118,7 @@ describe('useSession', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const restoreOpenEditors = vi.fn()
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreOpenEditors).not.toHaveBeenCalled()
@@ -127,7 +130,7 @@ describe('useSession', () => {
     answerWith({ ...STORED_SESSION, theme: 'light' })
     const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'light', restoreOpenEditors, restoreTheme }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'light', restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreTheme).toHaveBeenCalledWith('light')
@@ -138,7 +141,7 @@ describe('useSession', () => {
     answerWith(null)
     const restoreOpenEditors = vi.fn()
 
-    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme }))
+    const { result } = renderHook(() => useSession({ tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }))
 
     await waitFor(() => expect(result.current.restored).toBe(true))
     expect(restoreTheme).not.toHaveBeenCalled()
@@ -148,7 +151,7 @@ describe('useSession', () => {
     answerWith(null)
     const restoreOpenEditors = vi.fn()
     const { result, rerender } = renderHook(
-      (props: { theme: ThemeMode }) => useSession({ tabs: [], activeTabPath: null, ...props, restoreOpenEditors, restoreTheme }),
+      (props: { theme: ThemeMode }) => useSession({ tabs: [], activeTabPath: null, ...props, restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }),
       { initialProps: { theme: 'dark' as ThemeMode } },
     )
 
@@ -156,5 +159,36 @@ describe('useSession', () => {
     rerender({ theme: 'system' })
 
     await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ version: 1, theme: 'system' }))
+  })
+
+  it('restores the stored sidebar state on launch and writes it back with the Tabs', async () => {
+    answerWith({ ...STORED_SESSION, sidebar: { collapsed: true, width: 320 } })
+    const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
+
+    const { result } = renderHook(() => useSession({
+      tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme,
+      sidebar: { collapsed: true, width: 320 }, restoreSidebar,
+    }))
+
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    expect(restoreSidebar).toHaveBeenCalledWith({ collapsed: true, width: 320 })
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ sidebar: { collapsed: true, width: 320 } }))
+  })
+
+  it('writes the sidebar state whenever it collapses or is resized', async () => {
+    answerWith(null)
+    const restoreOpenEditors = vi.fn()
+    const { result, rerender } = renderHook(
+      (props: { sidebar: { collapsed: boolean; width: number } }) =>
+        useSession({ tabs: [], activeTabPath: null, theme: 'dark', ...props, restoreOpenEditors, restoreTheme, restoreSidebar }),
+      { initialProps: { sidebar: { collapsed: false, width: 260 } } },
+    )
+
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    expect(restoreSidebar).not.toHaveBeenCalled()
+    rerender({ sidebar: { collapsed: true, width: 260 } })
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ sidebar: { collapsed: true, width: 260 } }))
+    rerender({ sidebar: { collapsed: true, width: 300 } })
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ sidebar: { collapsed: true, width: 300 } }))
   })
 })

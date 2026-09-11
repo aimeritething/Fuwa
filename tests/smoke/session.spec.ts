@@ -38,7 +38,8 @@ test('quit and relaunch restores the Tabs in order and the active Tab, and the f
     openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
     activePath: WELCOME_PATH,
     theme: 'dark',
-    sidebar: { collapsed: false, width: 260 },
+    // A Document opened with no Folder collapses the sidebar (AIM-386).
+    sidebar: { collapsed: true, width: 260 },
   })
 
   await page.reload()
