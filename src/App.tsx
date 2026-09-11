@@ -16,6 +16,7 @@ import { WriteFailureDialog } from './components/WriteFailureDialog'
 import { useAppKeyboard } from './hooks/useAppKeyboard'
 import { useDocumentDrop } from './hooks/useDocumentDrop'
 import { useEditorSave } from './hooks/useEditorSave'
+import { useFinderOpen } from './hooks/useFinderOpen'
 import { useMenuEvents, type MenuEventHandlers } from './hooks/useMenuEvents'
 import { useNoteTabs } from './hooks/useNoteTabs'
 import { useSession } from './hooks/useSession'
@@ -403,14 +404,19 @@ export default function App() {
   // A `.md` dropped on the window opens like File → Open Document…; an image
   // dropped over a Document is the editor's, and nothing else is picked up.
   useDocumentDrop({ openNote: openLoneNote, settleActiveNote: settleAndRecord })
+  // Finder double-click, Open With and the Dock icon open the same way, once
+  // the Session is back so the Folder is known (AIM-391). The shell stays
+  // unpainted until the launch Document is in place.
+  const { settled: finderOpenSettled } = useFinderOpen({ openNote: openLoneNote, settleActiveNote: settleAndRecord, ready: restored })
 
   const savedAt = activeTabPath ? savedAtByPath[activeTabPath] ?? null : null
 
-  // Nothing is painted until the Session is back, so a launch never shows the
-  // expanded sidebar for a frame before collapsing it (the window's own
+  // Nothing is painted until the Session is back and any Finder launch
+  // Document is open, so a launch never shows the expanded sidebar, or the
+  // Session's Tab, for a frame before the right state (the window's own
   // background colour is the canvas until then).
   return (
-    <div className="fuwa-shell" data-restoring={!restored || undefined}>
+    <div className="fuwa-shell" data-restoring={!(restored && finderOpenSettled) || undefined}>
       {!sidebar.collapsed && (
       <Sidebar width={sidebar.width} onWidthChange={setSidebarWidth} onToggle={toggleSidebar}>
         <OpenEditors

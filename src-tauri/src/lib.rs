@@ -1,6 +1,7 @@
 mod asset_scope;
 mod commands;
 pub mod menu;
+pub mod open_files;
 pub mod session;
 pub mod vault;
 pub mod vault_watcher;
@@ -154,6 +155,20 @@ fn reopen_main_window(app: &AppHandle) {
 
 fn handle_run_event(app: &AppHandle, event: RunEvent) {
     match event {
+        // `setup` has run and the logger exists: write out the order in which
+        // `Opened` and `Ready` fired on this launch (AIM-391).
+        RunEvent::Ready => open_files::mark_ready(app),
+        // Finder double-click, Open With and a drop on the Dock icon. Before
+        // `Ready` (a launch by document) the paths wait in the buffer for the
+        // renderer's drain; after it, the poke reaches the live renderer. With
+        // no window to hear it (⌘W closed the last one), the window is
+        // recreated and its renderer drains the buffer as at launch.
+        #[cfg(target_os = "macos")]
+        RunEvent::Opened { urls } => {
+            if open_files::accept(app, &urls) == open_files::Accepted::NeedsWindow {
+                reopen_main_window(app);
+            }
+        }
         // The last window closed (⌘W with zero Tabs): flush the Session and,
         // on macOS, stay in the Dock so a reopen restores it.
         RunEvent::ExitRequested {
@@ -184,6 +199,9 @@ pub fn run() {
             Vec::new(),
         )))
         .manage(vault_watcher::VaultWatcherState::new())
+        // Before `run()`, so the buffer exists when a launch by document
+        // delivers `Opened` ahead of `Ready` (AIM-391).
+        .manage(open_files::PendingOpen::default())
         .invoke_handler(tauri::generate_handler![
             commands::list_files,
             commands::read_session,
@@ -212,6 +230,7 @@ pub fn run() {
             commands::read_text_from_clipboard,
             commands::update_menu_state,
             commands::quit_app,
+            open_files::take_pending_open,
         ])
         .on_window_event(handle_window_event)
         .setup(setup_app)

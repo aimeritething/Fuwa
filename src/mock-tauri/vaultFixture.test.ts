@@ -81,6 +81,32 @@ describe('createMockVault', () => {
     await expect(vault.invoke('take_pending_open')).resolves.toEqual([])
   })
 
+  it('openFromFinder buffers the paths and pokes the window, as an open while running does', async () => {
+    const vault = createMockVault(seed)
+    const pokes: unknown[] = []
+    const handle = (event: Event) => pokes.push((event as CustomEvent).detail)
+    window.addEventListener('fuwa:open-files', handle)
+
+    try {
+      vault.openFromFinder([`${MOCK_VAULT_PATH}/Projects/Plan.md`])
+    } finally {
+      window.removeEventListener('fuwa:open-files', handle)
+    }
+
+    expect(pokes).toEqual([[`${MOCK_VAULT_PATH}/Projects/Plan.md`]])
+    await expect(vault.invoke('take_pending_open')).resolves.toEqual([`${MOCK_VAULT_PATH}/Projects/Plan.md`])
+  })
+
+  it('a seeded pending open is what the next fixture (page load) finds buffered, once', async () => {
+    createMockVault(seed).seedPendingOpen([`${MOCK_VAULT_PATH}/Welcome.md`])
+
+    const relaunched = createMockVault(seed)
+    await expect(relaunched.invoke('take_pending_open')).resolves.toEqual([`${MOCK_VAULT_PATH}/Welcome.md`])
+
+    const relaunchedAgain = createMockVault(seed)
+    await expect(relaunchedAgain.invoke('take_pending_open')).resolves.toEqual([])
+  })
+
   it('records every invocation so specs can assert on the command boundary', async () => {
     const vault = createMockVault(seed)
 
