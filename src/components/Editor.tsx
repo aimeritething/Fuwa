@@ -27,6 +27,9 @@ import { EmptyCard } from './EmptyCard'
 import { ImageView } from './ImageView'
 import { PathRow, type PathRowMode } from './PathRow'
 import { RawEditorView } from './RawEditorView'
+import type { RawEditorFindRequest } from './rawEditorFindTypes'
+import { RichEditorFindBar } from './RichEditorFindBar'
+import { createRichEditorFindExtension } from './richEditorFind'
 import { Toast } from './Toast'
 import { TabBar } from './TabBar'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
@@ -91,6 +94,8 @@ export interface EditorProps {
   flushPendingRawContentRef?: FlushPendingContentRef
   /** Toggle Rich/Raw (⌘\, View menu): the editor registers the switch here, since only it can map the caret. */
   rawToggleRef?: MutableRefObject<(() => void) | null>
+  /** Find in the current Document (⌘F, Edit menu): the editor registers the request here and opens the bar of whichever surface is showing (AIM-389). */
+  findRef?: MutableRefObject<(() => void) | null>
   /** Puts a Document Tab in Rich or Raw mode; the Tab rules decide whether it takes. */
   onSetTabMode: (path: string, mode: EditorMode) => void
   /** The tab bar's clicks. */
@@ -142,6 +147,7 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
       createRichEditorMarkdownInputTransformExtension(),
       createRichEditorTextDirectionExtension(),
       createRichEditorBlockSelectionExtension(),
+      createRichEditorFindExtension(),
     ],
   })
   installRichEditorMarkdownSerializer(editor)
@@ -252,6 +258,7 @@ function useEditorRuntime(props: EditorProps) {
   useRegisteredRef(hasPendingEditorContentRef, hasPendingEditorContent)
   useEditorFocus(editor, editorMountedRef)
   useRegisteredRef(props.rawToggleRef, raw.toggleRaw)
+  const findRequest = useFindRequests(activeTabPath, raw.rawMode, props.findRef)
 
   useRegisterEditorContentFlushes({
     activeTab,
@@ -263,7 +270,32 @@ function useEditorRuntime(props: EditorProps) {
     flushPendingRawContentRef,
   })
 
-  return { editor, activeTab, handleEditorChange, imageTabPath, raw }
+  return { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest }
+}
+
+/**
+ * ⌘F and Edit → Find ask for the find bar through the registered ref; each
+ * ask is a fresh request for the active Document, so a bar that is already
+ * open refocuses its input and a closed one opens. Raw mode's carried bar and
+ * the Rich bar both read the same request. A request belongs to the surface
+ * it was made on (this Tab, in this mode): switching Tab or mode drops it, so
+ * a bar that mounts later does not reopen on a stale ask.
+ */
+function useFindRequests(
+  activeTabPath: string | null,
+  rawMode: boolean,
+  findRef: MutableRefObject<(() => void) | null> | undefined,
+): RawEditorFindRequest | null {
+  const surface = `${activeTabPath ?? ''}\n${rawMode ? 'raw' : 'rich'}`
+  const [request, setRequest] = useState<{ surface: string; value: RawEditorFindRequest } | null>(null)
+  const sequence = useRef(0)
+  const requestFind = useCallback(() => {
+    if (!activeTabPath) return
+    sequence.current += 1
+    setRequest({ surface, value: { id: sequence.current, path: activeTabPath, replace: false } })
+  }, [activeTabPath, surface])
+  useRegisteredRef(findRef, requestFind)
+  return request !== null && request.surface === surface ? request.value : null
 }
 
 /**
@@ -363,7 +395,7 @@ function ImageTab({ path, folder, imageFile, reloads }: {
 }
 
 export const Editor = memo(function Editor(props: EditorProps) {
-  const { editor, activeTab, handleEditorChange, imageTabPath, raw } = useEditorRuntime(props)
+  const { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest } = useEditorRuntime(props)
   const {
     tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
     sidebarCollapsed, onShowSidebar,
@@ -418,10 +450,12 @@ export const Editor = memo(function Editor(props: EditorProps) {
                 onContentChange={props.onRawContentChange ?? noop}
                 onSave={RAW_SAVE_HANDLED_BY_APP}
                 latestContentRef={raw.rawLatestContentRef}
+                findRequest={findRequest}
               />
             </EditorFindScope>
           ) : (
             <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
+              <RichEditorFindBar key={activeTab.entry.path} editor={editor} path={activeTab.entry.path} request={findRequest} />
               <div className="editor-content-wrapper">
                 <SingleEditorView
                   editor={editor}
