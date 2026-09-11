@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import { documentLocation } from '../utils/explorer'
 import { formatSavedLabel } from './pathRowSavedLabel'
 
 const SAVED_LABEL_TICK_MS = 1_000
 
 interface PathRowProps {
-  /** The open Document's file name. The full breadcrumb arrives with the Folder (AIM-383). */
+  /** The open Document's file name; path and Folder supply its breadcrumb. */
   filename: string
+  path?: string
+  folder?: string | null
   /** When the last write landed on disk, or null before the first one. */
   savedAt: number | null
 }
@@ -25,16 +28,19 @@ function useSavedLabel(savedAt: number | null): string | null {
 }
 
 /**
- * The row under the (future) tab bar: the Document's name on the left, its
+ * The row under the tab bar: the Document's name on the left, its
  * save state on the right. The right-hand slot is a flex row so the Frontmatter
  * badge and the Rich | Raw control (AIM-381) append to it without relayout.
  */
-export function PathRow({ filename, savedAt }: PathRowProps) {
+export function PathRow({ filename, path, folder, savedAt }: PathRowProps) {
   const savedLabel = useSavedLabel(savedAt)
 
   return (
     <div className="fuwa-path-row" data-testid="path-row">
       <div className="fuwa-path-row__crumb">
+        {path && documentLocation(path, folder).parents.map((parent, index) => (
+          <span className="fuwa-path-row__parent" key={index}>{parent} <span aria-hidden="true">›</span> </span>
+        ))}
         <span className="fuwa-path-row__name">{filename}</span>
       </div>
       <div className="fuwa-path-row__meta">

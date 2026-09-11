@@ -1140,7 +1140,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
   const onContentChangeRef = useLatestRef(onContentChange)
   const tabsRef = useLatestRef(tabs)
   const vaultPathRef = useLatestRef(vaultPath)
-  const { handleEditorChange, flushPendingEditorChange } = useEditorChangeHandler({
+  const { handleEditorChange, flushPendingEditorChange, hasPendingEditorChange } = useEditorChangeHandler({
     editor,
     tabsRef,
     onContentChangeRef,
@@ -1185,6 +1185,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     editorContentPath: editorContentSignal.path,
     editorContentVersion: editorContentSignal.version,
     handleEditorChange: handleForegroundEditorChange,
+    hasPendingEditorChange,
     flushPendingEditorChange,
     editorMountedRef,
   }

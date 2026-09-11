@@ -1,10 +1,12 @@
 import { memo } from 'react'
 import { FileText } from '@phosphor-icons/react'
 import type { Tab } from '../types'
+import { documentLocation } from '../utils/explorer'
 import { CloseAffordance } from './CloseAffordance'
 import './Sidebar.css'
 
 export interface OpenEditorsProps {
+  folder?: string | null
   tabs: Tab[]
   activeTabPath: string | null
   onActivate: (path: string) => void
@@ -16,10 +18,10 @@ const LABEL = 'Open Editors'
 /**
  * The Open Editors sidebar group (spec section 2): a quiet label, one row per
  * open Tab mirroring the tab bar, the active row selected, a close affordance
- * on hover. Not rendered at all with zero Tabs. Rows show the file name; the
- * dimmed parent for out-of-Folder files arrives with the Folder (AIM-383).
+ * on hover. Not rendered at all with zero Tabs. Outside the Folder, rows
+ * show the parent directory dimmed after the file name.
  */
-export const OpenEditors = memo(function OpenEditors({ tabs, activeTabPath, onActivate, onClose }: OpenEditorsProps) {
+export const OpenEditors = memo(function OpenEditors({ tabs, folder, activeTabPath, onActivate, onClose }: OpenEditorsProps) {
   if (tabs.length === 0) return null
 
   return (
@@ -31,6 +33,7 @@ export const OpenEditors = memo(function OpenEditors({ tabs, activeTabPath, onAc
             key={entry.path}
             path={entry.path}
             filename={entry.filename}
+            parent={folder !== undefined && !documentLocation(entry.path, folder).insideFolder ? documentLocation(entry.path, folder).parent : undefined}
             active={entry.path === activeTabPath}
             onActivate={onActivate}
             onClose={onClose}
@@ -42,6 +45,7 @@ export const OpenEditors = memo(function OpenEditors({ tabs, activeTabPath, onAc
 })
 
 interface OpenEditorRowProps {
+  parent?: string
   path: string
   filename: string
   active: boolean
@@ -49,7 +53,7 @@ interface OpenEditorRowProps {
   onClose: (path: string) => void
 }
 
-function OpenEditorRow({ path, filename, active, onActivate, onClose }: OpenEditorRowProps) {
+function OpenEditorRow({ path, filename, parent, active, onActivate, onClose }: OpenEditorRowProps) {
   return (
     <div
       className="fuwa-sidebar-row"
@@ -67,6 +71,7 @@ function OpenEditorRow({ path, filename, active, onActivate, onClose }: OpenEdit
     >
       <FileText size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
       <span className="fuwa-sidebar-row__name">{filename}</span>
+      {parent && <span className="fuwa-sidebar-row__parent">{parent}</span>}
       <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )

@@ -221,3 +221,17 @@ describe('useNoteTabs', () => {
     expect(runtime.invoke).not.toHaveBeenCalled()
   })
 })
+
+it('does not apply an external read when edits become pending while the read is in flight', async () => {
+  seedFiles({ [A]: '# Original\n' })
+  const { result } = renderHook(() => useNoteTabs('/n'))
+  await act(async () => { await result.current.openNote(A) })
+  let finish!: (content: string) => void
+  runtime.invoke.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+  let pending = false
+  let reading!: Promise<void>
+  await act(async () => { reading = result.current.reloadTab(A, () => !pending) })
+  pending = true
+  await act(async () => { finish('# Changed outside\n'); await reading })
+  expect(result.current.activeTab?.content).toBe('# Original\n')
+})

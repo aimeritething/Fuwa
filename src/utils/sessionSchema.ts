@@ -6,9 +6,8 @@ import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '../lib/t
  * owns the file itself and the `window` frame, which it merges in when it
  * writes; the renderer sends everything else and never reads `window` back.
  *
- * `folder` and `sidebar` are written at their defaults here and consumed by
- * later tickets (Explorer, sidebar collapse); `theme` is the View → Appearance
- * choice (AIM-382).
+ * `folder` roots the Explorer. `sidebar` stays at its default until sidebar
+ * collapse lands; `theme` is the View → Appearance choice.
  */
 
 export const SESSION_VERSION = 1
@@ -129,10 +128,11 @@ export function sessionForOpenEditors(
   openPaths: readonly string[],
   activePath: string | null,
   theme: ThemeMode,
+  folder: string | null = null,
 ): Session {
   return {
     version: SESSION_VERSION,
-    folder: null,
+    folder,
     openEditors: openPaths.map((path) => ({ path, mode: 'rich' })),
     activePath,
     theme,

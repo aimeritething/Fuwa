@@ -677,7 +677,7 @@ export function useEditorSave(options: EditorSaveConfig) {
   const { saveNote } = useSaveNote(updateTabAndContent)
   const onAfterSaveRef = useOnAfterSaveRef(onAfterSave)
 
-  return useEditorSaveCommands({
+  const commands = useEditorSaveCommands({
     pendingContentRef,
     autoSaveTimerRef,
     setTabs,
@@ -695,4 +695,6 @@ export function useEditorSave(options: EditorSaveConfig) {
     disabledSaveMessage: disabledSaveText,
     t,
   })
+  const hasPendingSave = useCallback((path: string) => matchesPendingPath(pendingContentRef.current, path), [])
+  return { ...commands, hasPendingSave }
 }

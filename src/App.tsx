@@ -2,6 +2,10 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import type { Tab } from './types'
 import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
+import { Explorer } from './components/Explorer'
+import { useFolder, pickFolderToOpen } from './hooks/useFolder'
+import { useDocumentWatcher } from './hooks/useDocumentWatcher'
+import { documentRoot } from './utils/explorer'
 import { Sidebar } from './components/Sidebar'
 import { useAppearance } from './hooks/useAppearance'
 import { WriteFailureDialog } from './components/WriteFailureDialog'
@@ -15,7 +19,6 @@ import { useTabCommands } from './hooks/useTabCommands'
 import { useThemeMode } from './hooks/useThemeMode'
 import { useWriteFailureRecord, useWriteFailures } from './hooks/useWriteFailures'
 import { closeAppWindow, exitApp } from './utils/appWindow'
-import { noteRootForPath } from './utils/noteEntry'
 import { pickNoteToOpen } from './utils/noteOpenDialog'
 import { openNotesSettled } from './utils/noteOpenRequest'
 
@@ -27,7 +30,7 @@ const noop = () => {}
  */
 const ignoreSaveToast = () => {}
 
-/** Nothing outside the Document's own content to refresh after a write yet. */
+/** The watcher refreshes Explorer metadata after writes. */
 const noVaultContentToUpdate = () => {}
 
 /**
@@ -58,8 +61,8 @@ function useAutosaveOnEditorChange(
  * while a Tab switch is still writing is not cleared with the scope change;
  * the kernel flushes it at the path change and the write goes through.
  */
-function useOpenNoteRoots(tabs: Tab[]): readonly string[] {
-  const rootsKey = Array.from(new Set(tabs.map((tab) => noteRootForPath(tab.entry.path))))
+function useOpenNoteRoots(tabs: Tab[], folder: string | null): readonly string[] {
+  const rootsKey = Array.from(new Set(tabs.map((tab) => documentRoot(tab.entry.path, folder))))
     .sort((a, b) => b.length - a.length)
     .join('\n')
   return useMemo(() => (rootsKey === '' ? [] : rootsKey.split('\n')), [rootsKey])
@@ -83,20 +86,25 @@ function useSavedTimes() {
 }
 
 export default function App() {
+  const folderState = useFolder()
+  const { folder, changeFolder } = folderState
   const {
     tabs,
     setTabs,
     activeTabPath,
     openNote,
     closeTab,
+    closeAllTabs,
     reloadTab,
     activateTab,
     activateTabAt,
     activateAdjacentTab,
     restoreOpenEditors,
-  } = useNoteTabs()
+  } = useNoteTabs(folder)
   const appearance = useAppearance()
   const { restored } = useSession({
+    folder,
+    restoreFolder: folderState.restoreFolder,
     tabs,
     activeTabPath,
     theme: appearance.themeMode,
@@ -106,8 +114,9 @@ export default function App() {
   useThemeMode(appearance.themeMode, restored)
   const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
-  const vaultPath = activeTabPath ? noteRootForPath(activeTabPath) : undefined
-  const persistenceScope = useOpenNoteRoots(tabs)
+  const hasPendingEditorContentRef = useRef<((path: string) => boolean) | null>(null)
+  const vaultPath = activeTabPath ? documentRoot(activeTabPath, folder) : undefined
+  const persistenceScope = useOpenNoteRoots(tabs, folder)
 
   // A write that lands, from any path, clears the Document's error bar.
   const writeFailureRecord = useWriteFailureRecord()
@@ -117,7 +126,7 @@ export default function App() {
     clearWriteFailure(path)
   }, [clearWriteFailure, markSaved])
 
-  const { handleContentChange, savePendingForPath, discardPending } = useEditorSave({
+  const { handleContentChange, savePendingForPath, discardPending, hasPendingSave } = useEditorSave({
     updateVaultContent: noVaultContentToUpdate,
     setTabs,
     setToastMessage: ignoreSaveToast,
@@ -186,6 +195,44 @@ export default function App() {
     closeWindow: closeAppWindow,
   })
 
+  const openExplorerNote = useCallback((path: string) => {
+    void openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
+  }, [openNote, settleAndRecord])
+
+  const settleAndCloseAll = useCallback(async () => {
+    try {
+      await settleAndRecord()
+    } catch {
+      if (activeTabPath) closeTabOrAsk(activeTabPath)
+      throw new Error('Folder change stopped by a Write failure')
+    }
+    for (const tab of tabs) {
+      const path = tab.entry.path
+      if (writeFailureRecord.failuresRef.current[path] && !(await retry(path))) {
+        closeTabOrAsk(path)
+        throw new Error('Folder change stopped by a Write failure')
+      }
+      await savePendingForPath(path)
+    }
+    closeAllTabs()
+    for (const tab of tabs) { forgetSaved(tab.entry.path); clearWriteFailure(tab.entry.path) }
+  }, [activeTabPath, clearWriteFailure, closeAllTabs, closeTabOrAsk, forgetSaved, retry, savePendingForPath, settleAndRecord, tabs, writeFailureRecord.failuresRef])
+
+  const onOpenFolder = useCallback(() => {
+    void (async () => {
+      const path = await pickFolderToOpen()
+      if (path) await changeFolder(path, settleAndCloseAll)
+    })().catch((error: unknown) => console.warn('Could not open Folder:', error))
+  }, [changeFolder, settleAndCloseAll])
+  const onCloseFolder = useCallback(() => {
+    void changeFolder(null, settleAndCloseAll).catch((error: unknown) => console.warn('Could not close Folder:', error))
+  }, [changeFolder, settleAndCloseAll])
+
+  const isPending = useCallback((path: string) => Boolean(
+    hasPendingEditorContentRef.current?.(path) || hasPendingSave(path) || writeFailureRecord.failuresRef.current[path]
+  ), [hasPendingSave, writeFailureRecord.failuresRef])
+  useDocumentWatcher({ folder, paths: tabs.map((tab) => tab.entry.path), refresh: folderState.refresh, reload: reloadTab, isPending })
+
   const onOpenNote = useCallback(() => {
     void (async () => {
       const path = await pickNoteToOpen()
@@ -201,11 +248,13 @@ export default function App() {
     settleAndRecord().catch(noop)
   }, [activeTabPath, settleAndRecord])
 
-  // Open Document…, Save, Quit, Appearance and the Tab commands are wired;
+  // Folder, Document, Save, Quit, Appearance and Tab commands are wired;
   // the other manifest commands get their handlers with their own tickets.
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeTabPath,
     onOpenNote,
+    onOpenVault: onOpenFolder,
+    onCloseVault: onCloseFolder,
     onSave,
     onQuit: quit,
     ...tabCommands.handlers,
@@ -217,7 +266,7 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeTabPath, appearance.handlers, onOpenNote, onSave, quit, tabCommands])
+  }), [activeTabPath, appearance.handlers, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
   // A `.md` dropped on the window opens like File → Open Document…; an image
@@ -230,16 +279,20 @@ export default function App() {
     <div className="fuwa-shell">
       <Sidebar>
         <OpenEditors
+          folder={folder}
           tabs={tabs}
           activeTabPath={activeTabPath}
           onActivate={tabCommands.activateTabSettled}
           onClose={tabCommands.closeTabSettled}
         />
+        <Explorer folder={folder} files={folderState.files} activeTabPath={activeTabPath} onOpenNote={openExplorerNote} error={folderState.error} />
       </Sidebar>
       <Editor
         tabs={tabs}
         activeTabPath={activeTabPath}
         vaultPath={vaultPath}
+        folder={folder}
+        hasPendingEditorContentRef={hasPendingEditorContentRef}
         savedAt={savedAt}
         onContentChange={onContentChange}
         flushPendingEditorContentRef={flushPendingEditorContentRef}

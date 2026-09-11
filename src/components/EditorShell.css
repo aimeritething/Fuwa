@@ -248,3 +248,5 @@
   letter-spacing: 0;
   overflow-wrap: anywhere;
 }
+
+.fuwa-path-row__parent { color: var(--text-tertiary); }
