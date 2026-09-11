@@ -1,5 +1,7 @@
-import type { Tab } from '../types'
+import type { EditorMode, Tab } from '../types'
 import { isWithinPrefix, replaceFolderPrefix } from './folder-actions/folderActionUtils'
+import { frontmatterForcesRaw } from '../utils/frontmatterStatus'
+import { isImageFilePath } from '../utils/imageFile'
 import { noteStem } from '../utils/noteEntry'
 import { notePathFilename } from '../utils/notePathIdentity'
 
@@ -8,6 +10,12 @@ import { notePathFilename } from '../utils/notePathIdentity'
  * the kernel's `Tab` shape. A Document has at most one Tab; closing the
  * active Tab activates the one to its right, else the left; navigation is
  * positional. New Fuwa code: Tolaria persists neither tabs nor their order.
+ *
+ * A Document Tab also carries its mode (AIM-381): Rich for any freshly opened
+ * Document, remembered per Tab, and Raw whenever the Document's Frontmatter is
+ * invalid, so Rich mode never rewrites bytes it could not round-trip. That
+ * rule is applied to every Tab whose content changes hands here, and an Image
+ * Tab has no mode at all.
  */
 
 export interface NoteTabsState {
@@ -22,11 +30,49 @@ function indexOfPath(tabs: Tab[], path: string | null): number {
   return path === null ? -1 : tabs.findIndex((tab) => tab.entry.path === path)
 }
 
+/** The mode a Tab is allowed to be in: an Image Tab has none, invalid Frontmatter forces Raw, else the one it asked for (Rich by default). */
+function ruledMode(tab: Tab): EditorMode | undefined {
+  if (isImageFilePath(tab.entry.path)) return undefined
+  return frontmatterForcesRaw(tab.content) ? 'raw' : tab.mode ?? 'rich'
+}
+
+function withRuledMode(tab: Tab): Tab {
+  const mode = ruledMode(tab)
+  return mode === tab.mode ? tab : { ...tab, mode }
+}
+
+/** Every Tab under the mode rule; the same array back when nothing changes. */
+export function applyModeRule(tabs: Tab[]): Tab[] {
+  let changed = false
+  const ruled = tabs.map((tab) => {
+    const next = withRuledMode(tab)
+    if (next !== tab) changed = true
+    return next
+  })
+  return changed ? ruled : tabs
+}
+
 /** Append a freshly read Document and activate it; a Document already open is only activated. */
 export function openTab(state: NoteTabsState, tab: Tab): NoteTabsState {
   const path = tab.entry.path
   if (indexOfPath(state.tabs, path) !== -1) return activateTab(state, path)
-  return { tabs: [...state.tabs, tab], activeTabPath: path }
+  return { tabs: [...state.tabs, withRuledMode(tab)], activeTabPath: path }
+}
+
+/**
+ * Put a Document Tab in Rich or Raw mode (⌘\, the segmented control, the
+ * Frontmatter badge). Rich is refused while the Frontmatter is invalid; an
+ * Image Tab and a path that is not open are left alone.
+ */
+export function setTabMode(state: NoteTabsState, path: string, mode: EditorMode): NoteTabsState {
+  const index = indexOfPath(state.tabs, path)
+  if (index === -1) return state
+  const tab = state.tabs[index]
+  const ruled = withRuledMode({ ...tab, mode })
+  if (ruled.mode === tab.mode) return state
+  const tabs = state.tabs.slice()
+  tabs[index] = ruled
+  return { ...state, tabs }
 }
 
 /** The Tab that takes over when the one at `index` closes: the right neighbour, else the left, else none. */

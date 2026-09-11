@@ -1,9 +1,13 @@
-import { useState, useCallback, useEffect } from 'react'
-import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
+import { useCallback } from 'react'
+import type { EditorMode } from '../types'
 import { trackEvent } from '../lib/telemetry'
 
 interface UseRawModeParams {
   activeTabPath: string | null
+  /** The active Tab's mode, or null with no Document open. */
+  mode: EditorMode | null
+  /** Puts a Document Tab in a mode; the Tab rules decide whether it takes. */
+  setMode: (path: string, mode: EditorMode) => void
   /** Flush pending WYSIWYG edits to disk before entering raw mode. */
   onFlushPending?: () => Promise<boolean>
   /** Called synchronously before raw mode is deactivated, so the caller can
@@ -11,39 +15,27 @@ interface UseRawModeParams {
   onBeforeRawEnd?: () => void
 }
 
-function loadEditorMode(): boolean {
-  return getVaultConfig().editor_mode === 'raw'
-}
-
 /**
  * Manages raw editor mode state.
- * The mode preference persists across tab switches and is stored in vault config.
+ * Fuwa (AIM-381): the mode is the active Tab's, not the vault's. Tolaria read
+ * and wrote `editor_mode` in the vault config here; Fuwa reads the Tab and
+ * hands the change back to the Tab state, which the Session file follows.
+ * The flush-before-raw and before-raw-end sequence is unchanged.
  */
-export function useRawMode({ activeTabPath, onFlushPending, onBeforeRawEnd }: UseRawModeParams) {
-  const [rawEnabled, setRawEnabled] = useState(loadEditorMode)
-
-  // Re-sync when vault config becomes available (e.g. after initial load)
-  useEffect(() => {
-    return subscribeVaultConfig(() => {
-      const stored = getVaultConfig().editor_mode
-      setRawEnabled(stored === 'raw')
-    })
-  }, [])
-
-  const rawMode = rawEnabled && activeTabPath !== null
+export function useRawMode({ activeTabPath, mode, setMode, onFlushPending, onBeforeRawEnd }: UseRawModeParams) {
+  const rawMode = mode === 'raw' && activeTabPath !== null
 
   const handleToggleRaw = useCallback(async () => {
+    if (activeTabPath === null) return
     trackEvent('raw_mode_toggled')
-    if (rawEnabled) {
+    if (rawMode) {
       onBeforeRawEnd?.()
-      setRawEnabled(false)
-      updateVaultConfigField('editor_mode', 'preview')
+      setMode(activeTabPath, 'rich')
     } else {
       await onFlushPending?.()
-      setRawEnabled(true)
-      updateVaultConfigField('editor_mode', 'raw')
+      setMode(activeTabPath, 'raw')
     }
-  }, [rawEnabled, onFlushPending, onBeforeRawEnd])
+  }, [activeTabPath, rawMode, setMode, onFlushPending, onBeforeRawEnd])
 
   return { rawMode, handleToggleRaw }
 }

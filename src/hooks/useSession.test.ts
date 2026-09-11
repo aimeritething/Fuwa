@@ -110,6 +110,28 @@ describe('useSession', () => {
     }))
   })
 
+  it('writes each Document with its own mode and rewrites the file when a mode changes (AIM-381)', async () => {
+    answerWith(null)
+    const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
+    const { result, rerender } = renderHook(
+      (props: { tabs: Tab[] }) =>
+        useSession({ ...props, activeTabPath: A, theme: 'dark', restoreOpenEditors, restoreTheme, sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar }),
+      { initialProps: { tabs: [{ ...tab(A), mode: 'raw' as const }, tab(B)] } },
+    )
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({
+      openEditors: [{ path: A, mode: 'raw' }, { path: B, mode: 'rich' }],
+    }))
+    const writesBefore = sessionWrites().length
+
+    rerender({ tabs: [{ ...tab(A), mode: 'rich' as const }, tab(B)] })
+
+    await waitFor(() => expect(sessionWrites().length).toBe(writesBefore + 1))
+    expect(sessionWrites().at(-1)).toMatchObject({
+      openEditors: [{ path: A, mode: 'rich' }, { path: B, mode: 'rich' }],
+    })
+  })
+
   it('starts fresh and restores nothing when the read fails', async () => {
     runtime.invoke.mockImplementation(async (cmd) => {
       if (cmd === 'read_session') throw new Error('No mock handler for command: read_session')

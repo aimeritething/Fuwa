@@ -1,5 +1,6 @@
 import { useRef, useLayoutEffect, useCallback, useState } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
+import type { EditorMode } from '../types'
 import { useEditorContentPathSignal } from '../hooks/useEditorContentPathSignal'
 import { useRawMode } from '../hooks/useRawMode'
 import { clearTableResizeState } from './tableResizeState'
@@ -299,6 +300,15 @@ function useSyncRawModeContentOverride({
   }, [activeTabContent, activeTabPath, rawSourceContentRef, setRawModeContentOverride])
 }
 
+/** Where the mode lives in Fuwa (AIM-381): the active Tab, read here and written back through the Tab state. */
+export interface TabModeState {
+  mode: EditorMode | null
+  setMode: (path: string, mode: EditorMode) => void
+}
+
+/** No Tab state given reads as no Document open: never Raw, nowhere to write a mode. */
+const NO_TAB_MODE: TabModeState = { mode: null, setMode: () => {} }
+
 export function useRawModeWithFlush(
   editor: ReturnType<typeof useCreateBlockNote>,
   activeTabPath: string | null,
@@ -306,6 +316,7 @@ export function useRawModeWithFlush(
   onContentChange?: (path: string, content: string) => void,
   vaultPath?: string,
   flushPendingEditorChangeRef?: React.MutableRefObject<(() => boolean) | null>,
+  tabMode: TabModeState = NO_TAB_MODE,
 ) {
   const { path: editorContentPath } = useEditorContentPathSignal()
   const rawLatestContentRef = useRef<string | null>(null)
@@ -374,6 +385,8 @@ export function useRawModeWithFlush(
 
   const { rawMode, handleToggleRaw } = useRawMode({
     activeTabPath,
+    mode: tabMode.mode,
+    setMode: tabMode.setMode,
     onFlushPending: handleFlushPending,
     onBeforeRawEnd: handleBeforeRawEnd,
   })

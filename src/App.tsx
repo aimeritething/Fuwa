@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Tab } from './types'
 import { Editor } from './components/Editor'
 import { OpenEditors } from './components/OpenEditors'
@@ -112,6 +112,7 @@ export default function App() {
     activateTabAt,
     activateAdjacentTab,
     retargetTabs,
+    setTabMode,
     restoreOpenEditors,
   } = useNoteTabs(folder, folderState.listsFile)
   const appearance = useAppearance()
@@ -130,7 +131,15 @@ export default function App() {
   useThemeMode(appearance.themeMode, restored)
   const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
+  const flushPendingRawContentRef = useRef<((path: string) => void) | null>(null)
   const hasPendingEditorContentRef = useRef<((path: string) => boolean) | null>(null)
+  // Toggle Rich/Raw lives in the editor, which registers it here (AIM-381).
+  const rawToggleRef = useRef<(() => void) | null>(null)
+  /** Push whichever surface is showing the Document's fresh keystrokes into the save buffer. */
+  const flushEditorBuffers = useCallback((path: string) => {
+    flushPendingEditorContentRef.current?.(path)
+    flushPendingRawContentRef.current?.(path)
+  }, [])
   const vaultPath = activeTabPath ? documentRoot(activeTabPath, folder) : undefined
   // Save, Toggle Rich/Raw and Find in Document follow the active Document;
   // an Image Tab leaves all three disabled (spec section 4). Its row in the
@@ -165,9 +174,9 @@ export default function App() {
    */
   const settleActiveNote = useCallback(async () => {
     if (!activeTabPath) return
-    flushPendingEditorContentRef.current?.(activeTabPath)
+    flushEditorBuffers(activeTabPath)
     await savePendingForPath(activeTabPath)
-  }, [activeTabPath, savePendingForPath])
+  }, [activeTabPath, flushEditorBuffers, savePendingForPath])
 
   /**
    * Retry: the save hook's buffer, which kept the refused edits and, once the
@@ -176,11 +185,11 @@ export default function App() {
    * Document.
    */
   const writeBuffer = useCallback(async (path: string, content: string) => {
-    if (path === activeTabPath) flushPendingEditorContentRef.current?.(path)
+    if (path === activeTabPath) flushEditorBuffers(path)
     if (await savePendingForPath(path)) return
     handleContentChange(path, content)
     await savePendingForPath(path)
-  }, [activeTabPath, handleContentChange, savePendingForPath])
+  }, [activeTabPath, flushEditorBuffers, handleContentChange, savePendingForPath])
 
   /** Discard changes: forget the buffered edits, then read the disk bytes back into the Tab. */
   const revertToDisk = useCallback(async (path: string) => {
@@ -210,6 +219,17 @@ export default function App() {
   const openPaths = useMemo(() => new Set(tabs.map((tab) => tab.entry.path)), [tabs])
   const isOpenPath = useCallback((path: string) => openPaths.has(path), [openPaths])
   const onContentChange = useAutosaveOnEditorChange(handleContentChange, savePendingForPath, recordWriteFailure, isOpenPath)
+  // Raw mode's keystrokes take the same road, after the raw editor's own idle
+  // debounce (ADR-0003). A report that matches what the Tab already holds is
+  // not an edit: the raw editor re-reports on unmount what a flush just wrote.
+  const tabsRef = useRef(tabs)
+  useLayoutEffect(() => {
+    tabsRef.current = tabs
+  }, [tabs])
+  const onRawContentChange = useCallback((path: string, content: string) => {
+    if (tabsRef.current.find((tab) => tab.entry.path === path)?.content === content) return
+    onContentChange(path, content)
+  }, [onContentChange])
 
   /** The open Tabs a path covers: the file itself, or everything under a folder. */
   const pathsUnder = useCallback((prefix: string) => (
@@ -225,10 +245,10 @@ export default function App() {
    */
   const settleTabsUnder = useCallback(async (prefix: string) => {
     for (const path of pathsUnder(prefix)) {
-      if (path === activeTabPath) flushPendingEditorContentRef.current?.(path)
+      if (path === activeTabPath) flushEditorBuffers(path)
       await savePendingForPath(path).catch(() => {})
     }
-  }, [activeTabPath, pathsUnder, savePendingForPath])
+  }, [activeTabPath, flushEditorBuffers, pathsUnder, savePendingForPath])
 
   /**
    * Cancel the pending Autosave of every Tab at or under a path and close them
@@ -349,10 +369,15 @@ export default function App() {
     settleAndRecord().catch(noop)
   }, [activeDocumentPath, settleAndRecord])
 
-  // Folder, Document, Save, Quit, Appearance, Sidebar and Tab commands are
-  // wired; the other manifest commands get their handlers with their own
-  // tickets. ⌘[ toggles the sidebar in both states; in Raw mode it shadows
-  // CodeMirror's indent-less (⌘] stays the editor's).
+  // Toggle Rich/Raw (⌘\, View menu) is disabled with no Document open, like
+  // Save: an undefined handler is how the dispatcher reads disabled, and the
+  // native menu follows through update_menu_state.
+  const onToggleRawEditor = useCallback(() => rawToggleRef.current?.(), [])
+
+  // Folder, Document, Save, Quit, Appearance, Sidebar, Tab and Rich/Raw
+  // commands are wired; the other manifest commands get their handlers with
+  // their own tickets. ⌘[ toggles the sidebar in both states; in Raw mode it
+  // shadows CodeMirror's indent-less (⌘] stays the editor's).
   const handlers = useMemo<MenuEventHandlers>(() => ({
     activeDocumentPath,
     hasFolder: folder !== null,
@@ -362,6 +387,7 @@ export default function App() {
     onSave,
     onQuit: quit,
     onToggleSidebar: toggleSidebar,
+    onToggleRawEditor: activeDocumentPath ? onToggleRawEditor : undefined,
     ...tabCommands.handlers,
     ...appearance.handlers,
     onCreateNote: explorerActions.createDocument,
@@ -371,7 +397,7 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, folder, onOpenNote, onOpenFolder, onCloseFolder, onSave, quit, tabCommands, toggleSidebar])
+  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, folder, onOpenNote, onOpenFolder, onCloseFolder, onSave, onToggleRawEditor, quit, tabCommands, toggleSidebar])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
   // A `.md` dropped on the window opens like File → Open Document…; an image
@@ -415,7 +441,11 @@ export default function App() {
         hasPendingEditorContentRef={hasPendingEditorContentRef}
         savedAt={savedAt}
         onContentChange={onContentChange}
+        onRawContentChange={onRawContentChange}
         flushPendingEditorContentRef={flushPendingEditorContentRef}
+        flushPendingRawContentRef={flushPendingRawContentRef}
+        rawToggleRef={rawToggleRef}
+        onSetTabMode={setTabMode}
         onActivateTab={tabCommands.activateTabSettled}
         onCloseTab={tabCommands.closeTabSettled}
         writeFailure={writeFailures.failureFor(activeTabPath)}

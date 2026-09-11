@@ -74,10 +74,19 @@ export interface WorkspaceIdentity {
   defaultForNewNotes: boolean
 }
 
+/** Rich mode or Raw mode (CONTEXT.md): the two surfaces a Document Tab can show. */
+export type EditorMode = 'rich' | 'raw'
+
 /** An open editor tab: the vault entry plus its in-memory content (moved here from Tolaria's useTabManagement, which Fuwa does not port). */
 export interface Tab {
   entry: VaultEntry
   content: string
+  /**
+   * Document Tabs only: the mode this Tab is in, remembered per Tab and
+   * written to the Session (AIM-381). Absent on an Image Tab, which has no
+   * mode. A Document whose Frontmatter is invalid is always `raw`.
+   */
+  mode?: EditorMode
   /**
    * Image Tabs only: how many times the watcher has reported the file changed.
    * An Image Tab holds no content to reload, so this is what it reloads

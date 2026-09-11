@@ -126,6 +126,55 @@ describe('useNoteTabs', () => {
     expect(result.current.tabs.map((tab) => tab.content)).toEqual(['# A\n', '# C\n'])
   })
 
+  it('restores each Document in the mode its Session entry names, Rich when it names none (AIM-381)', async () => {
+    seedFiles({ [A]: '# A\n', [B]: '# B\n', [C]: '# C\n' })
+    const { result } = renderHook(() => useNoteTabs())
+
+    await act(async () => {
+      await result.current.restoreOpenEditors([{ path: A, mode: 'raw' }, { path: B, mode: 'rich' }, { path: C }], A)
+    })
+
+    expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['raw', 'rich', 'rich'])
+  })
+
+  it('opens a Document in Rich mode and lets one Tab switch to Raw on its own', async () => {
+    const { result } = await openThree()
+
+    act(() => {
+      result.current.setTabMode(B, 'raw')
+    })
+
+    expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['rich', 'raw', 'rich'])
+  })
+
+  it('forces Raw on a Document whose Frontmatter is invalid, on open, on reload and on restore', async () => {
+    const invalid = '---\nnot yaml\n---\n# A\n'
+    seedFiles({ [A]: invalid, [B]: '# B\n' })
+    const { result } = renderHook(() => useNoteTabs())
+
+    await act(async () => {
+      await result.current.openNote(A)
+      await result.current.openNote(B)
+    })
+    expect(result.current.tabs.map((tab) => tab.mode)).toEqual(['raw', 'rich'])
+    act(() => {
+      result.current.setTabMode(A, 'rich')
+    })
+    expect(result.current.tabs[0].mode).toBe('raw')
+
+    seedFiles({ [A]: invalid, [B]: invalid })
+    await act(async () => {
+      await result.current.reloadTab(B)
+    })
+    expect(result.current.tabs[1].mode).toBe('raw')
+
+    const restored = renderHook(() => useNoteTabs())
+    await act(async () => {
+      await restored.result.current.restoreOpenEditors([{ path: A, mode: 'rich' }], A)
+    })
+    expect(restored.result.current.tabs[0].mode).toBe('raw')
+  })
+
   it('keeps a Document opened before the restore settled, and keeps it active', async () => {
     seedFiles({ [A]: '# A\n', [B]: '# B\n', [C]: '# C\n' })
     const { result } = renderHook(() => useNoteTabs())
