@@ -23,11 +23,13 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
   `src/mock-tauri/vaultFixture.ts`, which answers `list_files`, `get_note_content`,
   `save_note_content`, `list_vault_folders`, `start_vault_watcher`, `stop_vault_watcher`,
   `take_pending_open`, `read_session`, `update_session` and `quit_app` from memory and
-  rejects anything else. Argument and result shapes follow the Rust commands; `list_files` and
-  `take_pending_open` have no Rust side yet, so the fixture's shape is the one their Rust
-  commands should match. A spec reaches it as `window.__fuwaMockVault`: call `reset(seed)`
-  to seed files, `writeNote(path, content)` to add one, `queuePendingOpen(paths)` to
-  simulate a Finder open, `queueDialogSelection(paths)` to decide what the next Open
+  rejects anything else. Argument and result shapes follow the Rust commands. A spec
+  reaches it as `window.__fuwaMockVault`: call `reset(seed)` to seed files,
+  `writeNote(path, content)` to add one, `seedPendingOpen(paths)` to plant a Finder launch
+  by document for the next page load (kept in localStorage like the Session, drained once),
+  `openFromFinder(paths)` to open from Finder while the app runs (it buffers the paths and
+  fires the window event that stands in for the Rust side's poke), `queuePendingOpen(paths)`
+  to buffer without the poke, `queueDialogSelection(paths)` to decide what the next Open
   Document… dialog "returns" (the dialog is a plugin call with no command behind it, so the
   fixture stands in for it too), `markReadOnly(paths)` to make writes to those paths fail,
   `seedSession(session)` to plant the Session file the next page load restores (the fixture

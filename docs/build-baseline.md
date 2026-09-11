@@ -47,6 +47,26 @@ tldraw and Mermaid are lazy chunks as ADR-0001 requires; KaTeX is inside
 `index-*.js` (static import, by the spec's rule). The binary and `.app` were not
 rebuilt for this entry.
 
+## Shipped build with the file association (AIM-391)
+
+`pnpm tauri build` on 2026-09-11 with the AIM-391 working tree, same machine,
+node 22.22.1, rustc 1.94.0, Vite 7.3.6. The first `.app` since the editor
+shell landed, so the first `.app` number that reflects the app; the earlier
+9.8 MB was the shell alone. Also the first bundle to carry
+`CFBundleDocumentTypes` (from `bundle.fileAssociations`), which adds a few
+lines to `Info.plist` and nothing to the binary. Unsigned (the linker's ad-hoc
+signature only), not notarized, bundle target `app` only.
+
+| Number | Value |
+| -- | -- |
+| JS total | 12,415.39 kB (138 chunks) |
+| JS gzip total | 2,990.23 kB |
+| Largest chunks | `index-*.js` 3,337.04 kB / 1,038.24 kB gzip · `TldrawWhiteboard-*.js` 1,321.14 kB / 410.14 kB · `cpp-*.js` (shiki grammar) 829.05 kB / 62.56 kB · `cynefin-*.js` (Mermaid) 691.42 kB / 155.09 kB · `mermaid.core-*.js` 672.97 kB / 163.53 kB |
+| CSS | `index-*.css` 185.64 kB / 37.59 kB gzip · `TldrawWhiteboard-*.css` 79.97 kB / 14.68 kB |
+| Release binary `src-tauri/target/release/fuwa` | 15,575,968 bytes (15.6 MB) |
+| `Fuwa.app` | 15,232 KiB on disk (`du -sk`), 15 MB |
+| Release `cargo build` | 27 s incremental (warm cache) |
+
 ## Kernel measurement (not shipped)
 
 To give the post-v0.1 chunking decision a number now, a one-off `vite build`

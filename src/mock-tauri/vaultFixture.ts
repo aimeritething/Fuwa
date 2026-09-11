@@ -10,8 +10,11 @@ import { notePathFilename } from '../utils/notePathIdentity'
  * reaches an unanswered command fails loudly rather than silently.
  *
  * Extending it for a later spec: seed files through `createMockVault(seed)` or
- * `reset(seed)`, queue Finder-style opens with `queuePendingOpen`, and assert on
- * `calls` (every invocation in order). Add a case to the `answer` switch when a
+ * `reset(seed)`, stand in for Finder with `seedPendingOpen` (the path a launch by
+ * document finds buffered; kept in localStorage so the next page load, like a
+ * relaunch, drains it), `queuePendingOpen` (buffer only) and `openFromFinder`
+ * (buffer and poke, an open while Fuwa is running), and assert on `calls`
+ * (every invocation in order). Add a case to the `answer` switch when a
  * spec needs a command the fixture does not answer yet. The system file dialog
  * has no command behind it, so the fixture stands in for that too: a spec
  * queues the path the user "chooses" with `queueDialogSelection` and the shell
@@ -23,8 +26,8 @@ import { notePathFilename } from '../utils/notePathIdentity'
  * exists implicitly. Shapes follow the Rust commands: absolute paths in,
  * Folder-relative `/`-separated paths in `list_vault_folders`, `modifiedAt` in
  * seconds, errors as the Rust boundary's strings. `list_files` is shared with
- * the Fuwa-owned Rust scanner. `take_pending_open` remains the browser stand-in
- * for Finder opens.
+ * the Fuwa-owned Rust scanner; `take_pending_open` with the Rust side's
+ * `PendingOpen` buffer (AIM-391).
  */
 
 export const MOCK_VAULT_PATH = '/Users/fuwa/Documents/Notes'
@@ -102,7 +105,12 @@ export interface MockVault {
   movePath(path: string, newPath: string): void
   emitExternalChange(paths: string[]): void
   watchedPath(): string | null
+  /** Buffer paths for the next `take_pending_open`, without a poke. */
   queuePendingOpen(paths: string[]): void
+  /** Buffer paths and poke the renderer, as the Rust side does for an open while Fuwa is running. */
+  openFromFinder(paths: string[]): void
+  /** Plant the Finder open the next launch (page load) finds buffered, as a launch by document does. */
+  seedPendingOpen(paths: string[]): void
   /** Queue what the next Open Document… dialogs "return", in order. */
   queueDialogSelection(paths: string[]): void
   /** The next queued dialog selection, or null for a cancelled dialog. */
@@ -131,6 +139,9 @@ const FILE_EXISTS_ERROR = 'File already exists'
 const NAME_TAKEN_ERROR = 'A file with that name already exists'
 const READ_ONLY_ERROR = 'Failed to write file: Permission denied (os error 13)'
 const SESSION_STORAGE_KEY = 'fuwa:mock-session'
+const PENDING_OPEN_STORAGE_KEY = 'fuwa:mock-pending-open'
+/** The stand-in for the Rust side's poke; `listenForOpenRequests` hears it outside Tauri. */
+const OPEN_FILES_EVENT = 'fuwa:open-files'
 
 export const DEFAULT_MOCK_VAULT_FILES: MockVaultFile[] = [
   file('Welcome.md', 'note', '# Welcome\n\nThis Folder lives in memory. Edits stay for the life of the page.\n', 1_757_500_000),
@@ -195,6 +206,26 @@ function readStoredSession(): unknown {
   }
 }
 
+/** A Finder launch's paths, planted for the next page load; taking them clears the slot. */
+function takeStoredPendingOpen(): string[] {
+  try {
+    const raw = globalThis.localStorage?.getItem(PENDING_OPEN_STORAGE_KEY)
+    globalThis.localStorage?.removeItem(PENDING_OPEN_STORAGE_KEY)
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter((path): path is string => typeof path === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeStoredPendingOpen(paths: string[]): void {
+  try {
+    globalThis.localStorage?.setItem(PENDING_OPEN_STORAGE_KEY, JSON.stringify(paths))
+  } catch {
+    // Storage can be unavailable in restricted contexts; there is then no launch by document.
+  }
+}
+
 function writeStoredSession(session: unknown): void {
   try {
     if (session === null || session === undefined) globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY)
@@ -251,7 +282,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
       files.set(entry.path, { ...entry })
     }
     watched = null
-    pendingOpen = []
+    pendingOpen = takeStoredPendingOpen()
     dialogSelections = []
     readOnlyPaths = new Set()
     revealed = null
@@ -471,6 +502,11 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     queuePendingOpen: (paths) => {
       pendingOpen = [...pendingOpen, ...paths]
     },
+    openFromFinder: (paths) => {
+      pendingOpen = [...pendingOpen, ...paths]
+      window.dispatchEvent(new CustomEvent(OPEN_FILES_EVENT, { detail: paths }))
+    },
+    seedPendingOpen: writeStoredPendingOpen,
     queueDialogSelection: (paths) => {
       dialogSelections = [...dialogSelections, ...paths]
     },
