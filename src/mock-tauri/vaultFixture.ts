@@ -1,4 +1,6 @@
 import type { FolderNode } from '../types'
+import { lockedExtension } from '../utils/explorerNames'
+import { notePathFilename } from '../utils/notePathIdentity'
 
 /**
  * In-memory Folder fixture: the stand-in for the Rust side when Fuwa runs in a
@@ -65,6 +67,12 @@ export interface MockVaultCommands {
   read_session: { args?: undefined; result: unknown }
   update_session: { args: { session: unknown }; result: void }
   quit_app: { args?: undefined; result: void }
+  create_note_content: { args: { path: string; content: string; vaultPath?: string }; result: void }
+  create_vault_folder: { args: { vaultPath: string; folderName: string; parentPath?: string }; result: string }
+  rename_vault_file: { args: { vaultPath: string; oldPath: string; newStem: string }; result: { new_path: string } }
+  rename_vault_folder: { args: { vaultPath: string; folderPath: string; newName: string }; result: { old_path: string; new_path: string } }
+  reveal_path_in_file_manager: { args: { path: string }; result: void }
+  copy_text_to_clipboard: { args: { text: string }; result: void }
 }
 
 export interface MockVault {
@@ -79,6 +87,9 @@ export interface MockVault {
   writeImage(path: string, image: MockVaultImage): void
   /** What the asset protocol would serve for an Image file, or null when there is no such picture. */
   assetUrl(path: string): string | null
+  /** The last path handed to Reveal in Finder, and the last text put on the clipboard. */
+  revealedPath(): string | null
+  clipboardText(): string | null
   removeFile(path: string): void
   emitExternalChange(paths: string[]): void
   watchedPath(): string | null
@@ -107,6 +118,8 @@ const ACTIVE_VAULT_UNAVAILABLE_ERROR = 'Active vault is not available'
 const FILE_DOES_NOT_EXIST_ERROR = 'File does not exist'
 const NOT_A_NOTE_ERROR = 'Path is not a note'
 const NOT_AN_IMAGE_ERROR = 'Path is not an Image file'
+const FILE_EXISTS_ERROR = 'File already exists'
+const NAME_TAKEN_ERROR = 'A file with that name already exists'
 const READ_ONLY_ERROR = 'Failed to write file: Permission denied (os error 13)'
 const SESSION_STORAGE_KEY = 'fuwa:mock-session'
 
@@ -210,6 +223,8 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
   let pendingOpen: string[] = []
   let dialogSelections: string[] = []
   let readOnlyPaths = new Set<string>()
+  let revealed: string | null = null
+  let clipboard: string | null = null
   const calls: MockVaultCall[] = []
 
   function ensureFolders(path: string, modifiedAt: number): void {
@@ -230,6 +245,8 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     pendingOpen = []
     dialogSelections = []
     readOnlyPaths = new Set()
+    revealed = null
+    clipboard = null
     calls.length = 0
   }
 
@@ -267,6 +284,28 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     const modifiedAt = nowInSeconds()
     ensureFolders(path, modifiedAt)
     files.set(path, { path, kind: 'image', dataUrl: imageDataUrl(picture), modifiedAt, fileSize: picture.fileSize })
+  }
+
+  /** Every path at or under a prefix, the way a directory rename moves a subtree. */
+  function pathsUnder(prefix: string): string[] {
+    return Array.from(files.keys()).filter((path) => path === prefix || path.startsWith(`${prefix}/`))
+  }
+
+  /** A rename is one move: the entries come out at the new prefix and nothing else changes. */
+  function movePrefix(oldPrefix: string, newPrefix: string): void {
+    if (files.has(newPrefix)) throw new Error(NAME_TAKEN_ERROR)
+    for (const path of pathsUnder(oldPrefix)) {
+      const entry = files.get(path) as MockVaultFile
+      files.delete(path)
+      const next = `${newPrefix}${path.slice(oldPrefix.length)}`
+      files.set(next, { ...entry, path: next })
+    }
+  }
+
+  /** The path a file takes when only its stem changes; the extension is the Explorer's to lock. */
+  function renameStem(path: string, stem: string): string {
+    const name = notePathFilename(path)
+    return `${path.slice(0, path.length - name.length)}${stem}${lockedExtension(name).extension}`
   }
 
   function answer(command: string, args: Record<string, unknown> | undefined): unknown {
@@ -316,6 +355,50 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
       // so the call log is the whole effect.
       case 'quit_app':
         return undefined
+      case 'create_note_content': {
+        const path = requireInsideVault(args?.path)
+        if (files.has(path)) throw new Error(`${FILE_EXISTS_ERROR}: ${path}`)
+        writeNote(path, typeof args?.content === 'string' ? args.content : '')
+        return undefined
+      }
+      case 'create_vault_folder': {
+        requireRoot(args?.vaultPath)
+        const parent = typeof args?.parentPath === 'string' && args.parentPath
+          ? `${args.vaultPath as string}/${args.parentPath}`
+          : (args?.vaultPath as string)
+        const name = String(args?.folderName ?? '')
+        const path = requireInsideVault(`${parent}/${name}`)
+        if (files.has(path)) throw new Error(`Folder '${name}' already exists`)
+        files.set(path, { path, kind: 'folder', modifiedAt: nowInSeconds(), fileSize: 0 })
+        return name
+      }
+      case 'rename_vault_file': {
+        requireRoot(args?.vaultPath)
+        const path = requireInsideVault(args?.oldPath)
+        if (!files.has(path)) throw new Error(FILE_DOES_NOT_EXIST_ERROR)
+        const next = renameStem(path, String(args?.newStem ?? ''))
+        if (next !== path) movePrefix(path, next)
+        return { new_path: next }
+      }
+      case 'rename_vault_folder': {
+        requireRoot(args?.vaultPath)
+        const root = args?.vaultPath as string
+        const relative = String(args?.folderPath ?? '')
+        const path = requireInsideVault(`${root}/${relative}`)
+        if (files.get(path)?.kind !== 'folder') throw new Error(`Folder does not exist: ${relative}`)
+        const nextRelative = `${relative.split('/').slice(0, -1).concat(String(args?.newName ?? '')).join('/')}`
+        const next = requireInsideVault(`${root}/${nextRelative}`)
+        if (next !== path) movePrefix(path, next)
+        return { old_path: relative, new_path: nextRelative }
+      }
+      case 'reveal_path_in_file_manager': {
+        revealed = requireInsideVault(args?.path)
+        return undefined
+      }
+      case 'copy_text_to_clipboard': {
+        clipboard = String(args?.text ?? '')
+        return undefined
+      }
       default:
         throw new Error(`No mock handler for command: ${command}`)
     }
@@ -340,6 +423,8 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
       window.dispatchEvent(new CustomEvent('fuwa:external-change', { detail: paths }))
     },
     watchedPath: () => watched,
+    revealedPath: () => revealed,
+    clipboardText: () => clipboard,
     queuePendingOpen: (paths) => {
       pendingOpen = [...pendingOpen, ...paths]
     },

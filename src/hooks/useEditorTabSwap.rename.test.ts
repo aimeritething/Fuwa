@@ -321,3 +321,57 @@ describe('useEditorTabSwap untitled rename continuity', () => {
     expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
   })
 })
+
+describe('useEditorTabSwap Explorer rename continuity', () => {
+  it('follows a renamed Tab without re-parsing its content', async () => {
+    setupMountedEditorMocks()
+
+    const editor = makeMockEditor('# Fuwa\n\nA small desktop app.')
+    const before = makeContentTab('Fuwa.md', '# Fuwa\n\nA small desktop app.')
+    const after = makeContentTab('Fuwa v2.md', before.content)
+
+    const { rerender } = renderHook(
+      ({ tabs, activeTabPath }) => useEditorTabSwap({
+        tabs,
+        activeTabPath,
+        editor: editor as never,
+      }),
+      { initialProps: { tabs: [before], activeTabPath: before.entry.path } },
+    )
+
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    editor.replaceBlocks.mockClear()
+    editor.tryParseMarkdownToBlocks.mockClear()
+
+    rerender({ tabs: [after], activeTabPath: after.entry.path })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+  })
+
+  it('still swaps when the Tab that took over holds different content', async () => {
+    setupMountedEditorMocks()
+
+    const editor = makeMockEditor('# Fuwa\n\nA small desktop app.')
+    const before = makeContentTab('Fuwa.md', '# Fuwa\n\nA small desktop app.')
+    const other = makeContentTab('Reading list.md', '# Reading list\n\n- Practical Vim')
+
+    const { rerender } = renderHook(
+      ({ tabs, activeTabPath }) => useEditorTabSwap({
+        tabs,
+        activeTabPath,
+        editor: editor as never,
+      }),
+      { initialProps: { tabs: [before], activeTabPath: before.entry.path } },
+    )
+
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    editor.tryParseMarkdownToBlocks.mockClear()
+
+    rerender({ tabs: [other], activeTabPath: other.entry.path })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalled()
+  })
+})

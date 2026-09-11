@@ -24,6 +24,12 @@ pub struct RenameNoteFilenameRequest<'a> {
 }
 
 #[derive(Clone, Copy)]
+pub struct RenameVaultFileRequest<'a> {
+    pub old_path: &'a str,
+    pub new_stem: &'a str,
+}
+
+#[derive(Clone, Copy)]
 pub struct MoveNoteToFolderRequest<'a> {
     pub vault_path: &'a str,
     pub old_path: &'a str,
@@ -123,6 +129,46 @@ pub fn rename_note_filename(
         .ok_or("Cannot determine parent directory")?;
     let new_file = parent_dir.join(&new_filename);
     rename_note_file(request.old_path, old_file, &new_file)?;
+    Ok(finalize_rename(&new_file))
+}
+
+/// Rename a Document or an Image file in place, keeping its folder and its
+/// extension. The Explorer edits the stem only (spec section 4), so the
+/// extension the file arrived with is the extension it leaves with; a name
+/// with no extension (a dotfile, or a bare name) keeps having none.
+pub fn rename_vault_file(request: RenameVaultFileRequest<'_>) -> Result<RenameResult, String> {
+    let old_file = Path::new(request.old_path);
+    ensure_existing_note(old_file)?;
+
+    let stem = request.new_stem.trim();
+    if stem.is_empty() {
+        return Err("New filename cannot be empty".to_string());
+    }
+    validate_filename_stem(stem)?;
+
+    let new_filename = match old_file.extension() {
+        Some(extension) => format!("{}.{}", stem, extension.to_string_lossy()),
+        None => stem.to_string(),
+    };
+    if file_name_string(old_file) == new_filename {
+        return Ok(unchanged_result(old_file));
+    }
+
+    let parent_dir = old_file
+        .parent()
+        .ok_or("Cannot determine parent directory")?;
+    let new_file = parent_dir.join(&new_filename);
+    if new_file.exists() && !is_same_file(old_file, &new_file) {
+        return Err("A file with that name already exists".to_string());
+    }
+    fs::rename(old_file, &new_file).map_err(|e| {
+        format!(
+            "Failed to rename {} to {}: {}",
+            request.old_path,
+            new_file.to_string_lossy(),
+            e
+        )
+    })?;
     Ok(finalize_rename(&new_file))
 }
 
@@ -340,6 +386,143 @@ mod tests {
     #[test]
     fn test_rename_note_filename_rejects_windows_invalid_names() {
         assert_rename_note_filename_error("quarterly:plan", None::<&str>, "Invalid filename");
+    }
+
+    #[test]
+    fn test_rename_vault_file_keeps_an_image_extension() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        create_test_file(vault, "Attachments/lake.png", b"PNG");
+
+        let result = rename_vault_file(RenameVaultFileRequest {
+            old_path: vault.join("Attachments/lake.png").to_str().unwrap(),
+            new_stem: "Lake Kawaguchi",
+        })
+        .unwrap();
+
+        assert!(result.new_path.ends_with("Attachments/Lake Kawaguchi.png"));
+        assert_eq!(
+            fs::read(vault.join("Attachments/Lake Kawaguchi.png")).unwrap(),
+            b"PNG"
+        );
+    }
+
+    #[test]
+    fn test_rename_vault_file_keeps_only_the_last_extension() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        let current_path = create_current_note(vault, "note/current.md");
+
+        let result = rename_vault_file(RenameVaultFileRequest {
+            old_path: current_path.to_str().unwrap(),
+            new_stem: "release.v2",
+        })
+        .unwrap();
+
+        assert!(result.new_path.ends_with("note/release.v2.md"));
+    }
+
+    #[test]
+    fn test_rename_vault_file_leaves_an_extensionless_name_bare() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        create_test_file(vault, "LICENSE", "text");
+
+        let result = rename_vault_file(RenameVaultFileRequest {
+            old_path: vault.join("LICENSE").to_str().unwrap(),
+            new_stem: "COPYING",
+        })
+        .unwrap();
+
+        assert!(result.new_path.ends_with("COPYING"));
+        assert!(vault.join("COPYING").exists());
+    }
+
+    #[test]
+    fn test_rename_vault_file_noop_when_the_stem_is_unchanged() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        let current_path = create_current_note(vault, "note/current.md");
+
+        let result = rename_vault_file(RenameVaultFileRequest {
+            old_path: current_path.to_str().unwrap(),
+            new_stem: "current",
+        })
+        .unwrap();
+
+        assert_eq!(result.new_path, current_path.to_string_lossy());
+        assert!(current_path.exists());
+    }
+
+    #[test]
+    fn test_rename_vault_file_allows_a_case_only_change() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        let current_path = create_current_note(vault, "note/current.md");
+
+        let result = rename_vault_file(RenameVaultFileRequest {
+            old_path: current_path.to_str().unwrap(),
+            new_stem: "Current",
+        })
+        .unwrap();
+
+        assert!(result.new_path.ends_with("note/Current.md"));
+    }
+
+    #[test]
+    fn test_rename_vault_file_refuses_an_occupied_name() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        let current_path = create_current_note(vault, "note/current.md");
+        create_test_file(vault, "note/taken.md", "# Taken\n");
+
+        let error = rename_vault_file(RenameVaultFileRequest {
+            old_path: current_path.to_str().unwrap(),
+            new_stem: "taken",
+        })
+        .unwrap_err();
+
+        assert_eq!(error, "A file with that name already exists");
+        assert!(current_path.exists());
+    }
+
+    #[test]
+    fn test_rename_vault_file_rejects_an_empty_or_invalid_stem() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        let current_path = create_current_note(vault, "note/current.md");
+        let old_path = current_path.to_str().unwrap();
+
+        assert_eq!(
+            rename_vault_file(RenameVaultFileRequest {
+                old_path,
+                new_stem: "   ",
+            })
+            .unwrap_err(),
+            "New filename cannot be empty"
+        );
+        assert_eq!(
+            rename_vault_file(RenameVaultFileRequest {
+                old_path,
+                new_stem: "quarterly:plan",
+            })
+            .unwrap_err(),
+            "Invalid filename"
+        );
+    }
+
+    #[test]
+    fn test_rename_vault_file_rejects_a_missing_source() {
+        let dir = TempDir::new().unwrap();
+        let missing = dir.path().join("missing.md");
+
+        let error = rename_vault_file(RenameVaultFileRequest {
+            old_path: missing.to_str().unwrap(),
+            new_stem: "renamed",
+        })
+        .unwrap_err();
+
+        assert_eq!(error, format!("File does not exist: {}", missing.display()));
     }
 
     #[test]

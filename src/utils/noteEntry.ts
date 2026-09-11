@@ -17,7 +17,8 @@ export function isDocumentPath(path: string): boolean {
   return /\.md$/iu.test(path)
 }
 
-function noteStem(filename: string): string {
+/** A file name without its extension, the way the kernel titles a Document. */
+export function noteStem(filename: string): string {
   return filename.replace(/\.[^.]+$/u, '')
 }
 

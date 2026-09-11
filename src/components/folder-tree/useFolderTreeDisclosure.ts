@@ -42,7 +42,17 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
     })
   }, [])
 
+  /**
+   * Shut every folder, including the ones that were never touched and so are
+   * open by default. The caller names the keys because the tree, not this
+   * hook, knows which folders there are (the Explorer's Collapse All).
+   */
+  const collapseAll = useCallback((keys: readonly string[]) => {
+    setManualExpanded(Object.fromEntries(keys.map((key) => [key, false])))
+  }, [])
+
   return {
+    collapseAll,
     expanded,
     expandFolder,
     toggleFolder,
@@ -93,7 +103,7 @@ export function useFolderTreeDisclosure({
   renamingFolderPath,
   selection,
 }: UseFolderTreeDisclosureInput) {
-  const { expanded, expandFolder, toggleFolder } = useExpandedFolders(selection, renamingFolderPath)
+  const { collapseAll, expanded, expandFolder, toggleFolder } = useExpandedFolders(selection, renamingFolderPath)
   const {
     closeCreateForm,
     handleToggleSection,
@@ -104,6 +114,7 @@ export function useFolderTreeDisclosure({
 
   return {
     closeCreateForm,
+    collapseAll,
     expanded,
     expandFolder,
     handleToggleSection,

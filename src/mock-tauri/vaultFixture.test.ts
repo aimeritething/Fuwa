@@ -207,3 +207,81 @@ describe('the Session file in the fixture', () => {
     await expect(vault.invoke('read_session')).resolves.toMatchObject({ version: 1, activePath: null })
   })
 })
+
+describe('the Explorer write operations in the fixture', () => {
+  it('creates a Document and refuses a name it already holds', async () => {
+    const vault = createMockVault(seed)
+    const path = `${MOCK_VAULT_PATH}/Untitled.md`
+
+    await vault.invoke('create_note_content', { path, content: '', vaultPath: MOCK_VAULT_PATH })
+
+    await expect(vault.invoke('get_note_content', { path })).resolves.toBe('')
+    await expect(vault.invoke('create_note_content', { path, content: '', vaultPath: MOCK_VAULT_PATH }))
+      .rejects.toThrow('File already exists')
+  })
+
+  it('creates a folder under a parent and refuses a second of the same name', async () => {
+    const vault = createMockVault(seed)
+    const args = { vaultPath: MOCK_VAULT_PATH, folderName: 'New Folder', parentPath: 'Projects' }
+
+    await expect(vault.invoke('create_vault_folder', args)).resolves.toBe('New Folder')
+    expect(vault.files().some((file) => file.path === `${MOCK_VAULT_PATH}/Projects/New Folder`)).toBe(true)
+    await expect(vault.invoke('create_vault_folder', args)).rejects.toThrow("Folder 'New Folder' already exists")
+  })
+
+  it('renames a file, keeping its extension and its content', async () => {
+    const vault = createMockVault(seed)
+
+    const renamed = await vault.invoke('rename_vault_file', {
+      vaultPath: MOCK_VAULT_PATH,
+      oldPath: `${MOCK_VAULT_PATH}/Attachments/photo.png`,
+      newStem: 'Lake',
+    })
+
+    expect(renamed).toEqual({ new_path: `${MOCK_VAULT_PATH}/Attachments/Lake.png` })
+    expect(vault.files().some((file) => file.path === `${MOCK_VAULT_PATH}/Attachments/photo.png`)).toBe(false)
+  })
+
+  it('refuses a rename onto a name a sibling already holds', async () => {
+    const vault = createMockVault(seed)
+    await vault.invoke('create_note_content', {
+      path: `${MOCK_VAULT_PATH}/Projects/Taken.md`,
+      content: '',
+      vaultPath: MOCK_VAULT_PATH,
+    })
+
+    await expect(vault.invoke('rename_vault_file', {
+      vaultPath: MOCK_VAULT_PATH,
+      oldPath: `${MOCK_VAULT_PATH}/Projects/Plan.md`,
+      newStem: 'Taken',
+    })).rejects.toThrow('A file with that name already exists')
+    await expect(vault.invoke('get_note_content', { path: `${MOCK_VAULT_PATH}/Projects/Plan.md` }))
+      .resolves.toBe('# Plan\n')
+  })
+
+  it('renames a folder and moves everything under it', async () => {
+    const vault = createMockVault(seed)
+
+    const renamed = await vault.invoke('rename_vault_folder', {
+      vaultPath: MOCK_VAULT_PATH,
+      folderPath: 'Projects',
+      newName: 'Work',
+    })
+
+    expect(renamed).toEqual({ old_path: 'Projects', new_path: 'Work' })
+    const paths = vault.files().map((file) => file.path)
+    expect(paths).toContain(`${MOCK_VAULT_PATH}/Work/Plan.md`)
+    expect(paths).toContain(`${MOCK_VAULT_PATH}/Work/Archive`)
+    expect(paths).not.toContain(`${MOCK_VAULT_PATH}/Projects/Plan.md`)
+  })
+
+  it('records Reveal in Finder and Copy Path for a spec to assert on', async () => {
+    const vault = createMockVault(seed)
+
+    await vault.invoke('reveal_path_in_file_manager', { path: `${MOCK_VAULT_PATH}/Welcome.md` })
+    await vault.invoke('copy_text_to_clipboard', { text: `${MOCK_VAULT_PATH}/Welcome.md` })
+
+    expect(vault.revealedPath()).toBe(`${MOCK_VAULT_PATH}/Welcome.md`)
+    expect(vault.clipboardText()).toBe(`${MOCK_VAULT_PATH}/Welcome.md`)
+  })
+})

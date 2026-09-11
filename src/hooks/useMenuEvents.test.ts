@@ -27,6 +27,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 function makeHandlers(overrides: Partial<MenuEventHandlers> = {}): MenuEventHandlers {
   return {
     activeDocumentPath: null,
+    hasFolder: false,
     onCreateNote: vi.fn(),
     onOpenNote: vi.fn(),
     onQuickOpen: vi.fn(),
@@ -134,12 +135,12 @@ describe('useMenuEvents', () => {
       )
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false } })
+      expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false } })
 
       rerender({ activeDocumentPath: '/n/a.md' })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true, hasVault: false } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
 
       // Save, Toggle Rich/Raw and Find in Document go back to disabled over an
@@ -147,7 +148,25 @@ describe('useMenuEvents', () => {
       rerender({ activeDocumentPath: null })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false } })
+    })
+
+    // New Document, Quick Open and Close Folder follow the open Folder
+    // (spec section 7); with none open, ⌘N's menu item is greyed.
+    it('keeps the Folder-dependent menu items in step with the open Folder', async () => {
+      const { rerender } = renderHook(
+        ({ hasFolder }: { hasFolder: boolean }) => useMenuEvents(makeHandlers({ hasFolder })),
+        { initialProps: { hasFolder: false } },
+      )
+      await flushMicrotasks()
+
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false } })
+
+      rerender({ hasFolder: true })
+      await flushMicrotasks()
+
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: true } })
+      expect(runtime.invoke).toHaveBeenCalledTimes(2)
     })
   })
 })

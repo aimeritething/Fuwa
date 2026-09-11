@@ -6,6 +6,8 @@
 }
 
 .fuwa-explorer__tree {
+  display: flex;
+  flex-direction: column;
   overflow: auto;
   min-height: 0;
 }
@@ -39,4 +41,93 @@
   text-overflow: ellipsis;
   color: var(--text-tertiary);
   font-size: 11px;
+}
+
+/* --- Header actions (spec section 2): hover-only, "+" and "…". --- */
+.fuwa-explorer__header {
+  justify-content: space-between;
+}
+
+.fuwa-explorer__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.fuwa-explorer:hover .fuwa-explorer__actions,
+.fuwa-explorer__actions:focus-within,
+.fuwa-explorer__actions:has([data-state='open']) {
+  opacity: 1;
+}
+
+.fuwa-explorer__action {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.fuwa-explorer__action:hover,
+.fuwa-explorer__action[data-state='open'] {
+  background: var(--control-tertiary-hover);
+  color: var(--text-primary);
+}
+
+.fuwa-explorer__action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
+}
+
+/* --- Inline rename: the stem is editable, the extension is not. --- */
+.fuwa-explorer__rename-input {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  padding: 0 4px;
+  border: var(--hairline) solid var(--border-input);
+  border-radius: 4px;
+  background: var(--surface-input);
+  color: var(--text-primary);
+  font: inherit;
+  outline: none;
+}
+
+.fuwa-explorer__rename-input:focus {
+  border-color: var(--state-focus-ring);
+}
+
+.fuwa-explorer__rename-input[data-invalid] {
+  border-color: var(--accent-red);
+}
+
+.fuwa-explorer__rename-input[data-invalid]:focus {
+  border-color: var(--accent-red);
+}
+
+.fuwa-explorer__rename-extension {
+  flex: none;
+  color: var(--text-faint);
+}
+
+.fuwa-explorer__rename-error {
+  padding-bottom: 2px;
+  padding-right: 8px;
+  color: var(--text-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+/* The right-click target below the tree; New Document and New Folder at root. */
+.fuwa-explorer__empty-area {
+  flex: 1;
+  min-height: 24px;
 }

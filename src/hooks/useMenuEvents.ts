@@ -11,10 +11,13 @@ import { cleanupTauriEventListener, type TauriUnlisten } from '../utils/tauriEve
 export interface MenuEventHandlers extends AppCommandHandlers {
   /** The active Tab's path when it is a Document; null with no Tab, or with an Image Tab. */
   activeDocumentPath: string | null
+  /** Whether a Folder is open; New Document, Quick Open and Close Folder follow it (spec section 7). */
+  hasFolder: boolean
 }
 
 interface MenuStatePayload {
   hasActiveNote: boolean
+  hasVault: boolean
 }
 
 function readCustomEventDetail(event: Event): string | null {
@@ -122,7 +125,8 @@ export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
 export function useMenuEvents(handlers: MenuEventHandlers) {
   const ref = useRef(handlers)
   const hasActiveNote = handlers.activeDocumentPath !== null
-  const menuState = useMemo(() => ({ hasActiveNote }), [hasActiveNote])
+  const hasVault = handlers.hasFolder
+  const menuState = useMemo(() => ({ hasActiveNote, hasVault }), [hasActiveNote, hasVault])
 
   useEffect(() => {
     ref.current = handlers

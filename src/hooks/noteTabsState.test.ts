@@ -8,6 +8,7 @@ import {
   closeTab,
   EMPTY_NOTE_TABS,
   openTab,
+  retargetTabs,
   type NoteTabsState,
 } from './noteTabsState'
 
@@ -88,5 +89,46 @@ describe('positional navigation', () => {
   it('does nothing with no Tabs open', () => {
     expect(activateAdjacentTab(EMPTY_NOTE_TABS, 1)).toBe(EMPTY_NOTE_TABS)
     expect(activateTabAt(EMPTY_NOTE_TABS, 0)).toBe(EMPTY_NOTE_TABS)
+  })
+})
+
+describe('retargetTabs', () => {
+  it('moves a renamed Document to its new path, keeping its content and its place', () => {
+    const state = activateTab(threeOpen(), '/n/b.md')
+
+    const next = retargetTabs(state, '/n/b.md', '/n/renamed.md')
+
+    expect(paths(next)).toEqual(['/n/a.md', '/n/renamed.md', '/n/c.md'])
+    expect(next.activeTabPath).toBe('/n/renamed.md')
+    expect(next.tabs[1].content).toBe(state.tabs[1].content)
+  })
+
+  it('renames the Tab, so the tab bar and the breadcrumb follow', () => {
+    const next = retargetTabs(threeOpen(), '/n/a.md', '/n/Roadmap.md')
+
+    expect(next.tabs[0].entry.filename).toBe('Roadmap.md')
+    expect(next.tabs[0].entry.title).toBe('Roadmap')
+  })
+
+  it('takes every Tab under a renamed folder along', () => {
+    const state = openTab(openTab(EMPTY_NOTE_TABS, tab('/n/work/a.md')), tab('/n/work/deep/b.md'))
+
+    const next = retargetTabs(state, '/n/work', '/n/archive')
+
+    expect(paths(next)).toEqual(['/n/archive/a.md', '/n/archive/deep/b.md'])
+    expect(next.activeTabPath).toBe('/n/archive/deep/b.md')
+  })
+
+  it('leaves a Tab that only shares a name prefix alone', () => {
+    const state = openTab(EMPTY_NOTE_TABS, tab('/n/workshop.md'))
+
+    expect(retargetTabs(state, '/n/work', '/n/archive')).toBe(state)
+  })
+
+  it('does nothing when no open Tab is under the renamed path', () => {
+    const state = threeOpen()
+
+    expect(retargetTabs(state, '/n/zzz.md', '/n/yyy.md')).toBe(state)
+    expect(retargetTabs(state, '/n/a.md', '/n/a.md')).toBe(state)
   })
 })
