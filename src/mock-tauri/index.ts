@@ -2,7 +2,7 @@
  * Browser fallback for Tauri commands. Outside Tauri (`pnpm dev` in a plain
  * browser, the smoke specs) every `invoke` is answered by the in-memory Folder
  * fixture in `./vaultFixture`. The exports keep Tolaria's names so the kept
- * call sites and the carried `vi.mock('../mock-tauri')` calls resolve.
+ * call sites and their `vi.mock('../mock-tauri')` calls resolve.
  */
 
 import { createMockVault, type MockVault } from './vaultFixture'
@@ -42,22 +42,14 @@ export function mockAssetUrl(path: string): string | null {
 }
 
 /**
- * Tolaria's mock-store writers. The kept hooks call these after a mock save to
- * keep the store in step; they write directly so the call log only records
+ * Tolaria's mock-store writer. The save hook calls it after a mock save to
+ * keep the store in step; it writes directly so the call log only records
  * what the app actually invoked.
  */
-export function addMockEntry(entry: { path: string }, content: string): void {
-  updateMockContent(entry.path, content)
-}
-
 export function updateMockContent(path: string, content: string): void {
   try {
     getMockVault().writeNote(path, content)
   } catch (error) {
     console.warn('[mock-tauri] Ignored a write outside the mock Folder:', error)
   }
-}
-
-export function trackMockChange(path: string): void {
-  void path
 }
