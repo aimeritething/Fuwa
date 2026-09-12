@@ -172,14 +172,6 @@ export interface ViewFile {
   workspace?: WorkspaceIdentity
 }
 
-/** A node in the vault's folder tree (directories only, no files). */
-export interface FolderNode {
-  name: string
-  path: string
-  rootPath?: string
-  children: FolderNode[]
-}
-
 /**
  * Context for a folder-create request: where the new folder should land.
  * `path` is vault-relative (`''` means vault root); `rootPath` identifies the

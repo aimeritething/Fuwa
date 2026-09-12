@@ -52,17 +52,6 @@ describe('createMockVault', () => {
     )
   })
 
-  it('answers list_vault_folders with a sorted tree of Folder-relative paths', async () => {
-    const vault = createMockVault(seed)
-
-    const folders = await vault.invoke('list_vault_folders', { path: MOCK_VAULT_PATH })
-
-    expect(folders).toEqual([
-      { name: 'Attachments', path: 'Attachments', children: [] },
-      { name: 'Projects', path: 'Projects', children: [{ name: 'Archive', path: 'Projects/Archive', children: [] }] },
-    ])
-  })
-
   it('tracks the watcher root across start and stop', async () => {
     const vault = createMockVault(seed)
 
@@ -151,18 +140,14 @@ describe('createMockVault', () => {
       `${MOCK_VAULT_PATH}/Projects/Archive`,
       `${MOCK_VAULT_PATH}/Inbox`,
     ])
-    await expect(vault.invoke('list_vault_folders', { path: MOCK_VAULT_PATH })).resolves.toEqual([
-      { name: 'Inbox', path: 'Inbox', children: [] },
-      { name: 'Projects', path: 'Projects', children: [{ name: 'Archive', path: 'Projects/Archive', children: [] }] },
-    ])
   })
 
   it('rejects commands it does not answer and resets to the seed', async () => {
     const vault = createMockVault(seed)
     await vault.invoke('save_note_content', { path: `${MOCK_VAULT_PATH}/Welcome.md`, content: 'changed' })
 
-    await expect(vault.invoke('validate_note_content', { path: 'x' })).rejects.toThrow(
-      'No mock handler for command: validate_note_content',
+    await expect(vault.invoke('unknown_command', { path: 'x' })).rejects.toThrow(
+      'No mock handler for command: unknown_command',
     )
 
     vault.reset()

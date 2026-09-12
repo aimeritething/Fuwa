@@ -1,7 +1,11 @@
+use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
+use notify::{recommended_watcher, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
+use tauri::Emitter;
 
 pub const VAULT_CHANGED_EVENT: &str = "vault-changed";
 
@@ -84,281 +88,137 @@ fn is_watchable_path(path: &Path, git_dir: Option<&Path>) -> bool {
     }
 }
 
-#[cfg(desktop)]
-mod desktop {
-    use std::collections::HashSet;
-    use std::sync::Mutex;
+struct ActiveVaultWatcher {
+    owners: HashSet<String>,
+    path: PathBuf,
+    _watcher: RecommendedWatcher,
+}
 
-    use notify::{
-        recommended_watcher, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
-    };
-    use tauri::Emitter;
+fn register_watcher_owner(owners: &mut HashSet<String>, owner: &str) {
+    owners.insert(owner.to_string());
+}
 
-    use super::{
-        is_watchable_path, resolve_git_dir, Path, PathBuf, VaultChangedPayload, VAULT_CHANGED_EVENT,
-    };
+fn unregister_watcher_owner(owners: &mut HashSet<String>, owner: &str) -> bool {
+    owners.remove(owner);
+    owners.is_empty()
+}
 
-    struct ActiveVaultWatcher {
-        owners: HashSet<String>,
-        path: PathBuf,
-        _watcher: RecommendedWatcher,
+pub struct VaultWatcherState {
+    active: Mutex<Vec<ActiveVaultWatcher>>,
+}
+
+impl Default for VaultWatcherState {
+    fn default() -> Self {
+        Self::new()
     }
+}
 
-    fn register_watcher_owner(owners: &mut HashSet<String>, owner: &str) {
-        owners.insert(owner.to_string());
-    }
-
-    fn unregister_watcher_owner(owners: &mut HashSet<String>, owner: &str) -> bool {
-        owners.remove(owner);
-        owners.is_empty()
-    }
-
-    pub struct VaultWatcherState {
-        active: Mutex<Vec<ActiveVaultWatcher>>,
-    }
-
-    impl Default for VaultWatcherState {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
-
-    impl VaultWatcherState {
-        pub fn new() -> Self {
-            Self {
-                active: Mutex::new(Vec::new()),
-            }
-        }
-    }
-
-    fn validate_vault_path(vault_path: PathBuf) -> Result<PathBuf, String> {
-        if vault_path.as_os_str().is_empty() {
-            return Err("Vault path is required".to_string());
-        }
-        if !vault_path.is_dir() {
-            return Err(format!(
-                "Vault path is not a directory: {}",
-                vault_path.display()
-            ));
-        }
-        Ok(vault_path)
-    }
-
-    fn should_emit_event(event: &Event) -> bool {
-        !matches!(event.kind, EventKind::Access(_))
-    }
-
-    fn changed_paths(event: Event, git_dir: Option<&Path>) -> Vec<String> {
-        if !should_emit_event(&event) {
-            return Vec::new();
-        }
-        event
-            .paths
-            .into_iter()
-            .filter(|path| is_watchable_path(path, git_dir))
-            .map(|path| path.to_string_lossy().to_string())
-            .collect()
-    }
-
-    fn emit_vault_change(
-        app: &tauri::AppHandle,
-        vault_path: &Path,
-        git_dir: Option<&Path>,
-        event: Event,
-    ) {
-        let paths = changed_paths(event, git_dir);
-        if paths.is_empty() {
-            return;
-        }
-        let payload = VaultChangedPayload {
-            vault_path: vault_path.to_string_lossy().to_string(),
-            paths,
-        };
-        if let Err(err) = app.emit(VAULT_CHANGED_EVENT, payload) {
-            log::warn!("Failed to emit vault watcher event: {}", err);
-        }
-    }
-
-    pub fn start(
-        app: tauri::AppHandle,
-        state: tauri::State<'_, VaultWatcherState>,
-        owner: &str,
-        path: PathBuf,
-    ) -> Result<(), String> {
-        let vault_path = validate_vault_path(path)?;
-        let mut active = state
-            .active
-            .lock()
-            .map_err(|_| "Failed to lock vault watcher state".to_string())?;
-        if let Some(watcher) = active.iter_mut().find(|watcher| watcher.path == vault_path) {
-            register_watcher_owner(&mut watcher.owners, owner);
-            return Ok(());
-        }
-
-        let event_vault_path = vault_path.clone();
-        let event_git_dir = resolve_git_dir(&vault_path);
-        let event_app = app.clone();
-        let mut watcher = recommended_watcher(move |event| match event {
-            Ok(event) => emit_vault_change(
-                &event_app,
-                &event_vault_path,
-                event_git_dir.as_deref(),
-                event,
-            ),
-            Err(err) => log::warn!("Vault watcher event failed: {}", err),
-        })
-        .map_err(|err| format!("Failed to create vault watcher: {err}"))?;
-        watcher
-            .watch(&vault_path, RecursiveMode::Recursive)
-            .map_err(|err| format!("Failed to watch {}: {err}", vault_path.display()))?;
-
-        active.push(ActiveVaultWatcher {
-            owners: HashSet::from([owner.to_string()]),
-            path: vault_path,
-            _watcher: watcher,
-        });
-        Ok(())
-    }
-
-    pub fn stop(state: tauri::State<'_, VaultWatcherState>, owner: &str) -> Result<(), String> {
-        let mut active = state
-            .active
-            .lock()
-            .map_err(|_| "Failed to lock vault watcher state".to_string())?;
-        active.retain_mut(|watcher| !unregister_watcher_owner(&mut watcher.owners, owner));
-        Ok(())
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use std::collections::HashSet;
-
-        use notify::event::{AccessKind, CreateKind, EventAttributes};
-        use notify::{Event, EventKind};
-
-        use super::*;
-
-        fn event(kind: EventKind, paths: &[&str]) -> Event {
-            Event {
-                kind,
-                paths: paths.iter().map(PathBuf::from).collect(),
-                attrs: EventAttributes::default(),
-            }
-        }
-
-        #[test]
-        fn validate_vault_path_accepts_existing_directories_only() {
-            let dir = tempfile::TempDir::new().unwrap();
-
-            assert_eq!(
-                validate_vault_path(dir.path().to_path_buf()).unwrap(),
-                dir.path()
-            );
-            assert_eq!(
-                validate_vault_path(PathBuf::new()).unwrap_err(),
-                "Vault path is required"
-            );
-            assert!(validate_vault_path(dir.path().join("missing"))
-                .unwrap_err()
-                .contains("Vault path is not a directory"));
-        }
-
-        #[test]
-        fn changed_paths_ignores_access_events() {
-            let paths = changed_paths(
-                event(EventKind::Access(AccessKind::Read), &["notes/today.md"]),
-                None,
-            );
-
-            assert!(paths.is_empty());
-        }
-
-        #[test]
-        fn changed_paths_filters_unwatchable_paths() {
-            let paths = changed_paths(
-                event(
-                    EventKind::Create(CreateKind::File),
-                    &[
-                        ".git/index.lock",
-                        "node_modules/pkg/index.js",
-                        "notes/today.md",
-                    ],
-                ),
-                None,
-            );
-
-            assert_eq!(paths, vec!["notes/today.md"]);
-        }
-
-        #[test]
-        fn changed_paths_filters_editor_temporary_files() {
-            let paths = changed_paths(
-                event(
-                    EventKind::Create(CreateKind::File),
-                    &[
-                        ".DS_Store",
-                        ".#draft.md",
-                        "draft.md~",
-                        "draft.tmp",
-                        "draft.swp",
-                        "draft.swx",
-                        "notes/keep.md",
-                    ],
-                ),
-                None,
-            );
-
-            assert_eq!(paths, vec!["notes/keep.md"]);
-        }
-
-        #[test]
-        fn watcher_owners_keep_shared_watch_alive_until_the_last_window_stops() {
-            let mut owners = HashSet::new();
-
-            register_watcher_owner(&mut owners, "main");
-            register_watcher_owner(&mut owners, "note-1");
-
-            assert!(!unregister_watcher_owner(&mut owners, "note-1"));
-            assert!(owners.contains("main"));
-            assert!(unregister_watcher_owner(&mut owners, "main"));
-            assert!(owners.is_empty());
+impl VaultWatcherState {
+    pub fn new() -> Self {
+        Self {
+            active: Mutex::new(Vec::new()),
         }
     }
 }
 
-#[cfg(not(desktop))]
-mod mobile {
-    use super::PathBuf;
-
-    pub struct VaultWatcherState;
-
-    impl Default for VaultWatcherState {
-        fn default() -> Self {
-            Self::new()
-        }
+fn validate_vault_path(vault_path: PathBuf) -> Result<PathBuf, String> {
+    if vault_path.as_os_str().is_empty() {
+        return Err("Vault path is required".to_string());
     }
-
-    impl VaultWatcherState {
-        pub fn new() -> Self {
-            Self
-        }
+    if !vault_path.is_dir() {
+        return Err(format!(
+            "Vault path is not a directory: {}",
+            vault_path.display()
+        ));
     }
+    Ok(vault_path)
+}
 
-    pub fn start(_path: PathBuf) -> Result<(), String> {
-        Ok(())
+fn should_emit_event(event: &Event) -> bool {
+    !matches!(event.kind, EventKind::Access(_))
+}
+
+fn changed_paths(event: Event, git_dir: Option<&Path>) -> Vec<String> {
+    if !should_emit_event(&event) {
+        return Vec::new();
     }
+    event
+        .paths
+        .into_iter()
+        .filter(|path| is_watchable_path(path, git_dir))
+        .map(|path| path.to_string_lossy().to_string())
+        .collect()
+}
 
-    pub fn stop() -> Result<(), String> {
-        Ok(())
+fn emit_vault_change(
+    app: &tauri::AppHandle,
+    vault_path: &Path,
+    git_dir: Option<&Path>,
+    event: Event,
+) {
+    let paths = changed_paths(event, git_dir);
+    if paths.is_empty() {
+        return;
+    }
+    let payload = VaultChangedPayload {
+        vault_path: vault_path.to_string_lossy().to_string(),
+        paths,
+    };
+    if let Err(err) = app.emit(VAULT_CHANGED_EVENT, payload) {
+        log::warn!("Failed to emit vault watcher event: {}", err);
     }
 }
 
-#[cfg(desktop)]
-pub use desktop::VaultWatcherState;
-#[cfg(not(desktop))]
-pub use mobile::VaultWatcherState;
+fn start(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, VaultWatcherState>,
+    owner: &str,
+    path: PathBuf,
+) -> Result<(), String> {
+    let vault_path = validate_vault_path(path)?;
+    let mut active = state
+        .active
+        .lock()
+        .map_err(|_| "Failed to lock vault watcher state".to_string())?;
+    if let Some(watcher) = active.iter_mut().find(|watcher| watcher.path == vault_path) {
+        register_watcher_owner(&mut watcher.owners, owner);
+        return Ok(());
+    }
 
-#[cfg(desktop)]
+    let event_vault_path = vault_path.clone();
+    let event_git_dir = resolve_git_dir(&vault_path);
+    let event_app = app.clone();
+    let mut watcher = recommended_watcher(move |event| match event {
+        Ok(event) => emit_vault_change(
+            &event_app,
+            &event_vault_path,
+            event_git_dir.as_deref(),
+            event,
+        ),
+        Err(err) => log::warn!("Vault watcher event failed: {}", err),
+    })
+    .map_err(|err| format!("Failed to create vault watcher: {err}"))?;
+    watcher
+        .watch(&vault_path, RecursiveMode::Recursive)
+        .map_err(|err| format!("Failed to watch {}: {err}", vault_path.display()))?;
+
+    active.push(ActiveVaultWatcher {
+        owners: HashSet::from([owner.to_string()]),
+        path: vault_path,
+        _watcher: watcher,
+    });
+    Ok(())
+}
+
+fn stop(state: tauri::State<'_, VaultWatcherState>, owner: &str) -> Result<(), String> {
+    let mut active = state
+        .active
+        .lock()
+        .map_err(|_| "Failed to lock vault watcher state".to_string())?;
+    active.retain_mut(|watcher| !unregister_watcher_owner(&mut watcher.owners, owner));
+    Ok(())
+}
+
 #[tauri::command]
 pub fn start_vault_watcher(
     app: tauri::AppHandle,
@@ -366,34 +226,111 @@ pub fn start_vault_watcher(
     window: tauri::Window,
     path: PathBuf,
 ) -> Result<(), String> {
-    desktop::start(app, state, window.label(), path)
+    start(app, state, window.label(), path)
 }
 
-#[cfg(desktop)]
 #[tauri::command]
 pub fn stop_vault_watcher(
     state: tauri::State<'_, VaultWatcherState>,
     window: tauri::Window,
 ) -> Result<(), String> {
-    desktop::stop(state, window.label())
-}
-
-#[cfg(not(desktop))]
-#[tauri::command]
-pub fn start_vault_watcher(_window: tauri::Window, path: PathBuf) -> Result<(), String> {
-    mobile::start(path)
-}
-
-#[cfg(not(desktop))]
-#[tauri::command]
-pub fn stop_vault_watcher(_window: tauri::Window) -> Result<(), String> {
-    mobile::stop()
+    stop(state, window.label())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{is_watchable_path, resolve_git_dir};
-    use std::path::{Path, PathBuf};
+    use std::collections::HashSet;
+
+    use notify::event::{AccessKind, CreateKind, EventAttributes};
+    use notify::{Event, EventKind};
+
+    use super::*;
+
+    fn event(kind: EventKind, paths: &[&str]) -> Event {
+        Event {
+            kind,
+            paths: paths.iter().map(PathBuf::from).collect(),
+            attrs: EventAttributes::default(),
+        }
+    }
+
+    #[test]
+    fn validate_vault_path_accepts_existing_directories_only() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        assert_eq!(
+            validate_vault_path(dir.path().to_path_buf()).unwrap(),
+            dir.path()
+        );
+        assert_eq!(
+            validate_vault_path(PathBuf::new()).unwrap_err(),
+            "Vault path is required"
+        );
+        assert!(validate_vault_path(dir.path().join("missing"))
+            .unwrap_err()
+            .contains("Vault path is not a directory"));
+    }
+
+    #[test]
+    fn changed_paths_ignores_access_events() {
+        let paths = changed_paths(
+            event(EventKind::Access(AccessKind::Read), &["notes/today.md"]),
+            None,
+        );
+
+        assert!(paths.is_empty());
+    }
+
+    #[test]
+    fn changed_paths_filters_unwatchable_paths() {
+        let paths = changed_paths(
+            event(
+                EventKind::Create(CreateKind::File),
+                &[
+                    ".git/index.lock",
+                    "node_modules/pkg/index.js",
+                    "notes/today.md",
+                ],
+            ),
+            None,
+        );
+
+        assert_eq!(paths, vec!["notes/today.md"]);
+    }
+
+    #[test]
+    fn changed_paths_filters_editor_temporary_files() {
+        let paths = changed_paths(
+            event(
+                EventKind::Create(CreateKind::File),
+                &[
+                    ".DS_Store",
+                    ".#draft.md",
+                    "draft.md~",
+                    "draft.tmp",
+                    "draft.swp",
+                    "draft.swx",
+                    "notes/keep.md",
+                ],
+            ),
+            None,
+        );
+
+        assert_eq!(paths, vec!["notes/keep.md"]);
+    }
+
+    #[test]
+    fn watcher_owners_keep_shared_watch_alive_until_the_last_window_stops() {
+        let mut owners = HashSet::new();
+
+        register_watcher_owner(&mut owners, "main");
+        register_watcher_owner(&mut owners, "note-1");
+
+        assert!(!unregister_watcher_owner(&mut owners, "note-1"));
+        assert!(owners.contains("main"));
+        assert!(unregister_watcher_owner(&mut owners, "main"));
+        assert!(owners.is_empty());
+    }
 
     #[test]
     fn ignores_git_and_dependency_directory_changes() {
@@ -415,10 +352,10 @@ mod tests {
     }
 
     #[test]
-    fn keeps_notes_assets_and_saved_views_watchable() {
+    fn keeps_notes_assets_and_dot_directories_watchable() {
         assert!(is_watchable_path(Path::new("notes/day.md"), None));
         assert!(is_watchable_path(Path::new("attachments/image.png"), None));
-        assert!(is_watchable_path(Path::new(".laputa/views/work.yml"), None));
+        assert!(is_watchable_path(Path::new(".config/views/work.yml"), None));
     }
 
     #[test]

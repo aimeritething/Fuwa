@@ -6,8 +6,7 @@
 //! at launch (`read_session`); this module merges the window frame in, writes
 //! the file atomically (temp file + rename) about 500 ms after the last change
 //! from either side, and flushes it once more when the window closes and when
-//! the app exits. Tolaria's window-state module and localStorage keys are
-//! consolidated here.
+//! the app exits.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

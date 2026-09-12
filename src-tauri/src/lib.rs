@@ -8,29 +8,7 @@ pub mod vault_watcher;
 
 pub(crate) use asset_scope::sync_vault_asset_scope;
 
-use std::ffi::OsStr;
-use std::process::Command;
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
-
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-/// Spawn `program` without a console window on Windows. Used by the native
-/// clipboard commands (`pbcopy` / `pbpaste` on macOS).
-pub(crate) fn hidden_command(program: impl AsRef<OsStr>) -> Command {
-    let mut command = Command::new(program);
-    suppress_windows_console(&mut command);
-    command
-}
-
-#[cfg(windows)]
-fn suppress_windows_console(command: &mut Command) {
-    use std::os::windows::process::CommandExt;
-    command.creation_flags(CREATE_NO_WINDOW);
-}
-
-#[cfg(not(windows))]
-fn suppress_windows_console(_command: &mut Command) {}
 
 fn setup_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if cfg!(debug_assertions) {
@@ -48,15 +26,12 @@ fn setup_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 }
 
 /// Browser-reserved chords that WKWebView would swallow before the renderer's
-/// shortcut handler sees them: ⌘O (Open Folder…) and ⌘F (Find). Spec §7 keeps
-/// Tolaria's command-key list and drops its only command-shift entry (⌘⇧L).
-/// Keep these lists narrow and verify every addition with native QA.
-#[cfg(any(test, all(desktop, target_os = "macos")))]
+/// shortcut handler sees them: ⌘O (Open Folder…) and ⌘F (Find). Spec §7
+/// reserves exactly these two and no command-shift chord. Keep these lists
+/// narrow and verify every addition with native QA.
 const MACOS_WEBVIEW_RESERVED_COMMAND_KEYS: &[&str] = &["O", "F"];
-#[cfg(any(test, all(desktop, target_os = "macos")))]
 const MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS: &[&str] = &[];
 
-#[cfg(all(desktop, target_os = "macos"))]
 fn setup_macos_webview_shortcut_prevention(
     app: &mut tauri::App,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -73,13 +48,6 @@ fn setup_macos_webview_shortcut_prevention(
     }
 
     app.handle().plugin(builder.build())?;
-    Ok(())
-}
-
-#[cfg(not(all(desktop, target_os = "macos")))]
-fn setup_macos_webview_shortcut_prevention(
-    _app: &mut tauri::App,
-) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
@@ -140,7 +108,6 @@ fn handle_window_event(window: &tauri::Window, event: &WindowEvent) {
 
 /// Reopen the main window from the Dock after ⌘W closed the last one; the
 /// renderer boots and restores the Session as at launch.
-#[cfg(target_os = "macos")]
 fn reopen_main_window(app: &AppHandle) {
     let Some(config) = app.config().app.windows.first().cloned() else {
         log::error!("No window configuration to reopen from");
@@ -163,28 +130,23 @@ fn handle_run_event(app: &AppHandle, event: RunEvent) {
         // renderer's drain; after it, the poke reaches the live renderer. With
         // no window to hear it (⌘W closed the last one), the window is
         // recreated and its renderer drains the buffer as at launch.
-        #[cfg(target_os = "macos")]
         RunEvent::Opened { urls } => {
             if open_files::accept(app, &urls) == open_files::Accepted::NeedsWindow {
                 reopen_main_window(app);
             }
         }
-        // The last window closed (⌘W with zero Tabs): flush the Session and,
-        // on macOS, stay in the Dock so a reopen restores it.
+        // The last window closed (⌘W with zero Tabs): flush the Session and
+        // stay in the Dock so a reopen restores it.
         RunEvent::ExitRequested {
             code: None, api, ..
         } => {
             session::flush_now(app);
-            #[cfg(target_os = "macos")]
             api.prevent_exit();
-            #[cfg(not(target_os = "macos"))]
-            let _ = api;
         }
         // ⌘Q ends in the renderer's `quit_app`, which is `app.exit()` and
         // reaches here as `ExitRequested { code: Some(0) }`; a termination
         // from outside the app (Dock, shutdown) arrives as `Exit` alone.
         RunEvent::ExitRequested { .. } | RunEvent::Exit => session::flush_now(app),
-        #[cfg(target_os = "macos")]
         RunEvent::Reopen {
             has_visible_windows: false,
             ..
@@ -207,7 +169,6 @@ pub fn run() {
             commands::read_session,
             commands::update_session,
             commands::get_note_content,
-            commands::validate_note_content,
             commands::save_note_content,
             commands::create_note_content,
             commands::delete_note,
@@ -218,7 +179,6 @@ pub fn run() {
             commands::create_vault_folder,
             commands::rename_vault_folder,
             commands::delete_vault_folder,
-            commands::list_vault_folders,
             commands::save_image,
             commands::copy_image_to_vault,
             vault_watcher::start_vault_watcher,
@@ -251,7 +211,6 @@ mod tests {
         assert!(MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS.is_empty());
     }
 
-    #[cfg(unix)]
     #[test]
     fn vault_asset_scope_roots_include_requested_symlink_path() {
         let directory = tempfile::tempdir().unwrap();

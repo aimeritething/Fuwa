@@ -10,8 +10,8 @@ export const DEV_TAURI_CONFIG_PATH = path.join('src-tauri', 'tauri.dev.conf.json
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 
-export function tauriBinary(platform = process.platform) {
-  return path.join(repoRoot, 'node_modules', '.bin', platform === 'win32' ? 'tauri.cmd' : 'tauri')
+export function tauriBinary() {
+  return path.join(repoRoot, 'node_modules', '.bin', 'tauri')
 }
 
 export function isTauriDevCommand(args) {
@@ -35,7 +35,6 @@ export function runTauriCli(args = process.argv.slice(2)) {
   const child = spawn(tauriBinary(), tauriArgs(args), {
     cwd: repoRoot,
     env: process.env,
-    shell: process.platform === 'win32',
     stdio: 'inherit',
   })
 
