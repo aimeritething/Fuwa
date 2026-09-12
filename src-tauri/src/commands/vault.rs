@@ -99,13 +99,13 @@ mod tests {
 
         let name = create_vault_folder(
             dir.path().into(),
-            "Laputa".into(),
+            "Drafts".into(),
             Some(std::path::PathBuf::from("Projects")),
         )
         .expect("expected nested folder to be created");
 
-        assert_eq!(name, "Laputa");
-        assert!(dir.path().join("Projects").join("Laputa").is_dir());
+        assert_eq!(name, "Drafts");
+        assert!(dir.path().join("Projects").join("Drafts").is_dir());
     }
 
     #[test]
@@ -114,7 +114,7 @@ mod tests {
 
         let err = create_vault_folder(
             dir.path().into(),
-            "Laputa".into(),
+            "Drafts".into(),
             Some(std::path::PathBuf::from("../escape")),
         )
         .expect_err("expected escaping parent path to be rejected");

@@ -499,9 +499,9 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let boundary = VaultBoundary::from_request(Some(&root_arg(&dir))).unwrap();
 
-        let child = boundary.child_path("Projects/Laputa").unwrap();
+        let child = boundary.child_path("Projects/Drafts").unwrap();
 
-        assert_eq!(child, dir.path().join("Projects").join("Laputa"));
+        assert_eq!(child, dir.path().join("Projects").join("Drafts"));
     }
 
     #[test]

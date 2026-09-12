@@ -5,10 +5,6 @@ use std::{
     error::Error,
     sync::OnceLock,
 };
-#[cfg(not(target_os = "macos"))]
-use tauri::menu::MenuEvent;
-#[cfg(not(target_os = "macos"))]
-use tauri::Manager;
 use tauri::{
     menu::{
         MenuBuilder, MenuItem, MenuItemBuilder, MenuItemKind, Submenu, SubmenuBuilder,
@@ -19,8 +15,6 @@ use tauri::{
 
 const APP_COMMAND_MANIFEST_JSON: &str = include_str!("../../src/shared/appCommandManifest.json");
 const APP_NAME: &str = "Fuwa";
-#[cfg(not(target_os = "macos"))]
-const MAIN_WINDOW_LABEL: &str = "main";
 const NOTE_DEPENDENT_GROUP: &str = "noteDependent";
 const TAB_DEPENDENT_GROUP: &str = "tabDependent";
 const VAULT_DEPENDENT_GROUP: &str = "vaultDependent";
@@ -241,26 +235,6 @@ fn manifest_section(label: &str) -> Result<&'static ManifestMenuSection, Box<dyn
         .ok_or_else(|| format!("Missing menu section in command manifest: {label}").into())
 }
 
-fn app_menu_includes_services(target_os: &str) -> bool {
-    target_os == "macos"
-}
-
-fn window_menu_event_handler_required(target_os: &str) -> bool {
-    target_os != "macos"
-}
-
-fn native_window_menu_submenu_id(target_os: &str) -> Option<&'static str> {
-    if target_os == "macos" {
-        Some(WINDOW_SUBMENU_ID)
-    } else {
-        None
-    }
-}
-
-fn window_menu_includes_native_fullscreen(target_os: &str) -> bool {
-    target_os == "macos"
-}
-
 fn native_menu_label(label: &str) -> Cow<'_, str> {
     if label.contains('&') {
         Cow::Owned(label.replace('&', "&&"))
@@ -332,17 +306,13 @@ fn build_manifest_menu(app: &App, label: &str) -> MenuResult {
 fn build_app_menu(app: &App) -> MenuResult {
     let mut builder = SubmenuBuilder::new(app, APP_NAME)
         .about_with_text(format!("About {APP_NAME}"), None)
+        .separator()
+        .services()
+        .separator()
+        .hide()
+        .hide_others()
+        .show_all()
         .separator();
-
-    if app_menu_includes_services(std::env::consts::OS) {
-        builder = builder
-            .services()
-            .separator()
-            .hide()
-            .hide_others()
-            .show_all()
-            .separator();
-    }
 
     for item in &manifest().app_menu {
         builder = append_manifest_item(app, builder, item)?;
@@ -392,10 +362,9 @@ fn build_view_menu(app: &App) -> MenuResult {
 
 fn build_window_menu(app: &App) -> MenuResult {
     let section = manifest_section("Window")?;
-    let mut builder = SubmenuBuilder::new(app, section.label.as_str());
-    if let Some(id) = native_window_menu_submenu_id(std::env::consts::OS) {
-        builder = builder.id(id);
-    }
+    // `WINDOW_SUBMENU_ID` is what NSApp recognises as the Window menu, so it
+    // lists the open windows and gets the native Zoom / Bring All to Front.
+    let mut builder = SubmenuBuilder::new(app, section.label.as_str()).id(WINDOW_SUBMENU_ID);
 
     for item in &section.items {
         builder = append_manifest_item(app, builder, item)?;
@@ -403,10 +372,7 @@ fn build_window_menu(app: &App) -> MenuResult {
 
     // No native Close Window item: ⌘W is Close Tab (spec section 7), which
     // closes the window itself once no Tab is left.
-    builder = builder.separator().minimize().maximize();
-    if window_menu_includes_native_fullscreen(std::env::consts::OS) {
-        builder = builder.fullscreen();
-    }
+    builder = builder.separator().minimize().maximize().fullscreen();
 
     Ok(builder.build()?)
 }
@@ -433,28 +399,6 @@ pub fn setup_menu(app: &App) -> Result<(), Box<dyn Error>> {
         let _ = emit_custom_menu_event(app_handle, id);
     });
 
-    register_window_menu_event_handler(app)?;
-
-    Ok(())
-}
-
-#[cfg(not(target_os = "macos"))]
-fn register_window_menu_event_handler(app: &App) -> Result<(), Box<dyn Error>> {
-    debug_assert!(window_menu_event_handler_required(std::env::consts::OS));
-    let window = app.get_webview_window(MAIN_WINDOW_LABEL).ok_or_else(|| {
-        format!("setup_menu: window '{MAIN_WINDOW_LABEL}' not found; menu events will not fire")
-    })?;
-    let app_handle = app.handle().clone();
-    window.on_menu_event(move |_window, event: MenuEvent| {
-        let id = event.id().0.as_str();
-        let _ = emit_custom_menu_event(&app_handle, id);
-    });
-    Ok(())
-}
-
-#[cfg(target_os = "macos")]
-fn register_window_menu_event_handler(_app: &App) -> Result<(), Box<dyn Error>> {
-    debug_assert!(!window_menu_event_handler_required(std::env::consts::OS));
     Ok(())
 }
 
@@ -641,14 +585,21 @@ mod tests {
         let groups: Vec<_> = manifest().menu_state_groups.keys().cloned().collect();
         assert_eq!(
             groups,
-            [NOTE_DEPENDENT_GROUP, TAB_DEPENDENT_GROUP, VAULT_DEPENDENT_GROUP]
+            [
+                NOTE_DEPENDENT_GROUP,
+                TAB_DEPENDENT_GROUP,
+                VAULT_DEPENDENT_GROUP
+            ]
         );
 
         assert_eq!(
             menu_state_group_ids(NOTE_DEPENDENT_GROUP),
             ["file-save", "edit-toggle-raw-editor", "edit-find-in-note"]
         );
-        assert_eq!(menu_state_group_ids(TAB_DEPENDENT_GROUP), ["file-close-tab"]);
+        assert_eq!(
+            menu_state_group_ids(TAB_DEPENDENT_GROUP),
+            ["file-close-tab"]
+        );
         assert_eq!(
             menu_state_group_ids(VAULT_DEPENDENT_GROUP),
             ["file-new-note", "file-quick-open", "file-close-vault"]
@@ -793,37 +744,6 @@ mod tests {
         for id in manifest_menu_items().filter_map(|item| item.menu_item_id(manifest())) {
             assert!(seen.insert(id), "duplicate custom ID: {id}");
         }
-    }
-
-    #[test]
-    fn app_services_menu_is_macos_only() {
-        assert!(app_menu_includes_services("macos"));
-        assert!(!app_menu_includes_services("windows"));
-        assert!(!app_menu_includes_services("linux"));
-    }
-
-    #[test]
-    fn window_menu_event_handler_is_required_off_macos() {
-        assert!(!window_menu_event_handler_required("macos"));
-        assert!(window_menu_event_handler_required("windows"));
-        assert!(window_menu_event_handler_required("linux"));
-    }
-
-    #[test]
-    fn window_menu_uses_native_nsapp_integration_on_macos_only() {
-        assert_eq!(
-            native_window_menu_submenu_id("macos"),
-            Some(WINDOW_SUBMENU_ID)
-        );
-        assert_eq!(native_window_menu_submenu_id("windows"), None);
-        assert_eq!(native_window_menu_submenu_id("linux"), None);
-    }
-
-    #[test]
-    fn window_menu_includes_native_fullscreen_on_macos_only() {
-        assert!(window_menu_includes_native_fullscreen("macos"));
-        assert!(!window_menu_includes_native_fullscreen("windows"));
-        assert!(!window_menu_includes_native_fullscreen("linux"));
     }
 
     #[test]

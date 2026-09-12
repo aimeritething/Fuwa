@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fs;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
@@ -12,12 +11,11 @@ fn invalid_utf8_text_error(path: &Path) -> String {
 }
 
 fn is_invalid_platform_path_error(error: &Error) -> bool {
-    error.kind() == ErrorKind::InvalidInput || error.raw_os_error() == Some(123)
+    error.kind() == ErrorKind::InvalidInput
 }
 
 fn is_retryable_save_error(error: &Error) -> bool {
     error.kind() == ErrorKind::PermissionDenied
-        || (cfg!(windows) && error.raw_os_error() == Some(5))
 }
 
 fn write_with_retry(
@@ -42,24 +40,6 @@ fn read_existing_note_bytes(path: &Path) -> Result<Vec<u8>, String> {
         return Err(format!("Path is not a file: {}", path.display()));
     }
     fs::read(path).map_err(|e| format!("Failed to read {}: {}", path.display(), e))
-}
-
-struct RawNotePath<'a>(&'a str);
-
-impl<'a> RawNotePath<'a> {
-    fn is_windows_verbatim(&self) -> bool {
-        self.0.starts_with("\\\\?\\") || self.0.starts_with("\\??\\")
-    }
-
-    fn normalized_for_file_io(&self) -> Cow<'a, str> {
-        if !self.is_windows_verbatim() {
-            return Cow::Borrowed(self.0);
-        }
-        if !self.0.contains('/') {
-            return Cow::Borrowed(self.0);
-        }
-        Cow::Owned(self.0.replace('/', "\\"))
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -107,12 +87,6 @@ pub fn get_note_content(path: &Path) -> Result<String, String> {
     String::from_utf8(bytes).map_err(|_| invalid_utf8_text_error(path))
 }
 
-/// Check whether a note still has the exact content the renderer cached.
-pub fn note_content_matches(path: &Path, expected_content: &str) -> Result<bool, String> {
-    let bytes = read_existing_note_bytes(path)?;
-    Ok(bytes == expected_content.as_bytes())
-}
-
 fn validate_save_path(file_path: &Path, display_path: &str) -> Result<(), String> {
     let parent_missing = file_path.parent().is_some_and(|p| !p.exists());
     if parent_missing {
@@ -135,8 +109,7 @@ fn validate_save_path(file_path: &Path, display_path: &str) -> Result<(), String
 /// Write content to a note file. Creates parent directory if needed, validates path,
 /// then writes content to disk.
 pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
-    let normalized_path = RawNotePath(path).normalized_for_file_io();
-    let file_path = Path::new(normalized_path.as_ref());
+    let file_path = Path::new(path);
     if let Some(parent) = file_path.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent).map_err(|e| {
@@ -154,8 +127,7 @@ pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
 
 /// Create a new note file without overwriting any existing file.
 pub fn create_note_content(path: &str, content: &str) -> Result<(), String> {
-    let normalized_path = RawNotePath(path).normalized_for_file_io();
-    let file_path = Path::new(normalized_path.as_ref());
+    let file_path = Path::new(path);
     if let Some(parent) = file_path.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent).map_err(|e| {
@@ -181,27 +153,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn formats_windows_invalid_path_syntax_as_recoverable_save_error() {
-        let path = r"C:\Users\@raflymln\notes\untitled-note-1777236475.md";
+    fn formats_invalid_path_syntax_as_recoverable_save_error() {
+        let path = "/Users/alex/notes/untitled-note-1777236475.md";
         let message = note_io_error(
             NoteIoOperation::Save,
             NotePathDisplay::new(path),
-            &Error::from_raw_os_error(123),
+            &Error::new(ErrorKind::InvalidInput, "invalid path"),
         );
 
         assert!(message.contains("path is invalid on this platform"));
         assert!(message.contains("Rename the note or move it to a valid folder"));
-        assert!(!message.contains("os error 123"));
-    }
-
-    #[test]
-    fn normalizes_extended_windows_paths_before_file_io() {
-        let path = r"\\?\C:\Users\alex\Documents\Tolaria/Getting Started/untitled-project.md";
-
-        assert_eq!(
-            RawNotePath(path).normalized_for_file_io(),
-            r"\\?\C:\Users\alex\Documents\Tolaria\Getting Started\untitled-project.md"
-        );
+        assert!(!message.contains("invalid path"));
     }
 
     #[test]
@@ -224,15 +186,5 @@ mod tests {
 
         assert_eq!(attempts, 2);
         assert_eq!(delays, vec![25]);
-    }
-
-    #[test]
-    fn note_content_matches_detects_external_edits() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("note.md");
-        fs::write(&path, "# Fresh\n").unwrap();
-
-        assert!(note_content_matches(&path, "# Fresh\n").unwrap());
-        assert!(!note_content_matches(&path, "# Stale\n").unwrap());
     }
 }
