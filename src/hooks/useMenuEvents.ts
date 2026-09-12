@@ -11,7 +11,7 @@ import { cleanupTauriEventListener, type TauriUnlisten } from '../utils/tauriEve
 export interface MenuEventHandlers extends AppCommandHandlers {
   /** The active Tab's path when it is a Document; null with no Tab, or with an Image Tab. */
   activeDocumentPath: string | null
-  /** Whether a Folder is open; New Document, Quick Open and Close Folder follow it (spec section 7). */
+  /** Whether a Folder is open; New Document, Quick Open and Close Folder follow it. */
   hasFolder: boolean
   /** Whether any Tab is open, an Image Tab included; Close Tab's menu item follows it. */
   hasTab: boolean

@@ -9,7 +9,7 @@ export const EXPLORER_ROW_ICONS: Record<ExplorerRowKind, typeof FileText> = {
   folder: Folder,
 }
 
-/** 14px per level, from the row's own 8px inset (spec section 2). */
+/** 14px per level, from the row's own 8px inset. */
 export function explorerRowIndent(depth: number): number {
   return 8 + depth * 14
 }

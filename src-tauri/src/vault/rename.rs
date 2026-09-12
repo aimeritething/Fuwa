@@ -127,9 +127,9 @@ pub fn rename_note_filename(
 }
 
 /// Rename a Document or an Image file in place, keeping its folder and its
-/// extension. The Explorer edits the stem only (spec section 4), so the
-/// extension the file arrived with is the extension it leaves with; a name
-/// with no extension (a dotfile, or a bare name) keeps having none.
+/// extension. The Explorer edits the stem only, so the extension the file
+/// arrived with is the extension it leaves with; a name with no extension (a
+/// dotfile, or a bare name) keeps having none.
 pub fn rename_vault_file(request: RenameVaultFileRequest<'_>) -> Result<RenameResult, String> {
     let old_file = Path::new(request.old_path);
     ensure_existing_note(old_file)?;

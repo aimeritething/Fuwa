@@ -26,7 +26,7 @@ import { notePathFilename } from '../utils/notePathIdentity'
  * Folder-relative `/`-separated paths for the folder commands, `modifiedAt` in
  * seconds, errors as the Rust boundary's strings. `list_files` is shared with
  * the Fuwa-owned Rust scanner; `take_pending_open` with the Rust side's
- * `PendingOpen` buffer (AIM-391).
+ * `PendingOpen` buffer.
  */
 
 export const MOCK_VAULT_PATH = '/Users/fuwa/Documents/Notes'

@@ -27,7 +27,7 @@ function openEditorsKey(tabs: Tab[]): string {
 
 /**
  * Restores the Session once at launch and hands every later change of the
- * Folder, open Tabs (each Document with its mode, AIM-381), appearance and
+ * Folder, open Tabs (each Document with its mode), appearance and
  * sidebar to the Session file. Nothing is written before
  * the restore has settled, so a launch never overwrites the file with the
  * empty initial state. A file with an unknown version restores nothing and

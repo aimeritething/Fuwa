@@ -1,8 +1,8 @@
-//! Finder, Open With and Dock opens (spec section 3, AIM-391). All three reach
-//! the process as one AppKit call, `application:openURLs:`, which tao turns
-//! into `RunEvent::Opened { urls }`. On a launch by document that event fires
-//! before `Ready`, so before `setup` has created the window and long before the
-//! renderer has a listener; while the app is running it arrives on a live loop.
+//! Finder, Open With and Dock opens. All three reach the process as one AppKit
+//! call, `application:openURLs:`, which tao turns into `RunEvent::Opened { urls }`.
+//! On a launch by document that event fires before `Ready`, so before `setup`
+//! has created the window and long before the renderer has a listener; while
+//! the app is running it arrives on a live loop.
 //!
 //! One shape serves both: every path is buffered in this managed state, which
 //! `Builder::manage` registers before `run()` so it exists whenever `Opened`
@@ -22,9 +22,8 @@ use tauri::{AppHandle, Emitter, Manager, State, Url};
 /// the renderer drains the buffer rather than reading the payload.
 pub const OPEN_FILES_EVENT: &str = "fuwa://open-files";
 
-/// Only `.md` is associated (spec section 3); Image files are not openable
-/// from outside Fuwa in v0.1, and anything else Launch Services hands over is
-/// dropped here.
+/// Only `.md` is associated; Image files are not openable from outside Fuwa
+/// in v0.1, and anything else Launch Services hands over is dropped here.
 const DOCUMENT_EXTENSION: &str = "md";
 
 #[derive(Default)]

@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 /**
- * The Explorer header's hover-only actions (spec section 2): "+" makes a new
+ * The Explorer header's hover-only actions: "+" makes a new
  * Document where the selection points, and "…" holds exactly New Folder,
  * Collapse All, Reveal in Finder and Close Folder.
  */

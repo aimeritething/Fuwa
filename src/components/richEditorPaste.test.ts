@@ -45,7 +45,7 @@ describe('handleRichEditorPaste', () => {
   it('leaves a pasted image to the kernel, which writes it as an Attachment', () => {
     // A screenshot on the clipboard arrives as files and nothing else; the
     // default handler is BlockNote's file branch, and `uploadFile` puts the
-    // Attachment in `attachments/` beside the Document (AIM-384).
+    // Attachment in `attachments/` beside the Document.
     const context = pasteContext({})
     context.event = {
       clipboardData: {

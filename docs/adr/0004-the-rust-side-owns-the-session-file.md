@@ -1,7 +1,7 @@
 ---
 status: accepted
 date: 2026-09-11
-amended: 2026-09-11 (sidebar state and the first paint, AIM-386)
+amended: 2026-09-11 (sidebar state and the first paint)
 ---
 
 # The Rust side owns the Session file
@@ -26,6 +26,6 @@ Two consequences of "⌘W with zero Tabs closes the window; Dock reopen restores
 - The renderer's saved-Tab state is at most one IPC call behind the file; there is no window in which a quit loses the last change.
 - The saved frame is applied in `setup`, before the first paint; a frame that lands off every screen is ignored. The dev build's centring only happens when no frame was restored.
 - In the browser the Folder fixture answers both commands and keeps the Session in localStorage, so a page reload stands in for a relaunch in the smoke specs; the fixture's file has no `window` field.
-- AIM-385's quit flush (pending writes, the error dialog) will need the renderer in the exit path; the natural shape is a Rust `ExitRequested` that prevents, asks the renderer, and exits on its answer. This ADR does not decide that.
-- The theme moved into the renderer's part of the Session with AIM-382: the file's `theme` is the View → Appearance choice, restored at launch and written on every change. Tolaria's localStorage key stays only as a pre-paint mirror for the inline script in `index.html`, so the first frame already has the right appearance; the theme applier rewrites it whenever the choice changes.
-- The sidebar followed with [AIM-386](https://linear.app/aimerite/issue/AIM-386): `sidebar.collapsed` and `sidebar.width` are the renderer's, restored at launch and written on every change: a toggle, the collapse a lone Document brings, a keyboard step on the edge, or the end of an edge drag (not each pointer move; the Rust debounce is not a reason to send sixty updates a second). A width outside 180–480 is clamped on both the way in and the way out. Unlike the theme there is no pre-paint mirror: the shell is laid out but not painted (`visibility: hidden`) until the restore has settled, so the sidebar and the card appear once, in their restored state, over the window's own background colour. The restore is one read of a small file and always settles, so nothing is hidden for longer than that.
+- The quit flush (pending writes, the error dialog) will need the renderer in the exit path; the natural shape is a Rust `ExitRequested` that prevents, asks the renderer, and exits on its answer. This ADR does not decide that.
+- The theme later moved into the renderer's part of the Session: the file's `theme` is the View → Appearance choice, restored at launch and written on every change. Tolaria's localStorage key stays only as a pre-paint mirror for the inline script in `index.html`, so the first frame already has the right appearance; the theme applier rewrites it whenever the choice changes.
+- The sidebar followed: `sidebar.collapsed` and `sidebar.width` are the renderer's, restored at launch and written on every change: a toggle, the collapse a lone Document brings, a keyboard step on the edge, or the end of an edge drag (not each pointer move; the Rust debounce is not a reason to send sixty updates a second). A width outside 180–480 is clamped on both the way in and the way out. Unlike the theme there is no pre-paint mirror: the shell is laid out but not painted (`visibility: hidden`) until the restore has settled, so the sidebar and the card appear once, in their restored state, over the window's own background colour. The restore is one read of a small file and always settles, so nothing is hidden for longer than that.

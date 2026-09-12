@@ -12,7 +12,7 @@ const TOGGLE_SHORTCUT = APP_COMMAND_DEFINITIONS[APP_COMMAND_IDS.editToggleRawEdi
 const MODE_LABELS: Record<EditorMode, string> = { rich: 'Rich', raw: 'Raw' }
 const MODES: readonly EditorMode[] = ['rich', 'raw']
 
-/** A Document Tab's mode, as the path row shows and switches it (AIM-381). */
+/** A Document Tab's mode, as the path row shows and switches it. */
 export interface PathRowMode {
   value: EditorMode
   /** Asked for the other segment, or the Frontmatter badge (which always asks for Raw). */
@@ -61,10 +61,10 @@ function useSavedLabel(savedAt: number | null): string | null {
 /**
  * The row under the tab bar: the Document's name on the left and, on the
  * right in order, its save state, the mono `frontmatter · N keys` badge when
- * the Document has Frontmatter, and the `Rich | Raw` segmented control
- * (spec section 2, AIM-381). An Image Tab (AIM-388) fills that slot instead
- * with the picture's dimensions and size and the two buttons that hand the
- * file to a real image app; it has no save state, no Frontmatter and no mode.
+ * the Document has Frontmatter, and the `Rich | Raw` segmented control. An
+ * Image Tab fills that slot instead with the picture's dimensions and size and
+ * the two buttons that hand the file to a real image app; it has no save
+ * state, no Frontmatter and no mode.
  */
 export function PathRow({ filename, path, folder, savedAt, image, mode }: PathRowProps) {
   const savedLabel = useSavedLabel(image ? null : savedAt)
@@ -107,7 +107,7 @@ function FrontmatterBadge({ mode }: { mode: PathRowMode }) {
 /**
  * `Rich | Raw`: two segments, the current one raised, each with a mono
  * tooltip naming the shortcut. Invalid Frontmatter leaves the Rich segment
- * in place but unavailable, its tooltip saying why (spec section 7). It is
+ * in place but unavailable, its tooltip saying why. It is
  * marked with aria-disabled rather than the disabled attribute so it still
  * takes the pointer and can show that tooltip.
  */
@@ -156,7 +156,7 @@ function ImageMeta({ image }: { image: PathRowImage }) {
       {image.metadata && (
         <span className="fuwa-path-row__image-meta" data-testid="path-row-image-meta">{image.metadata}</span>
       )}
-      {/* The spec names the buttons "Open ↗" and "Copy path"; the arrow is the label, not an icon beside it. */}
+      {/* The buttons are "Open ↗" and "Copy path"; the arrow is the label, not an icon beside it. */}
       <span className="fuwa-path-row__actions">
         <Button type="button" variant="ghost" size="xs" onClick={image.onOpenExternal}>Open ↗</Button>
         <Button type="button" variant="ghost" size="xs" onClick={image.onCopyPath}>Copy path</Button>

@@ -126,7 +126,7 @@ describe('useNoteTabs', () => {
     expect(result.current.tabs.map((tab) => tab.content)).toEqual(['# A\n', '# C\n'])
   })
 
-  it('restores each Document in the mode its Session entry names, Rich when it names none (AIM-381)', async () => {
+  it('restores each Document in the mode its Session entry names, Rich when it names none', async () => {
     seedFiles({ [A]: '# A\n', [B]: '# B\n', [C]: '# C\n' })
     const { result } = renderHook(() => useNoteTabs())
 

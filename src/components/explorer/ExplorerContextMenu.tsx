@@ -8,7 +8,7 @@ import {
 
 /**
  * The Explorer's right-click menu: Linear-styled on Radix `ContextMenu`, never
- * the native macOS menu (spec section 4). It acts on the row under the cursor
+ * the native macOS menu. It acts on the row under the cursor
  * and changes neither the selection nor the active Tab.
  */
 

@@ -3,11 +3,11 @@ import { stripBlockedNameCharacters, type ExplorerRowKind } from '../../utils/ex
 import { EXPLORER_ROW_ICONS, explorerNameIndent, explorerRowIndent } from './explorerRow'
 
 /**
- * The in-row inline input behind creation and Rename… (spec section 4). It
- * edits the stem only: the extension beside it is dim static text and is never
- * editable, so a Document cannot be renamed out of the tree. `/` never makes
- * it in; everything else the filesystem refuses is reported on commit, as a
- * red hairline ring and one muted line under the row.
+ * The in-row inline input behind creation and Rename…; it edits the stem
+ * only: the extension beside it is dim static text and is never editable, so
+ * a Document cannot be renamed out of the tree. `/` never makes it in;
+ * everything else the filesystem refuses is reported on commit, as a red
+ * hairline ring and one muted line under the row.
  *
  * Enter commits, Escape cancels, and blur commits a changed name — the carried
  * inline-rename hook holds the Enter/blur double-fire guard.

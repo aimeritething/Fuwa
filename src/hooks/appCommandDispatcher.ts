@@ -24,13 +24,13 @@ export type AppCommandDispatchSource =
 type SuppressedShortcutSource = Extract<AppCommandDispatchSource, 'renderer-keyboard'>
 
 export interface AppCommandHandlers {
-  /** ⌘Q: write every pending edit, then exit (AIM-385). */
+  /** ⌘Q: write every pending edit, then exit. */
   onQuit?: () => void
   onCreateNote: () => void
   onOpenVault?: () => void
   onOpenNote?: () => void
   onCloseVault?: () => void
-  /** ⌘P: disabled with no Folder, like its menu item, by handing no handler (AIM-389). */
+  /** ⌘P: disabled with no Folder, like its menu item, by handing no handler. */
   onQuickOpen?: () => void
   onSave: () => void
   onCloseTab?: () => void

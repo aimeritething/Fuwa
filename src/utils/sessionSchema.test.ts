@@ -116,7 +116,7 @@ describe('sessionForOpenEditors', () => {
     })
   })
 
-  it('writes each Document with its own mode (AIM-381)', () => {
+  it('writes each Document with its own mode', () => {
     const session = sessionForOpenEditors([{ path: A, mode: 'raw' }, { path: B, mode: 'rich' }], A, 'dark')
 
     expect(session.openEditors).toEqual([{ path: A, mode: 'raw' }, { path: B, mode: 'rich' }])

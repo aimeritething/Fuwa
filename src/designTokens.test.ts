@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// Spec section 6 (AIM-382): the app stylesheet carries Linear's default
-// theme-generator output, re-valued in place. Expected values are the hex
-// values the ticket lists, read from the stylesheet as text so the contract
+// The app stylesheet carries Linear's default theme-generator output,
+// re-valued in place. Expected values are the hex values of that output,
+// read from the stylesheet as text so the contract
 // is checked without a browser.
 
 const appCss = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8')

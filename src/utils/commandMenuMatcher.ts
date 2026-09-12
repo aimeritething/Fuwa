@@ -1,5 +1,5 @@
 /**
- * The Command Menu's matcher (spec section 7, AIM-389): pure ranking over the
+ * The Command Menu's matcher: pure ranking over the
  * rows the palette can show. New Fuwa code; Tolaria's command palette is not
  * ported. Names only: a Document matches by its file name, an Image file by
  * its file name, a command by its menu label. Contents and parent paths are

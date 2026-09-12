@@ -82,7 +82,7 @@ describe('PathRow', () => {
     expect(onCopyPath).toHaveBeenCalledTimes(1)
   })
 
-  describe('the Rich | Raw control (AIM-381)', () => {
+  describe('the Rich | Raw control', () => {
     it('shows both segments with the current one checked and asks for the other on click', () => {
       const onChange = vi.fn()
       renderWithTooltips(<PathRow filename="Welcome.md" savedAt={null} mode={richMode({ onChange })} />)

@@ -5,7 +5,7 @@ date: 2026-09-11
 
 # Rich/Raw mode is a property of the Tab
 
-Tolaria keeps one editor mode per vault: `useRawMode` reads and writes `editor_mode` in the vault config, so switching to Raw switches every note until the user switches back. Fuwa's spec (section 5, user story 15, AIM-381) wants the opposite: Raw is a per-Document choice, remembered while the Tab is open and written to the Session as `openEditors[].mode`, so two Tabs can sit in different modes and a relaunch restores each.
+Tolaria keeps one editor mode per vault: `useRawMode` reads and writes `editor_mode` in the vault config, so switching to Raw switches every note until the user switches back. Fuwa wants the opposite: Raw is a per-Document choice, remembered while the Tab is open and written to the Session as `openEditors[].mode`, so two Tabs can sit in different modes and a relaunch restores each.
 
 ## Decision
 

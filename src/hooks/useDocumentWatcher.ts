@@ -21,7 +21,7 @@ interface Options {
 }
 
 /**
- * The Folder and the open Documents as the watcher sees them (spec section 5).
+ * The Folder and the open Documents as the watcher sees them.
  * The listing is refreshed first, because whether a Tab's file still exists is
  * what decides between a reload, a retarget and a close; the rules themselves
  * live in `resolveExternalTabChanges`.

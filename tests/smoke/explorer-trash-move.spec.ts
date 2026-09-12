@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MOCK_FOLDER, typeAtEnd, watchForErrors } from './harness'
 
-// AIM-390: Move to Trash, the drag-and-drop move, and what an external change
+// Move to Trash, the drag-and-drop move, and what an external change
 // does to an open Tab. What Finder would do is done to the fixture directly
 // (`removeFile`, `movePath`, `writeNote`) and then announced the way the
 // watcher announces it.

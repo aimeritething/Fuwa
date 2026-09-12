@@ -7,7 +7,7 @@ date: 2026-09-11
 
 The main window runs with `dragDropEnabled: true`, so WKWebView never lets an external file drop reach the page: no HTML5 `dragover` and no `drop` fires for a file from Finder, and the drop arrives only as Tauri's own event. Two things have to come out of that one event: a dropped `.md` opens as a Document, and an image dropped over a Document becomes an Attachment.
 
-The carried image drop hook ([AIM-377](https://linear.app/aimerite/issue/AIM-377)'s kernel import) listened to `tauri://drag-drop` and `tauri://drag-leave` on the webview and branched on `payload.type`. Tauri emits those raw events with `{ paths, position }` and no `type` at all — the kind of drag is carried by the event name, and only `Window.onDragDropEvent` folds the four names back into a tagged payload. The carried hook's native branch therefore recognised nothing and imported nothing; every dropped image fell through it.
+The image drop hook carried over with the kernel listened to `tauri://drag-drop` and `tauri://drag-leave` on the webview and branched on `payload.type`. Tauri emits those raw events with `{ paths, position }` and no `type` at all — the kind of drag is carried by the event name, and only `Window.onDragDropEvent` folds the four names back into a tagged payload. The carried hook's native branch therefore recognised nothing and imported nothing; every dropped image fell through it.
 
 ## Decision
 
@@ -18,7 +18,7 @@ The carried image drop hook ([AIM-377](https://linear.app/aimerite/issue/AIM-377
 
 What counts as an Image file is the glossary's list, shared from `filePreview.ts` and matched by the Rust copy command, so a drop and the Explorer agree on what a picture is.
 
-Nothing else is picked up, so nothing but Documents and `attachments/` is ever written into the Folder (spec section 1).
+Nothing else is picked up, so nothing but Documents and `attachments/` is ever written into the Folder.
 
 Where the hook is mounted is the rule for what a drop may do, and no coordinate is read: the editor mounts with a Document's Tab and not with the empty card, so an image dropped with no Tab open reaches no consumer and does nothing — no toast, as Fuwa has none.
 
@@ -28,5 +28,5 @@ The hook's HTML5 branch stays as carried. Under Tauri no external drop reaches i
 
 - A Document's Attachments have to be viewable, which the asset protocol refuses until their directory is in its scope. `useNoteTabs` allows the boundary root through `sync_vault_asset_scope_for_window` before it reads a Document, so the content reaches the editor with its images resolvable rather than a paint later. Saving or copying an image already allows the root on the Rust side.
 - Clipboard paste needs none of this: WKWebView puts a pasted image in `clipboardData`, the kernel's paste handler falls through to BlockNote's file branch, and `uploadFile` writes the Attachment through `save_image`.
-- Image files get Tabs with [AIM-388](https://linear.app/aimerite/issue/AIM-388). Such a Tab has no editor, so it mounts no image drop hook, and an image dropped over it is ignored by construction rather than by a check.
-- A drop that carries both a `.md` and an image does both, each through its own consumer. Nothing in the spec asks for one to win.
+- Image files open as Tabs of their own. Such a Tab has no editor, so it mounts no image drop hook, and an image dropped over it is ignored by construction rather than by a check.
+- A drop that carries both a `.md` and an image does both, each through its own consumer. Nothing requires one to win.

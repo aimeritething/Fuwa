@@ -78,7 +78,7 @@ pub fn rename_note_filename(args: RenameNoteFilenameCommandArgs) -> Result<Renam
 }
 
 /// The Explorer's Rename…: a Document or an Image file keeps its folder and
-/// its extension, and only the stem changes (spec section 4).
+/// its extension, and only the stem changes.
 #[tauri::command]
 pub fn rename_vault_file(args: RenameVaultFileCommandArgs) -> Result<RenameResult, String> {
     let request = RequestedNotePath::new(&args.vault_path, &args.old_path);

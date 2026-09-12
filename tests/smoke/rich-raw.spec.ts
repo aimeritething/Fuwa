@@ -11,7 +11,7 @@ import {
   WELCOME_PATH,
 } from './harness'
 
-// Spec 5 of the smoke plan (AIM-381): the Rich/Raw round trip, each Tab's own
+// The Rich/Raw round trip, each Tab's own
 // mode surviving a relaunch (a reload, with the fixture's Session file), the
 // Frontmatter badge and the bytes it protects, and invalid Frontmatter forcing
 // Raw mode until it is fixed.

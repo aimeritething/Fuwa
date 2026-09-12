@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 /**
- * The one toast in Fuwa (spec section 4): a refused drag-and-drop move, and a
+ * The one toast in Fuwa: a refused drag-and-drop move, and a
  * refused Move to Trash. It says what happened and goes away on its own —
  * nothing here is ever answered, which is why the Write failure bar and its
  * prompt are a different thing entirely.

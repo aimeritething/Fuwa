@@ -61,7 +61,7 @@ export function buildExplorerTree(folder: string, files: readonly ListedFile[]):
   return root
 }
 
-/** Whether a Document exists anywhere under the root; folders and Image files do not count (the empty-Folder state, spec section 2). */
+/** Whether a Document exists anywhere under the root; folders and Image files do not count (the empty-Folder state). */
 export function holdsDocument(node: ExplorerNode): boolean {
   return node.kind === 'note' || node.children.some(holdsDocument)
 }

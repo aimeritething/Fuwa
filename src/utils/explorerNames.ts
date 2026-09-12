@@ -2,7 +2,7 @@ import type { ExplorerNode } from './explorer'
 import { noteRootForPath } from './noteEntry'
 
 /**
- * The naming rules behind Explorer creation and rename (spec section 4): where
+ * The naming rules behind Explorer creation and rename: where
  * a new row lands, what a free name is, and which stems the filesystem will
  * take. Everything here is pure; the Tauri commands are the backstop, and the
  * Rust filename-rules module is still the authority at commit time.
@@ -118,9 +118,9 @@ export function isNameTaken(siblings: readonly string[], name: string): boolean 
  * row on commit — or null when the name will do. An empty stem is not an
  * error: a blank commit cancels the rename instead.
  *
- * The stem arrives untrimmed on purpose. A trailing space is one of the things
- * the spec reports, and the Rust side would quietly trim it away, so it has to
- * be caught here while the user can still see it.
+ * The stem arrives untrimmed on purpose. A trailing space is one of the names
+ * the Explorer refuses, and the Rust side would quietly trim it away, so it
+ * has to be caught here while the user can still see it.
  */
 export function nameCommitError(options: {
   kind: ExplorerRowKind

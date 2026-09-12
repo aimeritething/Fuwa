@@ -17,7 +17,7 @@ export interface OpenEditorsProps {
 const LABEL = 'Open Editors'
 
 /**
- * The Open Editors sidebar group (spec section 2): a quiet label, one row per
+ * The Open Editors sidebar group: a quiet label, one row per
  * open Tab mirroring the tab bar, the active row selected, a close affordance
  * on hover. Not rendered at all with zero Tabs. Outside the Folder, rows
  * show the parent directory dimmed after the file name. A row's icon is the

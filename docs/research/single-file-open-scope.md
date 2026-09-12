@@ -1,7 +1,7 @@
 # How other desktop editors scope a Document opened on its own
 
-Companion to the review of [ADR-0002](../adr/0002-a-document-opened-on-its-own-uses-its-directory-as-the-boundary-root.md)
-in [AIM-417](https://linear.app/aimerite/issue/AIM-417). Researched 2026-09-12 from primary sources
+Companion to the review of [ADR-0002](../adr/0002-a-document-opened-on-its-own-uses-its-directory-as-the-boundary-root.md).
+Researched 2026-09-12 from primary sources
 only: the apps' source code on GitHub (`main` or the last tagged release, as noted), their official
 help sites and release notes, and Apple's developer documentation. Forum posts are cited only where
 the author is flagged as Obsidian staff. Nothing here comes from third-party blog posts.
