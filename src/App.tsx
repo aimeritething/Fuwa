@@ -37,18 +37,9 @@ import { requestPlainTextPaste } from './utils/plainTextPaste'
 const noop = () => {}
 
 /**
- * Fuwa has no toasts: a refused write is recorded by the Write failure hook
- * and shown as the error bar; "Saved" is the path row's job.
- */
-const ignoreSaveToast = () => {}
-
-/** The watcher refreshes Explorer metadata after writes. */
-const noVaultContentToUpdate = () => {}
-
-/**
  * Rich-mode edits reach disk 1.5 s after the last keystroke: the kernel's
- * serialization debounce (RICH_EDITOR_CHANGE_DEBOUNCE_MS) is that idle wait,
- * so the save hook's own timer is not stacked on top of it. Disk first; the
+ * serialization debounce (RICH_EDITOR_CHANGE_DEBOUNCE_MS) is the idle wait,
+ * and the save hook has no timer of its own (ADR-0003). Disk first; the
  * buffer stays put when the write is refused (Autosave, CONTEXT.md) and the
  * refusal becomes the Document's error bar.
  */
@@ -165,9 +156,7 @@ export default function App() {
   }, [clearWriteFailure, markSaved])
 
   const { handleContentChange, savePendingForPath, discardPending, hasPendingSave } = useEditorSave({
-    updateVaultContent: noVaultContentToUpdate,
     setTabs,
-    setToastMessage: ignoreSaveToast,
     onNotePersisted,
     persistenceScope,
   })
