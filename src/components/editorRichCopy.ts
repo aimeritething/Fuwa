@@ -1,5 +1,5 @@
 import { selectedFragmentToHTML } from '@blocknote/core'
-import type { useCreateBlockNote } from '@blocknote/react'
+import type { RichEditor } from './blockNoteDom'
 
 export const CODE_BLOCK_SELECTOR = '[data-content-type="codeBlock"]'
 const CLIPBOARD_INLINE_FORMAT_SELECTOR = 'a, b, code, em, i, s, span, strong, u'
@@ -10,7 +10,6 @@ const CLIPBOARD_WIKILINK_SELECTOR = [
 ].join(',')
 const MARKDOWN_WIKILINK_RE = /\[\[[^\]]+\]\]/
 
-type RichEditor = ReturnType<typeof useCreateBlockNote>
 type ClipboardWriter = Pick<DataTransfer, 'setData'>
 type ClipboardWikilink = {
   label: string

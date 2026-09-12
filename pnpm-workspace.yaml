@@ -2,7 +2,7 @@
 ignoredBuiltDependencies:
   - esbuild
 
-# The two uuid overrides carried from Tolaria, plus exact pins on the three
+# The two uuid overrides the kernel needs, plus exact pins on the three
 # transitive packages that carry pnpm patches (BlockNote asks for ranges).
 overrides:
   '@blocknote/core>uuid': 11.1.1

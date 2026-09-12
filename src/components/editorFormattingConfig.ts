@@ -50,11 +50,11 @@ import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
 import { calloutIconForType } from './calloutIcons'
 
-export type TolariaSlashMenuItem = DefaultReactSuggestionItem & {
+export type SlashMenuItem = DefaultReactSuggestionItem & {
   key: string
-  submenuItems?: TolariaSlashMenuItem[]
+  submenuItems?: SlashMenuItem[]
 }
-type TolariaBlockTypeSelectItem = RichEditorBlockTypeDefinition & {
+type BlockTypeSelectItem = RichEditorBlockTypeDefinition & {
   icon: PhosphorIcon
 }
 type SlashInsertEditor = {
@@ -70,7 +70,7 @@ type BlockSlashMenuItemConfig = {
   title: string
   type: string
 }
-type TolariaSlashMenuLabels = {
+type SlashMenuLabels = {
   calloutTitle: string
   calloutTypeTitles: Record<ObsidianCalloutType, string>
   dateTitle: string
@@ -81,7 +81,7 @@ type TolariaSlashMenuLabels = {
 }
 type DateTimeSlashCommandKind = 'date' | 'datetime' | 'time'
 type DateTimeSlashMenuLabels = Pick<
-  TolariaSlashMenuLabels,
+  SlashMenuLabels,
   'dateTitle' | 'datetimeTitle' | 'timeTitle'
 >
 type DateProvider = () => Date
@@ -110,7 +110,7 @@ const UNSUPPORTED_SLASH_MENU_KEYS = new Set([
   'toggle_list',
 ])
 
-const TOLARIA_BLOCK_TYPE_SELECT_ICONS: Record<RichEditorBlockTypeKey, PhosphorIcon> = {
+const BLOCK_TYPE_SELECT_ICONS: Record<RichEditorBlockTypeKey, PhosphorIcon> = {
   'bullet-list': ListBullets,
   checklist: ListChecks,
   'code-block': CodeBlock,
@@ -125,7 +125,7 @@ const TOLARIA_BLOCK_TYPE_SELECT_ICONS: Record<RichEditorBlockTypeKey, PhosphorIc
   quote: Quotes,
 }
 
-const TOLARIA_SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
+const SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
   audio: SpeakerHigh,
   bullet_list: ListBullets,
   callout: Note,
@@ -203,7 +203,7 @@ export function createDateTimeSlashMenuItems(
     timeTitle: 'Time',
   },
   getCurrentDate: DateProvider = () => new Date(),
-): TolariaSlashMenuItem[] {
+): SlashMenuItem[] {
   const inlineEditor = editor as unknown as SlashInsertEditor
 
   return DATE_TIME_SLASH_COMMANDS.map(({ aliases, key, labelKey }) => ({
@@ -216,7 +216,7 @@ export function createDateTimeSlashMenuItems(
       })
       trackEvent('editor_timestamp_slash_command_used', { kind: key })
     },
-  } as TolariaSlashMenuItem))
+  } as SlashMenuItem))
 }
 
 function createBoardId(): string {
@@ -229,7 +229,7 @@ function createBoardId(): string {
 
 function createWhiteboardSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
-): TolariaSlashMenuItem {
+): SlashMenuItem {
   return createBlockSlashMenuItem(editor, {
     key: 'whiteboard',
     title: 'Whiteboard',
@@ -246,7 +246,7 @@ function createWhiteboardSlashMenuItem(
 
 function createMermaidSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
-): TolariaSlashMenuItem {
+): SlashMenuItem {
   return createBlockSlashMenuItem(editor, {
     key: 'mermaid',
     title: 'Mermaid',
@@ -261,8 +261,8 @@ function createMermaidSlashMenuItem(
 
 export function createMathSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
-  labels: Pick<TolariaSlashMenuLabels, 'mathTitle'> = { mathTitle: 'Math' },
-): TolariaSlashMenuItem {
+  labels: Pick<SlashMenuLabels, 'mathTitle'> = { mathTitle: 'Math' },
+): SlashMenuItem {
   return createBlockSlashMenuItem(editor, {
     key: 'math',
     title: labels.mathTitle,
@@ -277,10 +277,10 @@ export function createMathSlashMenuItem(
 
 export function createSandboxBlockSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
-  labels: Pick<TolariaSlashMenuLabels, 'sandboxBlockTitle'> = {
+  labels: Pick<SlashMenuLabels, 'sandboxBlockTitle'> = {
     sandboxBlockTitle: 'HTML block',
   },
-): TolariaSlashMenuItem {
+): SlashMenuItem {
   return createBlockSlashMenuItem(editor, {
     key: 'html',
     title: labels.sandboxBlockTitle,
@@ -296,11 +296,11 @@ export function createSandboxBlockSlashMenuItem(
 
 export function createCalloutSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
-  labels: Pick<TolariaSlashMenuLabels, 'calloutTitle' | 'calloutTypeTitles'> = {
+  labels: Pick<SlashMenuLabels, 'calloutTitle' | 'calloutTypeTitles'> = {
     calloutTitle: 'Callout',
     calloutTypeTitles: DEFAULT_CALLOUT_TYPE_TITLES,
   },
-): TolariaSlashMenuItem {
+): SlashMenuItem {
   const blockEditor = editor as unknown as SlashInsertEditor
   const submenuItems = OBSIDIAN_CALLOUT_DEFINITIONS.map(({ aliases, type }) => ({
     aliases: [...aliases],
@@ -320,7 +320,7 @@ export function createCalloutSlashMenuItem(
       trackEvent('editor_callout_slash_command_used', { type })
     },
     title: labels.calloutTypeTitles[type],
-  } satisfies TolariaSlashMenuItem))
+  } satisfies SlashMenuItem))
 
   return {
     aliases: ['admonition', 'alert', 'aside'],
@@ -329,13 +329,13 @@ export function createCalloutSlashMenuItem(
     onItemClick: () => {},
     submenuItems,
     title: labels.calloutTitle,
-  } as TolariaSlashMenuItem
+  } as SlashMenuItem
 }
 
 function createBlockSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
   config: BlockSlashMenuItemConfig,
-): TolariaSlashMenuItem {
+): SlashMenuItem {
   const blockEditor = editor as unknown as SlashInsertEditor
 
   return {
@@ -351,13 +351,13 @@ function createBlockSlashMenuItem(
       }])
       if (config.eventName) trackEvent(config.eventName)
     },
-  } as TolariaSlashMenuItem
+  } as SlashMenuItem
 }
 
 export function addItemsToMediaGroup(
-  items: TolariaSlashMenuItem[],
-  mediaItems: TolariaSlashMenuItem[],
-): TolariaSlashMenuItem[] {
+  items: SlashMenuItem[],
+  mediaItems: SlashMenuItem[],
+): SlashMenuItem[] {
   const nextItems = [...items]
   const insertIndex = nextItems.findIndex((item) => item.key === 'emoji')
 
@@ -370,33 +370,33 @@ export function addItemsToMediaGroup(
   return nextItems
 }
 
-export function createTolariaSlashMenuIcon(Icon: PhosphorIcon) {
+export function createSlashMenuIcon(Icon: PhosphorIcon) {
   return createElement(
     'span',
-    { className: 'tolaria-slash-menu-icon' },
+    { className: 'fuwa-slash-menu-icon' },
     createElement(Icon, {
       'aria-hidden': true,
-      className: 'tolaria-slash-menu-icon__regular',
+      className: 'fuwa-slash-menu-icon__regular',
       size: 18,
       weight: 'regular',
     }),
     createElement(Icon, {
       'aria-hidden': true,
-      className: 'tolaria-slash-menu-icon__fill',
+      className: 'fuwa-slash-menu-icon__fill',
       size: 18,
       weight: 'fill',
     }),
   )
 }
 
-export function getTolariaBlockTypeSelectItems() {
-  return RICH_EDITOR_BLOCK_TYPE_DEFINITIONS.map((item): TolariaBlockTypeSelectItem => ({
+export function getBlockTypeSelectItems() {
+  return RICH_EDITOR_BLOCK_TYPE_DEFINITIONS.map((item): BlockTypeSelectItem => ({
     ...item,
-    icon: TOLARIA_BLOCK_TYPE_SELECT_ICONS[item.key],
+    icon: BLOCK_TYPE_SELECT_ICONS[item.key],
   }))
 }
 
-export function filterTolariaFormattingToolbarItems<T extends ReactElement>(
+export function filterFormattingToolbarItems<T extends ReactElement>(
   items: T[],
 ): T[] {
   return items.filter(
@@ -404,28 +404,28 @@ export function filterTolariaFormattingToolbarItems<T extends ReactElement>(
   )
 }
 
-export function filterTolariaSlashMenuItems<T extends TolariaSlashMenuItem>(
+export function filterSlashMenuItems<T extends SlashMenuItem>(
   items: T[],
 ): T[] {
   return items
     .filter((item) => !UNSUPPORTED_SLASH_MENU_KEYS.has(item.key))
     .map((item) => {
-      const TolariaIcon = TOLARIA_SLASH_MENU_ICONS[item.key]
+      const IconComponent = SLASH_MENU_ICONS[item.key]
 
       return {
         ...item,
-        icon: TolariaIcon ? createTolariaSlashMenuIcon(TolariaIcon) : item.icon,
+        icon: IconComponent ? createSlashMenuIcon(IconComponent) : item.icon,
         subtext: undefined,
       }
     }) as T[]
 }
 
-export function getTolariaSlashMenuItems(
+export function getSlashMenuItems(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
   query: string,
-  labels?: TolariaSlashMenuLabels,
+  labels?: SlashMenuLabels,
 ) {
-  const defaultItems = getDefaultReactSlashMenuItems(editor) as TolariaSlashMenuItem[]
+  const defaultItems = getDefaultReactSlashMenuItems(editor) as SlashMenuItem[]
   const otherGroup = defaultItems.find((item) => item.key === 'emoji')?.group
   const quoteIndex = defaultItems.findIndex(item => item.key === 'quote')
   const calloutItem = {
@@ -449,7 +449,7 @@ export function getTolariaSlashMenuItems(
   )
 
   return filterSuggestionItems(
-    filterTolariaSlashMenuItems(
+    filterSlashMenuItems(
       items,
     ),
     query,

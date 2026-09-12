@@ -53,7 +53,7 @@ describe('BlockNote direct Markdown serialization', () => {
     expect(blocksToMarkdownDirect(blocks).markdown).toBe(markdown)
   })
 
-  it('serializes common Tolaria BlockNote blocks without the HTML exporter', () => {
+  it('serializes common BlockNote blocks without the HTML exporter', () => {
     const blocks = [
       {
         type: 'heading',
@@ -183,7 +183,7 @@ describe('BlockNote direct Markdown serialization', () => {
 
     expect(serializeBlockNoteMarkdown(editor, editor.document)).toBe('legacy markdown\n')
     expect(editor.blocksToMarkdownLossy).toHaveBeenCalledWith(editor.document)
-    expect(editor.__tolariaLastDirectMarkdownMetrics?.fallbackReason).toBe('unsupported:unsupportedWidget')
+    expect(editor.__fuwaLastDirectMarkdownMetrics?.fallbackReason).toBe('unsupported:unsupportedWidget')
   })
 
   it('normalizes unsafe table cardinalities before BlockNote fallback serialization', () => {
@@ -395,7 +395,7 @@ describe('BlockNote direct Markdown serialization', () => {
     expect(serializeRichEditorBodyToMarkdown(editor as never)).toBe('Keep [[Project Alpha]] fast.\n')
 
     expect(editor.blocksToMarkdownLossy).not.toHaveBeenCalled()
-    expect(editor.__tolariaLastDirectMarkdownMetrics?.cacheHits).toBeGreaterThan(0)
+    expect(editor.__fuwaLastDirectMarkdownMetrics?.cacheHits).toBeGreaterThan(0)
   })
 
   it('keeps ordered-list numbering correct when cached blocks are reused in different positions', () => {

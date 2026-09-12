@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { useCreateBlockNote } from '@blocknote/react'
-import { createTolariaCodeBlockOptions } from './codeBlockOptions'
-import { BLOCK_CONTAINER_SELECTOR } from './tolariaBlockNoteDom'
+import { createCodeBlockOptions } from './codeBlockOptions'
+import { BLOCK_CONTAINER_SELECTOR } from './blockNoteDom'
 import {
   Select,
   SelectContent,
@@ -29,7 +29,7 @@ const NATIVE_LANGUAGE_CONTROL_SELECTOR =
 const ELEMENT_NODE = 1
 
 const LANGUAGE_OPTIONS = Object.entries(
-  createTolariaCodeBlockOptions().supportedLanguages ?? {},
+  createCodeBlockOptions().supportedLanguages ?? {},
 ).map(([id, language]) => ({ id, name: language.name }))
 
 function liveCodeBlock(editor: CodeBlockLanguageEditor, blockId: string): boolean {

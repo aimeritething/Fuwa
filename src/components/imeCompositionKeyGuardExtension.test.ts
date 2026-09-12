@@ -340,7 +340,7 @@ describe('createSafariImeDomPreserverPlugin', () => {
     view.dom.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
     view.dispatch(view.state.tr.insertText("ce'shi"))
 
-    const sentinel = container.querySelector('[data-tolaria-ime-dom-preserver]')
+    const sentinel = container.querySelector('[data-fuwa-ime-dom-preserver]')
     expect(sentinel).not.toBeNull()
     expect(sentinel?.textContent).toBe('\u200B')
     expect(view.state.doc.textContent).toBe("ce'shi")
@@ -348,7 +348,7 @@ describe('createSafariImeDomPreserverPlugin', () => {
     view.dom.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '测试' }))
     view.dispatch(view.state.tr.setMeta('ime-test-refresh', true))
 
-    expect(container.querySelector('[data-tolaria-ime-dom-preserver]')).toBeNull()
+    expect(container.querySelector('[data-fuwa-ime-dom-preserver]')).toBeNull()
     expect(view.state.doc.textContent).toBe("ce'shi")
     view.destroy()
   })

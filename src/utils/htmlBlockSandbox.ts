@@ -21,7 +21,7 @@ const BASE_CSP_DIRECTIVES = [
   "font-src data:",
   "style-src 'unsafe-inline'",
 ]
-const ALLOWED_URI_PATTERN = /^(?:(?:https?|mailto|tel|tolaria):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/iu
+const ALLOWED_URI_PATTERN = /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/iu
 
 const SANITIZE_CONFIG = {
   ALLOWED_URI_REGEXP: ALLOWED_URI_PATTERN,

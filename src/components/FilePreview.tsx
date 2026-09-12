@@ -2,7 +2,7 @@ import { ArrowSquareOut, WarningCircle } from '@phosphor-icons/react'
 import { Button } from './ui/button'
 
 /**
- * Tolaria's file preview, trimmed to the image branch: the fitted
+ * The kernel's file preview, trimmed to the image branch: the fitted
  * picture and the fallback shown when it will not render. Fuwa's `ImageView`
  * is what mounts them and owns the centring and the padding; the header and
  * its actions are gone, the path row carrying the hand-off buttons instead,

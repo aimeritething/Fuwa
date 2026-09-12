@@ -7,11 +7,11 @@ import {
   type SideMenuProps,
 } from '@blocknote/react'
 import type { AppLocale } from '../lib/i18n'
-import { TolariaFilePanelController } from './TolariaFilePanel'
-import { TolariaLinkToolbar } from './TolariaLinkToolbar'
-import { TolariaSlashMenu } from './TolariaSlashMenu'
-import { TolariaCollapsedHeadingsController, TolariaSideMenu } from './tolariaBlockNoteSideMenu'
-import { TolariaFormattingToolbar, TolariaFormattingToolbarController } from './tolariaEditorFormatting'
+import { FilePanelController } from './FilePanel'
+import { LinkToolbar } from './LinkToolbar'
+import { SlashMenu } from './SlashMenu'
+import { CollapsedHeadingsController, SideMenu } from './blockNoteSideMenu'
+import { FormattingToolbar, FormattingToolbarController } from './editorFormatting'
 import type { SuggestionAction } from './singleEditorSuggestionItems'
 import type { useSuggestionMenuItems } from './singleEditorSuggestionItems'
 
@@ -27,16 +27,16 @@ function EditorToolbarControllers({
   onToolbarMouseDown,
   vaultPath,
 }: Pick<EditorInteractionControllersProps, 'locale' | 'onToolbarMouseDown' | 'vaultPath'>) {
-  const sideMenu = useCallback((props: SideMenuProps) => <TolariaSideMenu {...props} locale={locale} />, [locale])
+  const sideMenu = useCallback((props: SideMenuProps) => <SideMenu {...props} locale={locale} />, [locale])
   const formattingToolbar = useCallback(
     (props: FormattingToolbarProps) => (
-      <TolariaFormattingToolbar {...props} locale={locale} vaultPath={vaultPath} />
+      <FormattingToolbar {...props} locale={locale} vaultPath={vaultPath} />
     ),
     [locale, vaultPath],
   )
   const linkToolbar = useCallback(
-    (props: React.ComponentProps<typeof TolariaLinkToolbar>) => (
-      <TolariaLinkToolbar {...props} vaultPath={vaultPath} />
+    (props: React.ComponentProps<typeof LinkToolbar>) => (
+      <LinkToolbar {...props} vaultPath={vaultPath} />
     ),
     [vaultPath],
   )
@@ -44,14 +44,14 @@ function EditorToolbarControllers({
 
   return (
     <>
-      <TolariaCollapsedHeadingsController />
+      <CollapsedHeadingsController />
       <SideMenuController sideMenu={sideMenu} />
-      <TolariaFormattingToolbarController
+      <FormattingToolbarController
         formattingToolbar={formattingToolbar}
         floatingUIOptions={floatingUIOptions}
       />
       <LinkToolbarController linkToolbar={linkToolbar} floatingUIOptions={floatingUIOptions} />
-      <TolariaFilePanelController />
+      <FilePanelController />
     </>
   )
 }
@@ -63,7 +63,7 @@ function EditorSuggestionControllers({
     <SuggestionMenuController
       triggerCharacter="/"
       getItems={getSlashMenuItems}
-      suggestionMenuComponent={TolariaSlashMenu}
+      suggestionMenuComponent={SlashMenu}
     />
   )
 }

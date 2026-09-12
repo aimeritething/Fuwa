@@ -1,5 +1,5 @@
 import { injectLinkedCodeInBlocks, preProcessLinkedCodeMarkdown } from '../utils/linkedCodeMarkdown'
-import { createTolariaCodeBlockOptions } from './codeBlockOptions'
+import { createCodeBlockOptions } from './codeBlockOptions'
 
 type PasteHandlerOptions = {
   plainTextAsMarkdown?: boolean
@@ -176,7 +176,7 @@ function resolveCodeBlockLanguage(language: string): string {
   const normalized = normalizedCodeBlockLanguageToken(language)
   if (!normalized) return ''
 
-  const supportedLanguages = createTolariaCodeBlockOptions().supportedLanguages ?? {}
+  const supportedLanguages = createCodeBlockOptions().supportedLanguages ?? {}
   return Object.entries(supportedLanguages)
     .find(([id, option]) => id === normalized || option.aliases?.includes(normalized))
     ?.[0] ?? normalized

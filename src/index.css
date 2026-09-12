@@ -7,7 +7,7 @@
    Theme Variables — app-owned light/dark contract
    Re-valued to the Linear app's default theme-generator output.
    Reference: docs/research/linear-app-tokens.md. Every
-   variable Tolaria's stylesheet declared keeps its name; the Fuwa chrome
+   variable the kernel's stylesheet declared keeps its name; the Fuwa chrome
    and content-chroma variables are additions.
    ============================================================ */
 
@@ -28,14 +28,14 @@
 }
 
 [data-radix-popper-content-wrapper] {
-  zoom: var(--tolaria-overlay-zoom-inverse, 1);
+  zoom: var(--fuwa-overlay-zoom-inverse, 1);
 }
 
 [data-radix-popper-content-wrapper] > [data-slot="dropdown-menu-content"],
 [data-radix-popper-content-wrapper] > [data-slot="popover-content"],
 [data-radix-popper-content-wrapper] > [data-slot="select-content"],
 [data-radix-popper-content-wrapper] > [data-slot="tooltip-content"] {
-  zoom: var(--tolaria-overlay-zoom-factor, 1);
+  zoom: var(--fuwa-overlay-zoom-factor, 1);
 }
 
 :root,
@@ -164,7 +164,7 @@
 
   /* --- Syntax and diff roles (light mode) ---
      Raw-mode syntax, diff and the light code-highlighting set keep
-     Tolaria's values. --- */
+     the kernel's values. --- */
   --syntax-heading: #0969DA;
   --syntax-link: #0969DA;
   --syntax-monospace: #C9383E;
@@ -361,7 +361,7 @@
   --feedback-error-bg: var(--chroma-red-bg);
 
   /* --- Syntax and diff roles (dark mode) ---
-     Raw-mode syntax and diff keep Tolaria's values; the code-highlighting
+     Raw-mode syntax and diff keep the kernel's values; the code-highlighting
      set is Linear's. --- */
   --syntax-heading: #83B2FF;
   --syntax-link: #83B2FF;

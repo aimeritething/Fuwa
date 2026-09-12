@@ -10,11 +10,11 @@ import {
   videoParse,
 } from '@blocknote/core'
 import {
-  AudioBlock,
+  AudioBlock as BlockNoteAudioBlock,
   AudioToExternalHTML,
   createReactBlockSpec,
   createReactInlineContentSpec,
-  VideoBlock,
+  VideoBlock as BlockNoteVideoBlock,
   VideoToExternalHTML,
 } from '@blocknote/react'
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps, type KeyboardEvent } from 'react'
@@ -23,7 +23,7 @@ import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
 import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '../utils/htmlBlockMarkdown'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '../utils/markdownHighlightMarkdown'
-import { createTolariaCodeBlockOptions } from './codeBlockOptions'
+import { createCodeBlockOptions } from './codeBlockOptions'
 import { HtmlBlock } from './HtmlBlock'
 import { MermaidDiagram } from './MermaidDiagram'
 import { SafeHtmlSpan } from './SafeMarkup'
@@ -41,8 +41,8 @@ import {
 const TldrawWhiteboard = lazy(() => import('./TldrawWhiteboard').then(module => ({
   default: module.TldrawWhiteboard,
 })))
-type AudioBlockProps = ComponentProps<typeof AudioBlock>
-type VideoBlockProps = ComponentProps<typeof VideoBlock>
+type AudioBlockProps = ComponentProps<typeof BlockNoteAudioBlock>
+type VideoBlockProps = ComponentProps<typeof BlockNoteVideoBlock>
 type MediaBlockPreviewProps = {
   block: {
     props: {
@@ -331,20 +331,20 @@ export function mediaBlockPropsForPreviewRuntime<T extends MediaBlockPreviewProp
   }
 }
 
-export function TolariaAudioBlock(props: AudioBlockProps) {
+export function AudioBlock(props: AudioBlockProps) {
   const externalMediaPreview = useExternalMediaPreview()
-  return <AudioBlock {...mediaBlockPropsForPreviewRuntime(props, externalMediaPreview)} />
+  return <BlockNoteAudioBlock {...mediaBlockPropsForPreviewRuntime(props, externalMediaPreview)} />
 }
 
-export function TolariaVideoBlock(props: VideoBlockProps) {
+export function VideoBlock(props: VideoBlockProps) {
   const externalMediaPreview = useExternalMediaPreview()
-  return <VideoBlock {...mediaBlockPropsForPreviewRuntime(props, externalMediaPreview)} />
+  return <BlockNoteVideoBlock {...mediaBlockPropsForPreviewRuntime(props, externalMediaPreview)} />
 }
 
 const AudioBlockSpec = createReactBlockSpec(
   createAudioBlockConfig,
   (config) => ({
-    render: TolariaAudioBlock,
+    render: AudioBlock,
     parse: audioParse(config),
     toExternalHTML: AudioToExternalHTML,
     runsBefore: ['file'],
@@ -354,7 +354,7 @@ const AudioBlockSpec = createReactBlockSpec(
 const VideoBlockSpec = createReactBlockSpec(
   createVideoBlockConfig,
   (config) => ({
-    render: TolariaVideoBlock,
+    render: VideoBlock,
     parse: videoParse(config),
     toExternalHTML: VideoToExternalHTML,
     runsBefore: ['file'],
@@ -429,7 +429,7 @@ const HtmlBlockSpec = createReactBlockSpec(
   },
 )
 
-const codeBlock = createCodeBlockSpec(createTolariaCodeBlockOptions())
+const codeBlock = createCodeBlockSpec(createCodeBlockOptions())
 const audioBlock = AudioBlockSpec()
 const htmlBlock = HtmlBlockSpec()
 const mathBlock = MathBlock()

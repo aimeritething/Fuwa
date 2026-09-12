@@ -4,7 +4,7 @@ import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
 const CODE_BLOCK_TYPE = 'codeBlock'
 const LINE_NUMBER_CLASS = 'editor__code-line-number'
-const lineNumberPluginKey = new PluginKey<DecorationSet>('tolariaCodeBlockLineNumbers')
+const lineNumberPluginKey = new PluginKey<DecorationSet>('codeBlockLineNumbers')
 
 function lineStartOffsets(source: string): number[] {
   const offsets = [0]

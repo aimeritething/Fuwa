@@ -4,7 +4,7 @@ import {
   type AppCommandDefinition,
 } from './appCommandCatalog'
 
-export const APP_COMMAND_EVENT_NAME = 'laputa:dispatch-command'
+export const APP_COMMAND_EVENT_NAME = 'fuwa:dispatch-command'
 
 export {
   APP_COMMAND_IDS,

@@ -108,9 +108,9 @@ vi.mock('@phosphor-icons/react', () => ({
   TextStrikethrough: MockIcon,
 }))
 
-vi.mock('./tolariaEditorFormattingConfig', () => ({
-  filterTolariaFormattingToolbarItems: (items: ReactNode[]) => items,
-  getTolariaBlockTypeSelectItems: () => [
+vi.mock('./editorFormattingConfig', () => ({
+  filterFormattingToolbarItems: (items: ReactNode[]) => items,
+  getBlockTypeSelectItems: () => [
     { name: 'Paragraph', type: 'paragraph', props: {}, icon: MockIcon },
     { name: 'Heading 1', type: 'heading', props: { level: 1 }, icon: MockIcon },
   ],
@@ -128,9 +128,9 @@ vi.mock('../utils/url', () => ({
 
 import { openLocalFile } from '../utils/url'
 import {
-  TolariaFormattingToolbar,
-  TolariaFormattingToolbarController,
-} from './tolariaEditorFormatting'
+  FormattingToolbar,
+  FormattingToolbarController,
+} from './editorFormatting'
 
 const mockOpenLocalFile = vi.mocked(openLocalFile)
 
@@ -169,7 +169,7 @@ function createMockEditor(blockType = 'image', props: Record<string, unknown> = 
   }
 }
 
-describe('tolariaEditorFormatting behavior', () => {
+describe('editorFormatting behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     document.body.innerHTML = ''
@@ -182,7 +182,7 @@ describe('tolariaEditorFormatting behavior', () => {
     const editor = createMockEditor('paragraph')
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbar />)
+    render(<FormattingToolbar />)
 
     fireEvent.click(screen.getByRole('button', { name: /bold/i }))
     fireEvent.click(screen.getByRole('button', { name: /inline code/i }))
@@ -207,7 +207,7 @@ describe('tolariaEditorFormatting behavior', () => {
     })
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbar />)
+    render(<FormattingToolbar />)
 
     expect(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Heading 1' }))
@@ -222,7 +222,7 @@ describe('tolariaEditorFormatting behavior', () => {
     })
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbar vaultPath="/vault" />)
+    render(<FormattingToolbar vaultPath="/vault" />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Download file' }))
 
@@ -236,7 +236,7 @@ describe('tolariaEditorFormatting behavior', () => {
     useBlockNoteEditorMock.mockReturnValue(editor)
 
     render(
-      <TolariaFormattingToolbarController
+      <FormattingToolbarController
         formattingToolbar={toolbarComponent}
         floatingUIOptions={{ useFloatingOptions: { placement: 'top-start' } }}
       />,
@@ -279,7 +279,7 @@ describe('tolariaEditorFormatting behavior', () => {
     })
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbarController />)
+    render(<FormattingToolbarController />)
 
     expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
       useFloatingOptions: expect.objectContaining({
@@ -293,7 +293,7 @@ describe('tolariaEditorFormatting behavior', () => {
     useBlockNoteEditorMock.mockReturnValue(editor)
 
     render(
-      <TolariaFormattingToolbarController
+      <FormattingToolbarController
         floatingUIOptions={{
           useFloatingOptions: {
             middleware: [{ name: 'custom-middleware' } as never],
@@ -307,7 +307,7 @@ describe('tolariaEditorFormatting behavior', () => {
     }
 
     expect(floatingOptions.middleware.map((middleware) => middleware.name)).toEqual(
-      expect.arrayContaining(['custom-middleware', 'tolariaViewportClamp']),
+      expect.arrayContaining(['custom-middleware', 'viewportClamp']),
     )
   })
 
@@ -318,7 +318,7 @@ describe('tolariaEditorFormatting behavior', () => {
     blockHasTypeMock.mockReturnValue(false)
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbarController />)
+    render(<FormattingToolbarController />)
     fireEvent.mouseDown(screen.getAllByRole('button', { name: 'Paragraph' })[0] as HTMLButtonElement)
 
     expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
@@ -338,10 +338,10 @@ describe('tolariaEditorFormatting behavior', () => {
 
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    const { rerender, unmount } = render(<TolariaFormattingToolbarController />)
+    const { rerender, unmount } = render(<FormattingToolbarController />)
 
     showState.value = false
-    rerender(<TolariaFormattingToolbarController />)
+    rerender(<FormattingToolbarController />)
 
     expect(screen.getByTestId('mock-position-popover')).toBeInTheDocument()
 
@@ -362,7 +362,7 @@ describe('tolariaEditorFormatting behavior', () => {
     useBlockNoteEditorMock.mockReturnValue(editor)
 
     render(
-      <TolariaFormattingToolbarController
+      <FormattingToolbarController
         formattingToolbar={() => <button data-testid="toolbar-action" type="button">Toolbar</button>}
       />,
     )
@@ -387,7 +387,7 @@ describe('tolariaEditorFormatting behavior', () => {
     useBlockNoteEditorMock.mockReturnValue(editor)
 
     render(
-      <TolariaFormattingToolbarController
+      <FormattingToolbarController
         formattingToolbar={() => <button data-testid="toolbar-action" type="button">Toolbar</button>}
       />,
     )
@@ -414,7 +414,7 @@ describe('tolariaEditorFormatting behavior', () => {
 
       useBlockNoteEditorMock.mockReturnValue(editor)
 
-      render(<TolariaFormattingToolbarController />)
+      render(<FormattingToolbarController />)
 
       expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
         position: { from: 1, to: 5 },
@@ -460,7 +460,7 @@ describe('tolariaEditorFormatting behavior', () => {
 
       useBlockNoteEditorMock.mockReturnValue(editor)
 
-      render(<TolariaFormattingToolbarController />)
+      render(<FormattingToolbarController />)
 
       act(() => {
         fireEvent.compositionStart(editorInput)
@@ -512,7 +512,7 @@ describe('tolariaEditorFormatting behavior', () => {
 
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbarController />)
+    render(<FormattingToolbarController />)
 
     act(() => {
       fireEvent.compositionStart(outsideInput)
@@ -532,7 +532,7 @@ describe('tolariaEditorFormatting behavior', () => {
     editor.domElement = undefined as unknown as HTMLElement
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    const { rerender } = render(<TolariaFormattingToolbarController />)
+    const { rerender } = render(<FormattingToolbarController />)
 
     expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
       position: undefined,
@@ -540,7 +540,7 @@ describe('tolariaEditorFormatting behavior', () => {
     }))
 
     editor.domElement = lateEditorElement
-    rerender(<TolariaFormattingToolbarController />)
+    rerender(<FormattingToolbarController />)
 
     expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
       position: { from: 1, to: 5 },
@@ -562,7 +562,7 @@ describe('tolariaEditorFormatting behavior', () => {
     editor.domElement = document.createElement('div')
     useBlockNoteEditorMock.mockReturnValue(editor)
 
-    render(<TolariaFormattingToolbarController />)
+    render(<FormattingToolbarController />)
 
     expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
       position: undefined,
@@ -587,8 +587,8 @@ describe('tolariaEditorFormatting behavior', () => {
     expect(() => {
       render(
         <>
-          <TolariaFormattingToolbar />
-          <TolariaFormattingToolbarController />
+          <FormattingToolbar />
+          <FormattingToolbarController />
         </>,
       )
     }).not.toThrow()
@@ -608,8 +608,8 @@ describe('tolariaEditorFormatting behavior', () => {
     expect(() => {
       render(
         <>
-          <TolariaFormattingToolbar />
-          <TolariaFormattingToolbarController />
+          <FormattingToolbar />
+          <FormattingToolbarController />
         </>,
       )
     }).not.toThrow()

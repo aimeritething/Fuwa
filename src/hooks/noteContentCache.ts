@@ -1,8 +1,8 @@
 import type { VaultEntry } from '../types'
 
 /**
- * Fuwa's note-content event bus. Tolaria caches note content in an LRU and
- * emits a "resolved" event whenever an entry lands; Fuwa keeps only the event,
+ * Fuwa's note-content event bus. The kernel cached note content in an LRU and
+ * emitted a "resolved" event whenever an entry landed; Fuwa keeps only the event,
  * which is what the parsed-block preload listens to. The shell fires it for the
  * active Tab.
  */
@@ -35,7 +35,7 @@ export function subscribeNoteContentResolved(listener: NoteContentResolvedListen
 }
 
 /**
- * Tolaria's LRU reset. Fuwa keeps no cache, so there is nothing to clear; the
+ * The kernel's LRU reset. Fuwa keeps no cache, so there is nothing to clear; the
  * export stays because the carried parsed-block preload test calls it.
  */
 export function clearNoteContentCache(): void {}

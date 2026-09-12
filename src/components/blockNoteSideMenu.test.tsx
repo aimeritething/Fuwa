@@ -25,11 +25,11 @@ import {
   staleBlockError,
   testBlock,
   turnIntoButtonLabels,
-} from '../../tests/support/tolariaBlockNoteSideMenuTestUtils'
+} from '../../tests/support/blockNoteSideMenuTestUtils'
 
 beforeAll(installPointerEventSupport)
 
-describe('TolariaSideMenu', () => {
+describe('SideMenu', () => {
   beforeEach(setupSideMenuTest)
   afterEach(cleanupSideMenuTest)
 
@@ -47,7 +47,7 @@ describe('TolariaSideMenu', () => {
 
     expect(screen.getByText('Delete')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Turn into...' })).toHaveAttribute('aria-haspopup', 'menu')
-    expect(screen.getByTestId('menu-sub-dropdown')).toHaveClass('tolaria-turn-into-menu-dropdown')
+    expect(screen.getByTestId('menu-sub-dropdown')).toHaveClass('fuwa-turn-into-menu-dropdown')
     for (const label of turnIntoButtonLabels) {
       expect(screen.getByTestId(`menu-item-icon-${label}`)).toBeInTheDocument()
     }

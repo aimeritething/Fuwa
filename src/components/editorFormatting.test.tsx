@@ -12,13 +12,13 @@ import {
   createDateTimeSlashMenuItems,
   createSandboxBlockSlashMenuItem,
   createMathSlashMenuItem,
-  filterTolariaFormattingToolbarItems,
-  filterTolariaSlashMenuItems,
-  getTolariaBlockTypeSelectItems,
+  filterFormattingToolbarItems,
+  filterSlashMenuItems,
+  getBlockTypeSelectItems,
   HTML_SLASH_COMMAND_SOURCE,
   MATH_SLASH_COMMAND_LATEX,
   MERMAID_SLASH_COMMAND_DIAGRAM,
-} from './tolariaEditorFormattingConfig'
+} from './editorFormattingConfig'
 import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '../utils/htmlBlockMarkdown'
 import { trackEvent } from '../lib/telemetry'
 import { MATH_BLOCK_TYPE } from '../utils/mathMarkdown'
@@ -45,10 +45,10 @@ function createSlashCommandEditorFixture() {
   }
 }
 
-describe('tolariaEditorFormatting', () => {
+describe('editorFormatting', () => {
   it('keeps the markdown-safe toolbar controls and block type select', () => {
-    const itemKeys = filterTolariaFormattingToolbarItems(
-      getFormattingToolbarItems(getTolariaBlockTypeSelectItems()),
+    const itemKeys = filterFormattingToolbarItems(
+      getFormattingToolbarItems(getBlockTypeSelectItems()),
     ).map((item) => String(item.key))
 
     expect(itemKeys).toContain('blockTypeSelect')
@@ -67,7 +67,7 @@ describe('tolariaEditorFormatting', () => {
   })
 
   it('returns the audited markdown-safe block types for the toolbar select', () => {
-    expect(getTolariaBlockTypeSelectItems()).toEqual([
+    expect(getBlockTypeSelectItems()).toEqual([
       expect.objectContaining({ name: 'Paragraph', type: 'paragraph' }),
       expect.objectContaining({ name: 'Heading 1', type: 'heading', props: { level: 1 } }),
       expect.objectContaining({ name: 'Heading 2', type: 'heading', props: { level: 2 } }),
@@ -84,7 +84,7 @@ describe('tolariaEditorFormatting', () => {
   })
 
   it('filters unsupported toggle slash-menu variants and removes command descriptions', () => {
-    type TolariaSlashMenuTestItem = {
+    type SlashMenuTestItem = {
       key: string
       title: string
       onItemClick: () => void
@@ -92,7 +92,7 @@ describe('tolariaEditorFormatting', () => {
       icon?: ReactElement
     }
 
-    const items = filterTolariaSlashMenuItems([
+    const items = filterSlashMenuItems([
       { key: 'toggle_heading', title: 'Toggle heading', onItemClick: () => {} },
       { key: 'toggle_list', title: 'Toggle list', onItemClick: () => {} },
       { key: 'heading', title: 'Heading', subtext: 'Default heading copy', onItemClick: () => {} },
@@ -101,7 +101,7 @@ describe('tolariaEditorFormatting', () => {
       { key: 'code_block', title: 'Code Block', subtext: 'Default code copy', onItemClick: () => {} },
       { key: 'heading_5', title: 'Heading 5', onItemClick: () => {} },
       { key: 'heading_6', title: 'Heading 6', onItemClick: () => {} },
-    ] satisfies TolariaSlashMenuTestItem[])
+    ] satisfies SlashMenuTestItem[])
 
     expect(items.map((item) => item.key)).toEqual([
       'heading',
@@ -118,16 +118,16 @@ describe('tolariaEditorFormatting', () => {
   })
 
   it('wraps slash-menu icons so hover can swap Phosphor weights', () => {
-    type TolariaSlashMenuTestItem = {
+    type SlashMenuTestItem = {
       key: string
       title: string
       onItemClick: () => void
       icon?: ReactElement
     }
 
-    const items = filterTolariaSlashMenuItems([
+    const items = filterSlashMenuItems([
       { key: 'heading', title: 'Heading', onItemClick: () => {} },
-    ] satisfies TolariaSlashMenuTestItem[])
+    ] satisfies SlashMenuTestItem[])
     const icon = items[0]?.icon
 
     expect(isValidElement(icon)).toBe(true)
@@ -136,10 +136,10 @@ describe('tolariaEditorFormatting', () => {
     const iconChildren = Children.toArray(icon.props.children) as Array<
       ReactElement<{ className?: string; weight?: string }>
     >
-    expect(icon.props.className).toBe('tolaria-slash-menu-icon')
+    expect(icon.props.className).toBe('fuwa-slash-menu-icon')
     expect(iconChildren.map((child) => child.props.className)).toEqual([
-      'tolaria-slash-menu-icon__regular',
-      'tolaria-slash-menu-icon__fill',
+      'fuwa-slash-menu-icon__regular',
+      'fuwa-slash-menu-icon__fill',
     ])
     expect(iconChildren.map((child) => child.props.weight)).toEqual([
       'regular',
@@ -154,7 +154,7 @@ describe('tolariaEditorFormatting', () => {
       { key: 'html', title: 'HTML block', aliases: ['embed', 'iframe', 'sandbox', 'html'] },
       { key: 'whiteboard', title: 'Whiteboard', aliases: ['tldraw', 'drawing', 'canvas', 'sketch'] },
     ]
-    const items = filterTolariaSlashMenuItems(expectedCommands.map((item) => ({
+    const items = filterSlashMenuItems(expectedCommands.map((item) => ({
       ...item,
       onItemClick: () => {},
     })))
@@ -179,7 +179,7 @@ describe('tolariaEditorFormatting', () => {
   })
 
   it('places custom media commands before the existing non-media slash-menu group', () => {
-    type TolariaSlashMenuTestItem = {
+    type SlashMenuTestItem = {
       key: string
       title: string
       group: string
@@ -190,7 +190,7 @@ describe('tolariaEditorFormatting', () => {
       { key: 'image', title: 'Image', group: 'Media', onItemClick: () => {} },
       { key: 'file', title: 'File', group: 'Media', onItemClick: () => {} },
       { key: 'emoji', title: 'Emoji', group: 'Others', onItemClick: () => {} },
-    ] satisfies TolariaSlashMenuTestItem[], [
+    ] satisfies SlashMenuTestItem[], [
       {
         key: 'mermaid',
         title: 'Mermaid',

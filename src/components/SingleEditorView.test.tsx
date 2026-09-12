@@ -26,7 +26,7 @@ describe('SingleEditorView', () => {
     mockOpenLocalFile.mockClear()
     document.documentElement.removeAttribute('data-theme')
     document.documentElement.classList.remove('dark')
-    delete window.__laputaTest
+    delete window.__fuwaTest
   })
 
   it('repairs the live editor document before remounting after a stale missing-id block error', async () => {
@@ -113,10 +113,10 @@ describe('SingleEditorView', () => {
       />,
     )
 
-    expect(typeof window.__laputaTest?.seedBlockNoteTable).toBe('function')
+    expect(typeof window.__fuwaTest?.seedBlockNoteTable).toBe('function')
 
     await act(async () => {
-      await window.__laputaTest?.seedBlockNoteTable?.([120, null, 80])
+      await window.__fuwaTest?.seedBlockNoteTable?.([120, null, 80])
     })
 
     expect(editor.blocksToHTMLLossy).toHaveBeenCalledWith([
@@ -134,7 +134,7 @@ describe('SingleEditorView', () => {
 
     unmount()
 
-    expect(window.__laputaTest?.seedBlockNoteTable).toBeUndefined()
+    expect(window.__fuwaTest?.seedBlockNoteTable).toBeUndefined()
   })
 
   it('shows the drag overlay and inserts dropped images after the active cursor block', () => {

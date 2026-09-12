@@ -18,13 +18,13 @@ export interface MenuEventHandlers extends AppCommandHandlers {
 }
 
 declare global {
-  /** The `window.__laputaTest` hooks the unit and smoke specs drive the app through. */
-  interface LaputaTestBridge {
+  /** The `window.__fuwaTest` hooks the unit and smoke specs drive the app through. */
+  interface TestBridge {
     dispatchBrowserMenuCommand?: (id: string) => void
   }
 
   interface Window {
-    __laputaTest?: LaputaTestBridge
+    __fuwaTest?: TestBridge
   }
 }
 
@@ -110,14 +110,14 @@ function useTestMenuCommandBridge(handlersRef: { current: MenuEventHandlers }) {
       dispatchMenuEvent(id, handlersRef.current)
     }
 
-    window.__laputaTest = {
-      ...window.__laputaTest,
+    window.__fuwaTest = {
+      ...window.__fuwaTest,
       dispatchBrowserMenuCommand: bridge,
     }
 
     return () => {
-      if (window.__laputaTest?.dispatchBrowserMenuCommand === bridge) {
-        delete window.__laputaTest.dispatchBrowserMenuCommand
+      if (window.__fuwaTest?.dispatchBrowserMenuCommand === bridge) {
+        delete window.__fuwaTest.dispatchBrowserMenuCommand
       }
     }
   }, [handlersRef])

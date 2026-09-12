@@ -77,7 +77,7 @@ export interface WorkspaceIdentity {
 /** Rich mode or Raw mode (CONTEXT.md): the two surfaces a Document Tab can show. */
 export type EditorMode = 'rich' | 'raw'
 
-/** An open editor tab: the vault entry plus its in-memory content (moved here from Tolaria's useTabManagement, which Fuwa does not port). */
+/** An open editor tab: the vault entry plus its in-memory content. */
 export interface Tab {
   entry: VaultEntry
   content: string

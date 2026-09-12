@@ -45,7 +45,7 @@ test('switching and closing Folder flushes edits and closes every Tab', async ({
   await expect(page.getByTestId('open-editors')).toHaveCount(0)
   const saved = await page.evaluate((path) => window.__fuwaMockVault?.files().find((file) => file.path === path)?.content, `${MOCK_FOLDER}/Welcome.md`)
   expect(saved).toContain('Folder switch keeps this edit.')
-  await page.evaluate(() => window.__laputaTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
+  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
   await expect(page.getByRole('tree')).toHaveCount(0)
   const session = await page.evaluate(() => JSON.parse(localStorage.getItem('fuwa:mock-session') ?? '{}'))
   expect(session.folder).toBeNull()

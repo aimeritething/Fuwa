@@ -5,7 +5,7 @@ import { notePathFilename } from '../utils/notePathIdentity'
  * In-memory Folder fixture: the stand-in for the Rust side when Fuwa runs in a
  * plain browser (`pnpm dev`, the Playwright smoke specs). It answers the
  * commands the shell needs to boot, list and edit from memory and rejects
- * everything else with the same message Tolaria's mock used, so a spec that
+ * everything else with the same message the kernel's mock used, so a spec that
  * reaches an unanswered command fails loudly rather than silently.
  *
  * Extending it for a later spec: seed files through `createMockVault(seed)` or

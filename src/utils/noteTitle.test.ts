@@ -25,8 +25,8 @@ describe('extractH1TitleFromContent', () => {
   })
 
   it('preserves plain square brackets in the H1', () => {
-    const content = '# [26Q2] Tolaria MVP'
-    expect(extractH1TitleFromContent(content)).toBe('[26Q2] Tolaria MVP')
+    const content = '# [26Q2] Launch plan'
+    expect(extractH1TitleFromContent(content)).toBe('[26Q2] Launch plan')
   })
 
   it('returns null when the first non-empty line is not an H1', () => {
@@ -89,9 +89,9 @@ describe('deriveDisplayTitleState', () => {
   })
 
   it('keeps plain square brackets when deriving the display title from H1', () => {
-    const content = '# [26Q2] Tolaria MVP\n\nBody'
-    expect(deriveDisplayTitleState({ content, filename: 'tolaria-mvp.md' })).toEqual({
-      title: '[26Q2] Tolaria MVP',
+    const content = '# [26Q2] Launch plan\n\nBody'
+    expect(deriveDisplayTitleState({ content, filename: 'launch-plan.md' })).toEqual({
+      title: '[26Q2] Launch plan',
       hasH1: true,
     })
   })

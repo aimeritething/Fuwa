@@ -6,8 +6,8 @@ import {
   BLOCK_OUTER_SELECTOR,
   editorBlockElement,
   renderedSectionBlockElements,
-  type TolariaBlockNoteEditor,
-} from './tolariaBlockNoteDom'
+  type RichEditor,
+} from './blockNoteDom'
 
 export type CollapsibleBlock = {
   children?: CollapsibleBlock[]
@@ -46,7 +46,7 @@ const HEADING_TAG_LEVELS = new Map([
   ['h5', 5],
   ['h6', 6],
 ])
-const headingCollapseStores = new WeakMap<TolariaBlockNoteEditor, CollapsedHeadingStore>()
+const headingCollapseStores = new WeakMap<RichEditor, CollapsedHeadingStore>()
 const headingCollapseRenderers = createWeakKeyMap<HTMLElement, () => void>()
 const collapsedSectionStyleElements = createWeakKeyMap<HTMLElement, HTMLStyleElement>()
 let collapsedSectionScopeSequence = 0
@@ -76,7 +76,7 @@ function createCollapsedHeadingStore(): CollapsedHeadingStore {
   return store
 }
 
-function collapsedHeadingStore(editor: TolariaBlockNoteEditor) {
+function collapsedHeadingStore(editor: RichEditor) {
   let store = headingCollapseStores.get(editor)
   if (!store) {
     store = createCollapsedHeadingStore()
@@ -86,7 +86,7 @@ function collapsedHeadingStore(editor: TolariaBlockNoteEditor) {
   return store
 }
 
-export function useCollapsedHeadingIds(editor: TolariaBlockNoteEditor) {
+export function useCollapsedHeadingIds(editor: RichEditor) {
   const store = collapsedHeadingStore(editor)
   useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
   return store.collapsedHeadingIds
@@ -193,8 +193,8 @@ function collapsedSectionStyleScope(editorElement: HTMLElement) {
   const container = collapsedSectionContainer(editorElement)
   if (!container) return ''
 
-  container.dataset.tolariaCollapseScope ??= String(++collapsedSectionScopeSequence)
-  return `[data-tolaria-collapse-scope=${cssString(container.dataset.tolariaCollapseScope)}]`
+  container.dataset.fuwaCollapseScope ??= String(++collapsedSectionScopeSequence)
+  return `[data-fuwa-collapse-scope=${cssString(container.dataset.fuwaCollapseScope)}]`
 }
 
 function collapsedSectionStyleElement(editorElement: HTMLElement) {
@@ -202,7 +202,7 @@ function collapsedSectionStyleElement(editorElement: HTMLElement) {
   if (existingStyle) return existingStyle
 
   const styleElement = editorElement.ownerDocument.createElement('style')
-  styleElement.setAttribute('data-tolaria-collapsed-sections', 'true')
+  styleElement.setAttribute('data-fuwa-collapsed-sections', 'true')
   editorElement.ownerDocument.head.appendChild(styleElement)
   collapsedSectionStyleElements.set(editorElement, styleElement)
   return styleElement
@@ -297,7 +297,7 @@ function collapsedHeadingHoverRuleSelectors(
     .flatMap((blockId) => headingDotsSelectorsForStyle(
       editorElement,
       blockId,
-      `${scope}[data-tolaria-collapse-hover-id=${cssString(blockId)}]`,
+      `${scope}[data-fuwa-collapse-hover-id=${cssString(blockId)}]`,
     ))
 }
 
@@ -453,7 +453,7 @@ function applyCollapsedSectionRenderingFromHeadingIds(
 }
 
 function applyCollapsedSectionRendering(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   collapsedHeadingIds: ReadonlySet<string>,
 ) {
   const editorElement = editorBlockElement(editor)
@@ -466,7 +466,7 @@ function applyCollapsedSectionRendering(
   )
 }
 
-export function collapsedSectionHiddenBlockIds(editor: TolariaBlockNoteEditor): ReadonlySet<string> {
+export function collapsedSectionHiddenBlockIds(editor: RichEditor): ReadonlySet<string> {
   const store = collapsedHeadingStore(editor)
   if (store.collapsedHeadingIds.size === 0) return new Set()
 
@@ -488,7 +488,7 @@ export function collapsedSectionHiddenBlockIds(editor: TolariaBlockNoteEditor): 
 }
 
 export function isCollapsibleSectionBlockForEditor(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   block: CollapsibleBlock | undefined,
 ) {
   if (isCollapsibleSectionBlock(block)) return true
@@ -628,7 +628,7 @@ function expandCollapsedHeading(
 }
 
 function ensureCollapsedHeadingRenderer(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   editorElement: HTMLElement,
   store = collapsedHeadingStore(editor),
 ) {
@@ -663,8 +663,8 @@ function ensureCollapsedHeadingRenderer(
 
     const container = collapsedSectionContainer(editorElement)
     if (container) {
-      if (hit) container.dataset.tolariaCollapseHoverId = hit.blockId
-      else delete container.dataset.tolariaCollapseHoverId
+      if (hit) container.dataset.fuwaCollapseHoverId = hit.blockId
+      else delete container.dataset.fuwaCollapseHoverId
     }
 
     hoveredDotsElement = hit?.inlineContent ?? null
@@ -738,13 +738,13 @@ function toggledCollapsedHeadingIds(collapsedHeadingIds: ReadonlySet<string>, he
   return nextCollapsedHeadingIds
 }
 
-function releaseCurrentCollapsedHeadingRenderer(editor: TolariaBlockNoteEditor) {
+function releaseCurrentCollapsedHeadingRenderer(editor: RichEditor) {
   const currentEditorElement = editorBlockElement(editor)
   if (currentEditorElement) releaseCollapsedHeadingRenderer(currentEditorElement)
 }
 
 function releaseCollapsedHeadingRendererForToggle(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   editorElement: HTMLElement | undefined,
 ) {
   if (editorElement) releaseCollapsedHeadingRenderer(editorElement)
@@ -752,7 +752,7 @@ function releaseCollapsedHeadingRendererForToggle(
 }
 
 function applyCollapsedHeadingToggleRendering(options: {
-  editor: TolariaBlockNoteEditor
+  editor: RichEditor
   editorElement?: HTMLElement
   store: CollapsedHeadingStore
 }) {
@@ -803,7 +803,7 @@ function cleanupCollapsedHeadingController(
 function attachCollapsedHeadingController(options: {
   attachController: () => void
   controller: CollapsedHeadingRenderingController
-  editor: TolariaBlockNoteEditor
+  editor: RichEditor
   store: CollapsedHeadingStore
 }) {
   const { attachController, controller, editor, store } = options
@@ -825,7 +825,7 @@ function attachCollapsedHeadingController(options: {
 }
 
 export function toggleCollapsedHeading(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   headingId: string,
   editorElement?: HTMLElement,
 ) {
@@ -835,7 +835,7 @@ export function toggleCollapsedHeading(
   store.emit()
 }
 
-export function useCollapsedHeadingRendering(editor: TolariaBlockNoteEditor) {
+export function useCollapsedHeadingRendering(editor: RichEditor) {
   useLayoutEffect(() => {
     const store = collapsedHeadingStore(editor)
     const controller: CollapsedHeadingRenderingController = {

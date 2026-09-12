@@ -6,7 +6,7 @@ import type {
   useCreateBlockNote,
 } from '@blocknote/react'
 import { createTranslator, type AppLocale } from '../lib/i18n'
-import { getTolariaSlashMenuItems } from './tolariaEditorFormattingConfig'
+import { getSlashMenuItems } from './editorFormattingConfig'
 
 export type SuggestionAction = () => void
 type SuggestionItemWithClick = { onItemClick?: SuggestionAction }
@@ -40,7 +40,7 @@ function useSlashMenuItems(
   return useCallback(async (query: string) => {
     try {
       return guardSuggestionMenuItems(
-        await Promise.resolve(getTolariaSlashMenuItems(editor, query, {
+        await Promise.resolve(getSlashMenuItems(editor, query, {
           calloutTitle: t('editor.slash.callout'),
           calloutTypeTitles: {
             abstract: t('editor.slash.callout.abstract'),

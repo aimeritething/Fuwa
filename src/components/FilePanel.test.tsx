@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { TolariaFilePanel } from "./TolariaFilePanel";
+import { FilePanel } from "./FilePanel";
 
 const filePanelComponents = {
 	FilePanel: {
@@ -42,13 +42,13 @@ function panel(editor: Record<string, unknown>) {
 			<BlockNoteContext.Provider
 				value={{ editor: editor as never, setContentEditableProps: vi.fn() }}
 			>
-				<TolariaFilePanel blockId="image-block" />
+				<FilePanel blockId="image-block" />
 			</BlockNoteContext.Provider>
 		</ComponentsContext.Provider>
 	);
 }
 
-describe("TolariaFilePanel", () => {
+describe("FilePanel", () => {
 	it("ignores a completed upload when a note reload removed its block", async () => {
 		let currentBlock: { id: string; type: string } | undefined = {
 			id: "image-block",

@@ -210,8 +210,8 @@ describe('useEditorLinkActivation', () => {
   })
 
   it('normalizes Windows relative markdown note links against the active vault', async () => {
-    const vaultPath = String.raw`C:\Users\alex\Documents\Tolaria`
-    const sourcePath = String.raw`C:\Users\alex\Documents\Tolaria\areas\current.md`
+    const vaultPath = String.raw`C:\Users\alex\Documents\Notes`
+    const sourcePath = String.raw`C:\Users\alex\Documents\Notes\areas\current.md`
     const { container, onNavigateWikilink } = renderHarness(vi.fn(), vaultPath, sourcePath)
     const link = appendUrl(container, String.raw`..\projects\roadmap.md#goals`)
 

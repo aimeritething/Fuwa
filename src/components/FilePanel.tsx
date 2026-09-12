@@ -9,18 +9,18 @@ import * as BlockNoteReact from '@blocknote/react'
 import type { DefaultBlockSchema, DefaultInlineContentSchema, DefaultStyleSchema } from '@blocknote/core'
 import { useCallback, useEffect, useState } from 'react'
 
-interface TolariaUploadTabProps extends FilePanelProps {
+interface UploadTabProps extends FilePanelProps {
   setLoading: (loading: boolean) => void
 }
 
-type TolariaEditor = ReturnType<typeof useBlockNoteEditor<
+type FilePanelEditor = ReturnType<typeof useBlockNoteEditor<
   DefaultBlockSchema,
   DefaultInlineContentSchema,
   DefaultStyleSchema
 >>
 
-interface UploadHandlerOptions extends TolariaUploadTabProps {
-  editor: TolariaEditor
+interface UploadHandlerOptions extends UploadTabProps {
+  editor: FilePanelEditor
   setUploadFailed: (failed: boolean) => void
 }
 
@@ -56,7 +56,7 @@ function matchingEntryValue<T>(record: Record<string, T>, key: string): T | unde
   return Object.entries(record).find(([candidateKey]) => candidateKey === key)?.[1]
 }
 
-function filePanelAccept(editor: TolariaEditor, blockType: string): string {
+function filePanelAccept(editor: FilePanelEditor, blockType: string): string {
   const blockSpec = matchingEntryValue(editor.schema.blockSpecs, blockType)
   const acceptTypes = blockSpec?.implementation.meta?.fileBlockAccept
   return acceptTypes?.length ? acceptTypes.join(',') : '*/*'
@@ -68,7 +68,7 @@ function filePanelPlaceholder(dictionary: ReturnType<typeof useDictionary>, bloc
     ?? dictionary.file_panel.upload.file_placeholder.file
 }
 
-function TolariaUploadTab({ blockId, setLoading }: TolariaUploadTabProps) {
+function UploadTab({ blockId, setLoading }: UploadTabProps) {
   const Components = useComponentsContext()
   const dictionary = useDictionary()
   const editor = useBlockNoteEditor()
@@ -94,7 +94,7 @@ function TolariaUploadTab({ blockId, setLoading }: TolariaUploadTabProps) {
   )
 }
 
-export function TolariaFilePanel({ blockId }: FilePanelProps) {
+export function FilePanel({ blockId }: FilePanelProps) {
   const Components = useComponentsContext()
   const dictionary = useDictionary()
   const editor = useBlockNoteEditor()
@@ -104,7 +104,7 @@ export function TolariaFilePanel({ blockId }: FilePanelProps) {
   const tabs = [
     ...(editor.uploadFile ? [{
       name: uploadTabName,
-      tabPanel: <TolariaUploadTab blockId={blockId} setLoading={setLoading} />,
+      tabPanel: <UploadTab blockId={blockId} setLoading={setLoading} />,
     }] : []),
     {
       name: dictionary.file_panel.embed.title,
@@ -127,7 +127,7 @@ export function TolariaFilePanel({ blockId }: FilePanelProps) {
   )
 }
 
-export function TolariaFilePanelController() {
+export function FilePanelController() {
   if (!('FilePanelController' in BlockNoteReact)) return null
-  return <BlockNoteReact.FilePanelController filePanel={TolariaFilePanel} />
+  return <BlockNoteReact.FilePanelController filePanel={FilePanel} />
 }

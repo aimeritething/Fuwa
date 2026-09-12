@@ -1,5 +1,5 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index b7357fa..c2c59cb 100644
+index b7357fa4c6e559fdad26bb04eed205af9e5b524b..67429538251259be01637ac64369587f9dfc9aa4 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
 @@ -36,6 +36,16 @@ var import_core = require("@tiptap/core");
@@ -7,7 +7,7 @@ index b7357fa..c2c59cb 100644
  var import_linkifyjs = require("linkifyjs");
  
 +var PRE_REGISTERED_PROTOCOLS = ["tel", "callto", "sms", "cid", "xmpp"];
-+var linkifyProtocolFlag = "__tolariaTiptapLinkifyProtocolsRegistered";
++var linkifyProtocolFlag = "__fuwaTiptapLinkifyProtocolsRegistered";
 +var linkifyGlobalObject = typeof globalThis === "undefined" ? void 0 : globalThis;
 +if (linkifyGlobalObject && !linkifyGlobalObject[linkifyProtocolFlag]) {
 +  PRE_REGISTERED_PROTOCOLS.forEach((protocol) => {
@@ -24,20 +24,13 @@ index b7357fa..c2c59cb 100644
    },
    onDestroy() {
 -    (0, import_linkifyjs3.reset)();
-+    // Tolaria keeps a single editor shell alive across note swaps, so linkify's
++    // Fuwa keeps a single editor shell alive across note swaps, so linkify's
 +    // protocol registry must survive editor teardown and remount cycles.
    },
    inclusive() {
      return this.options.autolink;
-@@ -472,4 +483,4 @@ var index_default = Link;
-   isAllowedUri,
-   pasteRegex
- });
--//# sourceMappingURL=index.cjs.map
-\ No newline at end of file
-+//# sourceMappingURL=index.cjs.map
 diff --git a/dist/index.js b/dist/index.js
-index d486894..cb8e256 100644
+index d486894eafb44a29737eaf24ca8521f134a57d77..3f8c68ada219144c5a070d82d4a9e5c7ecd0fb3e 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -13,6 +13,16 @@ var UNICODE_WHITESPACE_REGEX = new RegExp(UNICODE_WHITESPACE_PATTERN);
@@ -45,7 +38,7 @@ index d486894..cb8e256 100644
  var UNICODE_WHITESPACE_REGEX_GLOBAL = new RegExp(UNICODE_WHITESPACE_PATTERN, "g");
  
 +var PRE_REGISTERED_PROTOCOLS = ["tel", "callto", "sms", "cid", "xmpp"];
-+var linkifyProtocolFlag = "__tolariaTiptapLinkifyProtocolsRegistered";
++var linkifyProtocolFlag = "__fuwaTiptapLinkifyProtocolsRegistered";
 +var linkifyGlobalObject = typeof globalThis === "undefined" ? void 0 : globalThis;
 +if (linkifyGlobalObject && !linkifyGlobalObject[linkifyProtocolFlag]) {
 +  PRE_REGISTERED_PROTOCOLS.forEach((protocol) => {
@@ -62,20 +55,13 @@ index d486894..cb8e256 100644
    },
    onDestroy() {
 -    reset();
-+    // Tolaria keeps a single editor shell alive across note swaps, so linkify's
++    // Fuwa keeps a single editor shell alive across note swaps, so linkify's
 +    // protocol registry must survive editor teardown and remount cycles.
    },
    inclusive() {
      return this.options.autolink;
-@@ -443,4 +454,4 @@ export {
-   isAllowedUri,
-   pasteRegex
- };
--//# sourceMappingURL=index.js.map
-\ No newline at end of file
-+//# sourceMappingURL=index.js.map
 diff --git a/src/link.ts b/src/link.ts
-index 839a575..bbef783 100644
+index 839a57524b630b50797c4d896369153734e39fed..2e59e6c7fbd5128fd6cde493a06b329cd737084d 100644
 --- a/src/link.ts
 +++ b/src/link.ts
 @@ -8,6 +8,20 @@ import { clickHandler } from './helpers/clickHandler.js'
@@ -83,7 +69,7 @@ index 839a575..bbef783 100644
  import { UNICODE_WHITESPACE_REGEX_GLOBAL } from './helpers/whitespace.js'
  
 +const PRE_REGISTERED_PROTOCOLS = ['tel', 'callto', 'sms', 'cid', 'xmpp'] as const
-+const linkifyProtocolFlag = '__tolariaTiptapLinkifyProtocolsRegistered'
++const linkifyProtocolFlag = '__fuwaTiptapLinkifyProtocolsRegistered'
 +const linkifyGlobalObject = typeof globalThis === 'undefined'
 +  ? undefined
 +  : (globalThis as Record<string, boolean | undefined>)

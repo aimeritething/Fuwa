@@ -1,6 +1,6 @@
 /**
- * Fuwa ships one locale. This module keeps Tolaria's i18n module path and
- * export names so every call site (and the carried tests) resolve unchanged,
+ * Fuwa ships one locale. This module keeps the kernel's i18n module path and
+ * export names so every call site (and the kernel's tests) resolve unchanged,
  * but the catalog is a single flat English map instead of 22 JSON locales.
  */
 

@@ -7,9 +7,9 @@ import type {
 } from 'react'
 import { expect, vi } from 'vitest'
 import {
-  TolariaCollapsedHeadingsController,
-  TolariaSideMenu,
-} from '@/components/tolariaBlockNoteSideMenu'
+  CollapsedHeadingsController,
+  SideMenu,
+} from '@/components/blockNoteSideMenu'
 
 export type MockBlock = {
   children?: MockBlock[]
@@ -272,7 +272,7 @@ vi.mock('@blocknote/react', () => ({
 export function renderSideMenuWithBlock(block: MockBlock | undefined, options: RenderSideMenuOptions = {}) {
   sideMenuBlock = block
   const locale = options.locale ?? 'en'
-  render(<TolariaSideMenu locale={locale} />)
+  render(<SideMenu locale={locale} />)
 }
 
 export function renderSideMenuAndCollapseControllerWithBlock(block: MockBlock | undefined, options: RenderSideMenuOptions = {}) {
@@ -280,8 +280,8 @@ export function renderSideMenuAndCollapseControllerWithBlock(block: MockBlock | 
   const locale = options.locale ?? 'en'
   render(
     <>
-      <TolariaCollapsedHeadingsController />
-      <TolariaSideMenu locale={locale} />
+      <CollapsedHeadingsController />
+      <SideMenu locale={locale} />
     </>,
   )
 }
@@ -352,7 +352,7 @@ export function placeEditorInScrollArea(scrollTop: number) {
 }
 
 export function collapsedSectionStyleText() {
-  return Array.from(document.head.querySelectorAll('style[data-tolaria-collapsed-sections]'))
+  return Array.from(document.head.querySelectorAll('style[data-fuwa-collapsed-sections]'))
     .map((styleElement) => styleElement.textContent ?? '')
     .join('\n')
 }
@@ -487,7 +487,7 @@ export function cleanupSideMenuTest() {
   cleanup()
   document.elementsFromPoint = originalElementsFromPoint
   document.body.innerHTML = ''
-  document.head.querySelectorAll('style[data-tolaria-collapsed-sections]')
+  document.head.querySelectorAll('style[data-fuwa-collapsed-sections]')
     .forEach((styleElement) => {
       styleElement.remove()
     })

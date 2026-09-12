@@ -92,7 +92,7 @@ describe('shared tokens', () => {
     expect(appCss).toMatch(/@media[^{]*min-resolution:\s*2dppx[^{]*\{\s*:root\s*\{\s*--hairline:\s*0\.5px;/)
   })
 
-  it("keeps every variable Tolaria's stylesheet declared, in both scopes", () => {
+  it("keeps every variable the kernel's stylesheet declared, in both scopes", () => {
     for (const name of ['--surface-app', '--text-tertiary', '--state-hover-subtle', '--accent-pink-light', '--syntax-frontmatter-key', '--editor-code-block-language', '--bg-primary', '--sidebar-ring']) {
       expect(light, name).toHaveProperty(name)
       expect(dark, name).toHaveProperty(name)
