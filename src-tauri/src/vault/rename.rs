@@ -78,7 +78,6 @@ fn file_name_string(file: &Path) -> String {
 /// Whether two paths name the same file on disk. Lets a case-only rename on a
 /// case-insensitive filesystem (`note.md` → `Note.md`) through the
 /// "destination already exists" check.
-#[cfg(unix)]
 fn is_same_file(a: &Path, b: &Path) -> bool {
     use std::os::unix::fs::MetadataExt;
 
@@ -86,11 +85,6 @@ fn is_same_file(a: &Path, b: &Path) -> bool {
         (Ok(a), Ok(b)) => a.dev() == b.dev() && a.ino() == b.ino(),
         _ => false,
     }
-}
-
-#[cfg(not(unix))]
-fn is_same_file(_a: &Path, _b: &Path) -> bool {
-    false
 }
 
 /// A rename or move is one `fs::rename`; the destination must not already
