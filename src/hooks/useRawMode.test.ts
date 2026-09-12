@@ -68,7 +68,7 @@ describe('useRawMode', () => {
     expect(result.current.rawMode).toBe(false)
   })
 
-  it('remembers the mode per Tab: another Tab opens Rich, and the Raw Tab is Raw again on return (AIM-381)', async () => {
+  it('remembers the mode per Tab: another Tab opens Rich, and the Raw Tab is Raw again on return', async () => {
     const { result, rerender } = renderRawHook('/note-a.md')
 
     await act(async () => { await result.current.handleToggleRaw() })

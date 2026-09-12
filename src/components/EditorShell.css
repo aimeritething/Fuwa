@@ -1,10 +1,10 @@
 /* ==============================================
    EditorShell.css — Fuwa's floating editor card
-   Spec section 2: the editor is a floating card on the canvas, 12px radius,
-   hairline ring, 8px margin. Inside, top to bottom: the tab bar row (44px,
-   AIM-380), the path row, then the content. Colours come from the semantic
-   variables in index.css, re-valued to Linear's tokens (AIM-382): the tab
-   bar uses the desktop app's chrome-tab tokens, the ring is a hairline.
+   The editor is a floating card on the canvas, 12px radius, hairline ring,
+   8px margin. Inside, top to bottom: the tab bar row (44px), the path row,
+   then the content. Colours come from the semantic variables in index.css,
+   re-valued to Linear's tokens: the tab bar uses the desktop app's chrome-tab
+   tokens, the ring is a hairline.
    ============================================== */
 
 .fuwa-shell {
@@ -38,7 +38,7 @@
   container: editor / inline-size;
 }
 
-/* Collapsed ("Flush", spec section 2): the card goes edge-to-edge, no margin,
+/* Collapsed ("Flush"): the card goes edge-to-edge, no margin,
    no radius, no ring. The traffic lights then sit inside the tab bar's row. */
 .fuwa-card[data-collapsed] {
   margin: 0;
@@ -174,7 +174,7 @@
   cursor: default;
 }
 
-/* The Frontmatter badge (AIM-381): mono, a hairline pill, in the saved
+/* The Frontmatter badge: mono, a hairline pill, in the saved
    label's colour; hovering says it can be clicked, which lands in Raw mode. */
 .fuwa-path-row__frontmatter {
   flex: none;
@@ -204,7 +204,7 @@
   box-shadow: 0 0 0 1px var(--state-focus-ring);
 }
 
-/* The Rich | Raw segmented control (spec section 7): a hairline-ringed track
+/* The Rich | Raw segmented control: a hairline-ringed track
    at the right end of the row, the current segment raised like the active
    tab. An unavailable segment (invalid Frontmatter) fades but keeps the
    pointer, so its tooltip can say why. */
@@ -261,7 +261,7 @@
   letter-spacing: 0;
 }
 
-/* Find in Rich mode (AIM-389): the bar stays at the top of the scrolling
+/* Find in Rich mode: the bar stays at the top of the scrolling
    content, as the Raw bar sits above CodeMirror; every match is tinted, the
    current one stronger. */
 .fuwa-card .editor-scroll-area .fuwa-rich-find-bar {
@@ -281,7 +281,7 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--chroma-orange) 38%, transparent);
 }
 
-/* Raw mode (AIM-381): CodeMirror fills the card below the path row and
+/* Raw mode: CodeMirror fills the card below the path row and
    scrolls itself; the find scope around it stays a flex column so the
    carried find bar sits above the editor. */
 .fuwa-card .fuwa-raw-scope {
@@ -354,7 +354,7 @@
   color: var(--text-faint);
 }
 
-/* The error bar (AIM-385): a Linear callout in the red chromatic role (accent
+/* The error bar: a Linear callout in the red chromatic role (accent
    at 2% background, 20% border, hairline, 6px radius) between the path row and
    the content. Retry is the primary control, Discard changes the secondary. */
 .fuwa-write-failure {
@@ -403,7 +403,7 @@
   margin-left: auto;
 }
 
-/* The toast (AIM-390): one line at the bottom of the card, on the menu
+/* The toast: one line at the bottom of the card, on the menu
    surface with the menu's shadow, dismissing itself. It floats over the
    content and takes no clicks. */
 .fuwa-toast {

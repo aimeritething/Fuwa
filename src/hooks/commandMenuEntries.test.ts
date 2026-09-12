@@ -35,7 +35,7 @@ describe('commandMenuCommandEntries', () => {
     expect(entries.get('file-close-vault')?.shortcut).toBeUndefined()
   })
 
-  it('greys the state groups (spec section 7): no Document, no Tab, no Folder', () => {
+  it('greys the state groups: no Document, no Tab, no Folder', () => {
     const entries = byId(NOTHING)
     for (const id of ['file-save', 'edit-toggle-raw-editor', 'edit-find-in-note', 'file-close-tab', 'file-new-note', 'file-quick-open', 'file-close-vault']) {
       expect(entries.get(id)?.enabled, id).toBe(false)

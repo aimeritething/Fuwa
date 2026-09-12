@@ -5,10 +5,10 @@ import { listenForOpenRequests, takePendingOpen } from '../utils/pendingOpen'
 import { cleanupTauriEventListener, type TauriUnlisten } from '../utils/tauriEventCleanup'
 
 /**
- * Finder double-click, Open With and a drop on the Dock icon (spec section 3,
- * AIM-391). The Rust side buffers the paths and pokes; this hook drains the
- * buffer through `take_pending_open` and opens each path the way File → Open
- * Document… does: the active Document's pending edits reach disk first, a
+ * Finder double-click, Open With and a drop on the Dock icon. The Rust side
+ * buffers the paths and pokes; this hook drains the buffer through
+ * `take_pending_open` and opens each path the way File → Open Document…
+ * does: the active Document's pending edits reach disk first, a
  * Document already open has its Tab activated, and with no Folder open the
  * sidebar collapses (`openNote` is App's `openLoneNote`).
  *

@@ -199,7 +199,7 @@ function isUntitledRenameTransition(
 }
 
 /**
- * An Explorer rename (AIM-387): the path the editor is showing has left the
+ * An Explorer rename: the path the editor is showing has left the
  * Tab list, and the Tab that took its place holds exactly the bytes already on
  * screen. Nothing was re-read, so nothing is re-parsed — the live session
  * follows the new path and the caret and scroll stay where they were.

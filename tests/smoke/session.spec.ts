@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
-// Spec 7 of the smoke plan (AIM-380): the Session survives a relaunch. The
+// The Session survives a relaunch. The
 // fixture keeps its Session file in localStorage, so a page reload stands in
 // for quit and relaunch. The window frame is the Rust side's part of the file
 // and does not appear here.
@@ -38,7 +38,7 @@ test('quit and relaunch restores the Tabs in order and the active Tab, and the f
     openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
     activePath: WELCOME_PATH,
     theme: 'dark',
-    // A Document opened with no Folder collapses the sidebar (AIM-386).
+    // A Document opened with no Folder collapses the sidebar.
     sidebar: { collapsed: true, width: 260 },
   })
 

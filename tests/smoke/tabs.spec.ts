@@ -1,13 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
-// Spec 6 of the smoke plan (AIM-380): several Documents open as Tabs and Open
-// Editors rows, the successor rule on close, positional navigation and ⌘W.
-// With no Folder open every Tab is out-of-Folder (spec section 2, empty-state
-// table), so each row carries its dimmed parent after the name; the name
-// assertions here read the name span rather than the whole row. Opening a
-// Document with no Folder collapses the sidebar (AIM-386), so the rows are
-// read after ⌘[ brings it back.
+// Several Documents open as Tabs and Open Editors rows, the successor rule on
+// close, positional navigation and ⌘W. With no Folder open every Tab is
+// out-of-Folder, so each row carries its dimmed parent after the name; the
+// name assertions here read the name span rather than the whole row. Opening
+// a Document with no Folder collapses the sidebar, so the rows are read after
+// ⌘[ brings it back.
 
 const READING_LIST_PATH = `${MOCK_FOLDER}/Reading list.md`
 const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`

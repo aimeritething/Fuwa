@@ -49,7 +49,7 @@ const TooltipContent = React.forwardRef<
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          // The menu surface (spec section 6 item 7): popover ground, hairline border, 8px radius, 11px.
+          // The menu surface: popover ground, hairline border, 8px radius, 11px.
           "fuwa-menu-surface bg-popover text-popover-foreground z-50 w-fit max-w-[min(var(--radix-tooltip-content-available-width,22rem),22rem)] origin-(--radix-tooltip-content-transform-origin) rounded-lg px-2 py-[5px] text-[11px] leading-[15px] text-balance",
           className
         )}

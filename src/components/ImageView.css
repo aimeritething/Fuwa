@@ -1,10 +1,10 @@
 /* ==============================================
    ImageView.css — the Image Tab's body
-   Spec section 4: centred in the card, scaled down to fit and never up. No
-   zoom, no scroll — the card never grows a scrollbar for a picture, however
-   large the file is. The spec names the prose column's horizontal padding;
-   the column's own vertical padding goes with it, so a picture sits where a
-   Document's first line would.
+   Centred in the card, scaled down to fit and never up. No zoom, no scroll —
+   the card never grows a scrollbar for a picture, however large the file is.
+   Padded to the prose column's horizontal padding; the column's own vertical
+   padding goes with it, so a picture sits where a Document's first line
+   would.
    ============================================== */
 
 /* The card's remaining height, carrying the prose column's CSS variables. */

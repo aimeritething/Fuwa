@@ -199,7 +199,7 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePic
 }
 
 /**
- * The Command Menu and Quick Open (spec sections 2 and 7): one palette, two
+ * The Command Menu and Quick Open: one palette, two
  * modes, over the whole window. Radix's dialog gives it the backdrop, the
  * focus trap and esc; the rows and the matcher are Fuwa's own. New Fuwa code
  * on the shared command manifest; Tolaria's palette is not ported.

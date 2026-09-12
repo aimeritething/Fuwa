@@ -1,4 +1,4 @@
-//! The Session file (spec section 5): one `session.json` in the app's config
+//! The Session file: one `session.json` in the app's config
 //! directory, `~/Library/Application Support/com.aimerite.fuwa/` on macOS.
 //!
 //! The Rust side owns the file. The renderer hands over its part of the

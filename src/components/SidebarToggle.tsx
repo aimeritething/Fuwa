@@ -10,7 +10,7 @@ interface SidebarToggleProps {
 }
 
 /**
- * The sidebar's one affordance (spec section 2): the same glyph collapses the
+ * The sidebar's one affordance: the same glyph collapses the
  * sidebar from its top row and brings it back from the tab bar. Its tooltip
  * is mono and carries the shortcut, `Show sidebar ⌘[`, because the collapsed
  * window has nothing else to say how to get the sidebar back.

@@ -3,8 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, openWelcome, watchForErrors } from './harness'
 
-// AIM-382: dark on first launch, View → Appearance switches and the choice
-// lives in the Session; `system` follows the OS live. The native menu is the
+// Dark on first launch, View → Appearance switches and the choice lives in
+// the Session; `system` follows the OS live. The native menu is the
 // Rust side's; here the manifest command arrives as the app-command event the
 // renderer also listens for, and is dispatched to the same handler.
 
@@ -44,7 +44,7 @@ test('first launch is dark: the canvas, the card and the body text sample to the
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await page.keyboard.press('Meta+BracketLeft') // a lone Document collapsed the sidebar (AIM-386)
+  await page.keyboard.press('Meta+BracketLeft') // a lone Document collapsed the sidebar
   await expect(page.getByTestId('sidebar')).toHaveCSS('color', 'rgb(148, 149, 151)')
   await expect(page.locator('.fuwa-shell')).toHaveCSS('background-color', 'rgb(9, 9, 10)')
   await expect(page.getByTestId('editor-card')).toHaveCSS('background-color', 'rgb(17, 18, 18)')

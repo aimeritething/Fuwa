@@ -17,7 +17,7 @@ export async function closeAppWindow(): Promise<void> {
 
 /**
  * Exit Fuwa. The renderer calls this as the last step of ⌘Q, once every
- * pending write has landed or the user chose Discard and quit (AIM-385); the
+ * pending write has landed or the user chose Discard and quit; the
  * Rust side flushes the Session file on its way out. Outside Tauri the Folder
  * fixture records the call so the smoke specs can see the quit.
  */

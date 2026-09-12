@@ -10,7 +10,7 @@ export interface WriteFailureDialogProps {
 }
 
 /**
- * The only prompt in the app (spec section 5): closing a Tab whose write was
+ * The only prompt in the app: closing a Tab whose write was
  * refused asks Retry or Discard changes instead of closing silently; ⌘Q with a
  * refused flush asks the same plus Discard and quit. Retry is the primary
  * control, the rest are the secondary control.

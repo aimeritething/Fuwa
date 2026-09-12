@@ -117,7 +117,7 @@ describe('useMenuEvents', () => {
       expect(handlers.onSave).toHaveBeenCalledTimes(1)
     })
 
-    it('the app menu\'s Quit item reaches onQuit, so the renderer flushes before the app exits (AIM-385)', async () => {
+    it('the app menu\'s Quit item reaches onQuit, so the renderer flushes before the app exits', async () => {
       const handlers = makeHandlers({ onQuit: vi.fn() })
       renderHook(() => useMenuEvents(handlers))
       await flushMicrotasks()
@@ -152,8 +152,8 @@ describe('useMenuEvents', () => {
       expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
     })
 
-    // New Document, Quick Open and Close Folder follow the open Folder
-    // (spec section 7); with none open, ⌘N's menu item is greyed.
+    // New Document, Quick Open and Close Folder follow the open Folder;
+    // with none open, ⌘N's menu item is greyed.
     it('keeps the Folder-dependent menu items in step with the open Folder', async () => {
       const { rerender } = renderHook(
         ({ hasFolder }: { hasFolder: boolean }) => useMenuEvents(makeHandlers({ hasFolder })),
@@ -170,7 +170,7 @@ describe('useMenuEvents', () => {
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
     })
 
-    // Close Tab follows any open Tab, an Image Tab included (spec section 7);
+    // Close Tab follows any open Tab, an Image Tab included;
     // with zero Tabs its item is greyed while ⌘W still closes the window.
     it('keeps the Tab-dependent menu item in step with the open Tabs', async () => {
       const { rerender } = renderHook(

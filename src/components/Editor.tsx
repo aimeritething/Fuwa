@@ -90,11 +90,11 @@ export interface EditorProps {
   onRawContentChange?: (path: string, content: string) => void
   /** Registers a flush of the rich editor's pending edits, so ⌘S saves the latest keystrokes. */
   flushPendingEditorContentRef?: FlushPendingContentRef
-  /** Registers the same for the Raw editor's keystrokes (AIM-381). */
+  /** Registers the same for the Raw editor's keystrokes. */
   flushPendingRawContentRef?: FlushPendingContentRef
   /** Toggle Rich/Raw (⌘\, View menu): the editor registers the switch here, since only it can map the caret. */
   rawToggleRef?: MutableRefObject<(() => void) | null>
-  /** Find in the current Document (⌘F, Edit menu): the editor registers the request here and opens the bar of whichever surface is showing (AIM-389). */
+  /** Find in the current Document (⌘F, Edit menu): the editor registers the request here and opens the bar of whichever surface is showing. */
   findRef?: MutableRefObject<(() => void) | null>
   /** Puts a Document Tab in Rich or Raw mode; the Tab rules decide whether it takes. */
   onSetTabMode: (path: string, mode: EditorMode) => void
@@ -107,7 +107,7 @@ export interface EditorProps {
   onDiscardWrite: (path: string) => void
   /** The Explorer's one line of bad news, at the bottom of the card. */
   toast: string | null
-  /** Collapsed, the card goes edge-to-edge and its top row seats the traffic lights and the sidebar icon (spec section 2). */
+  /** Collapsed, the card goes edge-to-edge and its top row seats the traffic lights and the sidebar icon. */
   sidebarCollapsed: boolean
   onShowSidebar: () => void
 }
@@ -171,7 +171,7 @@ function useRegisteredRef<T>(ref: MutableRefObject<T | null> | undefined, value:
 }
 
 /**
- * Rich/Raw switching (AIM-381), carried from Tolaria: the kernel's hook
+ * Rich/Raw switching, carried from Tolaria: the kernel's hook
  * serializes the rich editor into the raw buffer on the way in, maps the
  * caret both ways, and remembers raw edits the Tab state has not caught up
  * with on the way out. Fuwa's deviation is where the mode lives: the active
@@ -348,7 +348,7 @@ function EditorFindScope({
 }
 
 /**
- * An Image Tab's path row and body (spec section 4). The Folder listing is
+ * An Image Tab's path row and body. The Folder listing is
  * where the byte size comes from and what says the file has changed on disk,
  * so a picture overwritten in another app is fetched again the moment the
  * watcher refreshes the Folder. There is no save state, no Frontmatter badge,
@@ -400,8 +400,8 @@ export const Editor = memo(function Editor(props: EditorProps) {
     tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
     sidebarCollapsed, onShowSidebar,
   } = props
-  // theme.json's editor.maxWidth and paddingHorizontal (spec: a 680px prose
-  // column with 56px padding) reach the wrapper and .bn-editor as CSS variables.
+  // theme.json's editor.maxWidth and paddingHorizontal (a 680px prose column
+  // with 56px padding) reach the wrapper and .bn-editor as CSS variables.
   const { cssVars } = useEditorTheme()
   const openTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
   const collapsed = sidebarCollapsed || undefined

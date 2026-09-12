@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import type { MockVault, MockVaultImage } from '../../src/mock-tauri/vaultFixture'
 import { MOCK_FOLDER, watchForErrors } from './harness'
 
-// AIM-388: an Image file opens as a real Tab, fitted to the card, with its
+// An Image file opens as a real Tab, fitted to the card, with its
 // dimensions and size in the path row and two buttons that hand the file to a
 // proper image app. Outside Tauri there is no asset protocol, so the fixture
 // serves each picture as an SVG data URL of the seeded natural size; that is

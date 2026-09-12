@@ -53,7 +53,7 @@ function useAutosaveOnEditorChange(
     (path: string, content: string) => {
       // A Document with no Tab is never written: the editor flushes its idle
       // debounce as the Tab it belonged to goes away, and a file that has just
-      // been trashed or deleted in Finder must not come back (spec section 5).
+      // been trashed or deleted in Finder must not come back.
       if (!isOpen(path)) return
       handleContentChange(path, content)
       savePendingForPath(path).catch((error: unknown) => recordFailure(path, error))
@@ -130,9 +130,9 @@ export default function App() {
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
   const flushPendingRawContentRef = useRef<((path: string) => void) | null>(null)
   const hasPendingEditorContentRef = useRef<((path: string) => boolean) | null>(null)
-  // Toggle Rich/Raw lives in the editor, which registers it here (AIM-381).
+  // Toggle Rich/Raw lives in the editor, which registers it here.
   const rawToggleRef = useRef<(() => void) | null>(null)
-  // Find in the current Document lives there too, on whichever surface is showing (AIM-389).
+  // Find in the current Document lives there too, on whichever surface is showing.
   const findRef = useRef<(() => void) | null>(null)
   /** Push whichever surface is showing the Document's fresh keystrokes into the save buffer. */
   const flushEditorBuffers = useCallback((path: string) => {
@@ -141,7 +141,7 @@ export default function App() {
   }, [])
   const vaultPath = activeTabPath ? documentRoot(activeTabPath, folder) : undefined
   // Save, Toggle Rich/Raw and Find in Document follow the active Document;
-  // an Image Tab leaves all three disabled (spec section 4). Its row in the
+  // an Image Tab leaves all three disabled. Its row in the
   // Folder listing is its byte size and the version its picture is fetched at.
   const { documentPath: activeDocumentPath, imagePath: activeImagePath } = activeTabPaths(activeTabPath)
   const activeImageFile = findByNotePath(folderState.files, activeImagePath) ?? null
@@ -165,7 +165,7 @@ export default function App() {
    * Push the rich editor's fresh keystrokes into the save buffer and write
    * the active Document's pending edits, while its directory is still the
    * persistence scope. Every Tab switch, close, ⌘S and ⌘Q goes through here
-   * (spec section 3 writes a Document's pending edits before it closes). Only
+   * (a Document's pending edits are written before it closes). Only
    * the active Document's buffer: another Document's refused edits stay in
    * the save hook's buffer and are its own bar's to retry, never this Tab's.
    */
@@ -248,9 +248,9 @@ export default function App() {
   }, [activeTabPath, flushEditorBuffers, pathsUnder, savePendingForPath])
 
   /**
-   * Cancel the pending Autosave of every Tab at or under a path and close them
-   * (spec section 5, rules 1, 3 and 5). The cancellation comes first: the
-   * buffered edits belong to a file that is not there any more.
+   * Cancel the pending Autosave of every Tab at or under a path and close
+   * them. The cancellation comes first: the buffered edits belong to a file
+   * that is not there any more.
    */
   const dropTabsUnder = useCallback((prefix: string) => {
     for (const path of pathsUnder(prefix)) {
@@ -270,12 +270,12 @@ export default function App() {
     closeWindow: closeAppWindow,
   })
 
-  // A Document or an Image file row: both open a real Tab (spec section 4).
+  // A Document or an Image file row: both open a real Tab.
   const openExplorerFile = useCallback((path: string) => {
     void openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
   }, [openNote, settleAndRecord])
 
-  // The Explorer's write operations (AIM-387). The tree is built here because
+  // The Explorer's write operations. The tree is built here because
   // the placement rule behind ⌘N reads the selected row, and ⌘N is an app
   // command rather than the Explorer's own.
   const explorerTree = useMemo(
@@ -339,11 +339,11 @@ export default function App() {
   })
 
   /**
-   * Opening a Document with no Folder open collapses the sidebar (spec
-   * section 2): there is nothing to browse, so the card takes the window. With
-   * a Folder open the sidebar stays as it is. File → Open Document… and a
-   * `.md` dropped on the window both open this way; the Explorer's rows
-   * cannot, there being no Folder to click in.
+   * Opening a Document with no Folder open collapses the sidebar: there is
+   * nothing to browse, so the card takes the window. With a Folder open the
+   * sidebar stays as it is. File → Open Document… and a `.md` dropped on the
+   * window both open this way; the Explorer's rows cannot, there being no
+   * Folder to click in.
    */
   const openLoneNote = useCallback(async (path: string) => {
     await openNote(path)
@@ -380,8 +380,8 @@ export default function App() {
     requestPlainTextPaste().catch((error: unknown) => console.warn('Paste without Formatting failed:', error))
   }, [])
 
-  // The Command Menu (⌘K) and Quick Open (⌘P) are one palette in two modes
-  // (spec section 7). ⌘K always opens; with no Folder it lists commands only.
+  // The Command Menu (⌘K) and Quick Open (⌘P) are one palette in two modes.
+  // ⌘K always opens; with no Folder it lists commands only.
   // Quick Open searches the Folder, so with none it is disabled like its menu
   // item, by handing the dispatcher no handler.
   const { open: commandMenuOpen, mode: commandMenuMode, openCommands: openCommandMenu, openFiles: openQuickOpen, close: closeCommandMenu } = useCommandMenu()
@@ -439,7 +439,7 @@ export default function App() {
   // dropped over a Document is the editor's, and nothing else is picked up.
   useDocumentDrop({ openNote: openLoneNote, settleActiveNote: settleAndRecord })
   // Finder double-click, Open With and the Dock icon open the same way, once
-  // the Session is back so the Folder is known (AIM-391). The shell stays
+  // the Session is back so the Folder is known. The shell stays
   // unpainted until the launch Document is in place.
   const { settled: finderOpenSettled } = useFinderOpen({ openNote: openLoneNote, settleActiveNote: settleAndRecord, ready: restored })
 

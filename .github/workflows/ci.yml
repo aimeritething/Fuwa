@@ -1,6 +1,6 @@
 name: CI
 
-# The one workflow (spec section 8, item 9; https://linear.app/aimerite/issue/AIM-378):
+# The one workflow:
 # type-check, ESLint, Vitest, clippy and cargo test on a macOS runner. No build
 # artifact, no Playwright; the smoke harness and the bundle build are run by hand.
 on:

@@ -26,7 +26,7 @@ import { isPathInsideVaultRoot } from '../utils/vaultPathContainment'
 import { isWithinPrefix, replaceFolderPrefix } from './folder-actions/folderActionUtils'
 
 /**
- * The Explorer's write operations and the state behind them (spec section 4):
+ * The Explorer's write operations and the state behind them:
  * the selected row, the row in inline rename, and the inline error.
  *
  * Creation writes to disk before anything is named: `Untitled.md` lands, its
@@ -93,8 +93,8 @@ interface Options {
   settleTabsUnder: (prefix: string) => Promise<void>
   /**
    * Cancel the pending Autosave of every Tab at or under a path and close
-   * them (spec section 5, rule 1). Fuwa never recreates a removed file, so the
-   * cancellation is the point: the Tab's buffered edits go with it.
+   * them. Fuwa never recreates a removed file, so the cancellation is the
+   * point: the Tab's buffered edits go with it.
    */
   dropTabsUnder: (prefix: string) => void
   /** The one toast surface: a refused move, and a refused Trash. */
@@ -242,8 +242,8 @@ export function useExplorerActions(options: Options): ExplorerActions {
       return true
     }
 
-    // The typed value, untrimmed: a trailing space is one of the things the
-    // spec reports, and the Rust side would quietly trim it away.
+    // The typed value, untrimmed: a trailing space is one of the names the
+    // Explorer refuses, and the Rust side would quietly trim it away.
     const refusal = nameCommitError({
       kind: editing.kind,
       stem: typed,
@@ -273,7 +273,7 @@ export function useExplorerActions(options: Options): ExplorerActions {
   }, [cancelRename, editing, folder, refresh, retargetTabs, selectThroughRename, settleActiveDocument, tree])
 
   /**
-   * Move to Trash (spec section 4): no confirmation, and no going back through
+   * Move to Trash: no confirmation, and no going back through
    * Fuwa. The order is what the rules ask for — the open Documents write their
    * pending edits while the file is still there, the file leaves, and only
    * then do the Tabs close with their Autosave cancelled. A refusal leaves
@@ -292,7 +292,7 @@ export function useExplorerActions(options: Options): ExplorerActions {
   }, [dropTabsUnder, folder, refresh, setSelected, settleTabsUnder, showToast])
 
   /**
-   * A drag-and-drop move (spec section 4): one `fs::rename` into the folder
+   * A drag-and-drop move: one `fs::rename` into the folder
    * the row was dropped on. A name the destination already holds refuses the
    * move with a toast rather than suffixing, so nothing is silently renamed;
    * the listing answers that, and the Rust side is the backstop.

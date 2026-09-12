@@ -1,12 +1,12 @@
 ---
 status: accepted
 date: 2026-09-10
-amended: 2026-09-12 (review, AIM-417)
+amended: 2026-09-12 (review)
 ---
 
 # A Document opened on its own uses its directory as the boundary root
 
-Fuwa's Rust boundary ([AIM-377](https://linear.app/aimerite/issue/AIM-377)) confines every file command to one root that the caller names on each call; there is no registry or "active Folder" behind it, and a call without a root is refused.
+Fuwa's Rust boundary confines every file command to one root that the caller names on each call; there is no registry or "active Folder" behind it, and a call without a root is refused.
 
 A Document can be opened without a Folder, or from outside the open Folder (File → Open Document…, Finder, a drop). Such a Document has no Folder to name, but it must still be read and written through the same commands, and an image pasted into it must still land in an `attachments/` directory beside it (the glossary's definition of an Attachment).
 
@@ -29,5 +29,5 @@ For comparison, [docs/research/single-file-open-scope.md](../research/single-fil
 
 - `useSaveNote` and `useEditorSave` carry the root through to the command: the save hook sends the persistence-scope entry that contains the path as `vaultPath`, and omits it when no scope is configured (the carried tests' shape).
 - When a Folder is open and contains the Document, the Folder is the root as before; the parent-directory rule applies only to Documents outside it. The Explorer and Session code keep that distinction when they choose the root per Tab.
-- The same directory is also what the Document watcher subscribes to and what the image asset protocol is allowed to read from, and both are recursive: the watcher uses `RecursiveMode::Recursive` and the asset scope is granted with `allow_directory(root, true)` and never revoked. The cost is proportional to how wide the parent is: a Document in `~/Desktop` watches the whole Desktop, and a Document in `~` watches the whole home directory. The peers surveyed in the research note watch the lone file itself, not its parent. Accepted for v0.1; narrowing the watch to the file and revoking the asset scope when the Tab closes is a behaviour change tracked in [AIM-419](https://linear.app/aimerite/issue/AIM-419), outside the cleanup map.
+- The same directory is also what the Document watcher subscribes to and what the image asset protocol is allowed to read from, and both are recursive: the watcher uses `RecursiveMode::Recursive` and the asset scope is granted with `allow_directory(root, true)` and never revoked. The cost is proportional to how wide the parent is: a Document in `~/Desktop` watches the whole Desktop, and a Document in `~` watches the whole home directory. The peers surveyed in the research note watch the lone file itself, not its parent. Accepted for v0.1; narrowing the watch to the file and revoking the asset scope when the Tab closes is a behaviour change and is left for later.
 - A Document at a filesystem root (`/x.md`) is refused, deliberately. The only parent it could name is `/`, and a root of `/` confines nothing and would watch the whole disk. On macOS the system volume is read-only, so the file cannot exist in practice. `noteRootForPath('/x.md')` returns the path itself, which `VaultBoundary::from_request` rejects because it is not a directory.

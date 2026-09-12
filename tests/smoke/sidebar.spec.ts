@@ -3,7 +3,7 @@ import {
   MOCK_FOLDER, openDocumentThroughDialog, openFolderThroughDialog, openWelcome, storedSession, watchForErrors, WELCOME_PATH,
 } from './harness'
 
-// AIM-386: the collapsed ("Flush") layout, ⌘[ and View → Toggle Sidebar,
+// The collapsed ("Flush") layout, ⌘[ and View → Toggle Sidebar,
 // collapse on a lone Document, and the sidebar state's place in the Session.
 
 const sidebar = (page: Page) => page.getByTestId('sidebar')

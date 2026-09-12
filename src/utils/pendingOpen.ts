@@ -3,7 +3,7 @@ import { isTauri, mockInvoke } from '../mock-tauri'
 import type { TauriUnlisten } from './tauriEventCleanup'
 
 /**
- * The command boundary for Finder, Open With and Dock opens (AIM-391). The
+ * The command boundary for Finder, Open With and Dock opens. The
  * Rust side buffers every path Launch Services hands it and pokes the
  * renderer with an event; the buffer is the source of truth and the poke
  * only says "drain now" (ADR-0010). Outside Tauri the Folder fixture holds

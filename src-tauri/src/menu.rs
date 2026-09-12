@@ -302,7 +302,7 @@ fn build_manifest_menu(app: &App, label: &str) -> MenuResult {
 /// `appMenu` items. Quit is one of those rather than the predefined item: the
 /// predefined one terminates through `applicationWillTerminate`, which reaches
 /// the event loop as `Exit` with no way to hold it, while a manifest command
-/// lets the renderer write every pending edit first (AIM-385, ADR-0005).
+/// lets the renderer write every pending edit first (ADR-0005).
 fn build_app_menu(app: &App) -> MenuResult {
     let mut builder = SubmenuBuilder::new(app, APP_NAME)
         .about_with_text(format!("About {APP_NAME}"), None)
@@ -370,8 +370,8 @@ fn build_window_menu(app: &App) -> MenuResult {
         builder = append_manifest_item(app, builder, item)?;
     }
 
-    // No native Close Window item: ⌘W is Close Tab (spec section 7), which
-    // closes the window itself once no Tab is left.
+    // No native Close Window item: ⌘W is Close Tab, which closes the window
+    // itself once no Tab is left.
     builder = builder.separator().minimize().maximize().fullscreen();
 
     Ok(builder.build()?)
@@ -464,10 +464,10 @@ pub fn set_note_items_enabled(app_handle: &AppHandle, enabled: bool) {
 }
 
 /// Enable or disable menu items that depend on having any Tab open: Close
-/// Tab is greyed with zero Tabs (spec section 7) while ⌘W itself still reaches
-/// the renderer, which closes the window, because a disabled item's
-/// accelerator is not consumed by the menu. An Image Tab counts, unlike for
-/// the note-dependent group.
+/// Tab is greyed with zero Tabs while ⌘W itself still reaches the renderer,
+/// which closes the window, because a disabled item's accelerator is not
+/// consumed by the menu. An Image Tab counts, unlike for the note-dependent
+/// group.
 pub fn set_tab_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, TAB_DEPENDENT_GROUP, enabled);
 }

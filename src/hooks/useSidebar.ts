@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { clampSidebarWidth, DEFAULT_SESSION_SIDEBAR, type SessionSidebar } from '../utils/sessionSchema'
 
 /**
- * The sidebar's two persisted facts (spec section 2): whether it is collapsed
+ * The sidebar's two persisted facts: whether it is collapsed
  * and how wide it is when shown. Both live in the Session's `sidebar` and
  * come back on restore. Only the end states are held here; the transition
  * between them is the stylesheet's.

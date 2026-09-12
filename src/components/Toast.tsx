@@ -4,7 +4,7 @@ export interface ToastProps {
 }
 
 /**
- * The toast (spec section 4): one line at the bottom of the editor card, on
+ * The toast: one line at the bottom of the editor card, on
  * the menu surface with the menu's shadow, saying what an Explorer operation
  * refused to do. It dismisses itself, has no controls, and never blocks what
  * is under it.

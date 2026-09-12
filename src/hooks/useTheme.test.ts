@@ -53,7 +53,7 @@ describe('useEditorTheme', () => {
     expect(result.current.cssVars['--inline-styles-link-text-decoration']).toBe('none')
   })
 
-  it('exports the editor column width: a 680px prose column plus 56px padding a side (spec section 2)', () => {
+  it('exports the editor column width: a 680px prose column plus 56px padding a side', () => {
     const { result } = renderHook(() => useEditorTheme())
 
     expect(result.current.cssVars['--editor-max-width']).toBe('792px')

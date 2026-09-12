@@ -10,7 +10,7 @@ import { useTauriDragDropEvent, type TauriDragDropEvent } from './useTauriDragDr
  *
  * Every other dropped file is ignored here without a word: an image over a
  * Document is the editor's image drop hook's (`useImageDrop`), and nothing else
- * is ever written into the Folder (spec section 1).
+ * is ever written into the Folder.
  */
 
 interface UseDocumentDropOptions {

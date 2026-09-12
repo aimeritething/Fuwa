@@ -397,7 +397,7 @@
 }
 
 /* Callouts, Linear-style: the family's chromatic role at 2% for the ground
-   and 20% for a hairline border, 6px radius (spec section 6 item 9). */
+   and 20% for a hairline border, 6px radius. */
 .tolaria-callout {
   --callout-accent: var(--chroma-teal);
   --callout-accent-text: var(--chroma-teal-text);

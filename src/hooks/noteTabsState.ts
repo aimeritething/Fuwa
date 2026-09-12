@@ -6,12 +6,12 @@ import { noteStem } from '../utils/noteEntry'
 import { notePathFilename } from '../utils/notePathIdentity'
 
 /**
- * The Tab rules (spec section 5), as pure transitions over the open Tabs in
+ * The Tab rules, as pure transitions over the open Tabs in
  * the kernel's `Tab` shape. A Document has at most one Tab; closing the
  * active Tab activates the one to its right, else the left; navigation is
  * positional. New Fuwa code: Tolaria persists neither tabs nor their order.
  *
- * A Document Tab also carries its mode (AIM-381): Rich for any freshly opened
+ * A Document Tab also carries its mode: Rich for any freshly opened
  * Document, remembered per Tab, and Raw whenever the Document's Frontmatter is
  * invalid, so Rich mode never rewrites bytes it could not round-trip. That
  * rule is applied to every Tab whose content changes hands here, and an Image
@@ -108,7 +108,7 @@ function movedTab(tab: Tab, path: string): Tab {
 
 /**
  * Follow a rename: an open Document or Image file moves to its new path, and a
- * renamed folder takes every Tab beneath it along (spec section 4). The Tabs
+ * renamed folder takes every Tab beneath it along. The Tabs
  * keep their order and their content, so nothing is re-read; the active Tab
  * stays active at its new path.
  */

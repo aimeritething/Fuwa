@@ -5,7 +5,7 @@ date: 2026-09-11
 
 # Finder opens are buffered on the Rust side and drained by the renderer
 
-The spec (section 3) has a `.md` double-clicked in Finder, chosen through Open With or dropped on the Dock icon open in Fuwa as a Document. All three reach the process as one AppKit call, `application:openURLs:`, which tao turns into `RunEvent::Opened { urls }`. On a launch by document that event fires before `Ready`, so before Tauri's `setup` has created the window and long before the renderer has registered a listener; while the app is running it lands on a live loop with a renderer listening. An event emitted from the `Opened` arm alone would be lost in the first case; a buffer read only at launch would miss the second.
+A `.md` double-clicked in Finder, chosen through Open With or dropped on the Dock icon opens in Fuwa as a Document. All three reach the process as one AppKit call, `application:openURLs:`, which tao turns into `RunEvent::Opened { urls }`. On a launch by document that event fires before `Ready`, so before Tauri's `setup` has created the window and long before the renderer has registered a listener; while the app is running it lands on a live loop with a renderer listening. An event emitted from the `Opened` arm alone would be lost in the first case; a buffer read only at launch would miss the second.
 
 ## Decision
 

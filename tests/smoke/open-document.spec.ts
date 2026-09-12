@@ -3,9 +3,9 @@ import { expect, test } from '@playwright/test'
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
-// Spec 3 of the smoke plan: File → Open Document… (⌘⇧O) renders the chosen
-// Document in Rich mode inside the card. The system dialog has no browser
-// equivalent, so the spec queues the "chosen" path on the Folder fixture.
+// File → Open Document… (⌘⇧O) renders the chosen Document in Rich mode inside
+// the card. The system dialog has no browser equivalent, so the spec queues
+// the "chosen" path on the Folder fixture.
 
 test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ page }) => {
   const errors = watchForErrors(page)
@@ -44,8 +44,8 @@ test('a cancelled dialog leaves the empty card in place', async ({ page }) => {
   expect(errors.consoleErrors).toEqual([])
 })
 
-// Acceptance: a Document using every dialect feature (spec section 3) renders
-// without console errors; tldraw and Mermaid arrive as their own lazy chunks.
+// A Document using every dialect feature renders without console errors;
+// tldraw and Mermaid arrive as their own lazy chunks.
 const DIALECT_PATH = `${MOCK_FOLDER}/Dialect.md`
 const DIALECT_DOCUMENT = [
   '---',

@@ -36,10 +36,10 @@ interface ExplorerProps {
 type LoadedProps = ExplorerProps & { folder: string; tree: ExplorerNode }
 
 /**
- * The Explorer (spec sections 2 and 4): the Folder as a tree of Documents,
- * sub-folders and Image files, with the write operations over it — creation,
- * inline rename, Move to Trash and the drag-and-drop move (AIM-387, AIM-390),
- * all reached from the Linear-styled context menu or the row itself.
+ * The Explorer: the Folder as a tree of Documents, sub-folders and Image
+ * files, with the write operations over it — creation, inline rename, Move to
+ * Trash and the drag-and-drop move, all reached from the Linear-styled context
+ * menu or the row itself.
  */
 export const Explorer = memo(function Explorer(props: ExplorerProps) {
   const { folder, tree, error, onOpenFolder } = props
@@ -53,7 +53,7 @@ export const Explorer = memo(function Explorer(props: ExplorerProps) {
 })
 
 /**
- * The No-Folder state (spec section 2), identical on first launch: what to do
+ * The No-Folder state, identical on first launch: what to do
  * next, as a button and the drop hint. A restore that lost its Folder names
  * it above the button until any Folder is opened.
  */
@@ -127,7 +127,7 @@ function ExplorerBody(props: LoadedProps) {
       </div>
       <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={tree.name}>
         <ExplorerRow {...props} node={tree} depth={0} expanded={expanded} onToggle={toggleFolder} />
-        {/* The empty-Folder line (spec section 2): no `.md` anywhere under the root. It goes with the first ⌘N. */}
+        {/* The empty-Folder line: no `.md` anywhere under the root. It goes with the first ⌘N. */}
         {!holdsDocument(tree) && (
           <div className="fuwa-explorer__no-documents" data-testid="explorer-no-documents">No documents yet · ⌘N</div>
         )}
@@ -175,7 +175,7 @@ function useRowMenuAction(node: ExplorerNode, actions: ExplorerActions) {
 }
 
 /**
- * Dragging a row (spec section 4): a Document or an Image file is the thing
+ * Dragging a row: a Document or an Image file is the thing
  * dragged, a folder row or the root row is the thing dropped on, and a folder
  * is never dragged itself. The dragged path is written to the drag and kept
  * beside it, because a browser hides the data from `dragover` and, on some
@@ -225,7 +225,7 @@ function ExplorerRow(props: RowProps) {
   const editing = actions.editing?.path === node.path ? actions.editing : null
   const { dragProps, dropProps, isDropTarget } = useRowDragAndDrop(node, isFolder, actions)
 
-  // A Document and an Image file both open a real Tab (spec section 4);
+  // A Document and an Image file both open a real Tab;
   // clicking a folder only selects it. Right-click does neither.
   const select = () => {
     actions.select(node.path)

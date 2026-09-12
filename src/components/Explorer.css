@@ -43,7 +43,7 @@
   font-size: 11px;
 }
 
-/* --- The empty states (spec section 2). --- */
+/* --- The empty states. --- */
 
 /* No Folder open: the copy under "Explorer", the indigo button, the drop hint. */
 .fuwa-explorer__no-folder {
@@ -117,7 +117,7 @@
   cursor: default;
 }
 
-/* --- Header actions (spec section 2): hover-only, "+" and "…". --- */
+/* --- Header actions: hover-only, "+" and "…". --- */
 .fuwa-explorer__header {
   justify-content: space-between;
 }
@@ -200,7 +200,7 @@
   overflow-wrap: anywhere;
 }
 
-/* --- Drag-and-drop move (spec section 4): the folder row under the cursor
+/* --- Drag-and-drop move: the folder row under the cursor
    takes the ring, so it is clear which folder the file would land in. --- */
 .fuwa-explorer__row[data-drop-target] {
   background: var(--sidebar-row-active);

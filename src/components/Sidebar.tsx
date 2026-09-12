@@ -13,7 +13,7 @@ interface SidebarProps {
 }
 
 /**
- * The sidebar (spec section 2): directly on the canvas, no border, no
+ * The sidebar: directly on the canvas, no border, no
  * surface of its own. Its 44px top row keeps the traffic lights at one y in
  * both states, drags the window, and carries the collapse icon at its right
  * end. The groups (Open Editors, the Explorer) stack below it. Its right

@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MOCK_FOLDER, openFolderThroughDialog, openWelcome, watchForErrors } from './harness'
 
-// Spec 6 of the smoke plan (AIM-389): Quick Open finds a Document by name,
-// and the Command Menu around it. One palette, two modes: ⌘P is files only,
+// Quick Open finds a Document by name, and the Command Menu around it. One
+// palette, two modes: ⌘P is files only,
 // ⌘K is every menu-bar command plus file names as you type. ↵ opens, ⌘↵ opens
 // a Document in Raw, esc closes. With no Folder ⌘P is disabled and ⌘K lists
 // commands only; with text selected in Rich mode ⌘K is the editor's link.

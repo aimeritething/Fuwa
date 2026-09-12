@@ -5,8 +5,8 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { clampEditorFindIndex, findEditorMatches, type EditorFindOptions } from '../utils/editorFind'
 
 /**
- * Find in the current Document, Rich mode (spec section 7: ⌘F works in both
- * modes). Raw mode has Tolaria's CodeMirror find bar; Rich mode has nothing
+ * Find in the current Document, Rich mode (⌘F works in both modes). Raw
+ * mode has Tolaria's CodeMirror find bar; Rich mode has nothing
  * carried, so this is new Fuwa code: the matcher walks the ProseMirror
  * document one textblock at a time and a plugin decorates the matches. The
  * query semantics (case, regex, the safe-regex guard) are the Raw bar's, from

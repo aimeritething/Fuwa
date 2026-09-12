@@ -110,7 +110,7 @@ describe('useSession', () => {
     }))
   })
 
-  it('writes each Document with its own mode and rewrites the file when a mode changes (AIM-381)', async () => {
+  it('writes each Document with its own mode and rewrites the file when a mode changes', async () => {
     answerWith(null)
     const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
     const { result, rerender } = renderHook(

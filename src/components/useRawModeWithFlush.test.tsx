@@ -15,7 +15,7 @@ function makeEditor() {
   }
 }
 
-/** The hook over the per-Tab mode the app keeps in its Tab state (AIM-381). */
+/** The hook over the per-Tab mode the app keeps in its Tab state. */
 function useRawModeWithFlushOverTab(
   editor: ReturnType<typeof makeEditor>,
   onContentChange: (path: string, content: string) => void,
