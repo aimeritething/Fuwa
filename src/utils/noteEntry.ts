@@ -25,7 +25,7 @@ export function noteStem(filename: string): string {
 /**
  * The kernel's fat `VaultEntry` for a Document that was opened from a path
  * rather than listed by a Folder scan. Only the fields the editor reads are
- * meaningful; the rest carry Tolaria's defaults.
+ * meaningful; the rest carry the kernel's defaults.
  */
 export function noteEntryForPath(path: string, content: string): VaultEntry {
   const filename = notePathFilename(path)

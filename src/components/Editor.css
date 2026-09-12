@@ -126,7 +126,7 @@
   display: none !important;
 }
 
-.editor__blocknote-container .tolaria-slash-menu-icon {
+.editor__blocknote-container .fuwa-slash-menu-icon {
   position: relative;
   display: inline-flex;
   width: 20px;
@@ -135,32 +135,32 @@
   justify-content: center;
 }
 
-.editor__blocknote-container .tolaria-turn-into-menu-dropdown {
+.editor__blocknote-container .fuwa-turn-into-menu-dropdown {
   min-width: 0 !important;
   width: auto !important;
 }
 
-.editor__blocknote-container .tolaria-turn-into-menu-dropdown .bn-menu-item {
+.editor__blocknote-container .fuwa-turn-into-menu-dropdown .bn-menu-item {
   min-width: max-content;
   white-space: nowrap;
   width: auto !important;
 }
 
-.editor__blocknote-container .tolaria-slash-menu-icon__fill {
+.editor__blocknote-container .fuwa-slash-menu-icon__fill {
   position: absolute;
   inset: 0;
   opacity: 0;
 }
 
-.editor__blocknote-container .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .tolaria-slash-menu-icon__regular {
+.editor__blocknote-container .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__regular {
   opacity: 0;
 }
 
-.editor__blocknote-container .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .tolaria-slash-menu-icon__fill {
+.editor__blocknote-container .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__fill {
   opacity: 1;
 }
 
-.tolaria-slash-menu__submenu {
+.fuwa-slash-menu__submenu {
   position: fixed;
   z-index: 90;
   display: flex;
@@ -177,14 +177,14 @@
   color: var(--popover-foreground);
 }
 
-.tolaria-slash-menu__submenu-item {
+.fuwa-slash-menu__submenu-item {
   width: 100%;
   justify-content: flex-start;
   gap: 0.5rem;
   font-weight: 400;
 }
 
-.tolaria-slash-menu__submenu-item:is(:hover, [aria-selected='true']) {
+.fuwa-slash-menu__submenu-item:is(:hover, [aria-selected='true']) {
   background: var(--menu-item-hover);
   color: var(--accent-foreground);
 }
@@ -281,93 +281,6 @@
   margin: 18mm;
 }
 
-@media print {
-  html:has(body.tolaria-note-pdf-exporting),
-  body.tolaria-note-pdf-exporting {
-    background: #fff !important;
-    color: #111 !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-  }
-
-  body.tolaria-note-pdf-exporting * {
-    box-shadow: none !important;
-    text-shadow: none !important;
-    visibility: hidden !important;
-  }
-
-  body.tolaria-note-pdf-exporting :is(.app__sidebar, .app__note-list, .breadcrumb-bar, .editor-memory-probe) {
-    display: none !important;
-  }
-
-  body.tolaria-note-pdf-exporting .editor > .relative > :not(:has([data-note-pdf-export-root="true"])) {
-    display: none !important;
-  }
-
-  body.tolaria-note-pdf-exporting :is(#root, .app-shell, .app, .app__editor, .editor, .editor > .relative, .editor-content-width--normal, .editor-content-width--wide, .editor-scroll-area) {
-    display: block !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: visible !important;
-    width: auto !important;
-  }
-
-  body.tolaria-note-pdf-exporting [data-note-pdf-export-root="true"],
-  body.tolaria-note-pdf-exporting [data-note-pdf-export-root="true"] * {
-    visibility: visible !important;
-  }
-
-  body.tolaria-note-pdf-exporting [data-note-pdf-export-root="true"] {
-    display: block !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-height: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #fff !important;
-    color: #111 !important;
-  }
-
-  body.tolaria-note-pdf-exporting .editor__blocknote-container,
-  body.tolaria-note-pdf-exporting .bn-container,
-  body.tolaria-note-pdf-exporting .bn-editor {
-    height: auto !important;
-    min-height: auto !important;
-    overflow: visible !important;
-    background: #fff !important;
-    color: #111 !important;
-  }
-
-  body.tolaria-note-pdf-exporting .bn-editor {
-    padding: 0 !important;
-  }
-
-  body.tolaria-note-pdf-exporting :is(.bn-block-outer, figure, table, pre, .math-block-shell, .mermaid-diagram, .tldraw-whiteboard) {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  body.tolaria-note-pdf-exporting :is(img, svg, canvas) {
-    max-width: 100% !important;
-  }
-
-  body.tolaria-note-pdf-exporting :is(a, .wikilink) {
-    color: #111 !important;
-    text-decoration: underline !important;
-  }
-
-  body.tolaria-note-pdf-exporting .bn-block-content[data-content-type="codeBlock"] {
-    border-color: #d0d7de !important;
-    background: #f6f8fa !important;
-    color: #111 !important;
-  }
-
-  body.tolaria-note-pdf-exporting :is(.editor__code-block-copy, .mermaid-diagram__expand-button, .tldraw-whiteboard__resize-handle, .tlui-layout, .tlui-popover, [data-radix-popper-content-wrapper]) {
-    display: none !important;
-  }
-}
-
 .raw-editor-codemirror {
   width: 100%;
   margin: 0;
@@ -398,7 +311,7 @@
 
 /* Callouts, Linear-style: the family's chromatic role at 2% for the ground
    and 20% for a hairline border, 6px radius. */
-.tolaria-callout {
+.fuwa-callout {
   --callout-accent: var(--chroma-teal);
   --callout-accent-text: var(--chroma-teal-text);
   margin: 0.5rem 0;
@@ -408,32 +321,32 @@
   background: color-mix(in srgb, var(--callout-accent) 2%, transparent);
 }
 
-.tolaria-callout--success {
+.fuwa-callout--success {
   --callout-accent: var(--chroma-green);
   --callout-accent-text: var(--chroma-green-text);
 }
 
-.tolaria-callout--warning {
+.fuwa-callout--warning {
   --callout-accent: var(--chroma-orange);
   --callout-accent-text: var(--chroma-orange-text);
 }
 
-.tolaria-callout--error {
+.fuwa-callout--error {
   --callout-accent: var(--chroma-red);
   --callout-accent-text: var(--chroma-red-text);
 }
 
-.tolaria-callout--example {
+.fuwa-callout--example {
   --callout-accent: var(--chroma-purple);
   --callout-accent-text: var(--chroma-purple-text);
 }
 
-.tolaria-callout--quote {
+.fuwa-callout--quote {
   --callout-accent: var(--text-secondary);
   --callout-accent-text: var(--text-secondary);
 }
 
-.tolaria-callout__header {
+.fuwa-callout__header {
   display: flex;
   min-height: 2rem;
   align-items: center;
@@ -444,16 +357,16 @@
   font-weight: 600;
 }
 
-.tolaria-callout__header > svg {
+.fuwa-callout__header > svg {
   width: 1rem;
   height: 1rem;
 }
 
-.tolaria-callout__body {
+.fuwa-callout__body {
   padding: 0.15rem 0.75rem 0.65rem;
   color: var(--color-foreground);
 }
 
-.tolaria-callout__body[hidden] {
+.fuwa-callout__body[hidden] {
   display: none;
 }

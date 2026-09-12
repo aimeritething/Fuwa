@@ -49,7 +49,7 @@ interface RichEditorBlockSerializationOptions {
 const EMPTY_CHECKLIST_ITEM_FILLER = '\u200B'
 const EMPTY_CHECKLIST_ITEM_LINE_RE = /^([ \t]*[-*+][ \t]+\[[ xX]\])[ \t]*$/u
 const BLANK_PARAGRAPH_PLACEHOLDER = '\u200B'
-const BACKSLASH_BEFORE_BRACE_PLACEHOLDER = '\uE000TOLARIA_BACKSLASH_LBRACE\uE001'
+const BACKSLASH_BEFORE_BRACE_PLACEHOLDER = '\uE000FUWA_BACKSLASH_LBRACE\uE001'
 
 interface ParsedBlockquoteSourceLine {
   content: string
@@ -79,7 +79,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readDirectMarkdownMetrics(
   editor: DirectMarkdownCapableSerializer,
 ): BlockNoteDirectMarkdownMetrics | undefined {
-  return editor.__tolariaLastDirectMarkdownMetrics
+  return editor.__fuwaLastDirectMarkdownMetrics
 }
 
 export function installRichEditorMarkdownSerializer(editor: unknown): void {
@@ -183,7 +183,7 @@ function serializeRichEditorBodyToMarkdownWithTrace(
 ): string {
   const startedAt = now()
   const directEditor = editor as DirectMarkdownCapableSerializer
-  delete directEditor.__tolariaLastDirectMarkdownMetrics
+  delete directEditor.__fuwaLastDirectMarkdownMetrics
   const document = blocks
   const serialized = serializeDurableEditorBlocks(editor, document, vaultPath)
   const body = compactMarkdown(

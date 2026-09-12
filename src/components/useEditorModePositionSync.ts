@@ -107,10 +107,10 @@ function useBlockNoteRestoreEffect({
       })
     }
 
-    window.addEventListener('laputa:editor-tab-swapped', handleEditorTabSwapped)
+    window.addEventListener('fuwa:editor-tab-swapped', handleEditorTabSwapped)
     return () => {
       cancelPendingRestore()
-      window.removeEventListener('laputa:editor-tab-swapped', handleEditorTabSwapped)
+      window.removeEventListener('fuwa:editor-tab-swapped', handleEditorTabSwapped)
     }
   }, [activeTabPath, editor, restoreTransitionRef, rawMode])
 }

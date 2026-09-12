@@ -26,10 +26,10 @@ vi.mock('@blocknote/react', () => ({
   useDictionary: () => ({ suggestion_menu: { no_items_title: 'No items' } }),
 }))
 
-import { TolariaSlashMenu } from './TolariaSlashMenu'
-import type { TolariaSlashMenuItem } from './tolariaEditorFormattingConfig'
+import { SlashMenu } from './SlashMenu'
+import type { SlashMenuItem } from './editorFormattingConfig'
 
-function calloutItem(): TolariaSlashMenuItem {
+function calloutItem(): SlashMenuItem {
   return {
     aliases: [],
     key: 'callout',
@@ -42,9 +42,9 @@ function calloutItem(): TolariaSlashMenuItem {
   }
 }
 
-describe('TolariaSlashMenu', () => {
+describe('SlashMenu', () => {
   it('passes only supported props to the BlockNote suggestion item', () => {
-    render(<TolariaSlashMenu
+    render(<SlashMenu
       items={[calloutItem()]}
       loadingState="loaded"
       selectedIndex={0}
@@ -59,7 +59,7 @@ describe('TolariaSlashMenu', () => {
   it('opens the callout type submenu on the right and selects a clicked style', () => {
     const item = calloutItem()
     const onItemClick = vi.fn()
-    render(<TolariaSlashMenu
+    render(<SlashMenu
       items={[item]}
       loadingState="loaded"
       selectedIndex={0}
@@ -69,7 +69,7 @@ describe('TolariaSlashMenu', () => {
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Callout' }))
 
     const submenu = screen.getByRole('menu', { name: 'Callout' })
-    expect(submenu).toHaveClass('tolaria-slash-menu__submenu')
+    expect(submenu).toHaveClass('fuwa-slash-menu__submenu')
     fireEvent.click(screen.getByRole('menuitem', { name: 'Tip' }))
     expect(onItemClick).toHaveBeenCalledWith(item.submenuItems?.[1])
   })
@@ -77,7 +77,7 @@ describe('TolariaSlashMenu', () => {
   it('supports right-arrow entry and keyboard selection inside the submenu', () => {
     const item = calloutItem()
     const onItemClick = vi.fn()
-    render(<TolariaSlashMenu
+    render(<SlashMenu
       items={[item]}
       loadingState="loaded"
       selectedIndex={0}

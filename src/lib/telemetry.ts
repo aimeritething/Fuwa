@@ -1,6 +1,6 @@
 /**
- * Fuwa ships no telemetry. This module keeps Tolaria's path and `trackEvent`
- * signature so call sites and the carried `vi.mock('../lib/telemetry')` calls
+ * Fuwa ships no telemetry. This module keeps the kernel's path and `trackEvent`
+ * signature so call sites and the kernel's `vi.mock('../lib/telemetry')` calls
  * resolve; every event is dropped on the floor.
  */
 

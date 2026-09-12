@@ -14,7 +14,7 @@ function command<T>(name: string, args: Record<string, unknown>): Promise<T> {
 
 /**
  * A command whose Rust signature is one `args` struct rather than loose
- * parameters (Tolaria's shape for rename and move). Tauri deserializes it from
+ * parameters (the kernel's shape for rename and move). Tauri deserializes it from
  * an `args` key; the Folder fixture reads the fields flat, as every other
  * command hands them over.
  */

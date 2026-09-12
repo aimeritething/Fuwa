@@ -1,8 +1,8 @@
 import { isStaleBlockReferenceError } from './richEditorTransformErrorRecoveryExtension'
-import type { CollapsibleBlock } from './tolariaCollapsedSections'
-import type { TolariaBlockNoteEditor } from './tolariaBlockNoteDom'
+import type { CollapsibleBlock } from './collapsedSections'
+import type { RichEditor } from './blockNoteDom'
 
-export type TolariaBlock = NonNullable<ReturnType<TolariaBlockNoteEditor['getBlock']>>
+export type Block = NonNullable<ReturnType<RichEditor['getBlock']>>
 export type SideMenuBlock = {
   children?: CollapsibleBlock[]
   content?: unknown
@@ -17,7 +17,7 @@ type BlockTree = {
 }
 
 export function liveSideMenuBlock(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   block: { id: string } | undefined,
 ) {
   if (!block) return undefined

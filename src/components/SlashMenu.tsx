@@ -2,7 +2,7 @@ import { useBlockNoteEditor, useComponentsContext, useDictionary, type Suggestio
 import { useCallback, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from './ui/button'
-import type { TolariaSlashMenuItem } from './tolariaEditorFormattingConfig'
+import type { SlashMenuItem } from './editorFormattingConfig'
 
 interface OpenSubmenu {
   key: string
@@ -38,7 +38,7 @@ function selectSubmenuAction(key: string): SubmenuKeyboardAction | null {
   return key === 'Enter' ? { kind: 'select' } : null
 }
 
-function submenuForKey(items: TolariaSlashMenuItem[], key?: string) {
+function submenuForKey(items: SlashMenuItem[], key?: string) {
   return items.find((item) => item.key === key)?.submenuItems ?? []
 }
 
@@ -62,13 +62,13 @@ function submenuKeyboardAction({
 
 function applySubmenuKeyboardAction(options: {
   action: SubmenuKeyboardAction
-  onItemClick: SuggestionMenuProps<TolariaSlashMenuItem>['onItemClick']
-  openItemSubmenu: (item: TolariaSlashMenuItem) => void
-  selectedItem?: TolariaSlashMenuItem
+  onItemClick: SuggestionMenuProps<SlashMenuItem>['onItemClick']
+  openItemSubmenu: (item: SlashMenuItem) => void
+  selectedItem?: SlashMenuItem
   setOpenSubmenu: Dispatch<SetStateAction<OpenSubmenu | null>>
   setSubmenuIndex: Dispatch<SetStateAction<number>>
   submenuIndex: number
-  submenuItems: TolariaSlashMenuItem[]
+  submenuItems: SlashMenuItem[]
 }) {
   const {
     action,
@@ -99,12 +99,12 @@ function applySubmenuKeyboardAction(options: {
   }
 }
 
-export function TolariaSlashMenu({
+export function SlashMenu({
   items,
   loadingState,
   onItemClick,
   selectedIndex,
-}: SuggestionMenuProps<TolariaSlashMenuItem>) {
+}: SuggestionMenuProps<SlashMenuItem>) {
   const Components = useComponentsContext()
   const dictionary = useDictionary()
   const editor = useBlockNoteEditor()
@@ -113,7 +113,7 @@ export function TolariaSlashMenu({
   const [submenuIndex, setSubmenuIndex] = useState(0)
   const submenuItems = submenuForKey(items, openSubmenu?.key)
 
-  const openItemSubmenu = useCallback((item: TolariaSlashMenuItem) => {
+  const openItemSubmenu = useCallback((item: SlashMenuItem) => {
     if (!item.submenuItems?.length) {
       setOpenSubmenu(null)
       return
@@ -196,7 +196,7 @@ export function TolariaSlashMenu({
 
   return (
     <>
-      <Components.SuggestionMenu.Root id="bn-suggestion-menu" className="bn-suggestion-menu tolaria-slash-menu">
+      <Components.SuggestionMenu.Root id="bn-suggestion-menu" className="bn-suggestion-menu fuwa-slash-menu">
         {renderedItems}
         {renderedItems.length === 0 && loadingState !== 'loading-initial' && (
           <Components.SuggestionMenu.EmptyItem className="bn-suggestion-menu-item">
@@ -210,14 +210,14 @@ export function TolariaSlashMenu({
         createPortal(
           <div
             aria-label={items.find((item) => item.key === openSubmenu.key)?.title}
-            className="tolaria-slash-menu__submenu"
+            className="fuwa-slash-menu__submenu"
             role="menu"
             style={{ left: openSubmenu.left, top: openSubmenu.top }}
           >
             {submenuItems.map((item, index) => (
               <Button
                 aria-selected={index === submenuIndex}
-                className="tolaria-slash-menu__submenu-item"
+                className="fuwa-slash-menu__submenu-item"
                 key={item.key}
                 onClick={() => onItemClick?.(item)}
                 onMouseDown={(event) => {

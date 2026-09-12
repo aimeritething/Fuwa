@@ -206,7 +206,7 @@ test('Toggle Rich/Raw does nothing with no Document open', async ({ page }) => {
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
 
   await page.keyboard.press('Meta+Backslash')
-  await page.evaluate(() => window.__laputaTest?.dispatchBrowserMenuCommand?.('edit-toggle-raw-editor'))
+  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('edit-toggle-raw-editor'))
 
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await expect(rawEditor(page)).toHaveCount(0)

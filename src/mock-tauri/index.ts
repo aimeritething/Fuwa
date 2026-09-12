@@ -1,7 +1,7 @@
 /**
  * Browser fallback for Tauri commands. Outside Tauri (`pnpm dev` in a plain
  * browser, the smoke specs) every `invoke` is answered by the in-memory Folder
- * fixture in `./vaultFixture`. The exports keep Tolaria's names so the kept
+ * fixture in `./vaultFixture`. The exports keep the kernel's names so the kept
  * call sites and their `vi.mock('../mock-tauri')` calls resolve.
  */
 
@@ -42,7 +42,7 @@ export function mockAssetUrl(path: string): string | null {
 }
 
 /**
- * Tolaria's mock-store writer. The save hook calls it after a mock save to
+ * The kernel's mock-store writer. The save hook calls it after a mock save to
  * keep the store in step; it writes directly so the call log only records
  * what the app actually invoked.
  */

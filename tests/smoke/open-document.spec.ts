@@ -104,7 +104,7 @@ test('a Document using every dialect feature renders in Rich mode without consol
   const editor = page.locator('.bn-editor')
   await expect(editor.locator('h1')).toHaveText('Dialect')
   await expect(editor.locator('.katex').first()).toBeVisible()
-  await expect(editor.locator('.tolaria-callout')).toHaveCount(1)
+  await expect(editor.locator('.fuwa-callout')).toHaveCount(1)
   await expect(editor.locator('mark.markdown-highlight')).toHaveCount(1)
   await expect(editor.locator('[data-content-type="mermaidBlock"] svg').first()).toBeVisible({ timeout: 15_000 })
   await expect(editor.locator('[data-content-type="codeBlock"]')).toHaveCount(1)

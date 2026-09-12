@@ -67,7 +67,7 @@ describe('useEditorFocus', () => {
     const rAF = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
     const { editor } = setup(true)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor'))
 
     expect(rAF).toHaveBeenCalled()
     expect(editor.focus).toHaveBeenCalled()
@@ -77,7 +77,7 @@ describe('useEditorFocus', () => {
     vi.useFakeTimers()
     const { editor } = setup(false)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor'))
 
     expect(editor.focus).not.toHaveBeenCalled()
     vi.advanceTimersByTime(80)
@@ -90,15 +90,15 @@ describe('useEditorFocus', () => {
     vi.spyOn(window, 'setTimeout')
     const { editor } = setup(true)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
 
     expect(editor.focus).not.toHaveBeenCalled()
     expect(rAF).not.toHaveBeenCalled()
 
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/other.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/other.md' } }))
     expect(editor.focus).not.toHaveBeenCalled()
 
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
     expect(rAF).toHaveBeenCalled()
     expect(editor.focus).toHaveBeenCalled()
   })
@@ -108,8 +108,8 @@ describe('useEditorFocus', () => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
     const { editor } = setup(true)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
     expect(editor.focus).toHaveBeenCalledTimes(1)
 
     document.body.tabIndex = -1
@@ -145,8 +145,8 @@ describe('useEditorFocus', () => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
     const { editor } = setup(false)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
     vi.advanceTimersByTime(80)
     expect(editor.focus).toHaveBeenCalledTimes(1)
 
@@ -163,8 +163,8 @@ describe('useEditorFocus', () => {
     const { editor } = setup(true)
     suspendEditorFocus(document.body)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
 
     expect(editor.focus).toHaveBeenCalledTimes(1)
   })
@@ -176,8 +176,8 @@ describe('useEditorFocus', () => {
     document.body.appendChild(createButton)
     createButton.focus()
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
 
     expect(editor.focus).toHaveBeenCalledTimes(1)
   })
@@ -187,9 +187,9 @@ describe('useEditorFocus', () => {
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
     const { editor } = setup(true)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
     suspendEditorFocus(document.body)
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
 
     expect(editor.focus).toHaveBeenCalledTimes(1)
 
@@ -210,7 +210,7 @@ describe('useEditorFocus', () => {
     const first = setup(true)
     first.unmount()
     const second = setup(true)
-    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
 
     expect(first.editor.focus).not.toHaveBeenCalled()
     expect(second.editor.focus).toHaveBeenCalledTimes(1)
@@ -222,7 +222,7 @@ describe('useEditorFocus', () => {
     const rAF = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
     const { editor } = setup(true)
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
 
     expect(editor.focus).not.toHaveBeenCalled()
     vi.advanceTimersByTime(249)
@@ -246,7 +246,7 @@ describe('useEditorFocus', () => {
 
     unmount()
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor'))
 
     expect(editor.focus).not.toHaveBeenCalled()
   })
@@ -264,7 +264,7 @@ describe('useEditorFocus', () => {
     const mountedRef = { current: true }
     renderHook(() => useEditorFocus(editor, mountedRef))
 
-    window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
+    window.dispatchEvent(new CustomEvent('fuwa:focus-editor'))
 
     expect(editor.focus).toHaveBeenCalled()
     expect(editableFocus).toHaveBeenCalled()
@@ -276,7 +276,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(true)
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
       expectSelectionRange(tiptap, { from: 3, to: 16 })
@@ -287,7 +287,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(true)
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: false } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: false } }))
 
       expect(editor.focus).toHaveBeenCalled()
       expect(tiptap.chain).not.toHaveBeenCalled()
@@ -298,7 +298,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(true)
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor'))
 
       expect(editor.focus).toHaveBeenCalled()
       expect(tiptap.chain).not.toHaveBeenCalled()
@@ -309,7 +309,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(false)
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
       expect(tiptap.chain).not.toHaveBeenCalled()
@@ -327,7 +327,7 @@ describe('useEditorFocus', () => {
         setTextCursorPosition,
       })
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
       expect(setTextCursorPosition).toHaveBeenCalledWith('title', 'start')
@@ -342,7 +342,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(true)
       const { editor } = setup(false, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).not.toHaveBeenCalled()
       vi.advanceTimersByTime(80)
@@ -364,7 +364,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(true)
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       // rAF 1 is scheduled (doFocus)
       expect(callbacks.length).toBe(1)
@@ -391,7 +391,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock([null, 15])
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(callbacks.length).toBe(1)
       callbacks[0](0)
@@ -419,7 +419,7 @@ describe('useEditorFocus', () => {
       })
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
       expect(tiptap._chainResult.run).toHaveBeenCalledTimes(2)
@@ -437,7 +437,7 @@ describe('useEditorFocus', () => {
       const tiptap = makeTiptapMock(true, 2)
       const { editor } = setup(true, tiptap)
 
-      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+      window.dispatchEvent(new CustomEvent('fuwa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
       expectSelectionRange(tiptap, { from: 3, to: 3 })

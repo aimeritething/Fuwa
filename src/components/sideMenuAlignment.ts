@@ -2,9 +2,9 @@ import { useLayoutEffect } from 'react'
 import {
   blockElementById,
   editorBlockElement,
-  type TolariaBlockNoteEditor,
-} from './tolariaBlockNoteDom'
-import type { SideMenuBlock } from './tolariaSideMenuBlocks'
+  type RichEditor,
+} from './blockNoteDom'
+import type { SideMenuBlock } from './sideMenuBlocks'
 
 type SideMenuAlignmentState = {
   attemptsRemaining: number
@@ -150,7 +150,7 @@ function createSideMenuAlignmentCleanup({
   }
 }
 
-function createSideMenuAlignmentController(editor: TolariaBlockNoteEditor, blockId: string) {
+function createSideMenuAlignmentController(editor: RichEditor, blockId: string) {
   const editorElement = editorBlockElement(editor)
   const ownerWindow = editorElement?.ownerDocument.defaultView
   if (!editorElement || !ownerWindow) return undefined
@@ -187,7 +187,7 @@ function createSideMenuAlignmentController(editor: TolariaBlockNoteEditor, block
 }
 
 export function useSideMenuTextAlignment(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   block: SideMenuBlock | undefined,
 ) {
   const blockId = block?.id

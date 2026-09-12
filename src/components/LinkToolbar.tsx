@@ -3,7 +3,7 @@ import { useCallback } from 'react'
 import {
   DeleteLinkButton,
   EditLinkButton,
-  LinkToolbar,
+  LinkToolbar as BlockNoteLinkToolbar,
   useComponentsContext,
   useDictionary,
   type LinkToolbarProps,
@@ -16,7 +16,7 @@ function useRequiredComponentsContext() {
   return components
 }
 
-function TolariaOpenLinkButton({ url, vaultPath }: Pick<LinkToolbarProps, 'url'> & { vaultPath?: string }) {
+function OpenLinkButton({ url, vaultPath }: Pick<LinkToolbarProps, 'url'> & { vaultPath?: string }) {
   const Components = useRequiredComponentsContext()
   const dict = useDictionary()
   const handleOpen = useCallback(() => {
@@ -35,9 +35,9 @@ function TolariaOpenLinkButton({ url, vaultPath }: Pick<LinkToolbarProps, 'url'>
   )
 }
 
-export function TolariaLinkToolbar({ vaultPath, ...props }: LinkToolbarProps & { vaultPath?: string }) {
+export function LinkToolbar({ vaultPath, ...props }: LinkToolbarProps & { vaultPath?: string }) {
   return (
-    <LinkToolbar {...props}>
+    <BlockNoteLinkToolbar {...props}>
       <EditLinkButton
         url={props.url}
         text={props.text}
@@ -45,8 +45,8 @@ export function TolariaLinkToolbar({ vaultPath, ...props }: LinkToolbarProps & {
         setToolbarOpen={props.setToolbarOpen}
         setToolbarPositionFrozen={props.setToolbarPositionFrozen}
       />
-      <TolariaOpenLinkButton url={props.url} vaultPath={vaultPath} />
+      <OpenLinkButton url={props.url} vaultPath={vaultPath} />
       <DeleteLinkButton range={props.range} setToolbarOpen={props.setToolbarOpen} />
-    </LinkToolbar>
+    </BlockNoteLinkToolbar>
   )
 }

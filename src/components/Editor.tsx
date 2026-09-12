@@ -57,7 +57,7 @@ import './EditorShell.css'
  * Fuwa's editor shell (rewritten, not copied). It creates the
  * BlockNote editor with the kernel's schema and extensions, hands the open
  * Document to the kernel's tab-swap machinery, and draws the floating card
- * around it. Everything it mounts is copied from Tolaria.
+ * around it. Everything it mounts comes from the kernel.
  */
 
 const RICH_EDITOR_BIDI_DOM_ATTRIBUTES = {
@@ -171,7 +171,7 @@ function useRegisteredRef<T>(ref: MutableRefObject<T | null> | undefined, value:
 }
 
 /**
- * Rich/Raw switching, carried from Tolaria: the kernel's hook
+ * Rich/Raw switching: the kernel's hook
  * serializes the rich editor into the raw buffer on the way in, maps the
  * caret both ways, and remembers raw edits the Tab state has not caught up
  * with on the way out. Fuwa's deviation is where the mode lives: the active

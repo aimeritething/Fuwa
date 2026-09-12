@@ -8,7 +8,7 @@ const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 `
 
 declare global {
-  interface LaputaTestBridge {
+  interface TestBridge {
     seedBlockNoteTable?: (columnWidths?: Array<number | null>) => Promise<void> | void
   }
 }
@@ -52,16 +52,16 @@ async function seedEditorWithTestTable(
 }
 
 function unregisterSeedBlockNoteTableBridge(
-  seedBlockNoteTable: NonNullable<Window['__laputaTest']>['seedBlockNoteTable'],
+  seedBlockNoteTable: NonNullable<Window['__fuwaTest']>['seedBlockNoteTable'],
 ) {
-  const testBridge = window.__laputaTest
+  const testBridge = window.__fuwaTest
   if (!testBridge || testBridge.seedBlockNoteTable !== seedBlockNoteTable) return
   delete testBridge.seedBlockNoteTable
 }
 
 function registerSeedBlockNoteTableBridge(editor: ReturnType<typeof useCreateBlockNote>) {
   const seedBlockNoteTable = seedEditorWithTestTable.bind(null, editor)
-  window.__laputaTest = { ...window.__laputaTest, seedBlockNoteTable }
+  window.__fuwaTest = { ...window.__fuwaTest, seedBlockNoteTable }
   return unregisterSeedBlockNoteTableBridge.bind(null, seedBlockNoteTable)
 }
 

@@ -6,7 +6,7 @@ import {
   type RichEditorBlockSelectionEditor,
 } from './richEditorBlockSelectionTypes'
 
-export const TOLARIA_BLOCK_CLIPBOARD_MIME = 'application/x-tolaria-blocknote-blocks+json'
+export const BLOCK_CLIPBOARD_MIME = 'application/x-fuwa-blocknote-blocks+json'
 
 function sanitizeMarkup(markup: string): string {
   return DOMPurify.sanitize(markup)
@@ -51,7 +51,7 @@ export function writeSelectedBlocksToClipboard(
   const markdown = blocksToMarkdown(editor, blocks)
 
   clipboardData.clearData()
-  clipboardData.setData(TOLARIA_BLOCK_CLIPBOARD_MIME, JSON.stringify(blocks))
+  clipboardData.setData(BLOCK_CLIPBOARD_MIME, JSON.stringify(blocks))
   if (fullMarkup) clipboardData.setData('blocknote/html', fullMarkup)
   if (externalMarkup) clipboardData.setData('text/html', externalMarkup)
   if (markdown) {
@@ -61,8 +61,8 @@ export function writeSelectedBlocksToClipboard(
   return true
 }
 
-function parseTolariaClipboardBlocks(clipboardData: ClipboardDataLike): unknown[] {
-  const serialized = clipboardData.getData(TOLARIA_BLOCK_CLIPBOARD_MIME)
+function parseClipboardBlockJson(clipboardData: ClipboardDataLike): unknown[] {
+  const serialized = clipboardData.getData(BLOCK_CLIPBOARD_MIME)
   if (!serialized) return []
 
   try {
@@ -114,7 +114,7 @@ export function parseClipboardBlocks(
   clipboardData: ClipboardDataLike,
 ): unknown[] {
   return firstParsedClipboardBlocks([
-    () => parseTolariaClipboardBlocks(clipboardData),
+    () => parseClipboardBlockJson(clipboardData),
     () => parseMarkupClipboardBlocks(editor, clipboardData, 'blocknote/html'),
     () => parseMarkupClipboardBlocks(editor, clipboardData, 'text/html'),
     () => parseMarkdownClipboardBlocks(editor, clipboardData),

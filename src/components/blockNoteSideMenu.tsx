@@ -11,8 +11,8 @@ import type {
   StyleSchema,
 } from '@blocknote/core'
 import {
-  DragHandleMenu,
-  SideMenu,
+  DragHandleMenu as BlockNoteDragHandleMenu,
+  SideMenu as BlockNoteSideMenu,
   useBlockNoteEditor,
   useComponentsContext,
   useDictionary,
@@ -28,8 +28,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
-import { usePointerBlockReorder } from './tolariaBlockReorder'
-import { useSideMenuTextAlignment } from './tolariaSideMenuAlignment'
+import { usePointerBlockReorder } from './blockReorder'
+import { useSideMenuTextAlignment } from './sideMenuAlignment'
 import {
   blockHeadingLevel,
   isCollapsibleSectionBlockForEditor,
@@ -37,24 +37,24 @@ import {
   useCollapsedHeadingIds,
   useCollapsedHeadingRendering,
   type CollapsibleBlock,
-} from './tolariaCollapsedSections'
+} from './collapsedSections'
 import {
   liveSideMenuBlock,
   runSideMenuAction,
   type SideMenuBlock,
-} from './tolariaSideMenuBlocks'
+} from './sideMenuBlocks'
 import { turnBlockIntoType } from './richEditorBlockTypeCommands'
 import {
-  createTolariaSlashMenuIcon,
-  getTolariaBlockTypeSelectItems,
-} from './tolariaEditorFormattingConfig'
+  createSlashMenuIcon,
+  getBlockTypeSelectItems,
+} from './editorFormattingConfig'
 
 type TableHeaderContent = Record<string, unknown> & {
   headerCols?: unknown
   headerRows?: unknown
 }
 
-type TolariaSideMenuProps = SideMenuProps & {
+type BlockNoteSideMenuProps = SideMenuProps & {
   locale?: AppLocale
 }
 
@@ -187,7 +187,7 @@ function useRequiredComponentsContext() {
   return components
 }
 
-function TolariaAddBlockButton() {
+function AddBlockButton() {
   const Components = useRequiredComponentsContext()
   const dict = useDictionary()
   const suggestionMenu = useExtension(SuggestionMenu)
@@ -240,7 +240,7 @@ function itemCollapseButtonLabel(locale: AppLocale, isCollapsed: boolean) {
   return translate(locale, isCollapsed ? 'editor.sideMenu.expandItem' : 'editor.sideMenu.collapseItem')
 }
 
-function TolariaHeadingCollapseButton({ locale }: { locale: AppLocale }) {
+function HeadingCollapseButton({ locale }: { locale: AppLocale }) {
   const Components = useRequiredComponentsContext()
   const { block, editor } = useSideMenuBlock()
   const collapsedHeadingIds = useCollapsedHeadingIds(editor)
@@ -275,14 +275,14 @@ function TolariaHeadingCollapseButton({ locale }: { locale: AppLocale }) {
   )
 }
 
-function TolariaSectionControlButton({ locale }: { locale: AppLocale }) {
+function SectionControlButton({ locale }: { locale: AppLocale }) {
   const { block, editor } = useSideMenuBlock()
-  if (isCollapsibleSectionBlockForEditor(editor, block)) return <TolariaHeadingCollapseButton locale={locale} />
+  if (isCollapsibleSectionBlockForEditor(editor, block)) return <HeadingCollapseButton locale={locale} />
 
-  return <TolariaAddBlockButton />
+  return <AddBlockButton />
 }
 
-function TolariaDragHandleButton({
+function DragHandleButton({
   children,
   dragHandleMenu,
   locale = 'en',
@@ -291,7 +291,7 @@ function TolariaDragHandleButton({
   const dict = useDictionary()
   const sideMenu = useExtension(SideMenuExtension)
   const { block, editor } = useSideMenuBlock()
-  const MenuComponent: ComponentType<{ children?: ReactNode }> = dragHandleMenu ?? DragHandleMenu
+  const MenuComponent: ComponentType<{ children?: ReactNode }> = dragHandleMenu ?? BlockNoteDragHandleMenu
   const { onClickCapture, onPointerDown } = usePointerBlockReorder(editor, block)
 
   if (!block) return null
@@ -306,7 +306,7 @@ function TolariaDragHandleButton({
     >
       <Components.Generic.Menu.Trigger>
         <span
-          className="tolaria-block-drag-handle"
+          className="fuwa-block-drag-handle"
           onPointerDown={onPointerDown}
           onClickCapture={onClickCapture}
         >
@@ -322,12 +322,12 @@ function TolariaDragHandleButton({
       </Components.Generic.Menu.Trigger>
       {dragHandleMenu
         ? <MenuComponent>{children}</MenuComponent>
-        : <TolariaDragHandleMenu locale={locale}>{children}</TolariaDragHandleMenu>}
+        : <DragHandleMenu locale={locale}>{children}</DragHandleMenu>}
     </Components.Generic.Menu.Root>
   )
 }
 
-function TolariaRemoveBlockItem({ children }: { children: ReactNode }) {
+function RemoveBlockItem({ children }: { children: ReactNode }) {
   const Components = useRequiredComponentsContext()
   const { block, editor } = useSideMenuBlock()
 
@@ -349,7 +349,7 @@ function TolariaRemoveBlockItem({ children }: { children: ReactNode }) {
   )
 }
 
-function TolariaTableHeaderItem({
+function TableHeaderItem({
   children,
   header,
 }: {
@@ -391,7 +391,7 @@ function TolariaTableHeaderItem({
   )
 }
 
-function TolariaTurnBlockIntoSubmenu({ locale }: { locale: AppLocale }) {
+function TurnBlockIntoSubmenu({ locale }: { locale: AppLocale }) {
   const Components = useRequiredComponentsContext()
   const { block, editor } = useSideMenuBlock()
 
@@ -404,12 +404,12 @@ function TolariaTurnBlockIntoSubmenu({ locale }: { locale: AppLocale }) {
           {translate(locale, 'editor.sideMenu.turnIntoMenu')}
         </Components.Generic.Menu.Item>
       </Components.Generic.Menu.Trigger>
-      <Components.Generic.Menu.Dropdown className="tolaria-turn-into-menu-dropdown" sub>
-        {getTolariaBlockTypeSelectItems().map((item) => (
+      <Components.Generic.Menu.Dropdown className="fuwa-turn-into-menu-dropdown" sub>
+        {getBlockTypeSelectItems().map((item) => (
           <Components.Generic.Menu.Item
             key={item.key}
             className="bn-menu-item"
-            icon={createTolariaSlashMenuIcon(item.icon)}
+            icon={createSlashMenuIcon(item.icon)}
             onClick={() => {
               runSideMenuAction(() => {
                 turnBlockIntoType(editor, block.id, item, 'block_menu')
@@ -424,7 +424,7 @@ function TolariaTurnBlockIntoSubmenu({ locale }: { locale: AppLocale }) {
   )
 }
 
-function TolariaDragHandleMenu({
+function DragHandleMenu({
   children,
   locale = 'en',
 }: {
@@ -434,29 +434,29 @@ function TolariaDragHandleMenu({
   const dict = useDictionary()
 
   return (
-    <DragHandleMenu>
+    <BlockNoteDragHandleMenu>
       {children}
-      <TolariaRemoveBlockItem>{dict.drag_handle.delete_menuitem}</TolariaRemoveBlockItem>
-      <TolariaTurnBlockIntoSubmenu locale={locale} />
-      <TolariaTableHeaderItem header="row">{dict.drag_handle.header_row_menuitem}</TolariaTableHeaderItem>
-      <TolariaTableHeaderItem header="column">{dict.drag_handle.header_column_menuitem}</TolariaTableHeaderItem>
-    </DragHandleMenu>
+      <RemoveBlockItem>{dict.drag_handle.delete_menuitem}</RemoveBlockItem>
+      <TurnBlockIntoSubmenu locale={locale} />
+      <TableHeaderItem header="row">{dict.drag_handle.header_row_menuitem}</TableHeaderItem>
+      <TableHeaderItem header="column">{dict.drag_handle.header_column_menuitem}</TableHeaderItem>
+    </BlockNoteDragHandleMenu>
   )
 }
 
-export function TolariaSideMenu({ locale = 'en', ...props }: TolariaSideMenuProps) {
+export function SideMenu({ locale = 'en', ...props }: BlockNoteSideMenuProps) {
   const { block, editor } = useSideMenuBlock()
   useSideMenuTextAlignment(editor, block)
 
   return (
-    <SideMenu {...props}>
-      <TolariaDragHandleButton locale={locale} />
-      <TolariaSectionControlButton locale={locale} />
-    </SideMenu>
+    <BlockNoteSideMenu {...props}>
+      <DragHandleButton locale={locale} />
+      <SectionControlButton locale={locale} />
+    </BlockNoteSideMenu>
   )
 }
 
-export function TolariaCollapsedHeadingsController() {
+export function CollapsedHeadingsController() {
   const editor = useBlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>()
   useCollapsedHeadingRendering(editor)
 

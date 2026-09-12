@@ -11,14 +11,14 @@ import {
   dropPlacementForPoint,
   editorBlockElement,
   type DropPlacement,
-  type TolariaBlockNoteEditor,
-} from './tolariaBlockNoteDom'
+  type RichEditor,
+} from './blockNoteDom'
 import {
   hasChildBlock,
   liveSideMenuBlock,
   runSideMenuAction,
   type SideMenuBlock,
-} from './tolariaSideMenuBlocks'
+} from './sideMenuBlocks'
 
 type PointerReorderState = {
   affordances?: ReorderAffordances
@@ -153,7 +153,7 @@ function validDropTarget({
   x,
   y,
 }: {
-  editor: TolariaBlockNoteEditor
+  editor: RichEditor
   state: PointerReorderState
   x: number
   y: number
@@ -186,7 +186,7 @@ function moveBlockByPointerDrop({
   targetBlockId,
   placement,
 }: {
-  editor: TolariaBlockNoteEditor
+  editor: RichEditor
   draggedBlockId: string
   targetBlockId: string
   placement: DropPlacement
@@ -216,7 +216,7 @@ function moveBlockByPointerDrop({
 }
 
 export function usePointerBlockReorder(
-  editor: TolariaBlockNoteEditor,
+  editor: RichEditor,
   block: SideMenuBlock | undefined,
 ) {
   const reorderStateRef = useRef<PointerReorderState | null>(null)

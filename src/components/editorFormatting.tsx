@@ -1,5 +1,5 @@
 import {
-  FormattingToolbar,
+  FormattingToolbar as BlockNoteFormattingToolbar,
   getFormattingToolbarItems,
   PositionPopover,
   useBlockNoteEditor,
@@ -62,15 +62,15 @@ import {
 } from '@phosphor-icons/react'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '../utils/markdownHighlightMarkdown'
 import {
-  filterTolariaFormattingToolbarItems,
-  getTolariaBlockTypeSelectItems,
-} from './tolariaEditorFormattingConfig'
+  filterFormattingToolbarItems,
+  getBlockTypeSelectItems,
+} from './editorFormattingConfig'
 import { translate, type AppLocale } from '../lib/i18n'
 import { useBlockNoteFormattingToolbarHoverGuard } from './blockNoteFormattingToolbarHoverGuard'
 import { openEditorAttachmentOrUrl } from './editorAttachmentActions'
 import { turnBlocksIntoType } from './richEditorBlockTypeCommands'
 
-type TolariaBasicTextStyle =
+type BasicTextStyle =
   | 'bold'
   | 'italic'
   | 'strike'
@@ -79,8 +79,8 @@ type TolariaBasicTextStyle =
 
 const FORMATTER_CLOSE_GRACE_MS = 160
 const FORMATTER_VIEWPORT_PADDING_PX = 8
-type TolariaFloatingOptions = NonNullable<FloatingUIOptions['useFloatingOptions']>
-type TolariaFloatingMiddleware = NonNullable<TolariaFloatingOptions['middleware']>[number]
+type FloatingOptions = NonNullable<FloatingUIOptions['useFloatingOptions']>
+type FloatingMiddleware = NonNullable<FloatingOptions['middleware']>[number]
 
 function isFocusStillWithinToolbar(
   currentTarget: EventTarget & Element,
@@ -209,7 +209,7 @@ function useDeduplicatedFormattingToolbarStore(
   }, [store])
 }
 
-const TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS = {
+const BASIC_TEXT_STYLE_TOOLTIPS = {
   bold: {
     label: 'Bold',
     mainTooltip: 'Bold (persists in markdown)',
@@ -231,23 +231,23 @@ const TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS = {
     secondaryTooltip: '`code`',
   },
 } satisfies Record<
-  Exclude<TolariaBasicTextStyle, typeof MARKDOWN_HIGHLIGHT_STYLE>,
+  Exclude<BasicTextStyle, typeof MARKDOWN_HIGHLIGHT_STYLE>,
   { label: string; mainTooltip: string; secondaryTooltip: string }
 >
 
-const TOLARIA_BASIC_TEXT_STYLE_ICONS = {
+const BASIC_TEXT_STYLE_ICONS = {
   bold: Bold,
   italic: Italic,
   strike: Strikethrough,
   code: Code2,
   [MARKDOWN_HIGHLIGHT_STYLE]: Highlighter,
-} satisfies Record<TolariaBasicTextStyle, PhosphorIcon>
+} satisfies Record<BasicTextStyle, PhosphorIcon>
 
-type TolariaSelectedBlock = ReturnType<
+type SelectedBlock = ReturnType<
   BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>['getTextCursorPosition']
 >['block']
 
-type TolariaSelectedFileBlock = {
+type SelectedFileBlock = {
   type: string
   url: string
 }
@@ -256,15 +256,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isTolariaSelectedBlock(value: unknown): value is TolariaSelectedBlock {
+function isSelectedBlock(value: unknown): value is SelectedBlock {
   return isRecord(value)
     && typeof value.id === 'string'
     && typeof value.type === 'string'
     && isRecord(value.props)
 }
 
-function tolariaSelectedBlocks(value: unknown): TolariaSelectedBlock[] {
-  return Array.isArray(value) ? value.filter(isTolariaSelectedBlock) : []
+function selectedBlocksOf(value: unknown): SelectedBlock[] {
+  return Array.isArray(value) ? value.filter(isSelectedBlock) : []
 }
 
 const FORMATTING_TOOLBAR_FILE_BLOCK_TYPES = new Set([
@@ -274,8 +274,8 @@ const FORMATTING_TOOLBAR_FILE_BLOCK_TYPES = new Set([
   'video',
 ])
 
-type TolariaBlockTypeSelectOption = ReturnType<
-  typeof getTolariaBlockTypeSelectItems
+type BlockTypeSelectOption = ReturnType<
+  typeof getBlockTypeSelectItems
 >[number] & {
   iconElement: ReactElement
   isSelected: boolean
@@ -296,9 +296,9 @@ function textAlignmentToPlacement(
   }
 }
 
-function viewportClampMiddleware(): TolariaFloatingMiddleware {
+function viewportClampMiddleware(): FloatingMiddleware {
   return {
-    name: 'tolariaViewportClamp',
+    name: 'viewportClamp',
     fn({ x, rects }: { rects: { floating: { width: number } }; x: number }) {
       const viewportWidth = window.visualViewport?.width ?? window.innerWidth
       const minX = FORMATTER_VIEWPORT_PADDING_PX
@@ -315,8 +315,8 @@ function viewportClampMiddleware(): TolariaFloatingMiddleware {
 }
 
 function withViewportSafeMiddleware(
-  options?: TolariaFloatingOptions,
-): TolariaFloatingOptions {
+  options?: FloatingOptions,
+): FloatingOptions {
   if (!options) {
     return {
       middleware: [viewportClampMiddleware()],
@@ -333,7 +333,7 @@ function withViewportSafeMiddleware(
 }
 
 function editorSupportsTextStyle(
-  style: TolariaBasicTextStyle,
+  style: BasicTextStyle,
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
 ) {
   const styleSchema = Reflect.get(editor.schema.styleSchema, style) as {
@@ -349,9 +349,9 @@ function editorSupportsTextStyle(
 
 function getSelectedBlocksSafely(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
-): TolariaSelectedBlock[] {
+): SelectedBlock[] {
   try {
-    const selectionBlocks = tolariaSelectedBlocks(editor.getSelection()?.blocks)
+    const selectionBlocks = selectedBlocksOf(editor.getSelection()?.blocks)
     if (selectionBlocks.length) return selectionBlocks
   } catch {
     // BlockNote can briefly expose an invalid selection while inline actions remount blocks.
@@ -359,7 +359,7 @@ function getSelectedBlocksSafely(
 
   try {
     const block = editor.getTextCursorPosition().block
-    return isTolariaSelectedBlock(block) ? [block] : []
+    return isSelectedBlock(block) ? [block] : []
   } catch {
     return []
   }
@@ -367,10 +367,10 @@ function getSelectedBlocksSafely(
 
 function getCursorBlockSafely(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
-): TolariaSelectedBlock | null {
+): SelectedBlock | null {
   try {
     const block = editor.getTextCursorPosition().block
-    return isTolariaSelectedBlock(block) ? block : null
+    return isSelectedBlock(block) ? block : null
   } catch {
     return null
   }
@@ -383,7 +383,7 @@ function selectionSupportsInlineFormatting(
 }
 
 function getBasicTextStyleButtonState(
-  basicTextStyle: TolariaBasicTextStyle,
+  basicTextStyle: BasicTextStyle,
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
 ) {
   if (!editor.isEditable) return undefined
@@ -396,15 +396,15 @@ function getBasicTextStyleButtonState(
 }
 
 function getBlockTypeItemIconElement(
-  item: ReturnType<typeof getTolariaBlockTypeSelectItems>[number],
+  item: ReturnType<typeof getBlockTypeSelectItems>[number],
 ) {
   const Icon = item.icon
   return <Icon size={16} />
 }
 
 function isSelectedBlockTypeItem(
-  item: ReturnType<typeof getTolariaBlockTypeSelectItems>[number],
-  firstSelectedBlock: TolariaSelectedBlock,
+  item: ReturnType<typeof getBlockTypeSelectItems>[number],
+  firstSelectedBlock: SelectedBlock,
 ) {
   if (item.type !== firstSelectedBlock.type) return false
 
@@ -414,11 +414,11 @@ function isSelectedBlockTypeItem(
   )
 }
 
-function getTolariaBlockTypeSelectOptions(
+function getBlockTypeSelectOptions(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
-  firstSelectedBlock: TolariaSelectedBlock,
+  firstSelectedBlock: SelectedBlock,
 ) {
-  return getTolariaBlockTypeSelectItems()
+  return getBlockTypeSelectItems()
     .filter((item) =>
       editorHasBlockWithType(
         editor,
@@ -451,7 +451,7 @@ function getFormattingToolbarBridgeBlockId(
 
 function getSelectedFileBlockState(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
-): TolariaSelectedFileBlock | null {
+): SelectedFileBlock | null {
   const selectedBlocks = getSelectedBlocksSafely(editor)
   if (selectedBlocks.length !== 1) return null
 
@@ -501,11 +501,11 @@ function useRequiredComponentsContext() {
   return components
 }
 
-function TolariaBasicTextStyleButton({
+function BasicTextStyleButton({
   basicTextStyle,
   locale = 'en',
 }: {
-  basicTextStyle: TolariaBasicTextStyle
+  basicTextStyle: BasicTextStyle
   locale?: AppLocale
 }) {
   const Components = useRequiredComponentsContext()
@@ -526,7 +526,7 @@ function TolariaBasicTextStyleButton({
 
   if (buttonState === undefined) return null
 
-  const Icon = Reflect.get(TOLARIA_BASIC_TEXT_STYLE_ICONS, basicTextStyle) as PhosphorIcon
+  const Icon = Reflect.get(BASIC_TEXT_STYLE_ICONS, basicTextStyle) as PhosphorIcon
   const copy = basicTextStyleCopy(basicTextStyle, locale)
 
   return (
@@ -544,7 +544,7 @@ function TolariaBasicTextStyleButton({
 }
 
 function basicTextStyleCopy(
-  basicTextStyle: TolariaBasicTextStyle,
+  basicTextStyle: BasicTextStyle,
   locale: AppLocale,
 ) {
   if (basicTextStyle === MARKDOWN_HIGHLIGHT_STYLE) {
@@ -555,14 +555,14 @@ function basicTextStyleCopy(
     }
   }
 
-  return Reflect.get(TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS, basicTextStyle) as {
+  return Reflect.get(BASIC_TEXT_STYLE_TOOLTIPS, basicTextStyle) as {
     label: string
     mainTooltip: string
     secondaryTooltip: string
   }
 }
 
-function TolariaBlockTypeSelect() {
+function BlockTypeSelect() {
   const editor = useBlockNoteEditor<
     BlockSchema,
     InlineContentSchema,
@@ -570,19 +570,19 @@ function TolariaBlockTypeSelect() {
   >()
   const selectedBlocks = useEditorState({
     editor,
-    selector: ({ editor }): TolariaSelectedBlock[] => getSelectedBlocksSafely(editor),
+    selector: ({ editor }): SelectedBlock[] => getSelectedBlocksSafely(editor),
   })
   const firstSelectedBlock = selectedBlocks[0] ?? null
   const selectItems = useMemo(
     () => (
       firstSelectedBlock
-        ? getTolariaBlockTypeSelectOptions(editor, firstSelectedBlock)
+        ? getBlockTypeSelectOptions(editor, firstSelectedBlock)
         : []
     ),
     [editor, firstSelectedBlock],
   )
   const selectedItem = selectItems.find(
-    (item): item is TolariaBlockTypeSelectOption => item.isSelected,
+    (item): item is BlockTypeSelectOption => item.isSelected,
   )
   const menuState = useBlockTypeMenuState()
   const selectedBlockIdsRef = useRef<string[]>([])
@@ -593,7 +593,7 @@ function TolariaBlockTypeSelect() {
     if (opened) captureSelectedBlockIds()
     menuState.setOpened(opened)
   }, [captureSelectedBlockIds, menuState])
-  const handleBlockTypeChange = useCallback((item: TolariaBlockTypeSelectOption) => {
+  const handleBlockTypeChange = useCallback((item: BlockTypeSelectOption) => {
     const blockIds = selectedBlockIdsRef.current.length
       ? selectedBlockIdsRef.current
       : selectedBlocks.map((block) => block.id)
@@ -649,7 +649,7 @@ function TolariaBlockTypeSelect() {
   )
 }
 
-function TolariaFileDownloadButton({ vaultPath }: { vaultPath?: string }) {
+function FileDownloadButton({ vaultPath }: { vaultPath?: string }) {
   const Components = useRequiredComponentsContext()
   const dict = useDictionary()
   const editor = useBlockNoteEditor<
@@ -692,15 +692,15 @@ function replaceToolbarControls(items: ReactElement[], vaultPath?: string) {
   return items.flatMap((item) => {
     switch (String(item.key)) {
       case 'blockTypeSelect':
-        return [<TolariaBlockTypeSelect key={item.key} />]
+        return [<BlockTypeSelect key={item.key} />]
       case 'boldStyleButton':
-        return [<TolariaBasicTextStyleButton basicTextStyle="bold" key={item.key} />]
+        return [<BasicTextStyleButton basicTextStyle="bold" key={item.key} />]
       case 'italicStyleButton':
-        return [<TolariaBasicTextStyleButton basicTextStyle="italic" key={item.key} />]
+        return [<BasicTextStyleButton basicTextStyle="italic" key={item.key} />]
       case 'strikeStyleButton':
-        return [<TolariaBasicTextStyleButton basicTextStyle="strike" key={item.key} />]
+        return [<BasicTextStyleButton basicTextStyle="strike" key={item.key} />]
       case 'fileDownloadButton':
-        return [<TolariaFileDownloadButton key={item.key} vaultPath={vaultPath} />]
+        return [<FileDownloadButton key={item.key} vaultPath={vaultPath} />]
       default:
         return [item]
     }
@@ -715,8 +715,8 @@ function insertExtraTextStyleButtons(items: ReactElement[], locale: AppLocale) {
 
   return [
     ...items.slice(0, strikeButtonIndex + 1),
-    <TolariaBasicTextStyleButton basicTextStyle="code" key="codeStyleButton" />,
-    <TolariaBasicTextStyleButton
+    <BasicTextStyleButton basicTextStyle="code" key="codeStyleButton" />,
+    <BasicTextStyleButton
       basicTextStyle={MARKDOWN_HIGHLIGHT_STYLE}
       key="highlightStyleButton"
       locale={locale}
@@ -725,10 +725,10 @@ function insertExtraTextStyleButtons(items: ReactElement[], locale: AppLocale) {
   ]
 }
 
-function getTolariaFormattingToolbarItems(vaultPath: string | undefined, locale: AppLocale) {
+function getFormattingToolbarItemsFor(vaultPath: string | undefined, locale: AppLocale) {
   return insertExtraTextStyleButtons(
     replaceToolbarControls(
-      filterTolariaFormattingToolbarItems(
+      filterFormattingToolbarItems(
         getFormattingToolbarItems(),
       ),
       vaultPath,
@@ -737,17 +737,17 @@ function getTolariaFormattingToolbarItems(vaultPath: string | undefined, locale:
   )
 }
 
-export function TolariaFormattingToolbar({
+export function FormattingToolbar({
   locale = 'en',
   vaultPath,
 }: {
   locale?: AppLocale
   vaultPath?: string
 } = {}) {
-  return <FormattingToolbar>{getTolariaFormattingToolbarItems(vaultPath, locale)}</FormattingToolbar>
+  return <BlockNoteFormattingToolbar>{getFormattingToolbarItemsFor(vaultPath, locale)}</BlockNoteFormattingToolbar>
 }
 
-type TolariaFormattingToolbarControllerProps = {
+type FormattingToolbarControllerProps = {
   formattingToolbar?: FC<FormattingToolbarProps>;
   floatingUIOptions?: FloatingUIOptions;
 }
@@ -841,7 +841,7 @@ function FormattingToolbarSurface(props: FormattingToolbarSurfaceProps) {
           }}
         >
           <BlockTypeMenuContext.Provider value={blockTypeMenuState}>
-            {Component ? <Component /> : <TolariaFormattingToolbar />}
+            {Component ? <Component /> : <FormattingToolbar />}
           </BlockTypeMenuContext.Provider>
         </div>
       )}
@@ -849,7 +849,7 @@ function FormattingToolbarSurface(props: FormattingToolbarSurfaceProps) {
   )
 }
 
-export function TolariaFormattingToolbarController(props: TolariaFormattingToolbarControllerProps) {
+export function FormattingToolbarController(props: FormattingToolbarControllerProps) {
   const editor = useBlockNoteEditor<
     BlockSchema,
     InlineContentSchema,

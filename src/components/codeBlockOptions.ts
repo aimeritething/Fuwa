@@ -50,11 +50,11 @@ const GO_LANGUAGE_REGISTRATION = {
   },
 }
 
-type TolariaCodeHighlighter = Awaited<ReturnType<NonNullable<typeof codeBlockOptions.createHighlighter>>>
-type TolariaLoadLanguage = TolariaCodeHighlighter['loadLanguage']
-type TolariaLanguageInput = Parameters<TolariaLoadLanguage>[number]
-type TolariaLanguageLoader = () => Promise<TolariaLanguageInput[]>
-type TolariaNamedLanguageRegistration = Record<string, unknown> & {
+type CodeHighlighter = Awaited<ReturnType<NonNullable<typeof codeBlockOptions.createHighlighter>>>
+type LoadLanguage = CodeHighlighter['loadLanguage']
+type LanguageInput = Parameters<LoadLanguage>[number]
+type LanguageLoader = () => Promise<LanguageInput[]>
+type NamedLanguageRegistration = Record<string, unknown> & {
   name: string
   displayName?: string
   aliases?: string[]
@@ -76,18 +76,18 @@ function prioritizeTheme(themes: string[], theme: string) {
   return [theme, ...themes.filter((candidate) => candidate !== theme)]
 }
 
-function languageInputs(languages: readonly TolariaLanguageInput[]): TolariaLanguageInput[] {
+function languageInputs(languages: readonly LanguageInput[]): LanguageInput[] {
   return [...languages]
 }
 
-function languageModuleInputs(languageModule: unknown): TolariaLanguageInput[] {
+function languageModuleInputs(languageModule: unknown): LanguageInput[] {
   if (typeof languageModule !== 'object' || languageModule === null) return []
 
   const defaultExport = (languageModule as { default?: unknown }).default
-  return Array.isArray(defaultExport) ? languageInputs(defaultExport as TolariaLanguageInput[]) : []
+  return Array.isArray(defaultExport) ? languageInputs(defaultExport as LanguageInput[]) : []
 }
 
-async function optionalLanguageInputs(importLanguage: () => Promise<unknown>): Promise<TolariaLanguageInput[]> {
+async function optionalLanguageInputs(importLanguage: () => Promise<unknown>): Promise<LanguageInput[]> {
   try {
     return languageModuleInputs(await importLanguage())
   } catch {
@@ -95,27 +95,27 @@ async function optionalLanguageInputs(importLanguage: () => Promise<unknown>): P
   }
 }
 
-function namedLanguageRegistration(value: TolariaLanguageInput): TolariaNamedLanguageRegistration | null {
+function namedLanguageRegistration(value: LanguageInput): NamedLanguageRegistration | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
   const record = value as Record<string, unknown>
   return typeof record.name === 'string'
-    ? record as TolariaNamedLanguageRegistration
+    ? record as NamedLanguageRegistration
     : null
 }
 
 function renameLanguageRegistration(
-  languages: readonly TolariaLanguageInput[],
+  languages: readonly LanguageInput[],
   sourceName: string,
   nextLanguage: { name: string; displayName: string; aliases: string[] },
-): TolariaLanguageInput[] {
+): LanguageInput[] {
   return languages.map((language) => {
     const registration = namedLanguageRegistration(language)
     if (!registration || registration.name !== sourceName) return language
-    return { ...registration, ...nextLanguage } as TolariaLanguageInput
+    return { ...registration, ...nextLanguage } as LanguageInput
   })
 }
 
-async function loadVbScriptLanguage(): Promise<TolariaLanguageInput[]> {
+async function loadVbScriptLanguage(): Promise<LanguageInput[]> {
   const language = await optionalLanguageInputs(() => import('@shikijs/langs/vb'))
   return renameLanguageRegistration(language, 'vb', {
     name: 'vbscript',
@@ -124,7 +124,7 @@ async function loadVbScriptLanguage(): Promise<TolariaLanguageInput[]> {
   })
 }
 
-const EXTRA_LANGUAGE_LOADERS = new Map<string, TolariaLanguageLoader>([
+const EXTRA_LANGUAGE_LOADERS = new Map<string, LanguageLoader>([
   ['powershell', async () => optionalLanguageInputs(() => import('@shikijs/langs/powershell'))],
   ['vbscript', loadVbScriptLanguage],
   ['dart', async () => optionalLanguageInputs(() => import('@shikijs/langs/dart'))],
@@ -146,24 +146,24 @@ const EXTRA_LANGUAGE_LOADERS = new Map<string, TolariaLanguageLoader>([
   ['toml', async () => optionalLanguageInputs(() => import('@shikijs/langs/toml'))],
 ])
 
-function expandGoLanguage(language: string): TolariaLanguageInput[] | null {
+function expandGoLanguage(language: string): LanguageInput[] | null {
   return canonicalKnownCodeBlockLanguage(language) === 'go'
-    ? [GO_LANGUAGE_REGISTRATION as TolariaLanguageInput]
+    ? [GO_LANGUAGE_REGISTRATION as LanguageInput]
     : null
 }
 
-async function expandExternalLanguage(language: string): Promise<TolariaLanguageInput[] | null> {
+async function expandExternalLanguage(language: string): Promise<LanguageInput[] | null> {
   const canonicalLanguage = canonicalKnownCodeBlockLanguage(language) ?? language.trim().toLowerCase()
   const loadLanguage = EXTRA_LANGUAGE_LOADERS.get(canonicalLanguage)
   return loadLanguage ? loadLanguage() : null
 }
 
-async function expandLanguage(language: TolariaLanguageInput): Promise<TolariaLanguageInput[]> {
+async function expandLanguage(language: LanguageInput): Promise<LanguageInput[]> {
   if (typeof language !== 'string') return [language]
   return expandGoLanguage(language) ?? await expandExternalLanguage(language) ?? [language]
 }
 
-async function createTolariaCodeHighlighter(): Promise<TolariaCodeHighlighter> {
+async function createCodeHighlighter(): Promise<CodeHighlighter> {
   const highlighter = await codeBlockOptions.createHighlighter()
   return {
     ...highlighter,
@@ -175,10 +175,10 @@ async function createTolariaCodeHighlighter(): Promise<TolariaCodeHighlighter> {
   }
 }
 
-export function createTolariaCodeBlockOptions(): Partial<CodeBlockOptions> {
+export function createCodeBlockOptions(): Partial<CodeBlockOptions> {
   const options: Partial<CodeBlockOptions> = {
     ...codeBlockOptions,
-    createHighlighter: createTolariaCodeHighlighter,
+    createHighlighter: createCodeHighlighter,
     defaultLanguage: 'text',
     supportedLanguages: {
       ...codeBlockOptions.supportedLanguages,

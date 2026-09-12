@@ -3,7 +3,7 @@ import { DEFAULT_APP_LOCALE, type AppLocale } from '../lib/i18n'
 
 /**
  * Fuwa has no settings screen, so there is nothing to prefer yet. The provider
- * and `useAppLocale` stay on Tolaria's module path because the editor blocks
+ * and `useAppLocale` stay on the kernel's module path because the editor blocks
  * read the locale from context.
  */
 

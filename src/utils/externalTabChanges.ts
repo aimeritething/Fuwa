@@ -11,7 +11,7 @@ import { isPathInsideVaultRoot } from './vaultPathContainment'
  *    the folder's own two paths, so a Tab under the old one is looked for at
  *    the same place under each other changed path. This is what tells two open
  *    Documents of the same name apart when their folder is renamed.
- * 2. Tolaria's same-name heuristic, rule 4. If exactly one changed path now
+ * 2. The kernel's same-name heuristic, rule 4. If exactly one changed path now
  *    holds a file of that name, the Tab follows it; otherwise the Tab closes
  *    and the new name shows up in the Explorer as a fresh file.
  *

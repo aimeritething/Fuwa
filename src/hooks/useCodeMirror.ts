@@ -384,15 +384,8 @@ export function useCodeMirror(
     // Expose EditorView on the parent DOM for Playwright test access
     Reflect.set(parent, '__cmView', view)
 
-    // When CSS zoom changes on the document, CodeMirror's cached measurements
-    // (scaleX/scaleY, line heights, character widths) become stale because
-    // ResizeObserver doesn't fire for ancestor zoom changes. Force a re-measure
-    // so cursor placement stays accurate at any zoom level.
-    const handleZoomChange = () => { view.requestMeasure() }
-    window.addEventListener('laputa-zoom-change', handleZoomChange)
 
     return () => {
-      window.removeEventListener('laputa-zoom-change', handleZoomChange)
       Reflect.deleteProperty(parent, '__cmView')
       view.destroy()
       viewRef.current = null

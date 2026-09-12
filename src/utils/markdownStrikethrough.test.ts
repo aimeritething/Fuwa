@@ -20,9 +20,9 @@ describe('preProcessSingleTildeStrikethrough', () => {
     expect(preProcessSingleTildeStrikethrough({ markdown })).toBe(markdown)
   })
 
-  it('leaves Tolaria placeholders unchanged', () => {
+  it('leaves durable placeholders unchanged', () => {
     const markdown = [
-      '@@TOLARIA_FILE_ATTACHMENT:%7B%22name%22%3A%22file~one.md%22%7D@@',
+      '@@FUWA_FILE_ATTACHMENT:%7B%22name%22%3A%22file~one.md%22%7D@@',
       '\u2039WIKILINK:note~one\u203A',
     ].join('\n')
 

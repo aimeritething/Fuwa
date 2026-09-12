@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  TOLARIA_BLOCK_CLIPBOARD_MIME,
+  BLOCK_CLIPBOARD_MIME,
   blocksWithoutIds,
   parseClipboardBlocks,
   writeSelectedBlocksToClipboard,
@@ -30,15 +30,15 @@ function parserEditor(): RichEditorBlockSelectionEditor {
   }
 }
 
-function clipboardWithBlockNoteHTML(tolariaData: string): TestClipboardData {
+function clipboardWithBlockNoteHTML(blockData: string): TestClipboardData {
   const clipboardData = new TestClipboardData()
-  clipboardData.setData(TOLARIA_BLOCK_CLIPBOARD_MIME, tolariaData)
+  clipboardData.setData(BLOCK_CLIPBOARD_MIME, blockData)
   clipboardData.setData('blocknote/html', '<p>HTML</p>')
   return clipboardData
 }
 
 describe('rich editor block-selection clipboard helpers', () => {
-  it('writes Tolaria JSON, rich HTML, external HTML, and markdown formats', () => {
+  it('writes block JSON, rich HTML, external HTML, and markdown formats', () => {
     const clipboardData = new TestClipboardData()
     const editor: RichEditorBlockSelectionEditor = {
       document: [
@@ -51,19 +51,19 @@ describe('rich editor block-selection clipboard helpers', () => {
     }
 
     expect(writeSelectedBlocksToClipboard(editor, clipboardData, ['two'])).toBe(true)
-    expect(clipboardData.getData(TOLARIA_BLOCK_CLIPBOARD_MIME)).toContain('"id":"two"')
+    expect(clipboardData.getData(BLOCK_CLIPBOARD_MIME)).toContain('"id":"two"')
     expect(clipboardData.getData('blocknote/html')).toContain('data-content-type')
     expect(clipboardData.getData('text/html')).toBe('<p>Two</p>')
     expect(clipboardData.getData('text/plain')).toBe('Two')
   })
 
-  it('parses Tolaria blocks before falling back to HTML or markdown', () => {
-    const clipboardData = clipboardWithBlockNoteHTML(JSON.stringify([{ id: 'tolaria', type: 'paragraph' }]))
+  it('parses block JSON before falling back to HTML or markdown', () => {
+    const clipboardData = clipboardWithBlockNoteHTML(JSON.stringify([{ id: 'block-one', type: 'paragraph' }]))
 
-    expect(parseClipboardBlocks(parserEditor(), clipboardData)).toEqual([{ id: 'tolaria', type: 'paragraph' }])
+    expect(parseClipboardBlocks(parserEditor(), clipboardData)).toEqual([{ id: 'block-one', type: 'paragraph' }])
   })
 
-  it('falls back from invalid Tolaria data to BlockNote HTML', () => {
+  it('falls back from invalid block JSON to BlockNote HTML', () => {
     const clipboardData = clipboardWithBlockNoteHTML('{')
 
     expect(parseClipboardBlocks(parserEditor(), clipboardData)).toEqual([{ id: 'html', type: 'paragraph' }])

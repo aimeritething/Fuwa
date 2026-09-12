@@ -5,7 +5,7 @@ import type {
   StyleSchema,
 } from '@blocknote/core'
 
-export type TolariaBlockNoteEditor = BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>
+export type RichEditor = BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>
 export type DropPlacement = 'before' | 'after'
 
 export const BLOCK_CONTAINER_SELECTOR = '[data-node-type="blockContainer"][data-id]'
@@ -15,7 +15,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
-export function editorBlockElement(editor: TolariaBlockNoteEditor): HTMLElement | null {
+export function editorBlockElement(editor: RichEditor): HTMLElement | null {
   const element = editor.domElement
   if (!(element instanceof HTMLElement)) return null
   return element.matches('.bn-editor')

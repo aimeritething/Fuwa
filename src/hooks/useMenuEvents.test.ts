@@ -58,7 +58,7 @@ describe('useMenuEvents', () => {
   })
 
   afterEach(() => {
-    delete window.__laputaTest
+    delete window.__fuwaTest
   })
 
   it('dispatches a native menu event id to its command handler', () => {
@@ -88,7 +88,7 @@ describe('useMenuEvents', () => {
     renderHook(() => useMenuEvents(handlers))
 
     act(() => {
-      window.__laputaTest?.dispatchBrowserMenuCommand?.('file-open-note')
+      window.__fuwaTest?.dispatchBrowserMenuCommand?.('file-open-note')
     })
 
     expect(handlers.onOpenNote).toHaveBeenCalledTimes(1)

@@ -1,15 +1,3 @@
 export const APP_STORAGE_KEYS = {
-  theme: 'tolaria-theme',
-  zoom: 'tolaria:zoom-level',
-  viewMode: 'tolaria-view-mode',
-  tagColors: 'tolaria:tag-color-overrides',
-  statusColors: 'tolaria:status-color-overrides',
-  propertyModes: 'tolaria:display-mode-overrides',
-  configMigrationFlag: 'tolaria:config-migrated-to-vault',
-  sortPreferences: 'tolaria-sort-preferences',
-  sidebarCollapsed: 'tolaria:sidebar-collapsed',
-  rightPanelCollapsed: 'tolaria:right-panel-collapsed',
-  lastActiveNotePath: 'tolaria:last-active-note-path',
-  layoutPanels: 'tolaria:layout-panels',
-  welcomeDismissed: 'tolaria_welcome_dismissed',
+  theme: 'fuwa:theme',
 } as const

@@ -74,41 +74,7 @@ describe('useCodeMirror', () => {
     expect([...container.querySelectorAll('.cm-line')].map(line => line.getAttribute('dir'))).toEqual(['auto', 'auto'])
   })
 
-  it('calls requestMeasure when laputa-zoom-change event fires', () => {
-    const ref = { current: container }
-    const { result } = renderHook(() =>
-      useCodeMirror(ref, 'hello', noopCallbacks),
-    )
-    const view = result.current.current!
-    const spy = vi.spyOn(view, 'requestMeasure')
 
-    act(() => {
-      window.dispatchEvent(new Event('laputa-zoom-change'))
-    })
-
-    expect(spy).toHaveBeenCalled()
-    spy.mockRestore()
-  })
-
-  it('stops listening for zoom changes after unmount', () => {
-    const ref = { current: container }
-    const { result, unmount } = renderHook(() =>
-      useCodeMirror(ref, 'hello', noopCallbacks),
-    )
-    const view = result.current.current!
-    const spy = vi.spyOn(view, 'requestMeasure')
-
-    unmount()
-
-    act(() => {
-      window.dispatchEvent(new Event('laputa-zoom-change'))
-    })
-
-    // After unmount, the listener should be removed — requestMeasure should NOT be called.
-    // (The view is also destroyed on unmount, so this verifies cleanup.)
-    expect(spy).not.toHaveBeenCalled()
-    spy.mockRestore()
-  })
 
   it('syncs content prop changes to the editor', () => {
     const ref = { current: container }

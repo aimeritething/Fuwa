@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// Type-only: brings the browser menu bridge's `window.__laputaTest` declaration into the spec program.
+// Type-only: brings the browser menu bridge's `window.__fuwaTest` declaration into the spec program.
 import type {} from '../../src/hooks/useMenuEvents'
 import {
   MOCK_FOLDER,
@@ -31,7 +31,7 @@ const quitCalls = (page: Page) =>
 const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
 
 async function pressQuit(page: Page) {
-  await page.evaluate(() => window.__laputaTest?.dispatchBrowserMenuCommand?.('app-quit'))
+  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('app-quit'))
 }
 
 /** Land one edit, make the Document read-only, then type again so the next write is refused. */
