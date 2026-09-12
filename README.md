@@ -15,33 +15,14 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
 ## Tests
 
 - **Unit** (`pnpm test`): Vitest in jsdom over the `*.test.ts(x)` files beside the code.
-  Most are carried from Tolaria and are the reason the kernel is copied verbatim.
 - **Rust** (`cargo test` in `src-tauri/`): the inline `mod tests` per module.
-- **Smoke** (`pnpm smoke`, which first fetches Chromium if it is missing): Playwright
-  drives the whole React app in Chromium against `pnpm dev`, one worker, local only. Specs
-  live in `tests/smoke`. Outside Tauri every command goes to the in-memory Folder fixture in
-  `src/mock-tauri/vaultFixture.ts`, which answers `list_files`, `get_note_content`,
-  `save_note_content`, `start_vault_watcher`, `stop_vault_watcher`,
-  `take_pending_open`, `read_session`, `update_session` and `quit_app` from memory and
-  rejects anything else. Argument and result shapes follow the Rust commands. A spec
-  reaches it as `window.__fuwaMockVault`: call `reset(seed)` to seed files,
-  `writeNote(path, content)` to add one, `seedPendingOpen(paths)` to plant a Finder launch
-  by document for the next page load (kept in localStorage like the Session, drained once),
-  `openFromFinder(paths)` to open from Finder while the app runs (it buffers the paths and
-  fires the window event that stands in for the Rust side's poke), `queuePendingOpen(paths)`
-  to buffer without the poke, `queueDialogSelection(paths)` to decide what the next Open
-  Document… dialog "returns" (the dialog is a plugin call with no command behind it, so the
-  fixture stands in for it too), `markReadOnly(paths)` to make writes to those paths fail,
-  `seedSession(session)` to plant the Session file the next page load restores (the fixture
-  keeps it in localStorage, so a reload stands in for a relaunch), and read `calls` to assert
-  what the app invoked. Shared helpers live in `tests/smoke/harness.ts`. Add a case to the
-  fixture's `answer` switch when a spec needs a command it does not answer yet. The dev
-  server runs on port 5202; set `FUWA_SMOKE_PORT` to run the specs against a second checkout
-  while another dev server holds that port.
+- **Smoke** (`pnpm smoke`): Playwright drives the whole React app in Chromium against
+  `pnpm dev`, with an in-memory Folder fixture standing in for the Rust side. See
+  [tests/smoke/README.md](tests/smoke/README.md).
 
 CI (`.github/workflows/ci.yml`) runs the type-check, ESLint, Vitest, clippy and `cargo test`
 on macOS for every push to `main` and every pull request. Smoke and the bundle build are run
-by hand; the measured bundle numbers are in `docs/build-baseline.md`.
+by hand.
 
 ## License
 

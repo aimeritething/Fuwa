@@ -1,6 +1,6 @@
 # Linear app tokens (the real ones), read from the Linear app's client bundle
 
-Companion to `Linear_DESIGN.md`, which describes the **marketing site**. This file records what the
+Companion to `linear-marketing-tokens.md`, which describes the **marketing site**. This file records what the
 **Linear app itself** uses, because the editor style catalog
 is rendered with these values, not the marketing ones. Extracted 2026-09-10 from `static.linear.app/client/assets/`
 (`style-H1ZQGW6c.css`, `darkThemeRefresh`, `lightThemeRefresh`, `ThemeProvider`) by running Linear's own
@@ -65,7 +65,7 @@ Hover colour scale of the chromatic set (`*Text` variants are the readable-on-da
 
 ## Where the marketing sheet and the app disagree
 
-| Topic | `Linear_DESIGN.md` (marketing) | Linear app |
+| Topic | `linear-marketing-tokens.md` (marketing) | Linear app |
 |---|---|---|
 | Body text (dark) | Mist `#d0d6e0` | `#e2e3e5` (≈ Bone) |
 | Body weight | 400 | **450** (Inter Variable) |

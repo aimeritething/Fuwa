@@ -7,7 +7,7 @@ This is a **single-context** repo: one `CONTEXT.md` at the root and one `docs/ad
 ## Before exploring, read these
 
 - **`CONTEXT.md`** at the repo root: the Fuwa glossary. It records the product's terms (Document, Folder, Attachment, Image file, Session, Tab, …), the synonyms to avoid, and the kernel's inherited code names (`note` for Document, `vault` for Folder).
-- **`docs/adr/`**: read ADRs that touch the area you're about to work in. ADR-0001 covers the Tolaria kernel port under AGPL and the port-depth decision.
+- **`docs/adr/`**: read ADRs that touch the area you're about to work in. Each records one design choice, the alternatives rejected, and the consequences; the numbering starts at 0002.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
@@ -17,7 +17,8 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 /
 ├── CONTEXT.md
 ├── docs/adr/
-│   └── 0001-port-tolaria-editor-kernel-under-agpl.md
+│   ├── 0002-a-document-opened-on-its-own-uses-its-directory-as-the-boundary-root.md
+│   └── …
 └── src/
 ```
 
@@ -33,4 +34,4 @@ If the concept you need isn't in the glossary yet, that's a signal: either you'r
 
 If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
 
-> _Contradicts ADR-0001 (Tolaria kernel port), but worth reopening because…_
+> _Contradicts ADR-0004 (the Rust side owns the Session file), but worth reopening because…_

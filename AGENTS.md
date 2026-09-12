@@ -7,12 +7,13 @@ Guidance for AI coding agents working in this repository.
 Fuwa is a small macOS desktop app for reading and editing Markdown Documents in a Folder
 on disk. 
 
-- `src/` — the React app. Fuwa-authored code lives beside the ported Tolaria files.
+- `src/` — the React app.
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
 - `src/mock-tauri/` — the in-memory Folder fixture that stands in for Rust outside Tauri.
-- `tests/smoke/` — Playwright specs. Unit tests sit beside the code as `*.test.ts(x)`.
+- `tests/smoke/` — Playwright specs; its `README.md` describes the Folder fixture they drive.
+  Unit tests sit beside the code as `*.test.ts(x)`.
 - `docs/adr/` — decisions; read the ones touching the area you change.
-  `docs/agents/` — domain-doc and triage-label conventions.
+  `docs/agents/` — domain-doc conventions.
 - `patches/` — six pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in
   `pnpm-workspace.yaml`. Bumping those packages means re-applying the patches.
 

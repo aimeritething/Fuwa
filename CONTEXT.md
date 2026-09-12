@@ -1,6 +1,6 @@
 # Fuwa
 
-A small desktop app for viewing and editing Markdown files. Open a `.md` directly, or open a folder and browse it from the sidebar. The editing kernel is ported from Tolaria; the visual language follows Linear.
+A small desktop app for viewing and editing Markdown files. Open a `.md` directly, or open a folder and browse it from the sidebar. The visual language follows Linear.
 
 ## Language
 

@@ -54,7 +54,7 @@ import './EditorTheme.css'
 import './EditorShell.css'
 
 /**
- * Fuwa's editor shell (ADR-0001: rewritten, not copied). It creates the
+ * Fuwa's editor shell (rewritten, not copied). It creates the
  * BlockNote editor with the kernel's schema and extensions, hands the open
  * Document to the kernel's tab-swap machinery, and draws the floating card
  * around it. Everything it mounts is copied from Tolaria.
