@@ -1,6 +1,5 @@
-use crate::commands::expand_tilde;
+use crate::vault;
 use crate::vault::filename_rules::validate_folder_name;
-use crate::vault::{self, FolderNode};
 use std::path::{Path, PathBuf};
 
 use super::boundary::{
@@ -29,15 +28,6 @@ fn with_external_file_path<T>(
     action: impl FnOnce(&Path) -> Result<T, String>,
 ) -> Result<T, String> {
     with_note_path(path, vault_path, ValidatedPathMode::Existing, action)
-}
-
-fn with_expanded_vault_root<T>(
-    path: &Path,
-    action: impl FnOnce(&Path) -> Result<T, String>,
-) -> Result<T, String> {
-    let raw_path = path.to_string_lossy();
-    let expanded = expand_tilde(raw_path.as_ref()).into_owned();
-    action(Path::new(&expanded))
 }
 
 fn with_requested_root_path<T>(
@@ -88,26 +78,6 @@ pub fn open_vault_file_external(
     })
 }
 
-#[derive(Debug, Eq, PartialEq)]
-enum FileManagerRevealAction {
-    OpenPath(PathBuf),
-    RevealItemInDir(PathBuf),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum RevealPlatform {
-    Windows,
-    Other,
-}
-
-fn current_reveal_platform() -> RevealPlatform {
-    if cfg!(windows) {
-        RevealPlatform::Windows
-    } else {
-        RevealPlatform::Other
-    }
-}
-
 fn open_path_with_default_app(app_handle: &tauri::AppHandle, path: &Path) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
 
@@ -117,48 +87,29 @@ fn open_path_with_default_app(app_handle: &tauri::AppHandle, path: &Path) -> Res
         .map_err(|error| error.to_string())
 }
 
+/// Reveal in Finder: select the file or folder in its parent window.
 #[tauri::command]
 pub fn reveal_path_in_file_manager(
     app_handle: tauri::AppHandle,
     path: PathBuf,
 ) -> Result<(), String> {
-    let action = file_manager_reveal_action(path.as_path(), current_reveal_platform())?;
-    perform_file_manager_reveal(&app_handle, action)
+    use tauri_plugin_opener::OpenerExt;
+
+    ensure_path_exists(path.as_path())?;
+    app_handle
+        .opener()
+        .reveal_item_in_dir(path)
+        .map_err(|error| error.to_string())
 }
 
-fn file_manager_reveal_action(
-    path: &Path,
-    platform: RevealPlatform,
-) -> Result<FileManagerRevealAction, String> {
+fn ensure_path_exists(path: &Path) -> Result<(), String> {
     if !path
         .try_exists()
         .map_err(|error| format!("Failed to inspect path: {error}"))?
     {
         return Err(format!("Path does not exist: {}", path.display()));
     }
-
-    if platform == RevealPlatform::Windows && path.is_dir() {
-        return Ok(FileManagerRevealAction::OpenPath(path.to_path_buf()));
-    }
-
-    Ok(FileManagerRevealAction::RevealItemInDir(path.to_path_buf()))
-}
-
-fn perform_file_manager_reveal(
-    app_handle: &tauri::AppHandle,
-    action: FileManagerRevealAction,
-) -> Result<(), String> {
-    use tauri_plugin_opener::OpenerExt;
-
-    match action {
-        FileManagerRevealAction::OpenPath(path) => app_handle
-            .opener()
-            .open_path(path.to_string_lossy().into_owned(), None::<String>),
-        FileManagerRevealAction::RevealItemInDir(path) => {
-            app_handle.opener().reveal_item_in_dir(path)
-        }
-    }
-    .map_err(|error| error.to_string())
+    Ok(())
 }
 
 fn with_writable_note_path<T>(
@@ -188,20 +139,6 @@ pub fn get_note_content(path: PathBuf, vault_path: Option<PathBuf>) -> Result<St
 }
 
 #[tauri::command]
-pub fn validate_note_content(
-    path: PathBuf,
-    content: String,
-    vault_path: Option<PathBuf>,
-) -> Result<bool, String> {
-    with_note_path(
-        path.as_path(),
-        vault_path.as_deref(),
-        ValidatedPathMode::Existing,
-        |validated_path| vault::note_content_matches(validated_path, &content),
-    )
-}
-
-#[tauri::command]
 pub async fn save_note_content(
     path: PathBuf,
     content: String,
@@ -227,8 +164,8 @@ pub fn create_note_content(
     })
 }
 
-/// Move a note to the Trash. Unlike Tolaria, `vault_path` is required: the
-/// boundary has no registry to look a bare path up in.
+/// Move a note to the Trash. `vault_path` is required: the boundary has no
+/// registry to look a bare path up in.
 #[tauri::command]
 pub fn delete_note(path: PathBuf, vault_path: Option<PathBuf>) -> Result<String, String> {
     with_note_path(
@@ -307,15 +244,6 @@ pub fn copy_image_to_vault(
     })
 }
 
-#[tauri::command]
-pub async fn list_vault_folders(path: PathBuf) -> Result<Vec<FolderNode>, String> {
-    tokio::task::spawn_blocking(move || {
-        with_expanded_vault_root(path.as_path(), vault::scan_vault_folders)
-    })
-    .await
-    .map_err(|e| format!("Task panicked: {e}"))?
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -381,22 +309,6 @@ mod tests {
             get_note_content(note, Some(root)).unwrap(),
             "# Windows-Sensitive Path\n\nBody\n"
         );
-    }
-
-    #[tokio::test]
-    async fn folder_and_listing_commands_use_expanded_vault_root() {
-        let dir = TempDir::new().unwrap();
-        let root = vault_root(&dir);
-        fs::write(dir.path().join("root.md"), "# Root\n").unwrap();
-
-        assert_eq!(
-            create_vault_folder(root.clone(), PathBuf::from("Projects"), None).unwrap(),
-            "Projects"
-        );
-        fs::write(dir.path().join("Projects/project.md"), "# Project\n").unwrap();
-
-        let folders = list_vault_folders(root).await.unwrap();
-        assert!(folders.iter().any(|folder| folder.name == "Projects"));
     }
 
     #[test]
@@ -477,62 +389,16 @@ mod tests {
     }
 
     #[test]
-    fn windows_folder_reveal_opens_nested_directory() {
+    fn file_manager_reveal_accepts_existing_paths_and_rejects_missing_ones() {
         let dir = TempDir::new().unwrap();
         let nested = dir.path().join("Folder With Spaces").join("Nested");
         fs::create_dir_all(&nested).unwrap();
-
-        let action = file_manager_reveal_action(nested.as_path(), RevealPlatform::Windows).unwrap();
-
-        assert_eq!(action, FileManagerRevealAction::OpenPath(nested));
-    }
-
-    #[test]
-    fn windows_file_reveal_still_selects_file_in_parent() {
-        let dir = TempDir::new().unwrap();
-        let file = note_path(&dir, "Folder With Spaces/project.md");
-        fs::create_dir_all(file.parent().unwrap()).unwrap();
-        fs::write(&file, "# Project\n").unwrap();
-
-        let action = file_manager_reveal_action(file.as_path(), RevealPlatform::Windows).unwrap();
-
-        assert_eq!(action, FileManagerRevealAction::RevealItemInDir(file));
-    }
-
-    #[test]
-    fn non_windows_folder_reveal_still_selects_folder_in_parent() {
-        let dir = TempDir::new().unwrap();
-        let nested = dir.path().join("Folder With Spaces").join("Nested");
-        fs::create_dir_all(&nested).unwrap();
-
-        let action = file_manager_reveal_action(nested.as_path(), RevealPlatform::Other).unwrap();
-
-        assert_eq!(action, FileManagerRevealAction::RevealItemInDir(nested));
-    }
-
-    #[test]
-    fn file_manager_reveal_rejects_missing_paths() {
-        let dir = TempDir::new().unwrap();
         let missing = dir.path().join("missing");
 
-        let error =
-            file_manager_reveal_action(missing.as_path(), RevealPlatform::Windows).unwrap_err();
+        assert_eq!(ensure_path_exists(nested.as_path()), Ok(()));
 
+        let error = ensure_path_exists(missing.as_path()).unwrap_err();
         assert!(error.starts_with("Path does not exist: "));
         assert!(error.contains("missing"));
-    }
-
-    #[test]
-    fn validate_note_content_compares_against_disk() {
-        let dir = TempDir::new().unwrap();
-        let root = vault_root(&dir);
-        let note = note_path(&dir, "note.md");
-        fs::write(&note, "# Fresh\n").unwrap();
-
-        assert!(
-            validate_note_content(note.clone(), "# Fresh\n".to_string(), Some(root.clone()),)
-                .unwrap()
-        );
-        assert!(!validate_note_content(note, "# Stale\n".to_string(), Some(root)).unwrap());
     }
 }

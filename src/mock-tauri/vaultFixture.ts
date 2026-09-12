@@ -1,4 +1,3 @@
-import type { FolderNode } from '../types'
 import { lockedExtension } from '../utils/explorerNames'
 import { notePathFilename } from '../utils/notePathIdentity'
 
@@ -24,7 +23,7 @@ import { notePathFilename } from '../utils/notePathIdentity'
  *
  * Like a real directory tree, every ancestor folder of a seeded or saved path
  * exists implicitly. Shapes follow the Rust commands: absolute paths in,
- * Folder-relative `/`-separated paths in `list_vault_folders`, `modifiedAt` in
+ * Folder-relative `/`-separated paths for the folder commands, `modifiedAt` in
  * seconds, errors as the Rust boundary's strings. `list_files` is shared with
  * the Fuwa-owned Rust scanner; `take_pending_open` with the Rust side's
  * `PendingOpen` buffer (AIM-391).
@@ -67,7 +66,6 @@ export interface MockVaultCommands {
   list_files: { args: { vaultPath: string }; result: MockVaultListing[] }
   get_note_content: { args: { path: string; vaultPath?: string }; result: string }
   save_note_content: { args: { path: string; content: string; vaultPath?: string }; result: void }
-  list_vault_folders: { args: { path: string }; result: FolderNode[] }
   start_vault_watcher: { args: { path: string }; result: void }
   stop_vault_watcher: { args?: undefined; result: void }
   take_pending_open: { args?: undefined; result: string[] }
@@ -235,26 +233,6 @@ function writeStoredSession(session: unknown): void {
   }
 }
 
-function folderTree(files: MockVaultFile[], vaultPath: string): FolderNode[] {
-  const byParent = new Map<string, FolderNode[]>()
-  const folders = files
-    .filter((entry) => entry.kind === 'folder')
-    .map((entry) => entry.path.slice(vaultPath.length + 1))
-    .sort((a, b) => a.localeCompare(b))
-
-  for (const relativePath of folders) {
-    const segments = relativePath.split('/')
-    const parent = segments.slice(0, -1).join('/')
-    const node: FolderNode = { name: segments[segments.length - 1], path: relativePath, children: [] }
-    byParent.set(relativePath, node.children)
-    const siblings = byParent.get(parent)
-    if (siblings) siblings.push(node)
-    else byParent.set(parent, [node])
-  }
-
-  return byParent.get('') ?? []
-}
-
 export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES): MockVault {
   const vaultPath = MOCK_VAULT_PATH
   let seedFiles = seed
@@ -367,10 +345,6 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
         if (readOnlyPaths.has(path)) throw new Error(READ_ONLY_ERROR)
         writeNote(path, typeof args?.content === 'string' ? args.content : '')
         return undefined
-      }
-      case 'list_vault_folders': {
-        requireRoot(args?.path)
-        return folderTree(Array.from(files.values()), vaultPath)
       }
       case 'start_vault_watcher': {
         watched = requireInsideVault(args?.path)

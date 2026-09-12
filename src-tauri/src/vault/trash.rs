@@ -3,28 +3,21 @@ use std::path::Path;
 /// Move `path` (a file or a whole folder) to the user's Trash.
 ///
 /// Fuwa never destroys a user's file: every delete in the app is a move to the
-/// macOS Trash, where Tolaria removed the file permanently (its ADR-0045). On
-/// macOS the `NSFileManager` route is used instead of the crate's default
-/// Finder AppleScript route, so deleting never triggers a "wants to control
-/// Finder" automation prompt.
+/// macOS Trash. The `NSFileManager` route is used instead of the crate's
+/// default Finder AppleScript route, so deleting never triggers a "wants to
+/// control Finder" automation prompt.
 pub(super) fn move_to_trash(path: &Path) -> Result<(), String> {
     trash_context()
         .delete(path)
         .map_err(|error| format!("Failed to move {} to the Trash: {}", path.display(), error))
 }
 
-#[cfg(target_os = "macos")]
 fn trash_context() -> trash::TrashContext {
     use trash::macos::{DeleteMethod, TrashContextExtMacos};
 
     let mut context = trash::TrashContext::new();
     context.set_delete_method(DeleteMethod::NsFileManager);
     context
-}
-
-#[cfg(not(target_os = "macos"))]
-fn trash_context() -> trash::TrashContext {
-    trash::TrashContext::new()
 }
 
 /// Move a single note file to the Trash.

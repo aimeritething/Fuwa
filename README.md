@@ -21,7 +21,7 @@ smoke specs. In `src-tauri/`: `cargo build`, `cargo clippy`, `cargo test`.
   drives the whole React app in Chromium against `pnpm dev`, one worker, local only. Specs
   live in `tests/smoke`. Outside Tauri every command goes to the in-memory Folder fixture in
   `src/mock-tauri/vaultFixture.ts`, which answers `list_files`, `get_note_content`,
-  `save_note_content`, `list_vault_folders`, `start_vault_watcher`, `stop_vault_watcher`,
+  `save_note_content`, `start_vault_watcher`, `stop_vault_watcher`,
   `take_pending_open`, `read_session`, `update_session` and `quit_app` from memory and
   rejects anything else. Argument and result shapes follow the Rust commands. A spec
   reaches it as `window.__fuwaMockVault`: call `reset(seed)` to seed files,

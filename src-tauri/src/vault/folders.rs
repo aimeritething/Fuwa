@@ -97,7 +97,7 @@ fn existing_folder_name(source_path: &Path, folder_path: &str) -> Result<String,
 }
 
 /// Move a folder and everything inside it to the Trash (see
-/// [`super::trash::move_to_trash`]); Tolaria removed the tree permanently.
+/// [`super::trash::move_to_trash`]).
 pub fn delete_folder(vault_path: &Path, folder_path: &str) -> Result<String, String> {
     let relative_path = ensure_relative_folder_path(folder_path)?;
     let target_path = vault_path.join(&relative_path);
@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn rename_folder_updates_relative_destination() {
         let dir = TempDir::new().unwrap();
-        make_folder(&dir, "projects/laputa");
+        make_folder(&dir, "projects/drafts");
 
         let result = rename_folder(dir.path(), "projects", "work").unwrap();
 
@@ -138,7 +138,7 @@ mod tests {
                 new_path: "work".to_string(),
             }
         );
-        assert!(dir.path().join("work/laputa").is_dir());
+        assert!(dir.path().join("work/drafts").is_dir());
         assert!(!dir.path().join("projects").exists());
     }
 
@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn delete_folder_removes_nested_contents() {
         let dir = TempDir::new().unwrap();
-        let nested = make_folder(&dir, "projects/laputa");
+        let nested = make_folder(&dir, "projects/drafts");
         fs::write(nested.join("note.md"), "# Note\n").unwrap();
 
         let deleted_path = delete_folder(dir.path(), "projects").unwrap();
