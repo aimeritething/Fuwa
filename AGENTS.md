@@ -12,7 +12,7 @@ on disk.
 - `src/mock-tauri/` — the in-memory Folder fixture that stands in for Rust outside Tauri.
 - `tests/smoke/` — Playwright specs. Unit tests sit beside the code as `*.test.ts(x)`.
 - `docs/adr/` — decisions; read the ones touching the area you change.
-  `docs/agents/` — issue tracker (Linear, `AIM-` ids) and domain-doc conventions.
+  `docs/agents/` — domain-doc and triage-label conventions.
 - `patches/` — six pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in
   `pnpm-workspace.yaml`. Bumping those packages means re-applying the patches.
 

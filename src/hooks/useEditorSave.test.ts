@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { AUTO_SAVE_DEBOUNCE_MS, useEditorSave } from './useEditorSave'
+import { useEditorSave } from './useEditorSave'
 
 const mockInvokeFn = vi.fn<(cmd: string, args?: Record<string, unknown>) => Promise<null>>(() => Promise.resolve(null))
 
@@ -15,192 +15,74 @@ vi.mock('../mock-tauri', () => ({
 }))
 
 describe('useEditorSave', () => {
-  let updateVaultContent: Mock
   let setTabs: Mock
-  let setToastMessage: Mock
 
   beforeEach(() => {
-    updateVaultContent = vi.fn()
     setTabs = vi.fn()
-    setToastMessage = vi.fn()
     mockInvokeFn.mockReset()
     mockInvokeFn.mockResolvedValue(null)
   })
 
   function renderSaveHook() {
-    return renderHook(() => useEditorSave({ updateVaultContent, setTabs, setToastMessage }))
+    return renderHook(() => useEditorSave({ setTabs }))
   }
 
-  it('handleSave shows "Nothing to save" when no pending content', async () => {
-    const { result } = renderSaveHook()
-
-    await act(async () => {
-      await result.current.handleSave()
-    })
-
-    expect(setToastMessage).toHaveBeenCalledWith('Nothing to save')
-    expect(mockInvokeFn).not.toHaveBeenCalled()
-  })
-
-  it('handleSave persists pending content and shows "Saved"', async () => {
-    const { result } = renderSaveHook()
-
-    // Buffer content via handleContentChange
-    act(() => {
-      result.current.handleContentChange('/test/note.md', '---\ntitle: Test\n---\n\n# Test\n\nEdited')
-    })
-
-    // Save via Cmd+S
-    await act(async () => {
-      await result.current.handleSave()
-    })
-
-    expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
-      path: '/test/note.md',
-      content: '---\ntitle: Test\n---\n\n# Test\n\nEdited',
-    })
-    expect(setToastMessage).toHaveBeenCalledWith('Saved')
-
-    // Second save should show "Nothing to save" (pending cleared)
-    await act(async () => {
-      await result.current.handleSave()
-    })
-    expect(setToastMessage).toHaveBeenCalledWith('Nothing to save')
-  })
-
-  it('calls onBeforePersist before writing content to disk', async () => {
-    const calls: string[] = []
-    const onBeforePersist = vi.fn((path: string) => calls.push(`before:${path}`))
-    mockInvokeFn.mockImplementationOnce(async () => {
-      calls.push('write')
-      return null
-    })
-    const { result } = renderHook(() =>
-      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onBeforePersist })
-    )
-
-    act(() => {
-      result.current.handleContentChange('/test/note.md', 'content')
-    })
-
-    await act(async () => {
-      await result.current.handleSave()
-    })
-
-    expect(onBeforePersist).toHaveBeenCalledWith('/test/note.md')
-    expect(calls).toEqual(['before:/test/note.md', 'write'])
-  })
-
-  it('handleSave shows error toast on failure', async () => {
-    mockInvokeFn.mockRejectedValueOnce(new Error('Disk full'))
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { result } = renderSaveHook()
-
-    act(() => {
-      result.current.handleContentChange('/test/note.md', 'content')
-    })
-
-    await act(async () => {
-      await result.current.handleSave()
-    })
-
-    expect(setToastMessage).toHaveBeenCalledWith(expect.stringContaining('Save failed'))
-    consoleSpy.mockRestore()
-  })
-
-  it('keeps failed Windows path saves pending with a recoverable error toast', async () => {
-    const path = 'C:\\Users\\@raflymln\\notes\\untitled-note-1777236475.md'
-    mockInvokeFn.mockRejectedValueOnce(
-      new Error(`Failed to save ${path}: The filename, directory name, or volume label syntax is incorrect. (os error 123)`),
-    )
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { result } = renderSaveHook()
-
-    act(() => {
-      result.current.handleContentChange(path, '# Draft\n\nUnsaved body')
-    })
-
-    let saved = true
-    await act(async () => {
-      saved = await result.current.handleSave()
-    })
-
-    expect(saved).toBe(false)
-    expect(setToastMessage).toHaveBeenCalledWith(
-      'Save failed: The note path is invalid on this platform. Rename the note or move it to a valid folder, then try again.',
-    )
-    expect(updateVaultContent).not.toHaveBeenCalled()
-
-    await act(async () => {
-      saved = await result.current.handleSave()
-    })
-
-    expect(saved).toBe(true)
-    expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
-      path,
-      content: '# Draft\n\nUnsaved body',
-    })
-    expect(updateVaultContent).toHaveBeenCalledWith(path, '# Draft\n\nUnsaved body')
-    consoleSpy.mockRestore()
-  })
-
-  it('savePendingForPath saves content only for the matching path', async () => {
+  it('savePendingForPath writes the buffered content of that path only', async () => {
     const { result } = renderSaveHook()
 
     act(() => {
       result.current.handleContentChange('/test/note-a.md', 'content A')
     })
 
-    // Try saving for a different path — should be a no-op
+    let saved = true
     await act(async () => {
-      await result.current.savePendingForPath('/test/note-b.md')
+      saved = await result.current.savePendingForPath('/test/note-b.md')
     })
+    expect(saved).toBe(false)
     expect(mockInvokeFn).not.toHaveBeenCalled()
 
-    // Save for the correct path
     await act(async () => {
-      await result.current.savePendingForPath('/test/note-a.md')
+      saved = await result.current.savePendingForPath('/test/note-a.md')
     })
+    expect(saved).toBe(true)
     expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
       path: '/test/note-a.md',
       content: 'content A',
     })
   })
 
-  it('saves buffered editor content to the renamed path after a tab path change', async () => {
-    const pathAliases = new Map([['/test/vault/draft.md', '/test/vault/draft.md']])
-    const resolvePath = vi.fn((path: string) => pathAliases.get(path) ?? path)
-    const onBeforePersist = vi.fn()
-    const onNotePersisted = vi.fn()
-    const { result } = renderHook(() =>
-      useEditorSave({
-        updateVaultContent,
-        setTabs,
-        setToastMessage,
-        onBeforePersist,
-        onNotePersisted,
-        resolvePath,
-        persistenceScope: '/test/vault',
-      })
-    )
+  it('savePendingForPath resolves false once the buffer has been written', async () => {
+    const { result } = renderSaveHook()
 
     act(() => {
-      result.current.handleContentChange('/test/vault/draft.md', '# Draft\n\nUnsaved rename edit')
+      result.current.handleContentChange('/test/note.md', 'edited')
     })
-    pathAliases.set('/test/vault/draft.md', '/test/vault/renamed-draft.md')
+    await act(async () => {
+      await result.current.savePendingForPath('/test/note.md')
+    })
+
+    let saved = true
+    await act(async () => {
+      saved = await result.current.savePendingForPath('/test/note.md')
+    })
+    expect(saved).toBe(false)
+    expect(mockInvokeFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('hasPendingSave answers for the buffered path until its write lands', async () => {
+    const { result } = renderSaveHook()
+
+    expect(result.current.hasPendingSave('/test/note.md')).toBe(false)
+    act(() => {
+      result.current.handleContentChange('/test/note.md', 'edited')
+    })
+    expect(result.current.hasPendingSave('/test/note.md')).toBe(true)
+    expect(result.current.hasPendingSave('/test/other.md')).toBe(false)
 
     await act(async () => {
-      await result.current.savePendingForPath('/test/vault/renamed-draft.md')
+      await result.current.savePendingForPath('/test/note.md')
     })
-
-    expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
-      path: '/test/vault/renamed-draft.md',
-      content: '# Draft\n\nUnsaved rename edit',
-      vaultPath: '/test/vault',
-    })
-    expect(onBeforePersist).toHaveBeenCalledWith('/test/vault/renamed-draft.md')
-    expect(updateVaultContent).toHaveBeenCalledWith('/test/vault/renamed-draft.md', '# Draft\n\nUnsaved rename edit')
-    expect(onNotePersisted).toHaveBeenCalledWith('/test/vault/renamed-draft.md', '# Draft\n\nUnsaved rename edit')
+    expect(result.current.hasPendingSave('/test/note.md')).toBe(false)
   })
 
   it('coalesces overlapping savePendingForPath calls for the same buffered content', async () => {
@@ -229,68 +111,47 @@ describe('useEditorSave', () => {
     })
   })
 
-  it('calls onAfterSave callback after successful save', async () => {
-    const cb = vi.fn()
-    const { result } = renderHook(() =>
-      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onAfterSave: cb })
-    )
+  it('a buffer that arrives while an older write is in flight is not overwritten by it', async () => {
+    let resolveFirstSave!: () => void
+    const firstWrite = new Promise<null>((resolve) => { resolveFirstSave = () => resolve(null) })
+    mockInvokeFn.mockImplementationOnce(() => firstWrite).mockResolvedValue(null)
+    const onNotePersisted = vi.fn()
+    const { result } = renderHook(() => useEditorSave({ setTabs, onNotePersisted }))
 
     act(() => {
-      result.current.handleContentChange('/test/note.md', 'new content')
+      result.current.handleContentChange('/test/note.md', 'draft 1')
     })
-
+    let firstSave!: Promise<boolean>
     await act(async () => {
-      await result.current.handleSave()
+      firstSave = result.current.savePendingForPath('/test/note.md')
+      await Promise.resolve()
     })
-
-    expect(cb).toHaveBeenCalled()
-  })
-
-  it('calls onAfterSave even when nothing is pending (e.g. after rename)', async () => {
-    const onAfterSave = vi.fn()
-    const { result } = renderHook(() =>
-      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onAfterSave })
-    )
-
-    // No content buffered — simulate Cmd+S after a rename that already flushed pending
-    await act(async () => {
-      await result.current.handleSave()
-    })
-
-    expect(setToastMessage).toHaveBeenCalledWith('Nothing to save')
-    expect(onAfterSave).toHaveBeenCalledOnce()
-  })
-
-  it('does not call onAfterSave when save fails', async () => {
-    mockInvokeFn.mockRejectedValueOnce(new Error('Disk full'))
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const cb = vi.fn()
-    const { result } = renderHook(() =>
-      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onAfterSave: cb })
-    )
+    expect(mockInvokeFn).toHaveBeenCalledTimes(1)
 
     act(() => {
-      result.current.handleContentChange('/test/note.md', 'content')
+      result.current.handleContentChange('/test/note.md', 'draft 2')
     })
+    const tabsWithDraft2 = [{ entry: { path: '/test/note.md' }, content: 'draft 2' }]
+    await act(async () => {
+      resolveFirstSave()
+      await expect(firstSave).resolves.toBe(false)
+    })
+
+    // The landed write of draft 1 neither touched the Tab nor cleared the buffer.
+    const lastUpdater = setTabs.mock.calls.at(-1)?.[0]
+    expect(lastUpdater(tabsWithDraft2)).toBe(tabsWithDraft2)
+    expect(onNotePersisted).not.toHaveBeenCalled()
+    expect(result.current.hasPendingSave('/test/note.md')).toBe(true)
 
     await act(async () => {
-      await result.current.handleSave()
+      await result.current.savePendingForPath('/test/note.md')
     })
-
-    expect(cb).not.toHaveBeenCalled()
-    consoleSpy.mockRestore()
-  })
-
-  it('handleContentChange buffers the latest content', () => {
-    const { result } = renderSaveHook()
-
-    act(() => {
-      result.current.handleContentChange('/test/note.md', 'v1')
-      result.current.handleContentChange('/test/note.md', 'v2')
+    expect(mockInvokeFn).toHaveBeenCalledTimes(2)
+    expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
+      path: '/test/note.md',
+      content: 'draft 2',
     })
-
-    // The ref should hold the latest value — verified via save
-    // (We'll check via the next handleSave call)
+    expect(onNotePersisted).toHaveBeenCalledWith('/test/note.md', 'draft 2')
   })
 
   it('handleContentChange syncs content to tab state immediately', () => {
@@ -300,8 +161,7 @@ describe('useEditorSave', () => {
       result.current.handleContentChange('/test/note.md', '---\ntitle: T\n---\n\n# T\n\nLive edits')
     })
 
-    // setTabs must be called on every content change (not just on save)
-    // so that consumers like the AI panel see current editor content
+    // setTabs runs on every content change, not only after a write.
     expect(setTabs).toHaveBeenCalled()
     const updater = setTabs.mock.calls[0][0]
     const tabs = [{ entry: { path: '/test/note.md' }, content: 'stale' }]
@@ -328,13 +188,11 @@ describe('useEditorSave', () => {
 
     const saveUpdater = setTabs.mock.calls.at(-1)?.[0]
     expect(saveUpdater(currentTabs)).toBe(currentTabs)
-    expect(updateVaultContent).toHaveBeenCalledWith(path, content)
   })
 
-  it('save updates tab content with edited body, not original (regression)', async () => {
+  it('writes the edited body, not the original, and the Tab shows it (regression)', async () => {
     const { result } = renderSaveHook()
 
-    // Simulate: user opens note, edits body, presses Cmd+S
     const original = '---\ntitle: My Note\n---\n\n# My Note\n\nOriginal body'
     const edited = '---\ntitle: My Note\n---\n\n# My Note\n\nEdited body with changes'
 
@@ -343,38 +201,31 @@ describe('useEditorSave', () => {
     })
 
     await act(async () => {
-      await result.current.handleSave()
+      await result.current.savePendingForPath('/vault/note.md')
     })
 
-    // The save must persist the EDITED content, not the original
     expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
       path: '/vault/note.md',
       content: edited,
     })
 
-    // Tab content must be updated with the saved (edited) content
     expect(setTabs).toHaveBeenCalled()
     const tabUpdater = setTabs.mock.calls[0][0]
     const fakeTabs = [{ entry: { path: '/vault/note.md' }, content: original }]
     const updatedTabs = tabUpdater(fakeTabs)
     expect(updatedTabs[0].content).toBe(edited)
-
-    // Vault in-memory state must also reflect the edit
-    expect(updateVaultContent).toHaveBeenCalledWith('/vault/note.md', edited)
   })
 
-  it('calls onNotePersisted with path and content after saving pending content', async () => {
+  it('calls onNotePersisted with path and content after writing the buffer', async () => {
     const onNotePersisted = vi.fn()
-    const { result } = renderHook(() =>
-      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onNotePersisted })
-    )
+    const { result } = renderHook(() => useEditorSave({ setTabs, onNotePersisted }))
 
     act(() => {
       result.current.handleContentChange('/vault/theme/default.md', '---\nbackground: "#FFD700"\n---\n')
     })
 
     await act(async () => {
-      await result.current.handleSave()
+      await result.current.savePendingForPath('/vault/theme/default.md')
     })
 
     expect(onNotePersisted).toHaveBeenCalledWith(
@@ -383,233 +234,25 @@ describe('useEditorSave', () => {
     )
   })
 
-  it('calls onNotePersisted for unsaved fallback when no pending content', async () => {
-    const onNotePersisted = vi.fn()
-    const { result } = renderHook(() =>
-      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onNotePersisted })
-    )
-
-    // No handleContentChange — simulate Cmd+S on a newly created unsaved note
-    await act(async () => {
-      await result.current.handleSave({ path: '/vault/theme/default.md', content: '---\nbackground: "#FF0000"\n---\n' })
-    })
-
-    expect(onNotePersisted).toHaveBeenCalledWith(
-      '/vault/theme/default.md',
-      '---\nbackground: "#FF0000"\n---\n',
-    )
-  })
-
-  describe('auto-save debounce', () => {
-    beforeEach(() => { vi.useFakeTimers() })
-    afterEach(() => { vi.useRealTimers() })
-
-    it('waits for a longer idle window so slower typing does not save mid-keystream', async () => {
-      const lowEndTypingIntervalMs = 900
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'draft 1') })
-      await act(async () => { vi.advanceTimersByTime(lowEndTypingIntervalMs) })
-      expect(mockInvokeFn).not.toHaveBeenCalled()
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'draft 2') })
-      await act(async () => { vi.advanceTimersByTime(lowEndTypingIntervalMs) })
-      expect(mockInvokeFn).not.toHaveBeenCalled()
-
-      await act(async () => {
-        vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS - lowEndTypingIntervalMs)
-      })
-
-      expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
-        path: '/test/note.md',
-        content: 'draft 2',
-      })
-    })
-
-    it('keeps newer pending content when an earlier slow auto-save resolves during typing', async () => {
-      let resolveFirstSave!: () => void
-      const firstSave = new Promise<void>((resolve) => { resolveFirstSave = resolve })
-      mockInvokeFn
-        .mockImplementationOnce(() => firstSave)
-        .mockResolvedValue(undefined)
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'draft 1') })
-      await act(async () => {
-        vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS)
-        await Promise.resolve()
-      })
-      expect(mockInvokeFn).toHaveBeenCalledTimes(1)
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'draft 2') })
-      await act(async () => {
-        resolveFirstSave()
-        await firstSave
-        await Promise.resolve()
-      })
-
-      expect(updateVaultContent).not.toHaveBeenCalledWith('/test/note.md', 'draft 1')
-
-      await act(async () => { vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS) })
-
-      expect(mockInvokeFn).toHaveBeenCalledTimes(2)
-      expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
-        path: '/test/note.md',
-        content: 'draft 2',
-      })
-    })
-
-    it('auto-saves after the idle debounce following the last content change', async () => {
-      const onNotePersisted = vi.fn()
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage, onNotePersisted })
-      )
-
-      act(() => {
-        result.current.handleContentChange('/test/note.md', 'auto-saved content')
-      })
-
-      // Not saved yet
-      expect(mockInvokeFn).not.toHaveBeenCalled()
-
-      await act(async () => { vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS) })
-
-      expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
-        path: '/test/note.md',
-        content: 'auto-saved content',
-      })
-      expect(onNotePersisted).toHaveBeenCalledWith('/test/note.md', 'auto-saved content')
-    })
-
-    it('resets debounce timer on each content change', async () => {
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'v1') })
-
-      const almostIdleMs = AUTO_SAVE_DEBOUNCE_MS - 100
-      await act(async () => { vi.advanceTimersByTime(almostIdleMs) })
-      expect(mockInvokeFn).not.toHaveBeenCalled()
-
-      // New edit resets timer
-      act(() => { result.current.handleContentChange('/test/note.md', 'v2') })
-
-      await act(async () => { vi.advanceTimersByTime(almostIdleMs) })
-      expect(mockInvokeFn).not.toHaveBeenCalled()
-
-      await act(async () => { vi.advanceTimersByTime(100) })
-      expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
-        path: '/test/note.md',
-        content: 'v2',
-      })
-    })
-
-    it('auto-save does not show toast', async () => {
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'content') })
-      await act(async () => { vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS) })
-
-      expect(setToastMessage).not.toHaveBeenCalled()
-    })
-
-    it('auto-save reports invalid path failures and leaves content retryable', async () => {
-      const path = 'C:\\Users\\@raflymln\\notes\\untitled-note-1777236475.md'
-      mockInvokeFn.mockRejectedValueOnce(new Error('The filename, directory name, or volume label syntax is incorrect. (os error 123)'))
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange(path, 'draft from auto-save') })
-      await act(async () => { await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS) })
-
-      expect(setToastMessage).toHaveBeenCalledWith(
-        'Save failed: The note path is invalid on this platform. Rename the note or move it to a valid folder, then try again.',
-      )
-      expect(updateVaultContent).not.toHaveBeenCalled()
-
-      await act(async () => { await result.current.handleSave() })
-
-      expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
-        path,
-        content: 'draft from auto-save',
-      })
-      expect(updateVaultContent).toHaveBeenCalledWith(path, 'draft from auto-save')
-      consoleSpy.mockRestore()
-    })
-
-    it('Cmd+S cancels pending auto-save and saves immediately', async () => {
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'content') })
-
-      // Cmd+S before debounce fires
-      await act(async () => { await result.current.handleSave() })
-
-      expect(mockInvokeFn).toHaveBeenCalledTimes(1)
-      expect(setToastMessage).toHaveBeenCalledWith('Saved')
-
-      await act(async () => { vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS) })
-      expect(mockInvokeFn).toHaveBeenCalledTimes(1)
-    })
-
-    it('auto-save calls onAfterSave', async () => {
-      const onAfterSave = vi.fn()
-      const { result } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage, onAfterSave })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'content') })
-      await act(async () => { vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS) })
-
-      expect(onAfterSave).toHaveBeenCalled()
-    })
-
-    it('clears auto-save timer on unmount', async () => {
-      const { result, unmount } = renderHook(() =>
-        useEditorSave({ updateVaultContent, setTabs, setToastMessage })
-      )
-
-      act(() => { result.current.handleContentChange('/test/note.md', 'content') })
-      unmount()
-
-      await act(async () => { vi.advanceTimersByTime(AUTO_SAVE_DEBOUNCE_MS) })
-      // Should not save after unmount
-      expect(mockInvokeFn).not.toHaveBeenCalled()
-    })
-  })
-
-  it('successive edits and saves persist each version correctly', async () => {
+  it('successive edits and writes persist each version correctly', async () => {
     const { result } = renderSaveHook()
 
-    // First edit + save
     act(() => {
       result.current.handleContentChange('/vault/note.md', 'version 1')
     })
     await act(async () => {
-      await result.current.handleSave()
+      await result.current.savePendingForPath('/vault/note.md')
     })
     expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
       path: '/vault/note.md',
       content: 'version 1',
     })
 
-    // Second edit + save — must NOT revert to version 1
     act(() => {
       result.current.handleContentChange('/vault/note.md', 'version 2')
     })
     await act(async () => {
-      await result.current.handleSave()
+      await result.current.savePendingForPath('/vault/note.md')
     })
     expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', {
       path: '/vault/note.md',
@@ -620,19 +263,14 @@ describe('useEditorSave', () => {
   describe('the boundary root (Fuwa: every write names its root)', () => {
     it('sends the persistence scope that contains the path as vaultPath', async () => {
       const { result } = renderHook(() =>
-        useEditorSave({
-          updateVaultContent,
-          setTabs,
-          setToastMessage,
-          persistenceScope: ['/vault-a', '/vault-b'],
-        })
+        useEditorSave({ setTabs, persistenceScope: ['/vault-a', '/vault-b'] })
       )
 
       act(() => {
         result.current.handleContentChange('/vault-b/note.md', '# B')
       })
       await act(async () => {
-        await result.current.handleSave()
+        await result.current.savePendingForPath('/vault-b/note.md')
       })
 
       expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
@@ -649,7 +287,7 @@ describe('useEditorSave', () => {
         result.current.handleContentChange('/anywhere/note.md', '# Anywhere')
       })
       await act(async () => {
-        await result.current.handleSave()
+        await result.current.savePendingForPath('/anywhere/note.md')
       })
 
       expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', {
@@ -658,19 +296,50 @@ describe('useEditorSave', () => {
       })
       expect(mockInvokeFn.mock.calls[0][1]).not.toHaveProperty('vaultPath')
     })
+
+    it('drops a report for a path outside the scope', async () => {
+      const { result } = renderHook(() => useEditorSave({ setTabs, persistenceScope: '/vault-a' }))
+
+      act(() => {
+        result.current.handleContentChange('/elsewhere/note.md', '# Elsewhere')
+      })
+
+      expect(setTabs).not.toHaveBeenCalled()
+      expect(result.current.hasPendingSave('/elsewhere/note.md')).toBe(false)
+      await act(async () => {
+        await result.current.savePendingForPath('/elsewhere/note.md')
+      })
+      expect(mockInvokeFn).not.toHaveBeenCalled()
+    })
+
+    it('clears the buffer when the scope changes', async () => {
+      const { result, rerender } = renderHook(
+        ({ persistenceScope }: { persistenceScope: string }) => useEditorSave({ setTabs, persistenceScope }),
+        { initialProps: { persistenceScope: '/vault-a' } },
+      )
+
+      act(() => {
+        result.current.handleContentChange('/vault-a/note.md', '# A')
+      })
+      expect(result.current.hasPendingSave('/vault-a/note.md')).toBe(true)
+
+      rerender({ persistenceScope: '/vault-b' })
+
+      expect(result.current.hasPendingSave('/vault-a/note.md')).toBe(false)
+      await act(async () => {
+        await result.current.savePendingForPath('/vault-a/note.md')
+      })
+      expect(mockInvokeFn).not.toHaveBeenCalled()
+    })
   })
 })
 
-describe('the Write failure paths (Fuwa: the error bar, AIM-385)', () => {
-  let updateVaultContent: Mock
+describe('the Write failure paths (Fuwa: the error bar)', () => {
   let setTabs: Mock
-  let setToastMessage: Mock
   let consoleSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    updateVaultContent = vi.fn()
     setTabs = vi.fn()
-    setToastMessage = vi.fn()
     mockInvokeFn.mockReset()
     mockInvokeFn.mockResolvedValue(null)
     consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -681,20 +350,22 @@ describe('the Write failure paths (Fuwa: the error bar, AIM-385)', () => {
   })
 
   function renderSaveHook() {
-    return renderHook(() => useEditorSave({ updateVaultContent, setTabs, setToastMessage }))
+    return renderHook(() => useEditorSave({ setTabs }))
   }
 
-  it('a refused write rejects savePending, keeps the buffer, and savePendingForPath retries it', async () => {
+  it('a refused write rejects savePendingForPath, keeps the buffer, and the next call retries it', async () => {
     mockInvokeFn.mockRejectedValueOnce(new Error('Failed to write file: Permission denied (os error 13)'))
-    const { result } = renderSaveHook()
+    const onNotePersisted = vi.fn()
+    const { result } = renderHook(() => useEditorSave({ setTabs, onNotePersisted }))
 
     act(() => {
       result.current.handleContentChange('/n/a.md', '# A\n\nKept.')
     })
     await act(async () => {
-      await expect(result.current.savePending()).rejects.toThrow('Permission denied')
+      await expect(result.current.savePendingForPath('/n/a.md')).rejects.toThrow('Permission denied')
     })
-    expect(updateVaultContent).not.toHaveBeenCalled()
+    expect(onNotePersisted).not.toHaveBeenCalled()
+    expect(result.current.hasPendingSave('/n/a.md')).toBe(true)
 
     let saved = false
     await act(async () => {
@@ -703,7 +374,7 @@ describe('the Write failure paths (Fuwa: the error bar, AIM-385)', () => {
 
     expect(saved).toBe(true)
     expect(mockInvokeFn).toHaveBeenLastCalledWith('save_note_content', { path: '/n/a.md', content: '# A\n\nKept.' })
-    expect(updateVaultContent).toHaveBeenCalledWith('/n/a.md', '# A\n\nKept.')
+    expect(onNotePersisted).toHaveBeenCalledWith('/n/a.md', '# A\n\nKept.')
   })
 
   it('discardPending drops the buffered edits of that Document so nothing is written for it', async () => {
@@ -714,15 +385,16 @@ describe('the Write failure paths (Fuwa: the error bar, AIM-385)', () => {
       result.current.handleContentChange('/n/a.md', '# A\n\nDiscarded.')
     })
     await act(async () => {
-      await result.current.savePending().catch(() => {})
+      await result.current.savePendingForPath('/n/a.md').catch(() => {})
     })
 
     act(() => {
       result.current.discardPending('/n/a.md')
     })
+    expect(result.current.hasPendingSave('/n/a.md')).toBe(false)
     let saved = true
     await act(async () => {
-      saved = await result.current.savePending()
+      saved = await result.current.savePendingForPath('/n/a.md')
     })
 
     expect(saved).toBe(false)
@@ -737,7 +409,7 @@ describe('the Write failure paths (Fuwa: the error bar, AIM-385)', () => {
       result.current.discardPending('/n/a.md')
     })
     await act(async () => {
-      await result.current.savePending()
+      await result.current.savePendingForPath('/n/b.md')
     })
 
     expect(mockInvokeFn).toHaveBeenCalledWith('save_note_content', { path: '/n/b.md', content: '# B' })
