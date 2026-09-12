@@ -138,7 +138,7 @@ describe('retargetTabs', () => {
   })
 })
 
-describe('the mode of a Tab (AIM-381)', () => {
+describe('the mode of a Tab', () => {
   it('opens a fresh Document in Rich mode and an Image file with no mode', () => {
     const state = openTab(openTab(EMPTY_NOTE_TABS, tab('/n/a.md')), { entry: imageEntryForPath('/n/cover.png'), content: '' })
 

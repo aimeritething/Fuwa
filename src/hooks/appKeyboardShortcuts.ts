@@ -106,9 +106,9 @@ function activateRichEditorCreateLink(): boolean {
 }
 
 /**
- * ⌘K over a non-empty Rich selection is the editor's link command (spec
- * section 7). With no link button mounted to press, the chord falls through
- * to the Command Menu rather than doing nothing.
+ * ⌘K over a non-empty Rich selection is the editor's link command. With no
+ * link button mounted to press, the chord falls through to the Command Menu
+ * rather than doing nothing.
  */
 function handleRichEditorCreateLinkShortcut(event: KeyboardEvent): boolean {
   if (!hasActiveRichEditorTextSelection()) return false
@@ -140,7 +140,7 @@ function handleCommandMenuModalCommand(event: KeyboardEvent, commandId: AppComma
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
   const commandId = findShortcutCommandIdForEvent(event)
   if (commandId === null) return
-  // ⌘F is the Document's find (both modes, spec section 7) unless the caret is
+  // ⌘F is the Document's find (both modes) unless the caret is
   // in some other text field, the Command Menu's input or an Explorer rename,
   // which keeps the chord.
   if (commandId === APP_COMMAND_IDS.editFindInNote && isTextInputFocused() && !isEditorFindScopeFocused()) return

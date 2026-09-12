@@ -1,9 +1,8 @@
-# Linear app tokens (the real ones), read from linear.app's client bundle
+# Linear app tokens (the real ones), read from the Linear app's client bundle
 
 Companion to `Linear_DESIGN.md`, which describes the **marketing site**. This file records what the
 **Linear app itself** uses, because the editor style catalog
-(https://linear.app/aimerite/document/linear-editor-style-catalog-3018bf075a63) is rendered with these
-values, not the marketing ones. Extracted 2026-09-10 from `static.linear.app/client/assets/`
+is rendered with these values, not the marketing ones. Extracted 2026-09-10 from `static.linear.app/client/assets/`
 (`style-H1ZQGW6c.css`, `darkThemeRefresh`, `lightThemeRefresh`, `ThemeProvider`) by running Linear's own
 `generateTheme` in Node. Method: the app generates every colour at runtime from an LCH base colour, an LCH
 accent, and a contrast number; the numbers below are the RGB output of that generator for the two default

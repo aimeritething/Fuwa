@@ -2,7 +2,7 @@ import { splitFrontmatter } from './wikilinks'
 
 /**
  * What the path row and the Tab rules need to know about a Document's
- * Frontmatter (spec section 3, AIM-381): whether there is a block, how many
+ * Frontmatter: whether there is a block, how many
  * top-level keys it holds, or why it cannot be trusted. The bytes themselves
  * are never touched here; `splitFrontmatter` is the same cut the serializer
  * uses to carry them through a Rich-mode save unchanged.

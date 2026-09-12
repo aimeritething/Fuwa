@@ -10,7 +10,7 @@ const NO_FOLDER_HINTS = [['⌘O', 'open folder']] as const
 const FOLDER_HINTS = [['⌘N', 'new document'], ['⌘P', 'quick open']] as const
 
 /**
- * The card with no Tab open (spec section 2): the dim wordmark and the mono
+ * The card with no Tab open: the dim wordmark and the mono
  * hint for what to do next. With no Folder that is opening one; with a
  * Folder it is a new Document or Quick Open. The tab bar and the path row
  * are not rendered at all, so the top strip keeps the window draggable and,

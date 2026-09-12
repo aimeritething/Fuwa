@@ -2,7 +2,7 @@ use crate::menu;
 use serde::Deserialize;
 
 /// What the renderer knows about the enable state of the manifest's menu
-/// groups (spec section 7): `noteDependent` follows the active Document,
+/// groups: `noteDependent` follows the active Document,
 /// `tabDependent` any open Tab (an Image Tab included) and `vaultDependent`
 /// the open Folder. A missing `hasVault` or `hasTab` leaves that group as it
 /// is, so a shell that has no Folder concept yet only drives the first.

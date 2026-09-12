@@ -1,5 +1,5 @@
 /**
- * What the Explorer's context menu holds, per row kind (spec section 4). The
+ * What the Explorer's context menu holds, per row kind. The
  * table is data so the menu component stays a renderer and the order is
  * checked by a test rather than by eye.
  *

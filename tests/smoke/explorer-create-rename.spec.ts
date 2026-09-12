@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MOCK_FOLDER, watchForErrors } from './harness'
 
-// AIM-387: ⌘N writes a Document before it is named, the new row enters inline
+// ⌘N writes a Document before it is named, the new row enters inline
 // rename, and the Linear-styled context menu carries Rename…, Reveal in Finder
 // and Copy Path.
 

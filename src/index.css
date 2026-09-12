@@ -5,8 +5,8 @@
 
 /* ============================================================
    Theme Variables — app-owned light/dark contract
-   Re-valued to the Linear app's default theme-generator output (AIM-382,
-   spec section 6). Reference: docs/research/linear-app-tokens.md. Every
+   Re-valued to the Linear app's default theme-generator output.
+   Reference: docs/research/linear-app-tokens.md. Every
    variable Tolaria's stylesheet declared keeps its name; the Fuwa chrome
    and content-chroma variables are additions.
    ============================================================ */
@@ -14,7 +14,7 @@
 :root {
   /* --- Font defaults --- */
   /* Inter Variable (weight 450 needs the variable font) and JetBrains Mono
-     are the only faces loaded (spec section 6 item 5). Root size stays 14px
+     are the only faces loaded. Root size stays 14px
      for the kernel's rem calibration; Linear's sizes are written in px. */
   font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -164,7 +164,7 @@
 
   /* --- Syntax and diff roles (light mode) ---
      Raw-mode syntax, diff and the light code-highlighting set keep
-     Tolaria's values (spec section 6 item 9). --- */
+     Tolaria's values. --- */
   --syntax-heading: #0969DA;
   --syntax-link: #0969DA;
   --syntax-monospace: #C9383E;
@@ -362,7 +362,7 @@
 
   /* --- Syntax and diff roles (dark mode) ---
      Raw-mode syntax and diff keep Tolaria's values; the code-highlighting
-     set is Linear's (spec section 6 item 9). --- */
+     set is Linear's. --- */
   --syntax-heading: #83B2FF;
   --syntax-link: #83B2FF;
   --syntax-monospace: #FFA6A3;

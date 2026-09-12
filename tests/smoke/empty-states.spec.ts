@@ -5,8 +5,8 @@ import {
   MOCK_FOLDER, openDocumentThroughDialog, openFolderThroughDialog, queueFolderSelection, storedSession, watchForErrors, WELCOME_PATH,
 } from './harness'
 
-// AIM-386: an empty window always says what to do next. The four empty
-// states of spec section 2, and the restore that lost its Folder (section 5).
+// An empty window always says what to do next: the four empty states, and
+// the restore that lost its Folder.
 
 const GONE_FOLDER = '/Users/fuwa/Documents/Gone'
 

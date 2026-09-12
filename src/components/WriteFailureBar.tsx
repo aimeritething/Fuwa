@@ -9,7 +9,7 @@ export interface WriteFailureBarProps {
 }
 
 /**
- * The error bar (spec section 5): shown on a Tab whose last write was
+ * The error bar: shown on a Tab whose last write was
  * refused, between the path row and the content. The buffer keeps the edit;
  * Retry writes it again and Discard changes puts the disk bytes back. Drawn as
  * a Linear callout in the red chromatic role, with Retry as the primary

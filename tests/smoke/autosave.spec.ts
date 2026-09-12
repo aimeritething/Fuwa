@@ -10,8 +10,8 @@ import {
   WELCOME_PATH,
 } from './harness'
 
-// Spec 4 of the smoke plan: typing in Rich mode reaches the command boundary
-// as a save_note_content invoke after the idle wait, and ⌘S flushes at once.
+// Typing in Rich mode reaches the command boundary as a save_note_content
+// invoke after the idle wait, and ⌘S flushes at once.
 
 const AUTOSAVE_IDLE_MS = 1_500
 

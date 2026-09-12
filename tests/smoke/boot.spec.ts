@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
 import { watchForErrors } from './harness'
 
-// Spec 1 of the smoke plan: the app boots to the empty window in a plain
+// The app boots to the empty window in a plain
 // browser, with the Folder fixture answering the command boundary. Later specs
 // seed the fixture through `window.__fuwaMockVault` before navigating.
 

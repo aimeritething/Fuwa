@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import type { MockVault } from '../../src/mock-tauri/vaultFixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
-// AIM-391: Finder double-click, Open With and the Dock icon. The Rust side
+// Finder double-click, Open With and the Dock icon. The Rust side
 // buffers the paths and pokes; the renderer drains `take_pending_open`. In the
 // browser the Folder fixture holds that buffer: `seedPendingOpen` plants what a
 // launch by document finds there (the next page load, like a relaunch, drains

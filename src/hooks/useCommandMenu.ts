@@ -22,10 +22,10 @@ function toggled(state: CommandMenuOpenState, mode: CommandMenuMode): CommandMen
 }
 
 /**
- * Whether the palette is showing and in which of its two modes (spec section
- * 7). The same chord pressed again closes it; the other chord switches the
- * mode in place, so ⌘K over Quick Open widens the list to commands and ⌘P
- * over the Command Menu narrows it to files.
+ * Whether the palette is showing and in which of its two modes. The same
+ * chord pressed again closes it; the other chord switches the mode in place,
+ * so ⌘K over Quick Open widens the list to commands and ⌘P over the Command
+ * Menu narrows it to files.
  */
 export function useCommandMenu(): CommandMenuController {
   const [state, setState] = useState<CommandMenuOpenState>(CLOSED)

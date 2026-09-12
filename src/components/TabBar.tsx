@@ -10,13 +10,13 @@ export interface TabBarProps {
   activeTabPath: string | null
   onActivate: (path: string) => void
   onClose: (path: string) => void
-  /** Collapsed, the row seats the traffic lights and the sidebar icon before the first tab (spec section 2). */
+  /** Collapsed, the row seats the traffic lights and the sidebar icon before the first tab. */
   sidebarCollapsed?: boolean
   onShowSidebar?: () => void
 }
 
 /**
- * The tab bar (spec section 2): the card's 44px top row, tabs only, one per
+ * The tab bar: the card's 44px top row, tabs only, one per
  * open Document or Image file, the selected one raised, a close affordance on
  * hover. Hidden with no Tab open. The row itself is the window drag region;
  * the tabs are not, so a click on one lands on the Tab. An Image file's Tab

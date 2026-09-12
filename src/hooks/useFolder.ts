@@ -29,7 +29,7 @@ export function useFolder() {
   const applyFolderChange = useCallback(async (path: string | null, beforeChange: () => Promise<void>) => {
     const next = path?.replace(/\/+$/u, '') || (path === '/' ? '/' : null)
     // A Folder that will not list is the reader's problem, so the Explorer
-    // says so (spec section 2); a Write failure in `beforeChange` is not,
+    // says so; a Write failure in `beforeChange` is not,
     // and keeps the Folder it already has without a message.
     let listed: ListedFile[] = []
     if (next) {
@@ -95,7 +95,7 @@ export function useFolder() {
   /**
    * Every path the Folder holds, as of now. The watcher reads it straight
    * after its refresh, before the listing has reached React's state, to decide
-   * whether an open Tab's file is still there (spec section 5).
+   * whether an open Tab's file is still there.
    */
   const listedPaths = useCallback(() => filesRef.current.map((file) => file.path), [])
 

@@ -52,7 +52,7 @@ function useDocumentVersion(editor: RichFindEditor): number {
 }
 
 /**
- * Find in Rich mode (spec section 7, AIM-389): the same bar Raw mode carries
+ * Find in Rich mode: the same bar Raw mode carries
  * from Tolaria, minus replace, over the ProseMirror document. A request for
  * this Document opens it; esc closes it and hands focus back to the editor.
  * Every match is highlighted by the find plugin, the current one distinctly,

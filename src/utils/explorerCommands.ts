@@ -5,7 +5,7 @@ import { noteRootForPath } from './noteEntry'
 /**
  * The Tauri commands behind the Explorer's write operations. Everything the
  * Explorer does to disk goes through here, which is the one seam the mock
- * Folder fixture stands in for (spec, Testing Decisions).
+ * Folder fixture stands in for.
  */
 
 function command<T>(name: string, args: Record<string, unknown>): Promise<T> {

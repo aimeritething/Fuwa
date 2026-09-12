@@ -83,7 +83,7 @@ export interface Tab {
   content: string
   /**
    * Document Tabs only: the mode this Tab is in, remembered per Tab and
-   * written to the Session (AIM-381). Absent on an Image Tab, which has no
+   * written to the Session. Absent on an Image Tab, which has no
    * mode. A Document whose Frontmatter is invalid is always `raw`.
    */
   mode?: EditorMode

@@ -26,9 +26,9 @@ fn setup_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
 }
 
 /// Browser-reserved chords that WKWebView would swallow before the renderer's
-/// shortcut handler sees them: ⌘O (Open Folder…) and ⌘F (Find). Spec §7
-/// reserves exactly these two and no command-shift chord. Keep these lists
-/// narrow and verify every addition with native QA.
+/// shortcut handler sees them: ⌘O (Open Folder…) and ⌘F (Find). Exactly
+/// these two are reserved, and no command-shift chord. Keep these lists narrow
+/// and verify every addition with native QA.
 const MACOS_WEBVIEW_RESERVED_COMMAND_KEYS: &[&str] = &["O", "F"];
 const MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS: &[&str] = &[];
 
@@ -123,7 +123,7 @@ fn reopen_main_window(app: &AppHandle) {
 fn handle_run_event(app: &AppHandle, event: RunEvent) {
     match event {
         // `setup` has run and the logger exists: write out the order in which
-        // `Opened` and `Ready` fired on this launch (AIM-391).
+        // `Opened` and `Ready` fired on this launch.
         RunEvent::Ready => open_files::mark_ready(app),
         // Finder double-click, Open With and a drop on the Dock icon. Before
         // `Ready` (a launch by document) the paths wait in the buffer for the
@@ -162,7 +162,7 @@ pub fn run() {
         )))
         .manage(vault_watcher::VaultWatcherState::new())
         // Before `run()`, so the buffer exists when a launch by document
-        // delivers `Opened` ahead of `Ready` (AIM-391).
+        // delivers `Opened` ahead of `Ready`.
         .manage(open_files::PendingOpen::default())
         .invoke_handler(tauri::generate_handler![
             commands::list_files,

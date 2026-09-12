@@ -5,7 +5,7 @@ import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
-// The same Linear surface the dropdown menu uses (spec section 6 item 7):
+// The same Linear surface the dropdown menu uses:
 // popover ground, hairline border, 8px radius; items 32px with an 8px hover
 // pill. Right-click menus are drawn here, never by macOS.
 const contextMenuContentMotionClass =

@@ -11,7 +11,7 @@ import {
   WELCOME_PATH,
 } from './harness'
 
-// Spec 8 of the smoke plan (AIM-385): the only prompt in the app. A refused
+// The only prompt in the app. A refused
 // write keeps the Tab open with the error bar (Retry / Discard changes),
 // closing that Tab asks the same, and ⌘Q writes every pending edit first and
 // asks, with Discard and quit, when one is refused. The fixture's

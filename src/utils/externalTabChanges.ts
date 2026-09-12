@@ -3,9 +3,9 @@ import { notePathFilename } from './notePathIdentity'
 import { isPathInsideVaultRoot } from './vaultPathContainment'
 
 /**
- * What an external change does to the open Tabs (spec section 5, rules 3 to
- * 5). The watcher reports changed paths and nothing else — no "renamed from",
- * no "deleted" — so a Tab whose file has gone is resolved in two steps:
+ * What an external change does to the open Tabs. The watcher reports changed
+ * paths and nothing else — no "renamed from", no "deleted" — so a Tab whose
+ * file has gone is resolved in two steps:
  *
  * 1. The path-prefix match of rule 5. A renamed folder reaches the watcher as
  *    the folder's own two paths, so a Tab under the old one is looked for at

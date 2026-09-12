@@ -53,7 +53,7 @@ function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn()) {
   return { onOpenFile }
 }
 
-describe('the empty states (spec section 2)', () => {
+describe('the empty states', () => {
   function renderWithoutFolder(error: string | null = null) {
     const onOpenFolder = vi.fn()
     render(

@@ -3,13 +3,13 @@ import type { EditorMode } from '../types'
 import { isImageFilePath } from './imageFile'
 
 /**
- * The Session file (spec section 5): one `session.json` in the app's config
+ * The Session file: one `session.json` in the app's config
  * directory, restored on launch. This module is the schema. The Rust side
  * owns the file itself and the `window` frame, which it merges in when it
  * writes; the renderer sends everything else and never reads `window` back.
  *
  * `folder` roots the Explorer; `sidebar` is whether it is collapsed and how
- * wide it is when shown (AIM-386); `theme` is the View → Appearance choice.
+ * wide it is when shown; `theme` is the View → Appearance choice.
  */
 
 export const SESSION_VERSION = 1
@@ -112,7 +112,7 @@ function nearestSurvivor(paths: string[], index: number, survives: ReadonlySet<s
 }
 
 /**
- * Restore rule (spec section 5): a Tab whose file no longer exists is dropped
+ * Restore rule: a Tab whose file no longer exists is dropped
  * silently; if it was the active one, the next surviving Tab in order becomes
  * active.
  */
@@ -137,8 +137,8 @@ export interface OpenEditorInput {
 }
 
 /**
- * The Session for the open Tabs, each Document with its Rich or Raw mode
- * (AIM-381), the chosen appearance and the sidebar state. An Image file entry
+ * The Session for the open Tabs, each Document with its Rich or Raw mode,
+ * the chosen appearance and the sidebar state. An Image file entry
  * carries no `mode`: its kind comes from the extension. A Document with no
  * mode named is written as Rich, the default for a freshly opened one.
  */

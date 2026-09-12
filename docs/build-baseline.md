@@ -1,11 +1,10 @@
 # Build baseline
 
-Measured on 2026-09-10 at commit `2547fe36` plus the AIM-378 working tree (the
-commit that adds this file), on macOS (Darwin 25.4.0, Apple Silicon), node
+Measured on 2026-09-10 at commit `2547fe36` plus the working tree of the
+commit that adds this file, on macOS (Darwin 25.4.0, Apple Silicon), node
 22.22.1, pnpm 10.33.2, rustc 1.94.0, Vite 7.3.5, Tauri CLI 2.11.x. Sizes are
 Vite's own figures (kB = 1000 bytes); the binary and `.app` are from `ls -l`
-and `du -sk`. No threshold is attached to any number (spec section 8, item 11;
-[AIM-378](https://linear.app/aimerite/issue/AIM-378)).
+and `du -sk`. No threshold is attached to any number.
 
 ## Shipped build
 
@@ -28,11 +27,11 @@ the production graph reaches only `main.tsx`, the theme helpers, the fonts,
 `index.css` and the mock-Tauri module. None of the editor kernel (BlockNote,
 CodeMirror, KaTeX, Mermaid, shiki, tldraw) is imported from the entry yet.
 The 303 kB is the shell, not the kernel. The next `tauri build` after the
-editor shell lands (AIM-379) is the first number that reflects the app.
+editor shell lands is the first number that reflects the app.
 
-## Shipped build after the editor shell (AIM-379)
+## Shipped build after the editor shell
 
-`pnpm build` on 2026-09-10 with the AIM-379 working tree, same machine and
+`pnpm build` on 2026-09-10 with the editor shell's working tree, same machine and
 toolchain (Vite 7.3.6). The first number that reflects the app: `App.tsx` now
 mounts the editor shell, so the production graph reaches the whole kernel.
 
@@ -44,12 +43,12 @@ mounts the editor shell, so the production graph reaches the whole kernel.
 | CSS | `index-*.css` 161.21 kB / 34.33 kB gzip |
 
 tldraw and Mermaid are lazy chunks as ADR-0001 requires; KaTeX is inside
-`index-*.js` (static import, by the spec's rule). The binary and `.app` were not
+`index-*.js` (a static import, also by ADR-0001). The binary and `.app` were not
 rebuilt for this entry.
 
-## Shipped build with the file association (AIM-391)
+## Shipped build with the file association
 
-`pnpm tauri build` on 2026-09-11 with the AIM-391 working tree, same machine,
+`pnpm tauri build` on 2026-09-11 with the file association's working tree, same machine,
 node 22.22.1, rustc 1.94.0, Vite 7.3.6. The first `.app` since the editor
 shell landed, so the first `.app` number that reflects the app; the earlier
 9.8 MB was the shell alone. Also the first bundle to carry

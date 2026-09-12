@@ -23,7 +23,7 @@ import { applyModeRule, EMPTY_NOTE_TABS, type NoteTabsState } from './noteTabsSt
  * through the Folder listing. Nothing here reads one, reloads one or writes
  * one — an Image Tab is a name and a path.
  *
- * A Document Tab carries its Rich or Raw mode (AIM-381). It is the Tab rule
+ * A Document Tab carries its Rich or Raw mode. It is the Tab rule
  * in `noteTabsState` that decides it: whatever a Tab is given, invalid
  * Frontmatter makes it Raw, so every path that changes a Tab's content (a
  * save, a reload from disk, a restore) passes through that rule.
@@ -78,7 +78,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
 
   /**
    * Open a Document or an Image file as a Tab, or activate its Tab. A `mode`
-   * puts a Document straight into Raw (⌘↵ in Quick Open, AIM-389) so Rich
+   * puts a Document straight into Raw (⌘↵ in Quick Open) so Rich
    * never mounts for it, or switches an open one; the Tab rules still decide
    * whether it takes, and an Image Tab has no mode to set.
    */
@@ -99,7 +99,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
   }, [folder])
 
   /**
-   * Restore rule (spec section 5): missing files are dropped, the active Tab
+   * Restore rule: missing files are dropped, the active Tab
    * falls to its successor. A Document survives by reading; an Image file by
    * still being listed in the Folder, there being nothing to read. An entry's
    * kind is its extension, so a hand-edited `mode` on an Image file entry
@@ -122,7 +122,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
 
   /**
    * Put the bytes on disk back into an open Document's Tab (the error bar's
-   * Discard changes, AIM-385). The Tab keeps its place and the active Tab
+   * Discard changes). The Tab keeps its place and the active Tab
    * does not move; a Document that is not open is left alone.
    *
    * An Image Tab has no bytes to read back, so it counts the reload instead
@@ -156,7 +156,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
   }, [])
 
   /**
-   * An Explorer rename moved a file, or a folder above one (AIM-387). The Tab
+   * An Explorer rename moved a file, or a folder above one. The Tab
    * follows the new path without re-reading: its bytes did not change.
    */
   const retargetTabs = useCallback((oldPath: string, newPath: string) => {

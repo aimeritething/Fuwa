@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 
 import type { Tab } from '../types'
 
 /**
- * Write failure (spec section 5): the only prompt in the app. A refused write
+ * Write failure: the only prompt in the app. A refused write
  * keeps the Tab open with an error bar offering Retry and Discard changes;
  * closing that Tab offers the same two instead of closing silently; ⌘Q writes
  * every pending edit first and, when one is refused, stays open with the same
@@ -151,8 +151,8 @@ export function useWriteFailures(deps: WriteFailureDeps): WriteFailures {
 
   /**
    * Put the disk bytes back. A file that cannot be read any more has no bytes
-   * to go back to: the Document is gone, so its Tab closes (spec section 5's
-   * rule for a Document deleted from outside).
+   * to go back to: the Document is gone, so its Tab closes (the rule for a
+   * Document deleted from outside).
    */
   const discard = useCallback(
     async (path: string): Promise<boolean> => {

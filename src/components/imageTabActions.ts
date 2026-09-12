@@ -1,7 +1,7 @@
 import { copyLocalPath, openLocalFile } from '../utils/url'
 
 /**
- * The Image Tab's two hand-offs (spec section 4). Fuwa shows a picture and
+ * The Image Tab's two hand-offs. Fuwa shows a picture and
  * never edits it, so the path row's job is to get the file to an app that
  * can: Open ↗ through the carried open-externally command, which the Rust
  * boundary confines to the given root, and Copy path, which puts the absolute

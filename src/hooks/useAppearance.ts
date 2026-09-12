@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { DEFAULT_THEME_MODE, type ThemeMode } from '../lib/themeMode'
 
 /**
- * The View → Appearance choice (spec section 6): dark on first launch, light
+ * The View → Appearance choice: dark on first launch, light
  * and system selectable, the choice living in the Session's `theme`. The
  * shell paints it with `useThemeMode` once the Session has been restored, so
  * a launch never flashes the default over a saved light theme; before that
