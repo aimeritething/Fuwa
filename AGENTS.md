@@ -5,13 +5,29 @@ Guidance for AI coding agents working in this repository.
 ## Repo overview
 
 Fuwa is a small macOS desktop app for reading and editing Markdown Documents in a Folder
-on disk. 
+on disk. Directory names follow the glossary in `CONTEXT.md`.
 
-- `src/` — the React app.
+- `src/` — the React app, cut by feature. Inside each directory files sit flat; cross-directory
+  imports use `@/<dir>/…`, imports within a directory are relative.
+  - `kernel/` — the Kernel: only knows ProseMirror, BlockNote, CodeMirror and the Markdown
+    round-trip; never Document, Tab, Folder or Session. It may import `lib/`, `ui/` and
+    `platform/`, never a feature directory. `blocknote/` (schema, blocks, extensions, menus,
+    copy/paste, find, the BlockNote regression tests), `markdown/` (the round-trip: frontmatter,
+    fences, wikilinks, per-block serializers), `resolve/` (the open-time pipeline: cache, preload,
+    worker, swap), `raw/` (CodeMirror).
+  - `editor/` — Fuwa's editing surface: `Editor.tsx`, Rich / Raw views, Autosave, Write failure,
+    Toast, an Image file's Tab.
+  - `explorer/`, `folder/` (disk: `useFolder`, the watcher, asset scope, the Rust command
+    wrappers; `explorer/` imports `folder/`, never the reverse), `tabs/`, `session/`,
+    `command-menu/`, `shell/` (sidebar, theme, shortcuts, menu events, `appCommandManifest.json`,
+    which `src-tauri/src/menu.rs` also reads via `include_str!`).
+  - `ui/` — shadcn primitives and `cn`. `platform/` — `tauri.ts` (`isTauri` / mock dispatch),
+    `mock/` (the in-memory Folder fixture that stands in for Rust outside Tauri), window, URL,
+    clipboard, storage keys. `lib/` — leaf helpers (i18n, telemetry stubs, path identity).
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
-- `src/mock-tauri/` — the in-memory Folder fixture that stands in for Rust outside Tauri.
 - `tests/smoke/` — Playwright specs; its `README.md` describes the Folder fixture they drive.
-  Unit tests sit beside the code as `*.test.ts(x)`.
+  Unit tests sit beside the code as `*.test.ts(x)`; a test with no source file of its own lives
+  in the directory it guards; test helpers are `*.testUtils.ts(x)`.
 - `docs/adr/` — decisions; read the ones touching the area you change.
   `docs/agents/` — domain-doc conventions.
 - `patches/` — six pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in

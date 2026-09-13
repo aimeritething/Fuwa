@@ -13,7 +13,7 @@ use tauri::{
     App, AppHandle, Emitter,
 };
 
-const APP_COMMAND_MANIFEST_JSON: &str = include_str!("../../src/shared/appCommandManifest.json");
+const APP_COMMAND_MANIFEST_JSON: &str = include_str!("../../src/shell/appCommandManifest.json");
 const APP_NAME: &str = "Fuwa";
 const NOTE_DEPENDENT_GROUP: &str = "noteDependent";
 const TAB_DEPENDENT_GROUP: &str = "tabDependent";
