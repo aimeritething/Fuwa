@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
-import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+import type { MockVault } from '../../src/platform/mock/vaultFixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
 // Finder double-click, Open With and the Dock icon. The Rust side

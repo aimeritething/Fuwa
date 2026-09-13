@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
-import type { MockVault } from '../../src/mock-tauri/vaultFixture'
+import type { MockVault } from '../../src/platform/mock/vaultFixture'
 import { watchForErrors } from './harness'
 
 // The app boots to the empty window in a plain

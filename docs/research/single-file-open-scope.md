@@ -12,7 +12,7 @@ When a Document is opened with no Folder, or from outside the open Folder (File 
 Finder, a drop), ADR-0002 makes the Document's **parent directory** the root. As of this commit that
 one directory is used for four things:
 
-1. **Boundary root.** `noteRootForPath` (`src/utils/noteEntry.ts`) strips the last path segment and
+1. **Boundary root.** `noteRootForPath` (`src/folder/noteEntry.ts`) strips the last path segment and
    the renderer passes the result as `vaultPath` to every Rust file command;
    `src-tauri/src/commands/vault/boundary.rs` canonicalizes it and refuses any path outside it.
 2. **Watch root.** `useVaultWatcher` starts `start_vault_watcher` on that directory, and
@@ -20,8 +20,8 @@ one directory is used for four things:
 3. **Asset-protocol scope.** `sync_vault_asset_scope` (`src-tauri/src/asset_scope.rs`) calls Tauri's
    `scope.allow_directory(root, true)` (recursive) for that directory and never revokes it.
 4. **Attachment location.** A pasted or dropped image lands in `attachments/` beside the Document
-   and the Markdown gets a path relative to the Document (`src/components/Editor.tsx`,
-   `src/utils/vaultAttachments.ts`).
+   and the Markdown gets a path relative to the Document (`src/editor/Editor.tsx`,
+   `src/kernel/markdown/vaultAttachments.ts`).
 
 Fuwa is not App-Sandboxed (`src-tauri/` has no entitlements file), so (1) and (3) are the app's own
 policy, not something macOS imposes. A Document at a filesystem root (`/x.md`) is refused, which
