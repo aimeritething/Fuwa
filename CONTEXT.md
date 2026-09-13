@@ -29,6 +29,10 @@ _Avoid_: Image (alone, when you mean the file rather than the picture inside a D
 
 ### Editing
 
+**Kernel**:
+The part of the code that only knows ProseMirror, BlockNote, CodeMirror and the Markdown round-trip. It does not know what a Document, Tab, Folder or Session is; Fuwa's editing surface sits on top of it. Copied from Tolaria under AGPL-3.0 (see `NOTICE.md`); change it with care.
+_Avoid_: Engine, core, editor internals
+
 **Rich mode**:
 The WYSIWYG editing surface (BlockNote). It is also how a Document is "viewed"; there is no separate read-only preview.
 _Avoid_: Preview, WYSIWYG mode, rendered mode
