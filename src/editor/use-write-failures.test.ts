@@ -40,7 +40,7 @@ function renderFailures(overrides: Behaviours = {}) {
   return { ...rendered, deps, order }
 }
 
-describe('use-write-failures', () => {
+describe('useWriteFailures', () => {
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })

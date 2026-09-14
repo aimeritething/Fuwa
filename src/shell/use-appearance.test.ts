@@ -27,7 +27,7 @@ function installMatchMedia(matches: boolean) {
   })
 }
 
-describe('use-appearance', () => {
+describe('useAppearance', () => {
   beforeEach(() => {
     installMatchMedia(false)
     window.localStorage.clear()

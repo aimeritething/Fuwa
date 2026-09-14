@@ -14,7 +14,7 @@ vi.mock('@/platform/tauri', () => ({
   updateMockContent: vi.fn(),
 }))
 
-describe('use-editor-save', () => {
+describe('useEditorSave', () => {
   let setTabs: Mock
 
   beforeEach(() => {

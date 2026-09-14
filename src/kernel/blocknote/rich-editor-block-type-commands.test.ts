@@ -41,7 +41,7 @@ function createEditor() {
   }
 }
 
-describe('rich-editor-block-type-commands', () => {
+describe('richEditorBlockTypeCommands', () => {
   it('turns the focused cursor block into the requested type without replacing content', () => {
     const { block, editor } = createEditor()
 

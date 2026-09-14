@@ -34,7 +34,7 @@ beforeEach(() => {
   trackInlineImageLightboxOpenedMock.mockClear()
 })
 
-describe('use-image-lightbox', () => {
+describe('useImageLightbox', () => {
   it('opens the image lightbox on image double-click', () => {
     const { container, view } = createHookTarget()
     const img = appendImage(container)

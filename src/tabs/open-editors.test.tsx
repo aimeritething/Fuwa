@@ -7,7 +7,7 @@ import { OpenEditors } from './open-editors'
 const tab = (path: string): Tab => ({ entry: noteEntryForPath(path, ''), content: '' })
 const tabs = [tab('/n/a.md'), tab('/elsewhere/b.md')]
 
-describe('open-editors', () => {
+describe('OpenEditors', () => {
   it('lists one row per open Tab under its label, with the active row selected', () => {
     render(<OpenEditors tabs={tabs} activeTabPath="/elsewhere/b.md" onActivate={vi.fn()} onClose={vi.fn()} />)
 

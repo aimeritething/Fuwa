@@ -21,7 +21,7 @@ The dimensions are the one thing the listing cannot give. They are the natural s
 
 ## Consequences
 
-- The Session restore has to ask the listing about an Image file the moment the Folder is back, before React has the new `files` state. `use-folder` answers from a ref, and `changeFolder` now waits for a change already in flight rather than dropping the second caller, so the ref is settled whichever call asks. Under StrictMode's double-invoked restore effect, the earlier behaviour had the second pass read an empty listing and drop every Image Tab.
+- The Session restore has to ask the listing about an Image file the moment the Folder is back, before React has the new `files` state. `useFolder` answers from a ref, and `changeFolder` now waits for a change already in flight rather than dropping the second caller, so the ref is settled whichever call asks. Under StrictMode's double-invoked restore effect, the earlier behaviour had the second pass read an empty listing and drop every Image Tab.
 - An Image file can only reach a Tab from inside the Folder, which is all v0.1 offers (no Finder open, no drop, no dialog). An Image file outside the Folder would have no listing behind it and would show a size of `0 B`.
 - The kernel's editor is told there is no active Document while an Image Tab is active, so its tab-swap machinery blanks rather than parsing a picture, no content flush is registered, and Save, Toggle Rich/Raw and Find in Document stay disabled in the native menu.
 - A picture is shown through `<img>`, which renders an SVG's markup and runs none of its scripts. Nothing else in the path can execute file content.

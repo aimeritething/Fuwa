@@ -42,7 +42,7 @@ function calloutItem(): SlashMenuItem {
   }
 }
 
-describe('slash-menu', () => {
+describe('SlashMenu', () => {
   it('passes only supported props to the BlockNote suggestion item', () => {
     render(<SlashMenu
       items={[calloutItem()]}

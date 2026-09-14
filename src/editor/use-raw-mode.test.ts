@@ -16,7 +16,7 @@ function useRawModeOverTabs(path: string | null, extra: Extra) {
   return useRawMode({ activeTabPath: path, mode, setMode, ...extra })
 }
 
-describe('use-raw-mode', () => {
+describe('useRawMode', () => {
   function renderRawHook(activeTabPath: string | null = '/note.md', extra: Extra = {}) {
     const onFlushPending = extra.onFlushPending ?? vi.fn().mockResolvedValue(true)
     const rendered = renderHook(

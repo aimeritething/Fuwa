@@ -1,7 +1,7 @@
 /**
  * Browser fallback for Tauri commands. Outside Tauri (`pnpm dev` in a plain
  * browser, the smoke specs) every `invoke` is answered by the in-memory Folder
- * fixture in `./vaultFixture`. The exports keep the kernel's names so the kept
+ * fixture in `./vault-fixture`. The exports keep the kernel's names so the kept
  * call sites and their `vi.mock('./tauri')` calls resolve.
  */
 

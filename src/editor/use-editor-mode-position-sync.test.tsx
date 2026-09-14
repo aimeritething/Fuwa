@@ -59,7 +59,7 @@ function createRestoreTransitionRef() {
   return { current: createEditorModeRestoreTransition() }
 }
 
-describe('use-editor-mode-position-sync', () => {
+describe('useEditorModePositionSync', () => {
   beforeEach(() => {
     installBlockNoteScrollHost()
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback: FrameRequestCallback) => {

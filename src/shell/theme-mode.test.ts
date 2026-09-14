@@ -21,7 +21,7 @@ function makeStorage(initial: Record<string, string> = {}): Storage {
   }
 }
 
-describe('theme-mode', () => {
+describe('themeMode', () => {
   it('normalizes only supported theme modes', () => {
     expect(normalizeThemeMode('light')).toBe('light')
     expect(normalizeThemeMode('dark')).toBe('dark')

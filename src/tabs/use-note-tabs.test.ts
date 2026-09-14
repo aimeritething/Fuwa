@@ -44,7 +44,7 @@ async function openThree() {
 const openPaths = (result: { current: ReturnType<typeof useNoteTabs> }) =>
   result.current.tabs.map((tab) => tab.entry.path)
 
-describe('use-note-tabs', () => {
+describe('useNoteTabs', () => {
   beforeEach(() => {
     runtime.invoke.mockReset()
   })

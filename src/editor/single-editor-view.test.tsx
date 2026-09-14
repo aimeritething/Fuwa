@@ -11,7 +11,7 @@ import { TooltipProvider } from '@/ui/tooltip'
 
 const state = getSingleEditorViewTestState()
 
-describe('single-editor-view', () => {
+describe('SingleEditorView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.capturedLinkToolbarProps = null

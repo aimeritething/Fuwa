@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { useDocumentThemeMode } from './use-document-theme-mode'
 
-describe('use-document-theme-mode', () => {
+describe('useDocumentThemeMode', () => {
   beforeEach(() => {
     globalThis.document.documentElement.removeAttribute('data-theme')
     globalThis.document.documentElement.classList.remove('dark')

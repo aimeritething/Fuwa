@@ -72,7 +72,7 @@ function createEditor({
   }
 }
 
-describe('use-filename-autolink-guard', () => {
+describe('useFilenameAutolinkGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

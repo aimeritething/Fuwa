@@ -218,7 +218,7 @@ function renderWhiteboard(overrides: Partial<ComponentProps<typeof TldrawWhitebo
   )
 }
 
-describe('tldraw-whiteboard', () => {
+describe('TldrawWhiteboard', () => {
   afterEach(() => {
     cleanup()
     document.documentElement.removeAttribute('data-theme')

@@ -14,7 +14,7 @@ The pieces have two owners by nature. The renderer alone knows the Tabs, the Fol
 
 The Rust `session` module owns the file. The renderer hands over its part of the Session (`update_session`) on every change and reads the file back once at launch (`read_session`); it never debounces and never touches `window`. Rust keeps the last renderer state in memory (seeded from the file at launch, so a window move before the renderer reports cannot erase the open Tabs), merges the main window's frame in from its own Moved and Resized events, and does the one debounce, the atomic temp-file-and-rename write, and the flushes: on the window's close request, on `ExitRequested` and on `Exit` (the native Quit item terminates through `applicationWillTerminate`, which reaches the event loop as `Exit`).
 
-The schema is validated in the renderer (`utils/sessionSchema.ts`): an unknown `version` restores nothing and is rewritten by the renderer's first update. The Rust side treats the renderer's part as opaque JSON.
+The schema is validated in the renderer (`src/session/session-schema.ts`): an unknown `version` restores nothing and is rewritten by the renderer's first update. The Rust side treats the renderer's part as opaque JSON.
 
 Rejected:
 

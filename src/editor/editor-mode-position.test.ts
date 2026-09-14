@@ -68,7 +68,7 @@ function captureAndRestoreRawSelection(
   }
 }
 
-describe('editor-mode-position', () => {
+describe('editorModePosition', () => {
   beforeEach(() => {
     const scrollHost = document.createElement('div')
     scrollHost.className = 'editor-scroll-area'

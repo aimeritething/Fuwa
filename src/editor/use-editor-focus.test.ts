@@ -37,7 +37,7 @@ function expectSelectionRange(
   expect(tiptap._chainResult.run).toHaveBeenCalled()
 }
 
-describe('use-editor-focus', () => {
+describe('useEditorFocus', () => {
   afterEach(() => {
     resumeEditorFocus()
     vi.restoreAllMocks()

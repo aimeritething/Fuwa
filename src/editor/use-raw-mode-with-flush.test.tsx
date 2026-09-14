@@ -34,7 +34,7 @@ function useRawModeWithFlushOverTab(
   )
 }
 
-describe('use-raw-mode-with-flush', () => {
+describe('useRawModeWithFlush', () => {
   it('re-enters raw mode with pending raw edits while tab state is still stale', async () => {
     const onContentChange = vi.fn()
     const flushPendingEditorChangeRef = { current: vi.fn(() => false) }

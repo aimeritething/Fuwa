@@ -21,7 +21,7 @@ function renderCommands(activeTabPath: string | null) {
   return { commands: result.current, deps, order }
 }
 
-describe('use-tab-commands', () => {
+describe('useTabCommands', () => {
   it('⌘W writes pending edits, then closes the active Tab', async () => {
     const { commands, order } = renderCommands('/n/a.md')
 

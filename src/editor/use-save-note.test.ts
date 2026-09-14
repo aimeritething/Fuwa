@@ -15,7 +15,7 @@ vi.mock('@/platform/tauri', () => ({
   updateMockContent: vi.fn(),
 }))
 
-describe('use-save-note', () => {
+describe('useSaveNote', () => {
   let updateContent: (path: string, content: string) => void
 
   beforeEach(() => {

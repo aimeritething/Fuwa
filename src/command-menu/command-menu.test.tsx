@@ -35,7 +35,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('command-menu', () => {
+describe('CommandMenu', () => {
   it('opens on the input with every command listed and the mono footer', () => {
     renderMenu()
     expect(screen.getByTestId('command-menu')).toHaveAttribute('data-mode', 'commands')

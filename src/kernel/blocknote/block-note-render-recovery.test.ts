@@ -6,7 +6,7 @@ import {
   markRecoveredBlockNoteRenderError,
 } from './block-note-render-recovery'
 
-describe('block-note-render-recovery', () => {
+describe('blockNoteRenderRecovery', () => {
   it('marks only recovered BlockNote missing-id render errors for root suppression', () => {
     const error = new Error("Block doesn't have id")
 

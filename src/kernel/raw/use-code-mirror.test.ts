@@ -21,7 +21,7 @@ function setUserAgent(userAgent: string) {
   })
 }
 
-describe('use-code-mirror', () => {
+describe('useCodeMirror', () => {
   let container: HTMLDivElement
 
   beforeEach(() => {

@@ -33,7 +33,7 @@ function renderFinderOpen(options?: {
   return { ...hook, openNote, settleActiveNote }
 }
 
-describe('use-finder-open', () => {
+describe('useFinderOpen', () => {
   beforeEach(() => {
     poke = undefined
     unlisten.mockClear()

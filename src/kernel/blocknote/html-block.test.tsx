@@ -31,7 +31,7 @@ function renderHtmlBlock(initialProps: HtmlBlockTestProps) {
   return { editor, liveBlock }
 }
 
-describe('html-block', () => {
+describe('HtmlBlock', () => {
   it('does not expose inline source editing for empty slash-inserted blocks', () => {
     renderHtmlBlock({ height: HTML_BLOCK_DEFAULT_HEIGHT, html: '' })
 

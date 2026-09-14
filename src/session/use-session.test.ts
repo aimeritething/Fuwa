@@ -40,7 +40,7 @@ function answerWith(stored: unknown) {
 const sessionWrites = () =>
   runtime.invoke.mock.calls.filter(([cmd]) => cmd === 'update_session').map(([, args]) => args?.session)
 
-describe('use-session', () => {
+describe('useSession', () => {
   const restoreTheme = vi.fn()
   const restoreSidebar = vi.fn()
 

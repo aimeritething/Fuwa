@@ -72,7 +72,7 @@ function makeEditor(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('block-note-formatting-toolbar-hover-guard', () => {
+describe('blockNoteFormattingToolbarHoverGuard', () => {
   afterEach(() => {
     document.body.innerHTML = ''
   })

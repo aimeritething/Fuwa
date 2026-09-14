@@ -9,7 +9,7 @@ import {
 
 const VITEST_WORKER_DESCRIPTOR = Object.getOwnPropertyDescriptor(globalThis, '__vitest_worker__')
 
-describe('note-open-performance', () => {
+describe('noteOpenPerformance', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     if (VITEST_WORKER_DESCRIPTOR) {

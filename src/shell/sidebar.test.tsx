@@ -12,7 +12,7 @@ function renderSidebar(width: number, onWidthChange = vi.fn(), onToggle = vi.fn(
   return { onWidthChange, onToggle }
 }
 
-describe('sidebar', () => {
+describe('Sidebar', () => {
   it('is as wide as the Session says and collapses from the icon on its top row', () => {
     const { onToggle } = renderSidebar(300)
 

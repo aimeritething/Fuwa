@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { useSidebar } from './use-sidebar'
 
-describe('use-sidebar', () => {
+describe('useSidebar', () => {
   it('starts expanded at the default width', () => {
     const { result } = renderHook(() => useSidebar())
 

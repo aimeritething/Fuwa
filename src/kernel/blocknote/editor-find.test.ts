@@ -6,7 +6,7 @@ import {
   nextEditorFindIndex,
 } from './editor-find'
 
-describe('editor-find', () => {
+describe('editorFind', () => {
   it('finds plain-text matches case-insensitively by default', () => {
     const result = findEditorMatches('Alpha beta alpha', 'alpha', {
       caseSensitive: false,

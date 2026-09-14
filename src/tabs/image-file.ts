@@ -4,7 +4,7 @@ import { noteEntryForPath } from '@/folder/note-entry'
 
 /**
  * What an Image file is to the shell (CONTEXT.md): a file Fuwa shows and never
- * edits. `filePreview.ts` holds the extension list the Explorer, the drop
+ * edits. `@/folder/file-preview.ts` holds the extension list the Explorer, the drop
  * intake and the Rust scanner all share; this module is the Tab's side of it —
  * the entry an Image Tab carries and the two strings its path row shows.
  */

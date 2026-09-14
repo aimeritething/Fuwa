@@ -16,7 +16,7 @@ The image drop hook carried over with the kernel listened to `tauri://drag-drop`
 - `useDocumentDrop`, mounted by the App, opens every dropped `.md`, activating the Tab of one already open. It shares the settle-then-open sequence (`openNotesSettled`) with File → Open Document…, so the two cannot drift.
 - `useImageDrop`, mounted with the editor, copies every dropped Image file into `attachments/` beside the Document and inserts an image block at the caret. The enter event raises the drop affordance, and only when the drag carries an Image file, so a `.md` passing over the Document does not offer to become a picture. The over event, which repeats for every pointer move and names no paths, leaves the affordance where it is.
 
-What counts as an Image file is the glossary's list, shared from `filePreview.ts` and matched by the Rust copy command, so a drop and the Explorer agree on what a picture is.
+What counts as an Image file is the glossary's list, shared from `src/folder/file-preview.ts` and matched by the Rust copy command, so a drop and the Explorer agree on what a picture is.
 
 Nothing else is picked up, so nothing but Documents and `attachments/` is ever written into the Folder.
 
