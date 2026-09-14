@@ -30,7 +30,7 @@ _Avoid_: Image (alone, when you mean the file rather than the picture inside a D
 ### Editing
 
 **Kernel**:
-The part of the code that only knows ProseMirror, BlockNote, CodeMirror and the Markdown round-trip. It does not know what a Document, Tab, Folder or Session is; Fuwa's editing surface sits on top of it. Copied from Tolaria under AGPL-3.0 (see `NOTICE.md`); change it with care.
+The part of the code built on ProseMirror, BlockNote and CodeMirror, together with the Markdown round-trip. Fuwa's editing surface sits on top of it. A Kernel block may dispatch one of Fuwa's commands (`fuwa:dispatch-command`) but never implements one. Originally copied from Tolaria under AGPL-3.0 (see `NOTICE.md`).
 _Avoid_: Engine, core, editor internals
 
 **Rich mode**:

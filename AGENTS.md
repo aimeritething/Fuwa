@@ -9,12 +9,11 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
 
 - `src/` — the React app, cut by feature. Inside each directory files sit flat; cross-directory
   imports use `@/<dir>/…`, imports within a directory are relative.
-  - `kernel/` — the Kernel: only knows ProseMirror, BlockNote, CodeMirror and the Markdown
-    round-trip; never Document, Tab, Folder or Session. It may import `lib/`, `ui/` and
-    `platform/`, never a feature directory. `blocknote/` (schema, blocks, extensions, menus,
-    copy/paste, find, the BlockNote regression tests), `markdown/` (the round-trip: frontmatter,
-    fences, wikilinks, per-block serializers), `resolve/` (the open-time pipeline: cache, preload,
-    worker, swap), `raw/` (CodeMirror).
+  - `kernel/` — the Kernel: the ProseMirror, BlockNote and CodeMirror code and the Markdown
+    round-trip. `blocknote/` (schema, blocks, extensions, menus, copy/paste, find, the BlockNote
+    regression tests), `markdown/` (the round-trip: frontmatter, fences, wikilinks, per-block
+    serializers), `resolve/` (the open-time pipeline: cache, preload, worker, swap), `raw/`
+    (CodeMirror).
   - `editor/` — Fuwa's editing surface: `editor.tsx`, Rich / Raw views, Autosave, Write failure,
     Toast, an Image file's Tab.
   - `explorer/`, `folder/` (disk: `use-folder`, the watcher, asset scope, the Rust command

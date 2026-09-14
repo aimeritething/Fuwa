@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, WELCOME_PATH } from './harness'
 
-// The appearance baseline: five composite states of the window, light and
+// The appearance baseline: five composite states of the window and seven
+// interaction states (hover, keyboard focus, the collapsed chrome), light and
 // dark, frozen as PNGs beside this file (`screenshots.spec.ts-snapshots/`).
 //
 // A tool, not a gate. Nothing in CI runs it. Before a UI rewrite PR, run
@@ -41,7 +42,7 @@ async function launchWith(page: Page, session: Record<string, unknown>) {
 }
 
 /** The Folder open, Welcome.md and Projects/Fuwa.md as Tabs, `active` in front. */
-function folderSession(theme: Theme, active: 'welcome' | 'fuwa', mode: 'rich' | 'raw' = 'rich') {
+function folderSession(theme: Theme, active: 'welcome' | 'fuwa', mode: 'rich' | 'raw' = 'rich', collapsed = false) {
   return {
     version: 1,
     folder: MOCK_FOLDER,
@@ -51,7 +52,7 @@ function folderSession(theme: Theme, active: 'welcome' | 'fuwa', mode: 'rich' | 
     ],
     activePath: active === 'welcome' ? WELCOME_PATH : FUWA_PATH,
     theme,
-    sidebar: { collapsed: false, width: 260 },
+    sidebar: { collapsed, width: 260 },
   }
 }
 
@@ -60,10 +61,12 @@ async function settled(page: Page, theme: Theme) {
   await page.evaluate(() => document.fonts.ready)
 }
 
-async function openWelcomeInFolder(page: Page, theme: Theme) {
-  await launchWith(page, folderSession(theme, 'welcome'))
-  await expect(page.getByRole('tree')).toBeVisible()
-  await expect(page.getByTestId('open-editors')).toBeVisible()
+async function openWelcomeInFolder(page: Page, theme: Theme, collapsed = false) {
+  await launchWith(page, folderSession(theme, 'welcome', 'rich', collapsed))
+  if (!collapsed) {
+    await expect(page.getByRole('tree')).toBeVisible()
+    await expect(page.getByTestId('open-editors')).toBeVisible()
+  }
   await expect(page.getByRole('tab')).toHaveCount(2)
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
   await settled(page, theme)
@@ -111,6 +114,66 @@ for (const theme of THEMES) {
       await expect(page.locator('.bn-formatting-toolbar')).toBeVisible()
 
       await expect(page).toHaveScreenshot(`formatting-toolbar-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    // The interaction states the composite shots never catch: what a Tab, a
+    // row and the close × look like under the pointer, where the keyboard
+    // focus ring lands, and the chrome with the sidebar collapsed.
+    test('hover the inactive Tab', async ({ page }) => {
+      await openWelcomeInFolder(page, theme)
+      await page.getByRole('tab', { name: 'Fuwa.md' }).hover()
+
+      await expect(page).toHaveScreenshot(`tab-hover-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    test('hover the inactive Open Editors row', async ({ page }) => {
+      await openWelcomeInFolder(page, theme)
+      await page.getByRole('option', { name: 'Fuwa.md' }).hover()
+
+      await expect(page).toHaveScreenshot(`row-hover-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    test('hover the close × on the active Tab', async ({ page }) => {
+      await openWelcomeInFolder(page, theme)
+      await page.getByRole('tab', { name: 'Welcome.md' }).getByRole('button').hover()
+
+      await expect(page).toHaveScreenshot(`close-hover-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    test('hover the sidebar toggle, its tooltip open', async ({ page }) => {
+      await openWelcomeInFolder(page, theme)
+      await page.getByRole('button', { name: 'Hide sidebar' }).hover()
+      await expect(page.getByRole('tooltip')).toBeVisible()
+
+      await expect(page).toHaveScreenshot(`toggle-tooltip-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    test('keyboard focus on the active Tab, then on the active row', async ({ page }) => {
+      await openWelcomeInFolder(page, theme)
+      // Focus, step back and forward again so the ring is the keyboard's (focus-visible), not the pointer's.
+      await page.getByRole('tab', { name: 'Welcome.md' }).focus()
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Tab')
+      await expect(page).toHaveScreenshot(`tab-focus-${theme}.png`, SCREENSHOT_OPTIONS)
+
+      await page.getByRole('option', { name: 'Welcome.md' }).focus()
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Tab')
+      await expect(page).toHaveScreenshot(`row-focus-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    test('the sidebar collapsed: the tab bar seats the traffic lights and the toggle', async ({ page }) => {
+      await openWelcomeInFolder(page, theme, true)
+      await expect(page.getByTestId('collapsed-chrome')).toBeVisible()
+
+      await expect(page).toHaveScreenshot(`collapsed-${theme}.png`, SCREENSHOT_OPTIONS)
+    })
+
+    test('hover the Explorer row', async ({ page }) => {
+      await openWelcomeInFolder(page, theme)
+      await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Reading list.md`).hover()
+
+      await expect(page).toHaveScreenshot(`explorer-hover-${theme}.png`, SCREENSHOT_OPTIONS)
     })
   })
 }

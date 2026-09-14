@@ -44,10 +44,13 @@ content and the stored Session, typing at the end of the Document) live in `harn
 
 ## The appearance baseline
 
-`screenshots.spec.ts` freezes five composite states of the window, light and dark, as PNGs in
-`screenshots.spec.ts-snapshots/`: first launch, a Folder with a Document in Rich mode, the
-same Folder with a Frontmatter Document in Raw mode, the Command Menu open, and the formatting
-toolbar over a selection. It is a tool, not a gate: CI never runs it. Before a UI PR, run
+`screenshots.spec.ts` freezes twelve states of the window, light and dark, as PNGs in
+`screenshots.spec.ts-snapshots/`: five composites (first launch, a Folder with a Document in
+Rich mode, the same Folder with a Frontmatter Document in Raw mode, the Command Menu open, the
+formatting toolbar over a selection) and seven interaction states (a Tab, an Open Editors row,
+the close ×, the sidebar toggle with its tooltip and an Explorer row under the pointer; the
+keyboard focus ring on the active Tab and row; the sidebar collapsed). It is a tool, not a
+gate: CI never runs it. Before a UI PR, run
 `pnpm smoke:screenshots` on the branch; a red test means the pixels moved, and the
 expected / actual / diff images in `test-results/` are what to look at. Once the new look is
 accepted, `pnpm smoke:screenshots --update-snapshots` re-freezes it. The threshold and the
