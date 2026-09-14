@@ -29,7 +29,7 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
   Unit tests sit beside the code as `*.test.ts(x)`; a test with no source file of its own lives
   in the directory it guards; test helpers are `*.test-utils.ts(x)`. File names are kebab-case.
 - `docs/adr/` — decisions; read the ones touching the area you change.
-  `docs/agents/` — domain-doc conventions.
+  `docs/agents/` — domain-doc conventions and where issues are tracked (`issue-tracker.md`).
 - `patches/` — six pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in
   `pnpm-workspace.yaml`. Bumping those packages means re-applying the patches.
 
