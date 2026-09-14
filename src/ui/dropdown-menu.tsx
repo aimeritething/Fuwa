@@ -192,7 +192,7 @@ function DropdownMenuSeparator({
   return (
     <DropdownMenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn("bg-[var(--border-dialog)] -mx-1.5 my-1.5 h-[var(--hairline)]", className)}
+      className={cn("bg-[var(--border-popover)] -mx-1.5 my-1.5 h-[var(--hairline)]", className)}
       {...props}
     />
   )

@@ -102,11 +102,9 @@ describe('MathBlockEditor', () => {
     const source = screen.getByRole('textbox')
 
     expect(source).toHaveClass('math-block-source')
-    expect(source).toHaveClass('selection:bg-[var(--colors-selection)]')
-    expect(source).toHaveClass('selection:text-[var(--colors-text)]')
+    expect(source).toHaveClass('selection:bg-state-selection')
+    expect(source).toHaveClass('selection:text-text-primary')
     expect(source).toHaveClass('focus-visible:ring-0')
-    expect(source).not.toHaveClass('selection:bg-primary')
-    expect(source).not.toHaveClass('selection:text-primary-foreground')
     expect(source).not.toHaveClass('focus-visible:ring-[3px]')
   })
 

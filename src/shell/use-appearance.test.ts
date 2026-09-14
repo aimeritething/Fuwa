@@ -46,7 +46,6 @@ describe('useAppearance', () => {
     rerender({ restored: true })
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    expect(document.documentElement).toHaveClass('dark')
   })
 
   it('applies the appearance the Session restores', () => {
@@ -56,7 +55,6 @@ describe('useAppearance', () => {
 
     expect(result.current.themeMode).toBe('light')
     expect(document.documentElement).toHaveAttribute('data-theme', 'light')
-    expect(document.documentElement).not.toHaveClass('dark')
   })
 
   it('switches through the View → Appearance commands and mirrors the choice for the pre-paint script', () => {

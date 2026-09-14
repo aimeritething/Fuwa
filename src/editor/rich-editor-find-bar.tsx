@@ -132,7 +132,7 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
     <div
       className="fuwa-rich-find-bar flex shrink-0 items-center gap-1.5 border-b px-3 py-2"
       data-testid="rich-editor-find-bar"
-      style={{ background: 'var(--surface-editor)', borderColor: 'var(--border-subtle)' }}
+      style={{ background: 'var(--surface-card)', borderColor: 'var(--border-default)' }}
       onKeyDown={onBarKeyDown}
     >
       <Input
@@ -149,7 +149,7 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
         className="h-7 min-w-[12rem] flex-1 rounded px-2 text-xs"
         data-testid="rich-editor-find-input"
       />
-      <span className="min-w-[4.75rem] text-right text-xs text-muted-foreground" aria-live="polite" data-testid="rich-editor-find-count">
+      <span className="min-w-[4.75rem] text-right text-xs text-text-secondary" aria-live="polite" data-testid="rich-editor-find-count">
         {statusText(locale, result, currentIndex)}
       </span>
       <Button type="button" variant="ghost" size="icon-xs" aria-label={translate(locale, 'editor.find.previousMatch')} title={translate(locale, 'editor.find.previousMatch')} disabled={matchCount === 0} onClick={movePrevious}>

@@ -43,7 +43,6 @@ test('first launch is dark: the canvas, the card and the body text sample to the
   await openWelcome(page)
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page.locator('html')).toHaveClass(/dark/)
   await page.keyboard.press('Meta+BracketLeft') // a lone Document collapsed the sidebar
   await expect(page.getByTestId('sidebar')).toHaveCSS('color', 'rgb(148, 149, 151)')
   await expect(page.locator('.fuwa-shell')).toHaveCSS('background-color', 'rgb(9, 9, 10)')
@@ -87,7 +86,6 @@ test('View → Appearance → Light switches the document, persists in the Sessi
   await chooseAppearance(page, 'light')
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  await expect(page.locator('html')).not.toHaveClass(/dark/)
   await expect(page.locator('.fuwa-shell')).toHaveCSS('background-color', 'rgb(238, 238, 239)')
   await expect(page.getByTestId('editor-card')).toHaveCSS('background-color', 'rgb(248, 248, 249)')
   await expect(page.locator('.bn-editor')).toHaveCSS('color', 'rgb(47, 47, 49)')
@@ -119,7 +117,6 @@ test('System follows a live OS appearance change and is what the Session remembe
 
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page.locator('html')).toHaveClass(/dark/)
 
   await page.reload()
   expect(await documentTheme(page)).toBe('dark')

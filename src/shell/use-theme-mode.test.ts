@@ -36,7 +36,6 @@ describe('useThemeMode', () => {
     renderHook(() => useThemeMode('dark', true))
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    expect(document.documentElement).toHaveClass('dark')
     expect(window.localStorage.getItem(THEME_MODE_STORAGE_KEY)).toBe('dark')
   })
 
@@ -54,7 +53,6 @@ describe('useThemeMode', () => {
     renderHook(() => useThemeMode('system', true))
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    expect(document.documentElement).toHaveClass('dark')
     expect(window.localStorage.getItem(THEME_MODE_STORAGE_KEY)).toBe('system')
   })
 
@@ -65,7 +63,6 @@ describe('useThemeMode', () => {
 
     act(() => media.setMatches(false))
     expect(document.documentElement).toHaveAttribute('data-theme', 'light')
-    expect(document.documentElement).not.toHaveClass('dark')
 
     unmount()
     act(() => media.setMatches(true))

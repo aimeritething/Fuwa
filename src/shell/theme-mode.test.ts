@@ -40,14 +40,12 @@ describe('themeMode', () => {
     expect(storage.setItem).toHaveBeenCalledWith(THEME_MODE_STORAGE_KEY, 'system')
   })
 
-  it('applies theme attributes and shadcn dark class', () => {
+  it('applies the theme as the data-theme attribute', () => {
     applyThemeModeToDocument(document, 'dark')
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    expect(document.documentElement).toHaveClass('dark')
 
     applyThemeModeToDocument(document, 'light')
     expect(document.documentElement).toHaveAttribute('data-theme', 'light')
-    expect(document.documentElement).not.toHaveClass('dark')
   })
 
   it('bootstraps stored theme mode onto the document', () => {
@@ -55,7 +53,6 @@ describe('themeMode', () => {
 
     expect(applyStoredThemeMode(document, storage)).toBe('dark')
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    expect(document.documentElement).toHaveClass('dark')
   })
 
   it('bootstraps system mode to the current OS appearance without storing system in data-theme', () => {
@@ -63,7 +60,6 @@ describe('themeMode', () => {
 
     expect(applyStoredThemeMode(document, storage, makeMatchMedia(true))).toBe('dark')
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    expect(document.documentElement).toHaveClass('dark')
   })
 })
 
