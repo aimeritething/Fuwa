@@ -28,7 +28,13 @@ export const TabBar = memo(function TabBar({ tabs, activeTabPath, onActivate, on
   if (tabs.length === 0) return null
 
   return (
-    <div className="fuwa-tabs" role="tablist" data-testid="tab-bar" data-tauri-drag-region>
+    <div
+      className="flex h-11 flex-none items-center gap-0.5 overflow-hidden border-b-hairline border-border-default pr-2.5 pl-2 select-none data-collapsed:pl-0 [-webkit-app-region:drag]"
+      role="tablist"
+      data-testid="tab-bar"
+      data-tauri-drag-region
+      data-collapsed={sidebarCollapsed || undefined}
+    >
       {sidebarCollapsed && onShowSidebar && <CollapsedChrome onShowSidebar={onShowSidebar} />}
       {tabs.map(({ entry }) => (
         <TabPill
@@ -56,21 +62,20 @@ function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) 
   const isImage = isImageFilePath(path)
   return (
     <div
-      className="fuwa-tab"
+      className="group flex h-7 max-w-55 min-w-0 flex-[0_1_auto] cursor-default items-center gap-1.75 rounded-md pr-1.5 pl-2.5 text-[13px] whitespace-nowrap text-text-secondary outline-none hover:bg-tab-hover hover:text-text-heading aria-selected:bg-tab-active aria-selected:text-text-heading aria-selected:shadow-[0_0_0_var(--hairline)_var(--border-default),0_1px_2px_rgba(0,0,0,0.25)] focus-visible:focus-ring aria-selected:focus-visible:focus-ring [-webkit-app-region:no-drag]"
       role="tab"
       aria-selected={active}
       aria-label={filename}
       tabIndex={active ? 0 : -1}
       title={path}
       data-testid={`tab:${path}`}
-      data-active={active || undefined}
       onClick={() => onActivate(path)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onActivate(path)
       }}
     >
-      {isImage && <Image size={13} className="fuwa-tab__icon" aria-hidden="true" />}
-      <span className="fuwa-tab__name">{filename}</span>
+      {isImage && <Image size={13} className="flex-none text-text-secondary" aria-hidden="true" />}
+      <span className="min-w-0 truncate">{filename}</span>
       <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )

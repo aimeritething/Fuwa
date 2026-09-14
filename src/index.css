@@ -451,7 +451,8 @@
   }
 }
 
-/* PROTOTYPE AIM-433: probe, the spacing unit in px so h-7 is 28px under the 14px root. */
+/* PROTOTYPE AIM-433: stand-in for the token PR, only what the pilot needs.
+   The spacing unit is px so h-7 is 28px under the 14px root. */
 @theme {
   --spacing: 4px;
 }
@@ -498,6 +499,16 @@
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  /* PROTOTYPE AIM-433: bridges the pilot needs */
+  --color-text-heading: var(--text-heading);
+  --color-sidebar-row-hover: var(--sidebar-row-hover);
+  --color-sidebar-row-active: var(--sidebar-row-active);
+  --color-tab-hover: var(--tab-hover);
+  --color-tab-active: var(--tab-active);
+  --color-control-tertiary-hover: var(--control-tertiary-hover);
+  --color-state-focus-ring: var(--state-focus-ring);
+  --border-width-hairline: var(--hairline);
+  --z-index-raised: var(--z-raised);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -817,4 +828,14 @@
 @keyframes typing-bounce {
   0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
   30% { opacity: 1; transform: translateY(-2px); }
+}
+
+/* PROTOTYPE AIM-433: the z tier and the focus ring utility the pilot needs. */
+:root {
+  --z-raised: 1;
+}
+
+@utility focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
 }

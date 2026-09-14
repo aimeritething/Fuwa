@@ -88,7 +88,7 @@ test('outside Documents show their dimmed parent, stay out of Explorer, and relo
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
   await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Welcome.md`)
   await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Welcome.md')
-  await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).locator('.fuwa-sidebar-row__parent')).toHaveText('Notes')
+  await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).getByTestId('open-editor-parent')).toHaveText('Notes')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toHaveCount(0)
   await page.evaluate((path) => {
     window.__fuwaMockVault?.writeNote(path, '# Outside changed\n')

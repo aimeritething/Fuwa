@@ -35,14 +35,6 @@
   overflow-wrap: anywhere;
 }
 
-.fuwa-sidebar-row__parent {
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-tertiary);
-  font-size: 11px;
-}
-
 /* --- The empty states. --- */
 
 /* No Folder open: the copy under "Explorer", the indigo button, the drop hint. */
@@ -216,4 +208,62 @@
 .fuwa-explorer__empty-area {
   flex: 1;
   min-height: 24px;
+}
+
+/* PROTOTYPE AIM-433: the row and label rules the Explorer still shares with
+   the old sidebar.css. Open Editors moved to utilities; these stay here until
+   explorer/ is rewritten. */
+.fuwa-sidebar__label {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.fuwa-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 6px 0 8px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+}
+
+.fuwa-sidebar-row:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--text-heading);
+}
+
+.fuwa-sidebar-row[data-active] {
+  background: var(--sidebar-row-active);
+  color: var(--text-heading);
+}
+
+.fuwa-sidebar-row:focus-visible {
+  box-shadow: 0 0 0 1px var(--state-focus-ring) inset;
+}
+
+.fuwa-sidebar-row__icon {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.fuwa-sidebar-row:hover .fuwa-sidebar-row__icon,
+.fuwa-sidebar-row[data-active] .fuwa-sidebar-row__icon {
+  color: var(--text-primary);
+}
+
+.fuwa-sidebar-row__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

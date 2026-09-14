@@ -1,7 +1,6 @@
-import { useCallback, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { clampSidebarWidth } from '@/session/session-schema'
 import { SidebarToggle } from './sidebar-toggle'
-import './sidebar.css'
 
 const KEYBOARD_RESIZE_STEP = 16
 
@@ -21,16 +20,24 @@ interface SidebarProps {
  */
 export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarProps) {
   const { liveWidth, resizerProps } = useEdgeResize(width, onWidthChange)
-  const style = { '--fuwa-sidebar-width': `${liveWidth ?? width}px` } as CSSProperties
 
   return (
-    <aside className="fuwa-sidebar" data-testid="sidebar" data-resizing={liveWidth !== null || undefined} style={style}>
-      <div className="fuwa-sidebar__top" data-tauri-drag-region>
+    <aside
+      className="relative flex min-h-0 flex-none flex-col px-2 pb-2 text-[13px] font-medium text-text-secondary select-none data-resizing:cursor-col-resize"
+      data-testid="sidebar"
+      data-resizing={liveWidth !== null || undefined}
+      style={{ width: liveWidth ?? width }}
+    >
+      <div
+        className="-mx-2 mb-0.5 flex h-11 flex-none items-center justify-end pr-2 [-webkit-app-region:drag]"
+        data-testid="sidebar-top"
+        data-tauri-drag-region
+      >
         <SidebarToggle collapsed={false} onToggle={onToggle} />
       </div>
       {children}
       <div
-        className="fuwa-sidebar__resizer"
+        className="absolute inset-y-0 -right-0.75 z-raised w-1.5 cursor-col-resize outline-none focus-visible:bg-state-focus-ring [-webkit-app-region:no-drag]"
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize sidebar"

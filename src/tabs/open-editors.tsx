@@ -4,7 +4,6 @@ import type { Tab } from '@/types'
 import { isImageFilePath } from './image-file'
 import { documentLocation } from '@/folder/explorer'
 import { CloseAffordance } from './close-affordance'
-import '@/shell/sidebar.css'
 
 export interface OpenEditorsProps {
   folder?: string | null
@@ -27,9 +26,9 @@ export const OpenEditors = memo(function OpenEditors({ tabs, folder, activeTabPa
   if (tabs.length === 0) return null
 
   return (
-    <section className="fuwa-open-editors" data-testid="open-editors">
-      <div className="fuwa-sidebar__label">{LABEL}</div>
-      <div className="fuwa-open-editors__rows" role="listbox" aria-label={LABEL}>
+    <section className="flex flex-none flex-col" data-testid="open-editors">
+      <div className="flex h-6 flex-none cursor-default items-center px-2 text-[12px] text-text-secondary">{LABEL}</div>
+      <div className="flex flex-col gap-px" role="listbox" aria-label={LABEL}>
         {tabs.map(({ entry }) => (
           <OpenEditorRow
             key={entry.path}
@@ -59,22 +58,21 @@ function OpenEditorRow({ path, filename, parent, active, onActivate, onClose }: 
   const Icon = isImageFilePath(path) ? Image : FileText
   return (
     <div
-      className="fuwa-sidebar-row"
+      className="group flex h-7 cursor-default items-center gap-1.5 rounded-lg pr-1.5 pl-2 whitespace-nowrap text-text-secondary outline-none hover:bg-sidebar-row-hover hover:text-text-heading focus-visible:focus-ring aria-selected:bg-sidebar-row-active aria-selected:text-text-heading"
       role="option"
       aria-selected={active}
       aria-label={filename}
       tabIndex={active ? 0 : -1}
       title={path}
       data-testid={`open-editor:${path}`}
-      data-active={active || undefined}
       onClick={() => onActivate(path)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onActivate(path)
       }}
     >
-      <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
-      <span className="fuwa-sidebar-row__name">{filename}</span>
-      {parent && <span className="fuwa-sidebar-row__parent">{parent}</span>}
+      <Icon size={14} className="flex-none text-text-secondary group-hover:text-text-primary group-aria-selected:text-text-primary" aria-hidden="true" />
+      <span className="min-w-0 flex-1 truncate" data-testid="open-editor-name">{filename}</span>
+      {parent && <span className="flex-[0_1_auto] truncate text-[11px] text-text-secondary" data-testid="open-editor-parent">{parent}</span>}
       <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )
