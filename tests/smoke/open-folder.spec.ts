@@ -12,7 +12,7 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await openFolder(page, MOCK_FOLDER)
   const explorer = page.getByTestId('explorer')
-  const rows = explorer.locator('.fuwa-sidebar-row')
+  const rows = explorer.locator('.fuwa-explorer__row')
   await expect(rows).toHaveText(['Notes', 'Attachments', 'Projects', 'Reading list.md', 'Welcome.md'])
   await explorer.getByRole('button', { name: 'Expand Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
@@ -88,7 +88,7 @@ test('outside Documents show their dimmed parent, stay out of Explorer, and relo
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
   await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Welcome.md`)
   await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Welcome.md')
-  await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).locator('.fuwa-sidebar-row__parent')).toHaveText('Notes')
+  await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).getByTestId('open-editor-parent')).toHaveText('Notes')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toHaveCount(0)
   await page.evaluate((path) => {
     window.__fuwaMockVault?.writeNote(path, '# Outside changed\n')

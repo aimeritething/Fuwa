@@ -96,7 +96,7 @@ test('a relaunch whose Folder is gone says so above the button, writes folder: n
   await expect(page.getByRole('tab', { name: 'Welcome.md' })).toBeVisible()
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
   // Open Editors above the Explorer, the Document's parent dimmed after its name.
-  await expect(page.getByTestId(`open-editor:${WELCOME_PATH}`).locator('.fuwa-sidebar-row__parent')).toHaveText('Notes')
+  await expect(page.getByTestId(`open-editor:${WELCOME_PATH}`).getByTestId('open-editor-parent')).toHaveText('Notes')
   await expect.poll(() => storedSession(page)).toMatchObject({ folder: null, openEditors: [{ path: WELCOME_PATH, mode: 'rich' }] })
 
   // The line stays until any Folder is opened.

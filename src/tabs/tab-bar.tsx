@@ -22,13 +22,20 @@ export interface TabBarProps {
  * the tabs are not, so a click on one lands on the Tab. An Image file's Tab
  * carries the image icon before its name, a Document's nothing. With the
  * sidebar collapsed the card is edge-to-edge, so this row is where the
- * traffic lights land and where the sidebar comes back from.
+ * traffic lights land and where the sidebar comes back from; the lights' room
+ * then starts at the window edge.
  */
 export const TabBar = memo(function TabBar({ tabs, activeTabPath, onActivate, onClose, sidebarCollapsed = false, onShowSidebar }: TabBarProps) {
   if (tabs.length === 0) return null
 
   return (
-    <div className="fuwa-tabs" role="tablist" data-testid="tab-bar" data-tauri-drag-region>
+    <div
+      className="flex h-11 flex-none items-center gap-0.5 overflow-hidden border-b-hairline border-border-default pr-2.5 pl-2 select-none data-collapsed:pl-0 [-webkit-app-region:drag]"
+      role="tablist"
+      data-testid="tab-bar"
+      data-collapsed={sidebarCollapsed || undefined}
+      data-tauri-drag-region
+    >
       {sidebarCollapsed && onShowSidebar && <CollapsedChrome onShowSidebar={onShowSidebar} />}
       {tabs.map(({ entry }) => (
         <TabPill
@@ -52,25 +59,25 @@ interface TabPillProps {
   onClose: (path: string) => void
 }
 
+/** One tab: 28px, 6px radius; the selected one is raised off the row by a hairline ring and a drop. */
 function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) {
   const isImage = isImageFilePath(path)
   return (
     <div
-      className="fuwa-tab"
+      className="group flex h-7 max-w-55 min-w-0 flex-initial cursor-default items-center gap-1.75 rounded-md pr-1.5 pl-2.5 text-[13px] whitespace-nowrap text-text-secondary outline-none hover:bg-tab-hover hover:text-text-heading aria-selected:bg-tab-active aria-selected:text-text-heading aria-selected:shadow-raised focus-visible:focus-ring [-webkit-app-region:no-drag]"
       role="tab"
       aria-selected={active}
       aria-label={filename}
       tabIndex={active ? 0 : -1}
       title={path}
       data-testid={`tab:${path}`}
-      data-active={active || undefined}
       onClick={() => onActivate(path)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onActivate(path)
       }}
     >
-      {isImage && <Image size={13} className="fuwa-tab__icon" aria-hidden="true" />}
-      <span className="fuwa-tab__name">{filename}</span>
+      {isImage && <Image size={13} className="flex-none text-text-secondary" aria-hidden="true" />}
+      <span className="min-w-0 truncate" data-testid="tab-name">{filename}</span>
       <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )

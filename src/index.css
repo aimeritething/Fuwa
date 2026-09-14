@@ -499,6 +499,54 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ============================================================
+   PROTOTYPE AIM-433 — a stand-in for the token PR (AIM-428), nothing more.
+   The pilot files write the *new* names from the token contract; this block
+   bridges them to today's variables so the pilot renders before the token PR
+   lands. Every line here is one the token PR writes for real. Delete with the
+   branch.
+   ============================================================ */
+
+/* The spacing unit. Tailwind's default is 0.25rem, which is 3.5px under the
+   14px root, so `h-7` would be 24.5px, not the 28px every control is drawn at.
+   Pinning the unit to 4px makes the scale read as pixels: h-7 = 28, gap-1.5 = 6. */
+@theme {
+  --spacing: 4px;
+}
+
+@theme inline {
+  /* Colours the pilot writes by their contract name. */
+  --color-text-heading: var(--text-heading);
+  --color-sidebar-row-hover: var(--sidebar-row-hover);
+  --color-sidebar-row-active: var(--sidebar-row-active);
+  --color-tab-hover: var(--tab-hover);
+  --color-tab-active: var(--tab-active);
+  --color-control-tertiary-hover: var(--control-tertiary-hover);
+  --color-state-focus-ring: var(--state-focus-ring);
+  /* `border-hairline` (AIM-434's revision of the bridge list). */
+  --border-width-hairline: var(--hairline);
+  /* The z tiers (AIM-429 §5). */
+  --z-index-raised: var(--z-raised);
+  --z-index-sticky: var(--z-sticky);
+  /* The raised tab's shadow: a hairline ring plus a 1px drop. Not in the token
+     contract today; the tab bar and the Rich | Raw segment both draw it. */
+  --shadow-raised: var(--shadow-raised);
+  /* The UI mono face, for `font-mono`. Not in the token contract today. */
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root {
+  --z-raised: 1;
+  --z-sticky: 10;
+  --shadow-raised: 0 0 0 var(--hairline) var(--border-default), 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* The focus ring (AIM-429 §5): outline gone, a 1px ring in the focus colour. */
+@utility focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 1px var(--state-focus-ring);
+}
+
 /* --- Base layer --- */
 @layer base {
   * {

@@ -14,6 +14,7 @@ import { ExplorerNameInput } from './explorer-name-input'
 import { EXPLORER_ROW_ICONS, explorerRowIndent } from './explorer-row'
 import type { ExplorerMenuAction, ExplorerMenuTargetKind } from './explorer-menu-items'
 import { Button } from '@/ui/button'
+import { SidebarLabel, SidebarRow, SidebarRowIcon, SidebarRowName } from '@/shell/sidebar-row'
 import './explorer.css'
 
 const NO_FOLDER_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
@@ -60,7 +61,7 @@ export const Explorer = memo(function Explorer(props: ExplorerProps) {
 function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder: () => void }) {
   return (
     <section className="fuwa-explorer" data-testid="explorer">
-      <div className="fuwa-sidebar__label fuwa-explorer__header">Explorer</div>
+      <SidebarLabel className="justify-between">Explorer</SidebarLabel>
       <div className="fuwa-explorer__no-folder" data-testid="explorer-no-folder">
         <h4 className="fuwa-explorer__no-folder-title">No folder open</h4>
         <p className="fuwa-explorer__no-folder-copy">Fuwa reads Markdown from one folder at a time. Open one to browse it here.</p>
@@ -115,7 +116,7 @@ function ExplorerBody(props: LoadedProps) {
 
   return (
     <>
-      <div className="fuwa-sidebar__label fuwa-explorer__header">
+      <SidebarLabel className="justify-between">
         Explorer
         <ExplorerHeaderActions
           onNewDocument={actions.createDocument}
@@ -124,7 +125,7 @@ function ExplorerBody(props: LoadedProps) {
           onReveal={() => actions.reveal(folder)}
           onCloseFolder={onCloseFolder}
         />
-      </div>
+      </SidebarLabel>
       <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={tree.name}>
         <ExplorerRow {...props} node={tree} depth={0} expanded={expanded} onToggle={toggleFolder} />
         {/* The empty-Folder line: no `.md` anywhere under the root. It goes with the first ⌘N. */}
@@ -260,7 +261,7 @@ function ExplorerRow(props: RowProps) {
       aria-level={depth + 1}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="fuwa-sidebar-row fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}
+          <SidebarRow className="fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}
             data-active={selected || undefined} data-drop-target={isDropTarget || undefined}
             data-testid={`explorer-row:${node.path}`} tabIndex={0} title={node.path}
             {...dragProps} {...dropProps}
@@ -276,9 +277,9 @@ function ExplorerRow(props: RowProps) {
                 {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
               </button>
             ) : <span className="fuwa-explorer__disclosure" />}
-            <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
-            <span className="fuwa-sidebar-row__name">{node.name}</span>
-          </div>
+            <SidebarRowIcon icon={Icon} />
+            <SidebarRowName>{node.name}</SidebarRowName>
+          </SidebarRow>
         </ContextMenuTrigger>
         <ExplorerContextMenu target={target} onAction={onMenuAction} />
       </ContextMenu>
