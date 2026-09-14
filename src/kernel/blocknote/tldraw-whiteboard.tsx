@@ -100,8 +100,8 @@ function sizeToProps({ height, width }: PixelSize): TldrawWhiteboardSize {
 
 function cssSize({ height, width }: PixelSize): CSSProperties {
   return {
-    '--tldraw-whiteboard-height': `${Math.max(MIN_HEIGHT, height)}px`,
-    '--tldraw-whiteboard-width': width === null ? '100%' : `${Math.max(MIN_WIDTH, width)}px`,
+    '--whiteboard-height': `${Math.max(MIN_HEIGHT, height)}px`,
+    '--whiteboard-width': width === null ? '100%' : `${Math.max(MIN_WIDTH, width)}px`,
   } as CSSProperties
 }
 

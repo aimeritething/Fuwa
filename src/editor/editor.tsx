@@ -3,7 +3,6 @@ import { useCreateBlockNote } from '@blocknote/react'
 import 'katex/dist/katex.min.css'
 import { useEditorTabSwap } from '@/kernel/resolve/use-editor-tab-swap'
 import { useEditorFocus } from './use-editor-focus'
-import { useEditorTheme } from '@/shell/use-theme'
 import { useEditorFocusScope } from './editor-focus-ownership'
 import { RUNTIME_STYLE_NONCE } from '@/platform/runtime-style-nonce'
 import type { EditorMode, Tab } from '@/types'
@@ -363,7 +362,6 @@ function ImageTab({ path, folder, imageFile, reloads }: {
   const fileSize = imageFile?.fileSize ?? 0
   const version = imageFetchVersion(imageFile ?? null, reloads)
   const { naturalSize, setNaturalSize } = useImageNaturalSize(`${path}@${version}`)
-  const { cssVars } = useEditorTheme()
   const root = documentRoot(path, folder)
   const filename = notePathFilename(path)
   const openExternally = useCallback(() => openImageExternally(path, root), [path, root])
@@ -381,7 +379,7 @@ function ImageTab({ path, folder, imageFile, reloads }: {
           onCopyPath: () => copyImagePath(path),
         }}
       />
-      <div className="fuwa-image-view-scope" style={cssVars as React.CSSProperties}>
+      <div className="fuwa-image-view-scope">
         <ImageView
           path={path}
           filename={filename}
@@ -400,9 +398,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
     tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
     sidebarCollapsed, onShowSidebar,
   } = props
-  // theme.json's editor.maxWidth and paddingHorizontal (a 680px prose column
-  // with 56px padding) reach the wrapper and .bn-editor as CSS variables.
-  const { cssVars } = useEditorTheme()
   const openTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
   const collapsed = sidebarCollapsed || undefined
 
@@ -442,7 +437,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
           )}
           {/* The two surfaces are exclusive: Raw mode shows the exact bytes in CodeMirror and BlockNote is not mounted. */}
           {raw.rawMode ? (
-            <EditorFindScope className="editor-scroll-area fuwa-raw-scope" style={cssVars as React.CSSProperties}>
+            <EditorFindScope className="editor-scroll-area fuwa-raw-scope">
               <RawEditorView
                 key={activeTab.entry.path}
                 content={raw.rawModeContent ?? activeTab.content}
@@ -454,7 +449,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
               />
             </EditorFindScope>
           ) : (
-            <EditorFindScope className="editor-scroll-area" style={cssVars as React.CSSProperties}>
+            <EditorFindScope className="editor-scroll-area">
               <RichEditorFindBar key={activeTab.entry.path} editor={editor} path={activeTab.entry.path} request={findRequest} />
               <div className="editor-content-wrapper">
                 <SingleEditorView

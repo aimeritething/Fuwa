@@ -24,10 +24,10 @@ describe('editor paragraph spacing theme', () => {
     )
   })
 
-  it('defines non-zero paragraph spacing in both color theme scopes', () => {
+  it('defines non-zero paragraph spacing once, in the root typography block', () => {
     const spacingValues = paragraphSpacingValues(readCss('index.css'))
 
-    expect(spacingValues).toHaveLength(2)
+    expect(spacingValues).toHaveLength(1)
     expect(spacingValues.every(isNonZeroLength)).toBe(true)
   })
 

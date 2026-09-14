@@ -1,6 +1,6 @@
 /* ==============================================
    editor-theme.css — BlockNote theme overrides
-   Driven by CSS custom properties from theme.json, re-valued to the Linear
+   Driven by the editor's CSS custom properties in index.css, re-valued to the Linear
    app's editor typography. Hairlines (code block,
    table and inline-code borders) come from --hairline; inputs and checkboxes
    keep 1px.
@@ -21,8 +21,8 @@
   padding-bottom: max(var(--editor-padding-vertical), 50vh);
   font-weight: var(--editor-font-weight);
   letter-spacing: var(--editor-letter-spacing);
-  color: var(--colors-text);
-  caret-color: var(--colors-cursor);
+  color: var(--text-primary);
+  caret-color: var(--text-primary);
 }
 
 .editor-content-width--wide .editor__blocknote-container .bn-editor {
@@ -50,8 +50,8 @@
 [data-fuwa-text-direction="rtl"]:is(blockquote),
 [data-fuwa-text-direction="rtl"] blockquote {
   border-left-width: 0;
-  border-inline-start: var(--blockquote-border-left-width, 3px) solid var(--blockquote-border-left-color, var(--border));
-  padding-inline-start: var(--blockquote-padding-left, 0.75em);
+  border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
+  padding-inline-start: var(--blockquote-padding-left);
 }
 
 /* Override BlockNote's default line-height on block-outer so our theme controls it */
@@ -85,7 +85,7 @@
 }
 
 .editor__blocknote-container .bn-editor ::selection {
-  background: var(--colors-selection);
+  background: var(--state-selection);
 }
 
 .editor__blocknote-container
@@ -100,8 +100,8 @@
 }
 
 .editor__blocknote-container .bn-block-outer.fuwa-rich-editor-block-selected {
-  --fuwa-block-selection-right-outset: 10px;
-  --fuwa-block-selection-top-outset: 2px;
+  --_block-selection-right-outset: 10px;
+  --_block-selection-top-outset: 2px;
 
   caret-color: transparent;
   isolation: isolate;
@@ -116,13 +116,13 @@
 }
 
 .editor__blocknote-container .bn-block-outer.fuwa-rich-editor-block-selected::after {
-  background: color-mix(in srgb, var(--colors-selection) 82%, transparent);
+  background: color-mix(in srgb, var(--state-selection) 82%, transparent);
   border-radius: 6px;
   content: "";
   inset:
-    calc(var(--fuwa-block-selection-top-outset) * -1)
-    calc(var(--fuwa-block-selection-right-outset) * -1)
-    calc(var(--fuwa-block-selection-top-outset) * -1)
+    calc(var(--_block-selection-top-outset) * -1)
+    calc(var(--_block-selection-right-outset) * -1)
+    calc(var(--_block-selection-top-outset) * -1)
     0;
   pointer-events: none;
   position: absolute;
@@ -144,7 +144,7 @@
 }
 
 .editor__blocknote-container .bn-block.fuwa-rich-editor-block-selected {
-  background: color-mix(in srgb, var(--colors-selection) 82%, transparent);
+  background: color-mix(in srgb, var(--state-selection) 82%, transparent);
   border-radius: 6px;
   box-decoration-break: clone;
 }
@@ -193,7 +193,7 @@
   font-size: var(--headings-h1-font-size);
   font-weight: var(--headings-h1-font-weight);
   line-height: var(--headings-h1-line-height);
-  color: var(--headings-h1-color);
+  color: var(--text-heading);
   letter-spacing: var(--headings-h1-letter-spacing);
 }
 .editor__blocknote-container [data-content-type="heading"]:not([data-level])[data-is-empty-and-focused] .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child)::before,
@@ -211,7 +211,7 @@
   font-size: var(--headings-h2-font-size);
   font-weight: var(--headings-h2-font-weight);
   line-height: var(--headings-h2-line-height);
-  color: var(--headings-h2-color);
+  color: var(--text-heading);
   letter-spacing: var(--headings-h2-letter-spacing);
 }
 
@@ -223,7 +223,7 @@
   font-size: var(--headings-h3-font-size);
   font-weight: var(--headings-h3-font-weight);
   line-height: var(--headings-h3-line-height);
-  color: var(--headings-h3-color);
+  color: var(--text-heading);
   letter-spacing: var(--headings-h3-letter-spacing);
 }
 
@@ -235,17 +235,17 @@
   font-size: var(--headings-h4-font-size);
   font-weight: var(--headings-h4-font-weight);
   line-height: var(--headings-h4-line-height);
-  color: var(--headings-h4-color);
+  color: var(--text-heading);
   letter-spacing: var(--headings-h4-letter-spacing);
 }
 
 /* --- Bullet lists --- */
 /* BlockNote renders the bullet as a font glyph in a 24px-wide ::before box. */
 .editor__blocknote-container [data-content-type="bulletListItem"] {
-  --lists-marker-inner-radius: calc(var(--editor-font-size) * 0.133333);
-  --lists-marker-radius: calc(var(--editor-font-size) * 0.2);
-  --lists-marker-fade-radius: calc(var(--editor-font-size) * 0.233333);
-  --lists-marker-size: calc(var(--editor-font-size) * 0.4);
+  --_lists-marker-inner-radius: calc(var(--editor-font-size) * 0.133333);
+  --_lists-marker-radius: calc(var(--editor-font-size) * 0.2);
+  --_lists-marker-fade-radius: calc(var(--editor-font-size) * 0.233333);
+  --_lists-marker-size: calc(var(--editor-font-size) * 0.4);
 
   padding-inline-start: var(--lists-padding-left);
   margin-bottom: var(--lists-item-spacing);
@@ -256,8 +256,8 @@
   /* Draw a 6px dot at the default 15px editor size, scaling with editor zoom. */
   background: radial-gradient(
     circle,
-    var(--lists-bullet-color) 0 var(--lists-marker-radius),
-    transparent var(--lists-marker-fade-radius)
+    var(--text-primary) 0 var(--_lists-marker-radius),
+    transparent var(--_lists-marker-fade-radius)
   );
   color: transparent;
   font-size: 0;
@@ -276,9 +276,9 @@
   background:
     radial-gradient(
       circle,
-      transparent 0 var(--lists-marker-inner-radius),
-      var(--lists-bullet-color) var(--lists-marker-inner-radius) var(--lists-marker-radius),
-      transparent var(--lists-marker-fade-radius)
+      transparent 0 var(--_lists-marker-inner-radius),
+      var(--text-primary) var(--_lists-marker-inner-radius) var(--_lists-marker-radius),
+      transparent var(--_lists-marker-fade-radius)
     );
 }
 
@@ -286,8 +286,8 @@
   .bn-block-group .bn-block-group .bn-block-group
   [data-content-type="bulletListItem"]::before {
   background:
-    linear-gradient(var(--lists-bullet-color), var(--lists-bullet-color))
-    center / var(--lists-marker-size) var(--lists-marker-size) no-repeat;
+    linear-gradient(var(--text-primary), var(--text-primary))
+    center / var(--_lists-marker-size) var(--_lists-marker-size) no-repeat;
 }
 
 /* Nested list indentation */
@@ -308,7 +308,7 @@
 }
 
 .editor__blocknote-container [data-content-type="numberedListItem"]::before {
-  color: var(--lists-bullet-color) !important;
+  color: var(--text-primary) !important;
   font-size: var(--editor-font-size) !important;
   min-width: var(--lists-indent-size) !important;
   width: var(--lists-indent-size) !important;
@@ -337,14 +337,14 @@
   min-height: var(--checkboxes-size) !important;
   margin: 0 !important;
   border-radius: var(--checkboxes-border-radius) !important;
-  border: 1px solid var(--checkboxes-unchecked-border-color) !important;
+  border: 1px solid var(--text-muted) !important;
   background: transparent;
   cursor: pointer;
 }
 
 .editor__blocknote-container [data-content-type="checkListItem"] input[type="checkbox"]:checked {
-  border-color: var(--checkboxes-checked-color) !important;
-  background: var(--checkboxes-checked-color);
+  border-color: var(--text-primary) !important;
+  background: var(--text-primary);
 }
 
 .editor__blocknote-container [data-content-type="checkListItem"] input[type="checkbox"]:checked::after {
@@ -354,7 +354,7 @@
   top: 1px;
   width: 4px;
   height: 7px;
-  border: solid var(--surface-editor);
+  border: solid var(--surface-card);
   border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
 }
@@ -377,39 +377,39 @@
 
 /* --- Inline: bold --- */
 .editor__blocknote-container .bn-editor strong {
-  font-weight: var(--inline-styles-bold-font-weight);
-  color: var(--inline-styles-bold-color);
+  font-weight: var(--inline-bold-font-weight);
+  color: var(--text-heading);
 }
 
 /* --- Inline: italic --- */
 .editor__blocknote-container .bn-editor em {
-  font-style: var(--inline-styles-italic-font-style);
-  color: var(--inline-styles-italic-color);
+  font-style: italic;
+  color: inherit;
 }
 
 /* --- Inline: strikethrough --- */
 .editor__blocknote-container .bn-editor s,
 .editor__blocknote-container .bn-editor del {
-  color: var(--inline-styles-strikethrough-color);
-  text-decoration: var(--inline-styles-strikethrough-text-decoration);
+  color: var(--text-secondary);
+  text-decoration: line-through;
 }
 
 /* --- Inline: code --- */
 .editor__blocknote-container .bn-inline-content code {
-  font-family: var(--inline-styles-code-font-family);
-  font-size: var(--inline-styles-code-font-size);
+  font-family: var(--inline-code-font-family);
+  font-size: var(--inline-code-font-size);
   line-height: 1.3;
-  background-color: var(--inline-styles-code-background-color);
-  box-shadow: inset 0 0 0 var(--hairline) var(--editor-inline-code-border);
-  padding: var(--inline-styles-code-padding-vertical) var(--inline-styles-code-padding-horizontal);
-  border-radius: var(--inline-styles-code-border-radius);
-  color: var(--inline-styles-code-color);
+  background-color: var(--inline-code-bg);
+  box-shadow: inset 0 0 0 var(--hairline) var(--inline-code-border);
+  padding: var(--inline-code-padding-vertical) var(--inline-code-padding-horizontal);
+  border-radius: var(--inline-code-border-radius);
+  color: inherit;
 }
 
 /* --- Inline: Markdown highlight (the chromatic roles, yellow by default) --- */
 .editor__blocknote-container .bn-editor mark.markdown-highlight {
   background-color: var(--chroma-yellow-bg);
-  color: var(--colors-text);
+  color: var(--text-primary);
   border-radius: 2px;
 }
 
@@ -459,7 +459,7 @@
   width: 18px;
   min-width: 18px;
   padding: 0;
-  color: var(--colors-menu-text);
+  color: var(--text-primary);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
@@ -480,10 +480,10 @@
 }
 
 .markdown-highlight-boundary-trigger {
-  color: var(--colors-menu-text);
+  color: var(--text-primary);
   background: var(--surface-popover);
-  border: 1px solid var(--border-subtle);
-  box-shadow: 0 2px 8px var(--shadow-dialog);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-menu);
 }
 
 .markdown-highlight-color-swatch {
@@ -521,8 +521,8 @@
 
 /* --- Inline: links (underline on hover only) --- */
 .editor__blocknote-container .bn-editor a {
-  color: var(--inline-styles-link-color);
-  text-decoration: var(--inline-styles-link-text-decoration);
+  color: var(--text-link);
+  text-decoration: none;
   cursor: text;
 }
 
@@ -533,7 +533,7 @@
 }
 
 .editor__blocknote-container .math {
-  color: var(--colors-text);
+  color: var(--text-primary);
   cursor: text;
 }
 
@@ -559,8 +559,8 @@
 }
 
 .editor__blocknote-container .math-block-source::selection {
-  background: var(--colors-selection);
-  color: var(--colors-text);
+  background: var(--state-selection);
+  color: var(--text-primary);
 }
 
 .editor__blocknote-container .math--block {
@@ -570,7 +570,7 @@
 }
 
 .editor__blocknote-container .math .katex-error {
-  color: var(--destructive) !important;
+  color: var(--chroma-red) !important;
   white-space: pre-wrap;
 }
 
@@ -578,16 +578,16 @@
   position: relative;
   width: 100%;
   margin: 10px 0;
-  color: var(--colors-text);
+  color: var(--text-primary);
 }
 
 .editor__blocknote-container .mermaid-diagram__viewport {
   max-width: 100%;
   overflow: auto;
   padding: 14px;
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: var(--surface-editor);
+  background: var(--surface-card);
 }
 
 .editor__blocknote-container .mermaid-diagram__edit-button,
@@ -596,7 +596,7 @@
   top: 8px;
   z-index: 1;
   opacity: 0;
-  background: var(--surface-editor);
+  background: var(--surface-card);
   box-shadow: 0 6px 16px rgb(15 23 42 / 0.14);
 }
 
@@ -614,7 +614,7 @@
 }
 
 .editor__blocknote-container .mermaid-diagram__viewport:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--state-focus-ring);
   outline-offset: 2px;
 }
 
@@ -640,7 +640,6 @@
   max-height: calc(100dvh - 32px);
   overflow: hidden;
   padding: 0;
-  zoom: var(--fuwa-overlay-zoom-inverse, 1);
 }
 
 .mermaid-diagram__dialog-viewport {
@@ -648,12 +647,12 @@
   height: 100%;
   overflow: auto;
   padding: 24px;
-  color: var(--colors-text);
-  background: var(--surface-editor);
+  color: var(--text-primary);
+  background: var(--surface-card);
 }
 
 .mermaid-diagram__dialog-viewport:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--state-focus-ring);
   outline-offset: -2px;
 }
 
@@ -667,14 +666,14 @@
 
 .editor__blocknote-container .mermaid-diagram--error {
   padding: 12px;
-  border: 1px solid var(--destructive);
+  border: 1px solid var(--chroma-red);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--destructive) 8%, transparent);
+  background: color-mix(in srgb, var(--chroma-red) 8%, transparent);
 }
 
 .editor__blocknote-container .mermaid-diagram--error figcaption {
   margin-bottom: 8px;
-  color: var(--destructive);
+  color: var(--chroma-red);
   font-size: 11.9px;
   font-weight: 600;
 }
@@ -685,20 +684,20 @@
   margin: 0;
   padding: 10px;
   border-radius: 6px;
-  background: var(--inline-styles-code-background-color);
-  color: var(--inline-styles-code-color);
+  background: var(--inline-code-bg);
+  color: inherit;
   font-size: 11.9px;
 }
 
 .editor__blocknote-container .tldraw-whiteboard {
   position: relative;
-  width: min(var(--tldraw-whiteboard-width, 100%), 100%);
+  width: min(var(--whiteboard-width, 100%), 100%);
   max-width: 100%;
-  height: var(--tldraw-whiteboard-height, 520px);
+  height: var(--whiteboard-height, 520px);
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: 8px;
-  background: var(--card);
+  background: var(--surface-card);
   user-select: none;
 }
 
@@ -718,7 +717,7 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .editor__blocknote-container .tldraw-whiteboard .tl-container {
-  --color-background: var(--card);
+  --color-background: var(--surface-card);
   --tl-layer-menu-click-capture: 25;
   --tl-layer-panels: 30;
   --tl-layer-menus: 40;
@@ -733,7 +732,7 @@ body.tldraw-whiteboard-fullscreen-open {
   top: 8px;
   right: 8px;
   z-index: 90;
-  background: var(--background);
+  background: var(--surface-app);
   box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
 }
 
@@ -751,17 +750,17 @@ body.tldraw-whiteboard-fullscreen-open {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--destructive) 34%, var(--border));
+  border: 1px solid color-mix(in srgb, var(--chroma-red) 34%, var(--border-default));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--background) 94%, var(--destructive));
-  color: var(--foreground);
+  background: color-mix(in srgb, var(--surface-app) 94%, var(--chroma-red));
+  color: var(--text-primary);
   font-size: 11.9px;
   line-height: 1.4;
   box-shadow: 0 8px 22px rgb(0 0 0 / 16%);
 }
 
 .editor__blocknote-container .tldraw-whiteboard__permission-error strong {
-  color: var(--destructive);
+  color: var(--chroma-red);
   font-size: 12.04px;
 }
 
@@ -815,8 +814,8 @@ body.tldraw-whiteboard-fullscreen-open {
   bottom: 4px;
   width: 8px;
   height: 8px;
-  border-right: 2px solid color-mix(in srgb, var(--foreground) 42%, transparent);
-  border-bottom: 2px solid color-mix(in srgb, var(--foreground) 42%, transparent);
+  border-right: 2px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
   content: '';
 }
 
@@ -827,11 +826,11 @@ body.tldraw-whiteboard-fullscreen-open {
 /* Code blocks sit on the canvas colour with a hairline border and a 6px
    radius, 13px / 1.4 in the mono face, instead of BlockNote's fixed dark shell. */
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] {
-  background-color: var(--editor-code-block-background) !important;
-  border: var(--hairline) solid var(--editor-code-block-border);
+  background-color: var(--surface-app) !important;
+  border: var(--hairline) solid var(--border-default);
   border-radius: 6px;
-  color: var(--editor-code-block-text) !important;
-  font-family: var(--inline-styles-code-font-family);
+  color: var(--text-primary) !important;
+  font-family: var(--inline-code-font-family);
   font-size: 13px;
   line-height: 1.4;
   letter-spacing: 0;
@@ -847,14 +846,14 @@ body.tldraw-whiteboard-fullscreen-open {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
-  color: var(--editor-code-block-language);
+  color: var(--text-secondary);
   padding: 0;
 }
 
 .editor__code-block-copy [data-editor-code-copy-button]:hover,
 .editor__code-block-copy [data-editor-code-copy-button]:focus-visible {
   background: transparent !important;
-  color: var(--editor-code-block-text);
+  color: var(--text-primary);
 }
 
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > pre {
@@ -876,11 +875,11 @@ body.tldraw-whiteboard-fullscreen-open {
   min-height: 28px;
   max-width: min(252px, 100%);
   padding: 3px 28px 3px 8px;
-  border: 1px solid color-mix(in srgb, var(--editor-code-block-language) 42%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 42%, transparent);
   border-radius: 6px;
   appearance: auto;
-  background-color: color-mix(in srgb, var(--editor-code-block-background) 88%, var(--surface-app));
-  color: var(--editor-code-block-language) !important;
+  background-color: var(--surface-app);
+  color: var(--text-secondary) !important;
   cursor: pointer;
   font: inherit;
   font-size: 11.9px;
@@ -894,17 +893,17 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .editor__code-block-language-overlay .editor__code-block-language-trigger {
-  color: var(--editor-code-block-language);
+  color: var(--text-secondary);
 }
 
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div > select > option {
-  background: var(--popover);
-  color: var(--foreground);
+  background: var(--surface-popover);
+  color: var(--text-primary);
 }
 
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div > select:hover,
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div > select:focus-visible {
-  border-color: var(--editor-code-block-language);
+  border-color: var(--text-secondary);
   outline: 2px solid transparent;
 }
 
@@ -945,7 +944,7 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .html-block {
-  background: var(--surface-panel);
+  background: var(--surface-card);
   border: 1px solid transparent;
   border-radius: 8px;
   min-height: 180px;
@@ -956,7 +955,7 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .html-block:hover {
-  border-color: var(--border-subtle);
+  border-color: var(--border-default);
 }
 
 .html-block__toolbar {
@@ -1021,14 +1020,14 @@ body.tldraw-whiteboard-fullscreen-open {
 /* --- Blockquote: a 4px rounded bar, the text colour unchanged --- */
 .editor__blocknote-container [data-content-type="blockquote"],
 .editor__blocknote-container blockquote {
-  border-inline-start: var(--blockquote-border-left-width) solid var(--blockquote-border-left-color);
+  border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
   border-start-start-radius: 2px;
   border-end-start-radius: 2px;
   padding-inline-start: var(--blockquote-padding-left);
   margin-top: var(--blockquote-margin-vertical);
   margin-bottom: var(--blockquote-margin-vertical);
-  color: var(--blockquote-color);
-  font-style: var(--blockquote-font-style);
+  color: inherit;
+  font-style: normal;
 }
 
 /* BlockNote models Markdown blockquote paragraphs as sibling blocks. Join
@@ -1069,16 +1068,16 @@ body.tldraw-whiteboard-fullscreen-open {
 .editor__blocknote-container [data-content-type="table"] table {
   border-collapse: separate;
   border-spacing: 0;
-  border: var(--hairline) solid var(--table-border-color);
-  border-color: var(--table-border-color);
+  border: var(--hairline) solid var(--border-default);
+  border-color: var(--border-default);
   border-radius: 6px;
   font-size: var(--table-font-size);
 }
 
 .editor__blocknote-container [data-content-type="table"] :is(th, td) {
   border-width: 0;
-  border-inline-start: var(--hairline) solid var(--table-border-color);
-  border-color: var(--table-border-color);
+  border-inline-start: var(--hairline) solid var(--border-default);
+  border-color: var(--border-default);
 }
 
 .editor__blocknote-container [data-content-type="table"] :is(th, td):first-child {
@@ -1086,7 +1085,7 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .editor__blocknote-container [data-content-type="table"] tr + tr :is(th, td) {
-  border-top: var(--hairline) solid var(--table-border-color);
+  border-top: var(--hairline) solid var(--border-default);
 }
 
 .editor__blocknote-container [data-content-type="table"] tr:first-child th:first-child,
@@ -1100,7 +1099,7 @@ body.tldraw-whiteboard-fullscreen-open {
 }
 
 .editor__blocknote-container [data-content-type="table"] th {
-  background: var(--table-header-background);
+  background: var(--surface-shade);
   font-weight: 600;
   padding: var(--table-cell-padding-vertical) var(--table-cell-padding-horizontal);
 }
@@ -1114,14 +1113,14 @@ body.tldraw-whiteboard-fullscreen-open {
    tinted with the primary control (table selection). */
 .editor__blocknote-container [data-content-type="table"] .selectedCell::after {
   inset: var(--hairline);
-  background: var(--accent-blue-light);
+  background: var(--accent-bg);
 }
 
 /* --- Horizontal rule --- */
 .editor__blocknote-container hr {
   border: none;
-  border-top: var(--horizontal-rule-thickness) solid var(--horizontal-rule-color);
-  margin: var(--horizontal-rule-margin-vertical) 0;
+  border-top: var(--hr-thickness) solid var(--border-strong);
+  margin: var(--hr-margin-vertical) 0;
 }
 
 .editor__blocknote-container .bn-block-outer:has(hr)

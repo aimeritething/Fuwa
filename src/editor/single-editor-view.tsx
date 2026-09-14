@@ -3,7 +3,6 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/shadcn'
 import { trackEvent } from '@/lib/telemetry'
 import { useDocumentThemeMode } from '@/shell/use-document-theme-mode'
-import { useEditorTheme } from '@/shell/use-theme'
 import { useImageDrop, type ImageImportError } from './use-image-drop'
 import { useImageLightbox } from './use-image-lightbox'
 import type { AppLocale } from '@/lib/i18n'
@@ -215,7 +214,6 @@ export function SingleEditorView(options: {
   locale?: AppLocale
 }) {
   const { editor, onNavigateWikilink, onChange, onImageImportError, sourceEntry, vaultPath, attachmentVaultPath, editable = true, locale = 'en' } = options
-  const { cssVars } = useEditorTheme()
   const themeMode = useDocumentThemeMode()
   const previousThemeModeRef = useRef(themeMode)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -341,7 +339,6 @@ export function SingleEditorView(options: {
       role="application"
       aria-label="Rich text editor"
       className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`}
-      style={cssVars as React.CSSProperties}
       onCopyCapture={handleCopyCapture}
       onFocusCapture={handleFocusCapture}
       onMouseLeave={clearCopyTarget}
