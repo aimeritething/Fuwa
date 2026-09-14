@@ -1,7 +1,7 @@
 // Wikilink placeholder tokens for markdown round-trip
-import { advanceMarkdownFence, type MarkdownFence, type MarkdownFenceScanOptions } from './markdownFences'
-import { stripInlineMarkdown } from './inlineMarkdown'
-import wordCountContract from './wordCountContract.json'
+import { advanceMarkdownFence, type MarkdownFence, type MarkdownFenceScanOptions } from './markdown-fences'
+import { stripInlineMarkdown } from './inline-markdown'
+import wordCountContract from './word-count-contract.json'
 
 const WL_START = '\u2039WIKILINK:'
 const WL_END = '\u203A'

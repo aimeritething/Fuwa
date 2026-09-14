@@ -1,4 +1,4 @@
-import { canonicalFrontmatterKey } from './systemMetadata'
+import { canonicalFrontmatterKey } from './system-metadata'
 
 export type FrontmatterValue = string | number | boolean | string[] | null
 

@@ -1,7 +1,7 @@
 import type { VaultEntry } from '@/types'
-import { noteEntryForPath, noteRootForPath } from './noteEntry'
-import { notePathFilename } from '@/lib/notePathIdentity'
-import { isPathInsideVaultRoot } from '@/lib/vaultPathContainment'
+import { noteEntryForPath, noteRootForPath } from './note-entry'
+import { notePathFilename } from '@/lib/note-path-identity'
+import { isPathInsideVaultRoot } from '@/lib/vault-path-containment'
 
 export interface ListedFile {
   path: string

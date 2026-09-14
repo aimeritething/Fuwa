@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 // Smoke harness: Chromium against `pnpm dev` with the in-memory Folder fixture
-// standing in for the Rust side (see src/platform/mock/vaultFixture.ts). One
+// standing in for the Rust side (see src/platform/mock/vault-fixture.ts). One
 // worker, local-only; CI does not run it. `pnpm smoke` starts the dev server
 // on the Vite port unless one is already listening there; set FUWA_SMOKE_PORT
 // to run against a second checkout while another dev server holds the port.

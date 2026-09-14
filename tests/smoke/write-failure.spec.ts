@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 // Type-only: brings the browser menu bridge's `window.__fuwaTest` declaration into the spec program.
-import type {} from '../../src/shell/useMenuEvents'
+import type {} from '../../src/shell/use-menu-events'
 import {
   MOCK_FOLDER,
   openDocumentThroughDialog,

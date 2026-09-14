@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
-import type { MockVault, MockVaultImage } from '../../src/platform/mock/vaultFixture'
+import type { MockVault, MockVaultImage } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, watchForErrors } from './harness'
 
 // An Image file opens as a real Tab, fitted to the card, with its

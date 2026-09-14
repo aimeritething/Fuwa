@@ -1,7 +1,7 @@
 import { Component, type ComponentProps, type ReactNode } from 'react'
 import { cn } from './utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip'
-import { markRecoveredActionTooltipError } from './actionTooltipRecovery'
+import { markRecoveredActionTooltipError } from './action-tooltip-recovery'
 
 export interface ActionTooltipCopy {
   label: string

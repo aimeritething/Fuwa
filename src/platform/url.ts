@@ -1,5 +1,5 @@
 import { isTauri } from './tauri'
-import { writeClipboardText } from './clipboardText'
+import { writeClipboardText } from './clipboard-text'
 
 type ExternalUrlCandidate = string
 type AbsoluteFilePath = string

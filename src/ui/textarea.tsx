@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { nativeTextAssistanceDisabledProps } from "@/platform/nativeTextAssistance"
+import { nativeTextAssistanceDisabledProps } from "@/platform/native-text-assistance"
 import { cn } from "./utils"
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<"textarea">>(
