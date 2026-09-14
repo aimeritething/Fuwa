@@ -1,16 +1,12 @@
+"use client"
+
 import type * as React from "react"
-import { X as XIcon } from '@phosphor-icons/react'
+import { cva, type VariantProps } from "class-variance-authority"
+import { cn } from "@/lib/cn"
+import { X as XIcon } from "@phosphor-icons/react"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
-import { cn } from "./utils"
 import { Button } from "./button"
-
-function dialogSlotProps(slot: string, baseClassName: string, className?: string) {
-  return {
-    "data-slot": slot,
-    className: cn(baseClassName, className),
-  }
-}
 
 function Dialog({
   ...props
@@ -44,7 +40,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-[var(--surface-overlay)]",
+        "fixed inset-0 z-overlay bg-surface-overlay data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -52,32 +48,51 @@ function DialogOverlay({
   )
 }
 
+// default is the prompt: centred, on the popover surface. bare is the same
+// centring with no panel at all (a lightbox). palette hangs from 24% down,
+// unpadded, no close button; what it holds lays itself out as a column.
+const dialogContentVariants = cva(
+  "fixed left-[50%] z-popover grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] gap-4 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
+  {
+    variants: {
+      variant: {
+        default:
+          "top-[50%] translate-y-[-50%] rounded-xl border-hairline border-border-popover bg-surface-popover p-6 text-text-primary shadow-dialog sm:max-w-lg",
+        bare: "top-[50%] w-auto translate-y-[-50%]",
+        palette:
+          "top-[24%] flex flex-col gap-0 rounded-xl border-hairline border-border-popover bg-surface-popover p-0 text-text-primary shadow-dialog",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
-  ref,
+  variant = "default",
+  showCloseButton = variant === "default",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-}) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants> & {
+    showCloseButton?: boolean
+  }) {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
-        ref={ref}
         data-slot="dialog-content"
-        className={cn(
-          "fuwa-menu-surface bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl p-6 duration-200 outline-none sm:max-w-lg",
-          className
-        )}
+        data-variant={variant}
+        className={cn(dialogContentVariants({ variant }), className)}
         {...props}
       >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus-visible:focus-ring disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -125,38 +140,30 @@ function DialogFooter({
   )
 }
 
-type DialogTextPartProps =
-  | (React.ComponentProps<typeof DialogPrimitive.Title> & { textPart: "title" })
-  | (React.ComponentProps<typeof DialogPrimitive.Description> & { textPart: "description" })
-
-function DialogTextPart(props: DialogTextPartProps) {
-  if (props.textPart === "title") {
-    const { textPart, className, ...titleProps } = props
-    void textPart
-    return (
-      <DialogPrimitive.Title
-        {...dialogSlotProps("dialog-title", "text-lg leading-none font-semibold", className)}
-        {...titleProps}
-      />
-    )
-  }
-
-  const { textPart, className, ...descriptionProps } = props
-  void textPart
+function DialogTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
-    <DialogPrimitive.Description
-      {...dialogSlotProps("dialog-description", "text-muted-foreground text-sm", className)}
-      {...descriptionProps}
+    <DialogPrimitive.Title
+      data-slot="dialog-title"
+      className={cn("text-lg leading-none font-semibold", className)}
+      {...props}
     />
   )
 }
 
-function DialogTitle(props: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogTextPart textPart="title" {...props} />
-}
-
-function DialogDescription(props: React.ComponentProps<typeof DialogPrimitive.Description>) {
-  return <DialogTextPart textPart="description" {...props} />
+function DialogDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  return (
+    <DialogPrimitive.Description
+      data-slot="dialog-description"
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
 }
 
 export {

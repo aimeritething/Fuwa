@@ -27,13 +27,6 @@
   box-shadow: 0 0 0 1px var(--state-focus-ring);
 }
 
-/* The tooltip is mono, so the shortcut reads as one. */
-.fuwa-sidebar-toggle__tip {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0;
-}
-
 /* Collapsed: the traffic lights' room (macOS draws them at x 13, three 12px
    lights 8px apart) and the icon after it, before the first tab. */
 .fuwa-collapsed-chrome {

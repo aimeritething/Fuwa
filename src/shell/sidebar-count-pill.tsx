@@ -1,4 +1,4 @@
-import { cn } from '@/ui/utils'
+import { cn } from '@/lib/cn'
 
 const SIDEBAR_COUNT_PILL_STYLE = {
   borderRadius: 9999,

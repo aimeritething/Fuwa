@@ -5,8 +5,8 @@ import { createTranslator } from '@/lib/i18n'
 import { trackEvent } from '@/lib/telemetry'
 import { writeClipboardText } from '@/platform/clipboard-text'
 import { codeBlockText } from './editor-rich-copy'
-import { ActionTooltip } from '@/ui/action-tooltip'
 import { Button } from '@/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import type { CodeBlockCopyTarget } from './use-code-block-copy-target'
 
 const CODE_BLOCK_COPY_RESET_MS = 1200
@@ -47,24 +47,27 @@ export function CodeBlockCopyButton({ copyTarget, locale }: { copyTarget: CodeBl
   const { active, handleCopy, setActive } = useCodeBlockCopyAction(copyTarget)
   return (
     <div className="editor__code-block-copy" contentEditable={false} data-editor-code-copy style={{ left: copyTarget.left, top: copyTarget.top }}>
-      <ActionTooltip copy={{ label }} side="left" align="center">
-        <Button
-          aria-label={label}
-          className="border-transparent bg-transparent text-text-secondary shadow-none hover:bg-transparent hover:text-text-primary focus-visible:bg-transparent focus-visible:text-text-primary"
-          data-editor-code-copy-button
-          onBlur={() => setActive(false)}
-          onClick={handleCopy}
-          onFocus={() => setActive(true)}
-          onMouseDown={stopCopyButtonEvent}
-          onMouseEnter={() => setActive(true)}
-          onMouseLeave={() => setActive(false)}
-          size="icon-xs"
-          type="button"
-          variant="ghost"
-        >
-          <Copy aria-hidden="true" className="size-6" weight={active ? 'fill' : 'regular'} />
-        </Button>
-      </ActionTooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            aria-label={label}
+            className="border-transparent bg-transparent text-text-secondary shadow-none hover:bg-transparent hover:text-text-primary focus-visible:bg-transparent focus-visible:text-text-primary"
+            data-editor-code-copy-button
+            onBlur={() => setActive(false)}
+            onClick={handleCopy}
+            onFocus={() => setActive(true)}
+            onMouseDown={stopCopyButtonEvent}
+            onMouseEnter={() => setActive(true)}
+            onMouseLeave={() => setActive(false)}
+            size="icon-xs"
+            type="button"
+            variant="ghost"
+          >
+            <Copy aria-hidden="true" className="size-6" weight={active ? 'fill' : 'regular'} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left" align="center">{label}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

@@ -47,7 +47,8 @@ test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows th
   await show.hover()
   const tooltip = page.getByRole('tooltip')
   await expect(tooltip).toHaveText('Show sidebar ⌘[')
-  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCSS('font-family', /JetBrains Mono/)
+  await expect(tooltip.locator('kbd')).toHaveText('⌘[')
+  await expect(tooltip.locator('kbd')).toHaveCSS('font-family', /JetBrains Mono/)
 
   await page.keyboard.press('Meta+BracketLeft')
   await expectExpanded(page)

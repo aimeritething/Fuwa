@@ -599,9 +599,8 @@
   }
 }
 
-/* The popover material for the `ui/` panels and the kernel's menus: a
-   hairline border and the menu shadow. */
-.fuwa-menu-surface,
+/* The popover material for the kernel's menus: a hairline border and the
+   menu shadow. */
 .bn-shadcn .bn-menu-dropdown,
 .bn-shadcn .bn-toolbar {
   border: var(--hairline) solid var(--border-popover);

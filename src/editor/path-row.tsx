@@ -118,7 +118,7 @@ function ModeControl({ mode }: { mode: PathRowMode }) {
         const active = segment === mode.value
         const disabledReason = segment === 'rich' ? mode.richDisabledReason : null
         return (
-          <ModeTooltip key={segment} text={disabledReason ?? `${MODE_LABELS[segment]} ${TOGGLE_SHORTCUT}`}>
+          <ModeTooltip key={segment} label={disabledReason ?? MODE_LABELS[segment]} shortcut={disabledReason === null ? TOGGLE_SHORTCUT : undefined}>
             <button
               type="button"
               role="radio"
@@ -141,11 +141,11 @@ function ModeControl({ mode }: { mode: PathRowMode }) {
   )
 }
 
-function ModeTooltip({ text, children }: { text: string; children: ReactNode }) {
+function ModeTooltip({ label, shortcut, children }: { label: string; shortcut?: string; children: ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side="bottom" align="end" className="fuwa-mode__tip">{text}</TooltipContent>
+      <TooltipContent side="bottom" align="end" shortcut={shortcut}>{label}</TooltipContent>
     </Tooltip>
   )
 }

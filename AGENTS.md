@@ -20,9 +20,10 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
     wrappers; `explorer/` imports `folder/`, never the reverse), `tabs/`, `session/`,
     `command-menu/`, `shell/` (sidebar, theme, shortcuts, menu events, `app-command-manifest.json`,
     which `src-tauri/src/menu.rs` also reads via `include_str!`).
-  - `ui/` — shadcn primitives and `cn`. `platform/` — `tauri.ts` (`isTauri` / mock dispatch),
-    `mock/` (the in-memory Folder fixture that stands in for Rust outside Tauri), window, URL,
-    clipboard, storage keys. `lib/` — leaf helpers (i18n, telemetry stubs, path identity).
+  - `ui/` — the shadcn primitives, regenerated from the templates with Fuwa's values, and
+    `kbd`. `platform/` — `tauri.ts` (`isTauri` / mock dispatch), `mock/` (the in-memory Folder
+    fixture that stands in for Rust outside Tauri), window, URL, clipboard, storage keys.
+    `lib/` — leaf helpers (`cn`, i18n, telemetry stubs, path identity).
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
 - `tests/smoke/` — Playwright specs; its `README.md` describes the Folder fixture they drive.
   Unit tests sit beside the code as `*.test.ts(x)`; a test with no source file of its own lives

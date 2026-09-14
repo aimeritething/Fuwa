@@ -12,7 +12,7 @@ interface SidebarToggleProps {
 /**
  * The sidebar's one affordance: the same glyph collapses the
  * sidebar from its top row and brings it back from the tab bar. Its tooltip
- * is mono and carries the shortcut, `Show sidebar ⌘[`, because the collapsed
+ * carries the shortcut as a chip, `Show sidebar ⌘[`, because the collapsed
  * window has nothing else to say how to get the sidebar back.
  */
 export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
@@ -30,8 +30,8 @@ export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
           <SidebarSimple size={16} aria-hidden="true" />
         </button>
       </TooltipTrigger>
-      <TooltipContent side="bottom" align="start" className="fuwa-sidebar-toggle__tip">
-        {label} {SHORTCUT}
+      <TooltipContent side="bottom" align="start" shortcut={SHORTCUT}>
+        {label}
       </TooltipContent>
     </Tooltip>
   )

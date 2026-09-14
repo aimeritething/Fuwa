@@ -98,7 +98,7 @@ describe('PathRow', () => {
       expect(onChange).toHaveBeenCalledTimes(1)
     })
 
-    it('names the shortcut in a mono tooltip', async () => {
+    it('names the shortcut as a chip in the tooltip', async () => {
       vi.useRealTimers()
       renderWithTooltips(<PathRow filename="Welcome.md" savedAt={null} mode={richMode()} />)
 
@@ -106,7 +106,7 @@ describe('PathRow', () => {
 
       const tip = await screen.findByRole('tooltip')
       expect(tip).toHaveTextContent('Raw ⌘\\')
-      expect(tip).toHaveClass('fuwa-mode__tip')
+      expect(tip.querySelector('kbd')).toHaveTextContent('⌘\\')
     })
 
     it('disables the Rich segment with the reason as its tooltip while the Frontmatter is invalid', async () => {
