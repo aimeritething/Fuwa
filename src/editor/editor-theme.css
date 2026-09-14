@@ -483,7 +483,7 @@
   color: var(--text-primary);
   background: var(--surface-popover);
   border: 1px solid var(--border-default);
-  box-shadow: 0 2px 8px var(--shadow-dialog);
+  box-shadow: var(--shadow-menu);
 }
 
 .markdown-highlight-color-swatch {

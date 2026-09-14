@@ -164,7 +164,7 @@
 }
 
 .fuwa-path-row__saved {
-  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -183,7 +183,7 @@
   background: transparent;
   box-shadow: 0 0 0 var(--hairline) var(--border-default);
   color: var(--text-secondary);
-  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -252,7 +252,7 @@
 }
 
 .fuwa-mode__tip {
-  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0;
 }
@@ -287,7 +287,7 @@
 /* An Image Tab's slot: the picture's dimensions and byte size, then the two
    ghost buttons that hand the file to a real image app. */
 .fuwa-path-row__image-meta {
-  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
@@ -330,7 +330,7 @@
 .fuwa-empty__hints {
   display: flex;
   gap: 22px;
-  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px;
   letter-spacing: 0;
 }
@@ -385,7 +385,7 @@
 .fuwa-write-failure__detail {
   overflow: hidden;
   color: var(--text-secondary);
-  font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0;
   text-overflow: ellipsis;
@@ -426,7 +426,7 @@
 .fuwa-write-failure-dialog {
   background: var(--surface-popover);
   border-color: var(--border-popover);
-  box-shadow: 0 8px 24px var(--shadow-dialog);
+  box-shadow: var(--shadow-dialog);
 }
 
 .fuwa-write-failure-dialog [data-slot="dialog-title"] {
@@ -437,7 +437,7 @@
 }
 
 .fuwa-write-failure-dialog [data-slot="dialog-description"] {
-  font-family: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11.5px;
   letter-spacing: 0;
   overflow-wrap: anywhere;

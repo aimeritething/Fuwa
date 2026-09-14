@@ -363,7 +363,7 @@
 
 .fuwa-callout__body {
   padding: 2.1px 10.5px 9.1px;
-  color: var(--color-foreground);
+  color: var(--text-primary);
 }
 
 .fuwa-callout__body[hidden] {

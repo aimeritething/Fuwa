@@ -67,9 +67,9 @@ describe('the shadcn aliases', () => {
     }
   })
 
-  it('appear nowhere in src/ outside ui/, in any form', () => {
+  it('appear nowhere in src/ outside ui/, in any form, the bridged `--color-*` spelling included', () => {
     const names = SHADCN_NAMES.join('|')
-    const asVariable = new RegExp(`var\\(--(${names})\\)`)
+    const asVariable = new RegExp(`var\\(--(?:color-)?(${names})\\)`)
     // A colour utility built on one of the names, with or without variants and an
     // opacity modifier, terminated so that `border-border-default` and `text-text-primary` do not match.
     const asUtility = new RegExp(`(?:^|[\\s"'\`(:])(?:[\\w[\\]=-]+:)*(?:bg|text|border|ring|outline|fill|stroke|divide|placeholder|from|to|via|shadow|decoration|caret)-(${names})(?:/\\d+)?(?=[\\s"'\`)\\]/]|$)`, 'm')
