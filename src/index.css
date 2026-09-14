@@ -543,8 +543,7 @@
 
 /* The focus ring (AIM-429 §5): outline gone, a 1px ring in the focus colour. */
 @utility focus-ring {
-  outline: none;
-  box-shadow: 0 0 0 1px var(--state-focus-ring);
+  @apply outline-none ring-1 ring-state-focus-ring;
 }
 
 /* --- Base layer --- */
