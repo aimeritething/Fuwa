@@ -66,10 +66,7 @@ const EXTRA_SUPPORTED_LANGUAGES = codeBlockLanguageOptions(EXTRA_CODE_BLOCK_LANG
 function currentCodeBlockTheme() {
   if (typeof document === 'undefined') return LIGHT_CODE_THEME
 
-  const root = document.documentElement
-  return root.classList.contains('dark') || root.dataset.theme === 'dark'
-    ? DARK_CODE_THEME
-    : LIGHT_CODE_THEME
+  return document.documentElement.dataset.theme === 'dark' ? DARK_CODE_THEME : LIGHT_CODE_THEME
 }
 
 function prioritizeTheme(themes: string[], theme: string) {

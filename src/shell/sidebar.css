@@ -14,7 +14,7 @@
   display: flex;
   flex: none;
   flex-direction: column;
-  width: var(--fuwa-sidebar-width, 260px);
+  width: var(--sidebar-width, 260px);
   min-height: 0;
   padding: 0 8px 8px;
   color: var(--text-secondary);
@@ -126,5 +126,5 @@
 /* The close affordance shows on hover and on the active row (the settled prototype). */
 .fuwa-sidebar-row:hover,
 .fuwa-sidebar-row[data-active] {
-  --close-affordance-opacity: 1;
+  --_close-affordance-opacity: 1;
 }

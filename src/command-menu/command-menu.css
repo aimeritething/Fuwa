@@ -22,11 +22,11 @@
   max-height: calc(76% - 24px);
   transform: translateX(-50%);
   overflow: hidden;
-  border: var(--hairline) solid var(--border-dialog);
+  border: var(--hairline) solid var(--border-popover);
   border-radius: 12px;
   background: var(--surface-popover);
   color: var(--text-primary);
-  box-shadow: 0 24px 64px -12px var(--shadow-dialog), var(--shadow-menu);
+  box-shadow: var(--shadow-dialog);
   outline: none;
 }
 
@@ -36,7 +36,7 @@
   height: 56px;
   padding: 0 20px;
   border: 0;
-  border-bottom: var(--hairline) solid var(--border-dialog);
+  border-bottom: var(--hairline) solid var(--border-popover);
   background: transparent;
   color: var(--text-heading);
   font: inherit;
@@ -47,7 +47,7 @@
 }
 
 .fuwa-command-menu__input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* No group header: the rows start right under the input. */
@@ -110,7 +110,7 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -118,7 +118,7 @@
 .fuwa-command-menu__shortcut {
   flex: none;
   margin-left: auto;
-  font-family: 'Inter Variable', 'Inter', sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 500;
   color: var(--menu-shortcut);
@@ -133,7 +133,7 @@
   flex: none;
   width: 64px;
   text-align: right;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 11px;
 }
 
@@ -142,7 +142,7 @@
   align-items: center;
   height: 40px;
   padding: 0 10px;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -153,9 +153,9 @@
   align-items: center;
   height: 32px;
   padding: 0 16px;
-  border-top: var(--hairline) solid var(--border-dialog);
-  color: var(--text-tertiary);
-  font-family: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  border-top: var(--hairline) solid var(--border-popover);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0;
 }

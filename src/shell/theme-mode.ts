@@ -74,7 +74,6 @@ export function writeStoredThemeMode(storage: ThemeStorage, mode: ThemeMode): vo
 export function applyThemeModeToDocument(documentObject: ThemeDocument, mode: ResolvedThemeMode): void {
   const root = documentObject.documentElement
   root.setAttribute('data-theme', mode)
-  root.classList.toggle('dark', mode === 'dark')
 }
 
 export function applyThemeSelectionToDocument(

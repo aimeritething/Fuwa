@@ -23,10 +23,10 @@ import { isWindows } from '@/platform/os'
 const FONT_FAMILY = '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
 const RAW_EDITOR_COLORS = {
   activeLineBackground: 'var(--state-hover-subtle)',
-  background: 'var(--surface-editor)',
+  background: 'var(--surface-card)',
   foreground: 'var(--text-primary)',
-  gutterBackground: 'var(--surface-editor)',
-  gutterBorder: 'var(--border-subtle)',
+  gutterBackground: 'var(--surface-card)',
+  gutterBorder: 'var(--border-default)',
   gutterText: 'var(--text-muted)',
 }
 
