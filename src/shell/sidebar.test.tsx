@@ -16,7 +16,7 @@ describe('Sidebar', () => {
   it('is as wide as the Session says and collapses from the icon on its top row', () => {
     const { onToggle } = renderSidebar(300)
 
-    expect(screen.getByTestId('sidebar').style.getPropertyValue('--fuwa-sidebar-width')).toBe('300px')
+    expect(screen.getByTestId('sidebar').style.getPropertyValue('--sidebar-width')).toBe('300px')
     fireEvent.click(screen.getByRole('button', { name: 'Hide sidebar' }))
     expect(onToggle).toHaveBeenCalledTimes(1)
   })
@@ -27,7 +27,7 @@ describe('Sidebar', () => {
 
     fireEvent.pointerDown(edge, { pointerId: 1, clientX: 260, button: 0 })
     fireEvent.pointerMove(edge, { pointerId: 1, clientX: 300 })
-    expect(screen.getByTestId('sidebar').style.getPropertyValue('--fuwa-sidebar-width')).toBe('300px')
+    expect(screen.getByTestId('sidebar').style.getPropertyValue('--sidebar-width')).toBe('300px')
     expect(onWidthChange).not.toHaveBeenCalled()
     fireEvent.pointerMove(edge, { pointerId: 1, clientX: 340 })
     fireEvent.pointerUp(edge, { pointerId: 1, clientX: 340 })
@@ -41,7 +41,7 @@ describe('Sidebar', () => {
 
     fireEvent.pointerDown(edge, { pointerId: 1, clientX: 260, button: 0 })
     fireEvent.pointerMove(edge, { pointerId: 1, clientX: 900 })
-    expect(screen.getByTestId('sidebar').style.getPropertyValue('--fuwa-sidebar-width')).toBe('480px')
+    expect(screen.getByTestId('sidebar').style.getPropertyValue('--sidebar-width')).toBe('480px')
   })
 
   it('resizes by keyboard from the edge as well', () => {

@@ -39,7 +39,7 @@
   flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 11px;
 }
 
@@ -167,9 +167,9 @@
   min-width: 0;
   height: 20px;
   padding: 0 4px;
-  border: var(--hairline) solid var(--border-input);
+  border: var(--hairline) solid var(--border-default);
   border-radius: 4px;
-  background: var(--surface-input);
+  background: var(--surface-card);
   color: var(--text-primary);
   font: inherit;
   outline: none;
@@ -180,16 +180,16 @@
 }
 
 .fuwa-explorer__rename-input[data-invalid] {
-  border-color: var(--accent-red);
+  border-color: var(--chroma-red);
 }
 
 .fuwa-explorer__rename-input[data-invalid]:focus {
-  border-color: var(--accent-red);
+  border-color: var(--chroma-red);
 }
 
 .fuwa-explorer__rename-extension {
   flex: none;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .fuwa-explorer__rename-error {

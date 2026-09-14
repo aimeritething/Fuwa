@@ -133,10 +133,6 @@ vi.mock('@blocknote/shadcn', () => ({
   },
 }))
 
-vi.mock('@/shell/use-theme', () => ({
-  useEditorTheme: () => ({ cssVars: { '--editor-accent': '#abc' } }),
-}))
-
 vi.mock('./use-image-drop', () => ({
   useImageDrop: (args: Record<string, unknown>) => {
     state.capturedImageDropArgs = args

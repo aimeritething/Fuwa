@@ -65,7 +65,7 @@
   height: 44px;
   padding: 0 10px 0 8px;
   overflow: hidden;
-  border-bottom: var(--hairline) solid var(--border-subtle);
+  border-bottom: var(--hairline) solid var(--border-default);
   -webkit-app-region: drag;
   user-select: none;
 }
@@ -102,9 +102,7 @@
 .fuwa-tab[data-active] {
   background: var(--tab-active);
   color: var(--text-heading);
-  box-shadow:
-    0 0 0 var(--hairline) var(--border-default),
-    0 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-raised);
 }
 
 .fuwa-tab:focus-visible {
@@ -113,7 +111,7 @@
 
 .fuwa-tab__icon {
   flex: none;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .fuwa-tab[data-active] .fuwa-tab__icon {
@@ -129,7 +127,7 @@
 /* The close affordance shows on hover and on the selected tab (the settled prototype). */
 .fuwa-tab:hover,
 .fuwa-tab[data-active] {
-  --close-affordance-opacity: 1;
+  --_close-affordance-opacity: 1;
 }
 
 .fuwa-path-row {
@@ -241,13 +239,11 @@
 .fuwa-mode__segment[data-active] {
   background: var(--tab-active);
   color: var(--text-heading);
-  box-shadow:
-    0 0 0 var(--hairline) var(--border-default),
-    0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-raised);
 }
 
 .fuwa-mode__segment[aria-disabled="true"] {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .fuwa-mode__segment:focus-visible {
@@ -309,7 +305,7 @@
 }
 
 /* The prose column: the kernel's .bn-editor already centres itself at
-   --editor-max-width with --editor-padding-horizontal (theme.json), so the
+   --editor-max-width with --editor-padding-horizontal (index.css), so the
    wrapper adds no padding of its own. */
 .fuwa-card .editor-content-wrapper {
   padding-inline: 0;
@@ -351,7 +347,7 @@
 }
 
 .fuwa-empty__dot {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 /* The error bar: a Linear callout in the red chromatic role (accent
@@ -366,7 +362,7 @@
   padding: 8px 8px 8px 12px;
   border-radius: 6px;
   background: color-mix(in srgb, var(--chroma-red) 2%, transparent);
-  box-shadow: 0 0 0 var(--hairline, 0.5px) color-mix(in srgb, var(--chroma-red) 20%, transparent);
+  box-shadow: 0 0 0 var(--hairline) color-mix(in srgb, var(--chroma-red) 20%, transparent);
   font-size: 12.5px;
   letter-spacing: -0.01em;
 }
@@ -417,7 +413,7 @@
   border-radius: 6px;
   background: var(--surface-popover);
   box-shadow:
-    0 0 0 var(--hairline, 0.5px) var(--border-dialog),
+    0 0 0 var(--hairline) var(--border-popover),
     var(--shadow-menu);
   color: var(--text-primary);
   font-size: 12.5px;
@@ -428,8 +424,8 @@
 
 /* The same choices as a dialog when the Tab is closed or the app quits. */
 .fuwa-write-failure-dialog {
-  background: var(--surface-dialog);
-  border-color: var(--border-dialog);
+  background: var(--surface-popover);
+  border-color: var(--border-popover);
   box-shadow: 0 8px 24px var(--shadow-dialog);
 }
 
@@ -447,4 +443,4 @@
   overflow-wrap: anywhere;
 }
 
-.fuwa-path-row__parent { color: var(--text-tertiary); }
+.fuwa-path-row__parent { color: var(--text-secondary); }

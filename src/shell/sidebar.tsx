@@ -21,7 +21,7 @@ interface SidebarProps {
  */
 export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarProps) {
   const { liveWidth, resizerProps } = useEdgeResize(width, onWidthChange)
-  const style = { '--fuwa-sidebar-width': `${liveWidth ?? width}px` } as CSSProperties
+  const style = { '--sidebar-width': `${liveWidth ?? width}px` } as CSSProperties
 
   return (
     <aside className="fuwa-sidebar" data-testid="sidebar" data-resizing={liveWidth !== null || undefined} style={style}>

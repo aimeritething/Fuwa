@@ -50,7 +50,7 @@ export function CodeBlockCopyButton({ copyTarget, locale }: { copyTarget: CodeBl
       <ActionTooltip copy={{ label }} side="left" align="center">
         <Button
           aria-label={label}
-          className="border-transparent bg-transparent text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground focus-visible:bg-transparent focus-visible:text-foreground"
+          className="border-transparent bg-transparent text-text-secondary shadow-none hover:bg-transparent hover:text-text-primary focus-visible:bg-transparent focus-visible:text-text-primary"
           data-editor-code-copy-button
           onBlur={() => setActive(false)}
           onClick={handleCopy}

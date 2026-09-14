@@ -28,7 +28,7 @@
 
 /* Drag-over state: subtle border highlight */
 .editor__blocknote-container--drag-over {
-  outline: 2px dashed var(--border-focus);
+  outline: 2px dashed var(--state-focus-ring);
   outline-offset: -2px;
 }
 
@@ -48,7 +48,7 @@
   padding: 10px 20px;
   border-radius: 8px;
   background: var(--surface-popover);
-  color: var(--primary);
+  color: var(--accent-base);
   font-size: 13px;
   font-weight: 500;
   box-shadow: var(--shadow-menu);
@@ -57,12 +57,12 @@
 .editor__blocknote-container .bn-container {
   width: 100%;
   height: 100%;
-  background: var(--bg-primary);
+  background: var(--surface-card);
   color: var(--text-primary);
   font-size: 15px;
   /* Override BlockNote's internal color variables so .bn-editor background
      matches our vault theme instead of BlockNote's hardcoded light/dark defaults. */
-  --bn-colors-editor-background: var(--bg-primary);
+  --bn-colors-editor-background: var(--surface-card);
   --bn-colors-editor-text: var(--text-primary);
   --bn-colors-menu-background: var(--surface-popover);
   --bn-colors-menu-text: var(--text-primary);
@@ -70,10 +70,9 @@
   --bn-colors-tooltip-text: var(--text-primary);
   --bn-colors-hovered-background: var(--menu-item-hover);
   --bn-colors-hovered-text: var(--text-heading);
-  --bn-colors-selected-background: var(--bg-selected);
+  --bn-colors-selected-background: var(--state-selected);
   --bn-colors-selected-text: var(--text-primary);
-  --bn-colors-border: var(--border-dialog);
-  --bn-colors-shadow: var(--shadow-dialog);
+  --bn-colors-border: var(--border-popover);
   --bn-colors-side-menu: var(--text-muted);
 }
 
@@ -83,7 +82,7 @@
 }
 
 .editor__blocknote-container .bn-suggestion-menu {
-  border: var(--hairline) solid var(--border-dialog) !important;
+  border: var(--hairline) solid var(--border-popover) !important;
   border-radius: 8px !important;
   background: var(--surface-popover) !important;
   box-shadow: var(--shadow-menu) !important;
@@ -170,11 +169,11 @@
   gap: 0.125rem;
   overflow-y: auto;
   padding: 0.25rem;
-  border: var(--hairline) solid var(--border-dialog);
+  border: var(--hairline) solid var(--border-popover);
   border-radius: 8px;
-  background: var(--popover);
+  background: var(--surface-popover);
   box-shadow: var(--shadow-menu);
-  color: var(--popover-foreground);
+  color: var(--text-primary);
 }
 
 .fuwa-slash-menu__submenu-item {
@@ -186,7 +185,7 @@
 
 .fuwa-slash-menu__submenu-item:is(:hover, [aria-selected='true']) {
   background: var(--menu-item-hover);
-  color: var(--accent-foreground);
+  color: var(--text-heading);
 }
 
 /* =============================================
@@ -218,7 +217,7 @@
   transition: opacity 0.15s ease-out !important;
   white-space: nowrap;
   pointer-events: none;
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 .cm-heading-line .cm-formatting-block.cm-formatting-block-visible {
@@ -250,20 +249,20 @@
   content: '\2022';
   position: absolute;
   left: 0;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 /* Active state: show source marker (-, *, +, etc.) */
 .cm-line:not(.cm-heading-line) .cm-formatting-block.cm-formatting-block-visible {
-  color: var(--text-faint) !important;
+  color: var(--text-muted) !important;
   opacity: 1 !important;
 }
 
 /* --- Editor content wrapper: single source of truth for horizontal padding --- */
 .editor-content-wrapper {
-  max-width: var(--editor-max-width, 760px);
+  max-width: var(--editor-max-width);
   margin: 0 auto;
-  padding: 0 var(--editor-padding-horizontal, 40px);
+  padding: 0 var(--editor-padding-horizontal);
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -312,38 +311,38 @@
 /* Callouts, Linear-style: the family's chromatic role at 2% for the ground
    and 20% for a hairline border, 6px radius. */
 .fuwa-callout {
-  --callout-accent: var(--chroma-teal);
-  --callout-accent-text: var(--chroma-teal-text);
+  --_callout-accent: var(--chroma-teal);
+  --_callout-accent-text: var(--chroma-teal-text);
   margin: 7px 0;
   overflow: hidden;
-  border: var(--hairline) solid color-mix(in srgb, var(--callout-accent) 20%, transparent);
+  border: var(--hairline) solid color-mix(in srgb, var(--_callout-accent) 20%, transparent);
   border-radius: 6px;
-  background: color-mix(in srgb, var(--callout-accent) 2%, transparent);
+  background: color-mix(in srgb, var(--_callout-accent) 2%, transparent);
 }
 
 .fuwa-callout--success {
-  --callout-accent: var(--chroma-green);
-  --callout-accent-text: var(--chroma-green-text);
+  --_callout-accent: var(--chroma-green);
+  --_callout-accent-text: var(--chroma-green-text);
 }
 
 .fuwa-callout--warning {
-  --callout-accent: var(--chroma-orange);
-  --callout-accent-text: var(--chroma-orange-text);
+  --_callout-accent: var(--chroma-orange);
+  --_callout-accent-text: var(--chroma-orange-text);
 }
 
 .fuwa-callout--error {
-  --callout-accent: var(--chroma-red);
-  --callout-accent-text: var(--chroma-red-text);
+  --_callout-accent: var(--chroma-red);
+  --_callout-accent-text: var(--chroma-red-text);
 }
 
 .fuwa-callout--example {
-  --callout-accent: var(--chroma-purple);
-  --callout-accent-text: var(--chroma-purple-text);
+  --_callout-accent: var(--chroma-purple);
+  --_callout-accent-text: var(--chroma-purple-text);
 }
 
 .fuwa-callout--quote {
-  --callout-accent: var(--text-secondary);
-  --callout-accent-text: var(--text-secondary);
+  --_callout-accent: var(--text-secondary);
+  --_callout-accent-text: var(--text-secondary);
 }
 
 .fuwa-callout__header {
@@ -352,7 +351,7 @@
   align-items: center;
   gap: 7px;
   padding: 7px 10.5px 1.75px;
-  color: var(--callout-accent-text);
+  color: var(--_callout-accent-text);
   font-size: 15px;
   font-weight: 600;
 }

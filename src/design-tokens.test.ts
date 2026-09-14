@@ -1,13 +1,12 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// The app stylesheet carries Linear's default theme-generator output,
-// re-valued in place. Expected values are the hex values of that output,
-// read from the stylesheet as text so the contract
-// is checked without a browser.
+// The shape of the token contract, read from the stylesheets as text. Colour
+// values are not asserted here; the appearance baseline holds those.
 
-const appCss = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8')
+const SRC = join(process.cwd(), 'src')
+const appCss = readFileSync(join(SRC, 'index.css'), 'utf8')
 
 function declarations(block: string): Record<string, string> {
   return Object.fromEntries(
@@ -15,93 +14,92 @@ function declarations(block: string): Record<string, string> {
   )
 }
 
-function themeBlock(selector: string): Record<string, string> {
-  const start = appCss.indexOf(selector)
+/** The text between the braces that follow `selector`, brace depth respected. */
+function blockAfter(selector: string, from = 0): { body: string; start: number; end: number } {
+  const start = appCss.indexOf(selector, from)
   expect(start, `${selector} block`).toBeGreaterThan(-1)
   const open = appCss.indexOf('{', start)
   let depth = 0
   for (let i = open; i < appCss.length; i += 1) {
     if (appCss[i] === '{') depth += 1
     if (appCss[i] === '}') depth -= 1
-    if (depth === 0) return declarations(appCss.slice(open, i))
+    if (depth === 0) return { body: appCss.slice(open + 1, i), start, end: i + 1 }
   }
   throw new Error(`unterminated ${selector} block`)
 }
 
-const light = themeBlock(':root,\n[data-theme="light"]')
-const dark = themeBlock(':root.dark,\n[data-theme="dark"]')
+const lightBlock = blockAfter(':root,\n[data-theme="light"]')
+const darkBlock = blockAfter('[data-theme="dark"] {')
+const aliasBlock = blockAfter('\n:root {', darkBlock.end)
+const bridgeBlock = blockAfter('@theme inline')
 
-describe('Linear design tokens (dark)', () => {
-  it('paints the canvas and sidebar on the sidebar sub-theme and the card on the base theme', () => {
-    expect(dark['--surface-app']).toBe('#09090a')
-    expect(dark['--surface-sidebar']).toBe('#09090a')
-    expect(dark['--surface-card']).toBe('#111212')
-    expect(dark['--surface-editor']).toBe('#111212')
-    expect(dark['--surface-popover']).toBe('#202022')
-    expect(dark['--surface-overlay']).toBe('#00000066')
+const light = declarations(lightBlock.body)
+const dark = declarations(darkBlock.body)
+const aliases = declarations(aliasBlock.body)
+
+const SHADCN_NAMES = [
+  'background', 'foreground', 'card', 'card-foreground', 'popover', 'popover-foreground',
+  'primary', 'primary-foreground', 'secondary', 'secondary-foreground', 'muted', 'muted-foreground',
+  'accent', 'accent-foreground', 'destructive', 'destructive-foreground', 'border', 'input', 'ring',
+]
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir).flatMap((entry) => {
+    const path = join(dir, entry)
+    if (statSync(path).isDirectory()) return sourceFiles(path)
+    return /\.(tsx?|css)$/.test(entry) ? [path] : []
   })
+}
 
-  it('uses the label scale for text and the border colour for borders', () => {
-    expect(dark['--text-heading']).toBe('#ffffff')
-    expect(dark['--text-primary']).toBe('#e2e3e5')
-    expect(dark['--text-secondary']).toBe('#949597')
-    expect(dark['--text-faint']).toBe('#565658')
-    expect(dark['--border-default']).toBe('#232325')
-  })
-
-  it('accents with indigo and links with the editor link colour', () => {
-    expect(dark['--accent-blue']).toBe('#5e69d1')
-    expect(dark['--accent-blue-hover']).toBe('#6974e1')
-    expect(dark['--state-focus-ring']).toBe('#5e69d1')
-    expect(dark['--link-color']).toBe('#adbbff')
-  })
-
-  it('carries the seven chromatic roles and the code highlighting colours', () => {
-    expect(dark['--chroma-teal']).toBe('#00b8cb')
-    expect(dark['--chroma-purple-text']).toBe('#adbaff')
-    expect(dark['--syntax-highlight-keyword']).toBe('#e394dc')
-    expect(dark['--syntax-highlight-string']).toBe('#00c5f0')
-    expect(dark['--syntax-highlight-title']).toBe('#25f8ca')
-    expect(dark['--syntax-highlight-attr']).toBe('#fce27d')
-    expect(dark['--syntax-highlight-number']).toBe('#ec3b40')
-    expect(dark['--syntax-highlight-comment']).toBe('var(--text-faint)')
+describe('the theme blocks', () => {
+  it('declare exactly the same names in light and in dark', () => {
+    expect(Object.keys(light).length).toBeGreaterThan(0)
+    expect(Object.keys(dark).sort()).toEqual(Object.keys(light).sort())
   })
 })
 
-describe('Linear design tokens (light)', () => {
-  it('matches the light generator output', () => {
-    expect(light['--surface-app']).toBe('#eeeeef')
-    expect(light['--surface-sidebar']).toBe('#eeeeef')
-    expect(light['--surface-card']).toBe('#f8f8f9')
-    expect(light['--surface-popover']).toBe('#ffffff')
-    expect(light['--text-heading']).toBe('#1b1b1b')
-    expect(light['--text-primary']).toBe('#2f2f31')
-    expect(light['--text-secondary']).toBe('#5b5c5e')
-    expect(light['--border-default']).toBe('#dedede')
-    expect(light['--link-color']).toBe('#3f60d9')
-  })
-})
-
-describe('shared tokens', () => {
-  it('sets the shadcn radius to 8px so md is 6px', () => {
-    expect(light['--radius']).toBe('8px')
-  })
-
-  it('defines the hairline at 1px, and 0.5px on HiDPI', () => {
-    expect(light['--hairline']).toBe('1px')
-    expect(appCss).toMatch(/@media[^{]*min-resolution:\s*2dppx[^{]*\{\s*:root\s*\{\s*--hairline:\s*0\.5px;/)
-  })
-
-  it("keeps every variable the kernel's stylesheet declared, in both scopes", () => {
-    for (const name of ['--surface-app', '--text-tertiary', '--state-hover-subtle', '--accent-pink-light', '--syntax-frontmatter-key', '--editor-code-block-language', '--bg-primary', '--sidebar-ring']) {
-      expect(light, name).toHaveProperty(name)
-      expect(dark, name).toHaveProperty(name)
+describe('the shadcn aliases', () => {
+  it('are the nineteen names, each a var() of a semantic name and nothing else', () => {
+    expect(Object.keys(aliases).map((name) => name.slice(2)).sort()).toEqual([...SHADCN_NAMES].sort())
+    for (const [name, value] of Object.entries(aliases)) {
+      expect(value, name).toMatch(/^var\(--[\w-]+\)$/)
+      expect(light, `${name} points at a declared token`).toHaveProperty(value.slice(4, -1))
     }
   })
 
-  it('loads Inter Variable and JetBrains Mono only, with no acid lime anywhere', () => {
-    expect(appCss).toMatch(/font-family:\s*'Inter Variable'/)
-    expect(appCss).not.toMatch(/IBM Plex/i)
-    expect(appCss).not.toMatch(/e4f222/i)
+  it('appear nowhere in src/ outside ui/, in any form', () => {
+    const names = SHADCN_NAMES.join('|')
+    const asVariable = new RegExp(`var\\(--(${names})\\)`)
+    // A colour utility built on one of the names, with or without variants and an
+    // opacity modifier, terminated so that `border-border-default` and `text-text-primary` do not match.
+    const asUtility = new RegExp(`(?:^|[\\s"'\`(:])(?:[\\w[\\]=-]+:)*(?:bg|text|border|ring|outline|fill|stroke|divide|placeholder|from|to|via|shadow|decoration|caret)-(${names})(?:/\\d+)?(?=[\\s"'\`)\\]/]|$)`, 'm')
+    const offenders: string[] = []
+    for (const file of sourceFiles(SRC)) {
+      const path = relative(SRC, file)
+      if (path.startsWith('ui/')) continue
+      let text = readFileSync(file, 'utf8')
+      if (path === 'index.css') {
+        // The alias block and the bridge are where the names are defined; the rest of the file is scanned.
+        text = text.slice(0, aliasBlock.start) + text.slice(aliasBlock.end, bridgeBlock.start) + text.slice(bridgeBlock.end)
+      }
+      const hit = text.match(asVariable) ?? text.match(asUtility)
+      if (hit) offenders.push(`${path}: ${hit[0].trim()}`)
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('literal colours', () => {
+  it('appear only inside the two theme blocks', () => {
+    const literal = /#[0-9a-f]{3,8}\b|rgba?\(/i
+    const checks: Array<[string, string]> = [
+      ['index.css', appCss.slice(0, lightBlock.start) + appCss.slice(lightBlock.end, darkBlock.start) + appCss.slice(darkBlock.end)],
+    ]
+    const blocknoteCss = join(SRC, 'kernel', 'blocknote', 'blocknote.css')
+    if (existsSync(blocknoteCss)) checks.push(['kernel/blocknote/blocknote.css', readFileSync(blocknoteCss, 'utf8')])
+    for (const [name, text] of checks) {
+      const hit = text.match(literal)
+      expect(hit ? `${name}: ${hit[0]}` : null).toBeNull()
+    }
   })
 })
