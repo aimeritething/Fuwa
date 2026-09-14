@@ -1,9 +1,9 @@
 import { expect, type Page } from '@playwright/test'
-import type { MockVault, MockVaultCall } from '../../src/platform/mock/vaultFixture'
+import type { MockVault, MockVaultCall } from '../../src/platform/mock/vault-fixture'
 
 // Shared helpers for the smoke specs: the error watcher with the harness's own
 // noise filtered out, and the fixture calls the specs make through
-// `window.__fuwaMockVault` (see src/platform/mock/vaultFixture.ts).
+// `window.__fuwaMockVault` (see src/platform/mock/vault-fixture.ts).
 
 export const MOCK_FOLDER = '/Users/fuwa/Documents/Notes'
 export const WELCOME_PATH = `${MOCK_FOLDER}/Welcome.md`

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { useCallback, useLayoutEffect, useState, type ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { isRecoveredActionTooltipError } from './actionTooltipRecovery'
+import { isRecoveredActionTooltipError } from './action-tooltip-recovery'
 
 afterEach(() => {
   vi.doUnmock('./tooltip')

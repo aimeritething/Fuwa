@@ -20,7 +20,7 @@ one directory is used for four things:
 3. **Asset-protocol scope.** `sync_vault_asset_scope` (`src-tauri/src/asset_scope.rs`) calls Tauri's
    `scope.allow_directory(root, true)` (recursive) for that directory and never revokes it.
 4. **Attachment location.** A pasted or dropped image lands in `attachments/` beside the Document
-   and the Markdown gets a path relative to the Document (`src/editor/Editor.tsx`,
+   and the Markdown gets a path relative to the Document (`src/editor/editor.tsx`,
    `src/kernel/markdown/vaultAttachments.ts`).
 
 Fuwa is not App-Sandboxed (`src-tauri/` has no entitlements file), so (1) and (3) are the app's own

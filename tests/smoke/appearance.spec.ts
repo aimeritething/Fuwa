@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
-import type { MockVault } from '../../src/platform/mock/vaultFixture'
+import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, openWelcome, watchForErrors } from './harness'
 
 // Dark on first launch, View → Appearance switches and the choice lives in

@@ -1,6 +1,6 @@
 import type * as React from "react"
 
-import { nativeTextAssistanceDisabledProps } from "@/platform/nativeTextAssistance"
+import { nativeTextAssistanceDisabledProps } from "@/platform/native-text-assistance"
 import { cn } from "./utils"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {

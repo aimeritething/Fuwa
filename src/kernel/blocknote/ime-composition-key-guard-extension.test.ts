@@ -1,0 +1,355 @@
+import { describe, expect, it, vi } from 'vitest'
+import { Schema } from '@tiptap/pm/model'
+import { EditorState } from '@tiptap/pm/state'
+import { EditorView } from '@tiptap/pm/view'
+import {
+  createSafariImeDomPreserverPlugin,
+  createImeCompositionKeyGuardExtension,
+  shouldStopComposingParagraphInput,
+  shouldStopComposingEditorShortcutKey,
+} from './ime-composition-key-guard-extension'
+
+type ShortcutKeyFixture = Pick<KeyboardEvent, 'key' | 'keyCode'>
+type ListenerRegistry = Map<string, EventListener>
+
+const COMPOSING_SHORTCUT_KEYS: Array<[string, ShortcutKeyFixture]> = [
+  ['Enter', { key: 'Enter', keyCode: 13 }],
+  ['Space', { key: ' ', keyCode: 32 }],
+]
+
+function createKeyboardEvent(event: Partial<KeyboardEvent> = {}) {
+  return {
+    code: '',
+    isComposing: false,
+    key: 'Enter',
+    keyCode: 13,
+    preventDefault: vi.fn(),
+    stopImmediatePropagation: vi.fn(),
+    ...event,
+  } as KeyboardEvent & {
+    preventDefault: ReturnType<typeof vi.fn>
+    stopImmediatePropagation: ReturnType<typeof vi.fn>
+  }
+}
+
+function createInputEvent(event: Partial<InputEvent> = {}) {
+  return {
+    inputType: 'insertParagraph',
+    isComposing: false,
+    preventDefault: vi.fn(),
+    stopImmediatePropagation: vi.fn(),
+    timeStamp: 120,
+    ...event,
+  } as InputEvent & {
+    preventDefault: ReturnType<typeof vi.fn>
+    stopImmediatePropagation: ReturnType<typeof vi.fn>
+  }
+}
+
+function dispatchRegisteredEvent(
+  listeners: ListenerRegistry,
+  type: string,
+  event: Event,
+) {
+  const listener = listeners.get(type)
+  if (!listener) throw new Error(`IME composition key guard did not register a ${type} listener`)
+  listener(event)
+}
+
+function createRichEditorViewFixture() {
+  const transaction = {
+    delete: vi.fn(),
+    insertText: vi.fn(),
+  }
+  transaction.delete.mockReturnValue(transaction)
+  transaction.insertText.mockReturnValue(transaction)
+  const view = {
+    composing: false,
+    dispatch: vi.fn(),
+    state: {
+      doc: { textBetween: vi.fn(() => '/table') },
+      selection: { empty: true, from: 7, to: 7 },
+      tr: transaction,
+    },
+  }
+  const suggestionMenu = {
+    openSuggestionMenu: vi.fn(),
+    shown: vi.fn(() => false),
+  }
+
+  return { suggestionMenu, transaction, view }
+}
+
+function createFixture() {
+  const listeners: ListenerRegistry = new Map()
+  const { suggestionMenu, transaction, view } = createRichEditorViewFixture()
+  const dom = {
+    addEventListener: vi.fn((type: string, listener: EventListener) => {
+      listeners.set(type, listener)
+    }),
+  }
+  const editor = {
+    _tiptapEditor: { view },
+    getExtension: vi.fn(() => suggestionMenu),
+    prosemirrorView: view,
+  }
+  const extension = createImeCompositionKeyGuardExtension()({ editor: editor as never })
+
+  return {
+    dom,
+    extension,
+    fireKeydown(event: Partial<KeyboardEvent> = {}) {
+      const keyboardEvent = createKeyboardEvent(event)
+      dispatchRegisteredEvent(listeners, 'keydown', keyboardEvent)
+      return keyboardEvent
+    },
+    fireCompositionStart(event: Partial<CompositionEvent> = {}) {
+      dispatchRegisteredEvent(
+        listeners,
+        'compositionstart',
+        { timeStamp: 90, ...event } as CompositionEvent,
+      )
+    },
+    fireCompositionEnd(event: Partial<CompositionEvent> = {}) {
+      dispatchRegisteredEvent(
+        listeners,
+        'compositionend',
+        { timeStamp: 110, ...event } as CompositionEvent,
+      )
+    },
+    fireBeforeInput(event: Partial<InputEvent> = {}) {
+      const inputEvent = createInputEvent(event)
+      dispatchRegisteredEvent(listeners, 'beforeinput', inputEvent)
+      return inputEvent
+    },
+    mount() {
+      const controller = new AbortController()
+      extension.mount?.({
+        dom: dom as never,
+        root: document,
+        signal: controller.signal,
+      })
+      return controller
+    },
+    suggestionMenu,
+    transaction,
+    view,
+  }
+}
+
+describe('shouldStopComposingEditorShortcutKey', () => {
+  it.each(COMPOSING_SHORTCUT_KEYS)('matches %s while the native event is composing', (_name, keyEvent) => {
+    const event = createKeyboardEvent({ ...keyEvent, isComposing: true })
+
+    expect(shouldStopComposingEditorShortcutKey(event, { composing: false })).toBe(true)
+  })
+
+  it('matches Enter while the ProseMirror view is still composing', () => {
+    const event = createKeyboardEvent({ isComposing: false })
+
+    expect(shouldStopComposingEditorShortcutKey(event, { composing: true })).toBe(true)
+  })
+
+  it.each(COMPOSING_SHORTCUT_KEYS)('leaves normal %s available for editor input', (_name, keyEvent) => {
+    const event = createKeyboardEvent({ ...keyEvent, isComposing: false })
+
+    expect(shouldStopComposingEditorShortcutKey(event, { composing: false })).toBe(false)
+  })
+
+  it('leaves non-shortcut composition keys alone', () => {
+    const event = createKeyboardEvent({ isComposing: true, key: 'a', keyCode: 65 })
+
+    expect(shouldStopComposingEditorShortcutKey(event, { composing: false })).toBe(false)
+  })
+})
+
+describe('shouldStopComposingParagraphInput', () => {
+  it('matches paragraph insertion while ProseMirror is still composing', () => {
+    const event = createInputEvent()
+
+    expect(shouldStopComposingParagraphInput(event, { composing: true })).toBe(true)
+  })
+
+  it('matches paragraph insertion armed by a recent composing Enter', () => {
+    const event = createInputEvent({ timeStamp: 120 })
+
+    expect(shouldStopComposingParagraphInput(event, { composing: false }, 100)).toBe(true)
+  })
+
+  it('leaves normal or stale paragraph insertion alone', () => {
+    const normalEvent = createInputEvent({ timeStamp: 700 })
+    const unrelatedInput = createInputEvent({ inputType: 'insertText', timeStamp: 120 })
+
+    expect(shouldStopComposingParagraphInput(normalEvent, { composing: false }, 100)).toBe(false)
+    expect(shouldStopComposingParagraphInput(unrelatedInput, { composing: false }, 100)).toBe(false)
+    expect(shouldStopComposingParagraphInput(normalEvent, { composing: false })).toBe(false)
+  })
+})
+
+describe('createImeCompositionKeyGuardExtension', () => {
+  it('registers a capture keydown listener when the editor mounts', () => {
+    const fixture = createFixture()
+
+    fixture.mount()
+
+    expect(fixture.dom.addEventListener).toHaveBeenCalledWith(
+      'keydown',
+      expect.any(Function),
+      expect.objectContaining({
+        capture: true,
+        signal: expect.any(AbortSignal),
+      }),
+    )
+  })
+
+  it('guards Enter while ProseMirror still reports composition', () => {
+    const fixture = createFixture()
+    fixture.view.composing = true
+    fixture.mount()
+
+    const event = fixture.fireKeydown({ isComposing: false })
+
+    expect(event.stopImmediatePropagation).toHaveBeenCalledTimes(1)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it.each(COMPOSING_SHORTCUT_KEYS)('stops composing %s before editor shortcuts observe IME confirmation', (
+    _name,
+    keyEvent,
+  ) => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    const event = fixture.fireKeydown({
+      ...keyEvent,
+      isComposing: true,
+    })
+
+    expect(event.stopImmediatePropagation).toHaveBeenCalledTimes(1)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('guards Space when the IME clears native and editor composition flags before confirmation', () => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    fixture.fireCompositionStart()
+    const event = fixture.fireKeydown({
+      isComposing: false,
+      key: ' ',
+      keyCode: 32,
+    })
+
+    expect(event.stopImmediatePropagation).toHaveBeenCalledTimes(1)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('releases the explicit composition guard when the IME finishes', () => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    fixture.fireCompositionStart()
+    fixture.fireCompositionEnd()
+    const event = fixture.fireKeydown({ key: ' ', keyCode: 32 })
+
+    expect(event.stopImmediatePropagation).not.toHaveBeenCalled()
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('reopens a slash command committed by an IME after ProseMirror reconciles composition', () => {
+    vi.useFakeTimers()
+    const fixture = createFixture()
+    fixture.mount()
+
+    fixture.fireCompositionEnd({ data: '/table' })
+    vi.runAllTimers()
+
+    expect(fixture.transaction.delete).toHaveBeenCalledWith(1, 7)
+    expect(fixture.suggestionMenu.openSuggestionMenu).toHaveBeenCalledWith('/', {
+      deleteTriggerCharacter: true,
+    })
+    expect(fixture.transaction.insertText).toHaveBeenCalledWith('table')
+    expect(fixture.view.dispatch).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('blocks one paragraph insertion emitted after a composing Enter ends', () => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    fixture.fireKeydown({ isComposing: true, timeStamp: 100 })
+    fixture.fireCompositionEnd()
+    const guardedEvent = fixture.fireBeforeInput()
+    const laterEvent = fixture.fireBeforeInput({ timeStamp: 130 })
+
+    expect(guardedEvent.preventDefault).toHaveBeenCalledTimes(1)
+    expect(guardedEvent.stopImmediatePropagation).toHaveBeenCalledTimes(1)
+    expect(laterEvent.preventDefault).not.toHaveBeenCalled()
+    expect(laterEvent.stopImmediatePropagation).not.toHaveBeenCalled()
+  })
+
+  it('does not arm paragraph suppression for compositionend without a composing Enter', () => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    fixture.fireCompositionEnd()
+    const event = fixture.fireBeforeInput()
+
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(event.stopImmediatePropagation).not.toHaveBeenCalled()
+  })
+
+  it('allows a deliberate normal Enter after composition ends', () => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    fixture.fireKeydown({ isComposing: true, timeStamp: 100 })
+    fixture.fireCompositionEnd()
+    fixture.fireKeydown({ isComposing: false, timeStamp: 115 })
+    const event = fixture.fireBeforeInput()
+
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(event.stopImmediatePropagation).not.toHaveBeenCalled()
+  })
+
+  it('does not intercept normal Enter outside IME composition', () => {
+    const fixture = createFixture()
+    fixture.mount()
+
+    const event = fixture.fireKeydown()
+
+    expect(event.stopImmediatePropagation).not.toHaveBeenCalled()
+    expect(event.preventDefault).not.toHaveBeenCalled()
+  })
+})
+
+describe('createSafariImeDomPreserverPlugin', () => {
+  it('keeps an out-of-model sentinel beside composing text until Safari finishes the commit', () => {
+    const schema = new Schema({
+      nodes: {
+        doc: { content: 'paragraph+' },
+        paragraph: { content: 'text*', toDOM: () => ['p', 0] },
+        text: {},
+      },
+    })
+    const plugin = createSafariImeDomPreserverPlugin(true)
+    const state = EditorState.create({ schema, plugins: [plugin] })
+    const container = document.createElement('div')
+    const view = new EditorView(container, { state })
+
+    view.dom.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }))
+    view.dispatch(view.state.tr.insertText("ce'shi"))
+
+    const sentinel = container.querySelector('[data-fuwa-ime-dom-preserver]')
+    expect(sentinel).not.toBeNull()
+    expect(sentinel?.textContent).toBe('\u200B')
+    expect(view.state.doc.textContent).toBe("ce'shi")
+
+    view.dom.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '测试' }))
+    view.dispatch(view.state.tr.setMeta('ime-test-refresh', true))
+
+    expect(container.querySelector('[data-fuwa-ime-dom-preserver]')).toBeNull()
+    expect(view.state.doc.textContent).toBe("ce'shi")
+    view.destroy()
+  })
+})

@@ -5,10 +5,10 @@
  * call sites and their `vi.mock('./tauri')` calls resolve.
  */
 
-import { createMockVault, type MockVault } from './mock/vaultFixture'
+import { createMockVault, type MockVault } from './mock/vault-fixture'
 
-export type { MockVault, MockVaultCall, MockVaultFile, MockVaultImage, MockVaultListing } from './mock/vaultFixture'
-export { createMockVault, DEFAULT_MOCK_VAULT_FILES, MOCK_VAULT_PATH } from './mock/vaultFixture'
+export type { MockVault, MockVaultCall, MockVaultFile, MockVaultImage, MockVaultListing } from './mock/vault-fixture'
+export { createMockVault, DEFAULT_MOCK_VAULT_FILES, MOCK_VAULT_PATH } from './mock/vault-fixture'
 
 export function isTauri(): boolean {
   if (typeof globalThis !== 'undefined' && typeof (globalThis as { isTauri?: unknown }).isTauri === 'boolean') {

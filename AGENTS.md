@@ -15,11 +15,11 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
     copy/paste, find, the BlockNote regression tests), `markdown/` (the round-trip: frontmatter,
     fences, wikilinks, per-block serializers), `resolve/` (the open-time pipeline: cache, preload,
     worker, swap), `raw/` (CodeMirror).
-  - `editor/` — Fuwa's editing surface: `Editor.tsx`, Rich / Raw views, Autosave, Write failure,
+  - `editor/` — Fuwa's editing surface: `editor.tsx`, Rich / Raw views, Autosave, Write failure,
     Toast, an Image file's Tab.
-  - `explorer/`, `folder/` (disk: `useFolder`, the watcher, asset scope, the Rust command
+  - `explorer/`, `folder/` (disk: `use-folder`, the watcher, asset scope, the Rust command
     wrappers; `explorer/` imports `folder/`, never the reverse), `tabs/`, `session/`,
-    `command-menu/`, `shell/` (sidebar, theme, shortcuts, menu events, `appCommandManifest.json`,
+    `command-menu/`, `shell/` (sidebar, theme, shortcuts, menu events, `app-command-manifest.json`,
     which `src-tauri/src/menu.rs` also reads via `include_str!`).
   - `ui/` — shadcn primitives and `cn`. `platform/` — `tauri.ts` (`isTauri` / mock dispatch),
     `mock/` (the in-memory Folder fixture that stands in for Rust outside Tauri), window, URL,
@@ -27,7 +27,7 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
 - `tests/smoke/` — Playwright specs; its `README.md` describes the Folder fixture they drive.
   Unit tests sit beside the code as `*.test.ts(x)`; a test with no source file of its own lives
-  in the directory it guards; test helpers are `*.testUtils.ts(x)`.
+  in the directory it guards; test helpers are `*.test-utils.ts(x)`. File names are kebab-case.
 - `docs/adr/` — decisions; read the ones touching the area you change.
   `docs/agents/` — domain-doc conventions.
 - `patches/` — six pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in

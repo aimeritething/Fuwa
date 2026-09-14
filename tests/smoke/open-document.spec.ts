@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 // Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
-import type { MockVault } from '../../src/platform/mock/vaultFixture'
+import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
 // File → Open Document… (⌘⇧O) renders the chosen Document in Rich mode inside
