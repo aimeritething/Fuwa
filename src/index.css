@@ -451,6 +451,11 @@
   }
 }
 
+/* PROTOTYPE AIM-433: probe, the spacing unit in px so h-7 is 28px under the 14px root. */
+@theme {
+  --spacing: 4px;
+}
+
 /* --- Tailwind v4 theme inline: register colors + radii --- */
 @theme inline {
   --color-background: var(--background);
