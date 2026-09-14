@@ -14,13 +14,14 @@
 :root {
   /* --- Font defaults --- */
   /* Inter Variable (weight 450 needs the variable font) and JetBrains Mono
-     are the only faces loaded. Root size stays 14px
-     for the kernel's rem calibration; Linear's sizes are written in px. */
+     are the only faces loaded. The root is 16px so Tailwind's default
+     spacing unit (0.25rem) is 4px; the editor's typography is written in px
+     and em and does not follow it. */
   font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     Oxygen, Ubuntu, Cantarell, sans-serif;
   line-height: 1.5;
   font-weight: 450;
-  font-size: 14px;
+  font-size: 16px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -449,6 +450,16 @@
   :root {
     --hairline: 0.5px;
   }
+}
+
+/* --- The UI type scale: four sizes, written as `text-2xs` … `text-base` in
+   tsx. They replace Tailwind's rem defaults; the editor's sizes live in
+   the editor variables, not here. --- */
+@theme {
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
 }
 
 /* --- Tailwind v4 theme inline: register colors + radii --- */

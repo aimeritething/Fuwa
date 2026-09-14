@@ -212,7 +212,7 @@
   transform: translateY(-50%);
   right: 100%;
   padding-right: 4px;
-  font-size: 0.75rem !important;
+  font-size: 10.5px !important;
   line-height: 1;
   opacity: 0;
   transition: opacity 0.15s ease-out !important;
@@ -222,7 +222,7 @@
 }
 
 .cm-heading-line .cm-formatting-block.cm-formatting-block-visible {
-  font-size: 0.75rem !important;
+  font-size: 10.5px !important;
   opacity: 0.5;
   pointer-events: auto;
 }
@@ -314,7 +314,7 @@
 .fuwa-callout {
   --callout-accent: var(--chroma-teal);
   --callout-accent-text: var(--chroma-teal-text);
-  margin: 0.5rem 0;
+  margin: 7px 0;
   overflow: hidden;
   border: var(--hairline) solid color-mix(in srgb, var(--callout-accent) 20%, transparent);
   border-radius: 6px;
@@ -348,22 +348,22 @@
 
 .fuwa-callout__header {
   display: flex;
-  min-height: 2rem;
+  min-height: 28px;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem 0.125rem;
+  gap: 7px;
+  padding: 7px 10.5px 1.75px;
   color: var(--callout-accent-text);
   font-size: 15px;
   font-weight: 600;
 }
 
 .fuwa-callout__header > svg {
-  width: 1rem;
-  height: 1rem;
+  width: 14px;
+  height: 14px;
 }
 
 .fuwa-callout__body {
-  padding: 0.15rem 0.75rem 0.65rem;
+  padding: 2.1px 10.5px 9.1px;
   color: var(--color-foreground);
 }
 

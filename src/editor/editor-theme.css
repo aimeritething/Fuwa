@@ -675,7 +675,7 @@
 .editor__blocknote-container .mermaid-diagram--error figcaption {
   margin-bottom: 8px;
   color: var(--destructive);
-  font-size: 0.85rem;
+  font-size: 11.9px;
   font-weight: 600;
 }
 
@@ -687,7 +687,7 @@
   border-radius: 6px;
   background: var(--inline-styles-code-background-color);
   color: var(--inline-styles-code-color);
-  font-size: 0.85rem;
+  font-size: 11.9px;
 }
 
 .editor__blocknote-container .tldraw-whiteboard {
@@ -755,14 +755,14 @@ body.tldraw-whiteboard-fullscreen-open {
   border-radius: 8px;
   background: color-mix(in srgb, var(--background) 94%, var(--destructive));
   color: var(--foreground);
-  font-size: 0.85rem;
+  font-size: 11.9px;
   line-height: 1.4;
   box-shadow: 0 8px 22px rgb(0 0 0 / 16%);
 }
 
 .editor__blocknote-container .tldraw-whiteboard__permission-error strong {
   color: var(--destructive);
-  font-size: 0.86rem;
+  font-size: 12.04px;
 }
 
 .editor__blocknote-container .tldraw-whiteboard [data-radix-popper-content-wrapper] {
@@ -869,12 +869,12 @@ body.tldraw-whiteboard-fullscreen-open {
 
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div {
   display: flex;
-  margin-bottom: 0.35rem;
+  margin-bottom: 4.9px;
 }
 
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div > select {
   min-height: 28px;
-  max-width: min(18rem, 100%);
+  max-width: min(252px, 100%);
   padding: 3px 28px 3px 8px;
   border: 1px solid color-mix(in srgb, var(--editor-code-block-language) 42%, transparent);
   border-radius: 6px;
@@ -883,7 +883,7 @@ body.tldraw-whiteboard-fullscreen-open {
   color: var(--editor-code-block-language) !important;
   cursor: pointer;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 11.9px;
   line-height: 1.3;
   visibility: hidden;
 }
@@ -914,19 +914,19 @@ body.tldraw-whiteboard-fullscreen-open {
   border-radius: 0;
   display: block;
   overflow-wrap: anywhere;
-  padding: 0 0 0 2.75rem;
+  padding: 0 0 0 38.5px;
   white-space: pre-wrap;
 }
 
 .editor__code-line-number {
   color: var(--text-muted);
   display: inline-block;
-  margin-inline-end: 1rem;
-  margin-inline-start: -3rem;
+  margin-inline-end: 14px;
+  margin-inline-start: -42px;
   pointer-events: none;
   text-align: right;
   user-select: none;
-  width: 2rem;
+  width: 28px;
 }
 
 .editor__code-line-number::before {
@@ -1127,4 +1127,15 @@ body.tldraw-whiteboard-fullscreen-open {
 .editor__blocknote-container .bn-block-outer:has(hr)
   + .bn-block-outer:has(> .bn-block > [data-content-type="heading"]) {
   margin-top: var(--editor-divider-followed-by-heading-margin-top) !important;
+}
+
+/* BlockNote sizes these two in rem; pinned to what they rendered at under the
+   old 14px root so the editor body does not follow the UI root size. */
+.editor__blocknote-container .bn-editor [data-content-type="table"] th > p,
+.editor__blocknote-container .bn-editor [data-content-type="table"] td > p {
+  min-height: 21px;
+}
+
+.editor__blocknote-container [data-file-block] .bn-add-file-button-text {
+  font-size: 12.6px;
 }
