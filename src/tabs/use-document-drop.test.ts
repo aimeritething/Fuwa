@@ -42,7 +42,7 @@ function emit(payload: unknown): void {
   capturedDragDropHandler({ payload })
 }
 
-describe('use-document-drop', () => {
+describe('useDocumentDrop', () => {
   beforeEach(() => {
     tauriMode = true
     capturedDragDropHandler = undefined

@@ -15,7 +15,7 @@ function createStorageMock(): Storage {
   }
 }
 
-describe('use-theme-mode', () => {
+describe('useThemeMode', () => {
   const localStorageMock = createStorageMock()
 
   beforeEach(() => {

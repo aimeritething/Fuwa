@@ -18,7 +18,7 @@ function renderView(props: Partial<React.ComponentProps<typeof ImageView>> = {})
   return { ...view, onNaturalSize, onOpenExternal }
 }
 
-describe('image-view', () => {
+describe('ImageView', () => {
   it('shows the picture through the asset protocol, named by its file', () => {
     renderView()
 

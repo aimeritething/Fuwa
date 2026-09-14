@@ -13,7 +13,7 @@ function renderWithTooltips(ui: React.ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>)
 }
 
-describe('path-row', () => {
+describe('PathRow', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-09-10T12:00:00Z'))

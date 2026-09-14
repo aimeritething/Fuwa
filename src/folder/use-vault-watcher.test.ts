@@ -176,7 +176,7 @@ describe('useRecentVaultWrites', () => {
   })
 })
 
-describe('use-vault-watcher', () => {
+describe('useVaultWatcher', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mocks.invoke.mockReset()

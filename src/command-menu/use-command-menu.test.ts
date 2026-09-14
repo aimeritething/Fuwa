@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { useCommandMenu } from './use-command-menu'
 
-describe('use-command-menu', () => {
+describe('useCommandMenu', () => {
   it('starts closed, and ⌘K opens the Command Menu', () => {
     const { result } = renderHook(() => useCommandMenu())
     expect(result.current).toMatchObject({ open: false })

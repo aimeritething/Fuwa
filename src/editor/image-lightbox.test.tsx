@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ImageLightbox } from './image-lightbox'
 
-describe('image-lightbox', () => {
+describe('ImageLightbox', () => {
   it('renders the selected image in a dialog', () => {
     render(
       <ImageLightbox

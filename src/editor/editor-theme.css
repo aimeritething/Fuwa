@@ -1,5 +1,5 @@
 /* ==============================================
-   EditorTheme.css — BlockNote theme overrides
+   editor-theme.css — BlockNote theme overrides
    Driven by CSS custom properties from theme.json, re-valued to the Linear
    app's editor typography. Hairlines (code block,
    table and inline-code borders) come from --hairline; inputs and checkboxes

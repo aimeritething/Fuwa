@@ -31,7 +31,7 @@ function renderFindBar(overrides: Partial<React.ComponentProps<typeof RawEditorF
   }
 }
 
-describe('raw-editor-find-bar', () => {
+describe('RawEditorFindBar', () => {
   it('finds matches and moves the CodeMirror selection', async () => {
     const { view } = renderFindBar()
 

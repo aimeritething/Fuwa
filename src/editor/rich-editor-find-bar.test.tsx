@@ -52,7 +52,7 @@ const request = (id: number, path = PATH) => ({ id, path, replace: false })
 const input = () => screen.getByTestId('rich-editor-find-input')
 const count = () => screen.getByTestId('rich-editor-find-count')
 
-describe('rich-editor-find-bar', () => {
+describe('RichEditorFindBar', () => {
   it('stays closed with no request, and ignores a request for another Document', () => {
     const { editor } = fakeEditor('one')
     const view = render(<RichEditorFindBar editor={editor} path={PATH} request={null} />)

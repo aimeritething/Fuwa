@@ -45,7 +45,7 @@ function createSlashCommandEditorFixture() {
   }
 }
 
-describe('editor-formatting', () => {
+describe('editorFormatting', () => {
   it('keeps the markdown-safe toolbar controls and block type select', () => {
     const itemKeys = filterFormattingToolbarItems(
       getFormattingToolbarItems(getBlockTypeSelectItems()),

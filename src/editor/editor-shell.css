@@ -1,5 +1,5 @@
 /* ==============================================
-   EditorShell.css — Fuwa's floating editor card
+   editor-shell.css — Fuwa's floating editor card
    The editor is a floating card on the canvas, 12px radius, hairline ring,
    8px margin. Inside, top to bottom: the tab bar row (44px), the path row,
    then the content. Colours come from the semantic variables in index.css,

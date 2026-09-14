@@ -8,7 +8,7 @@ import { MOCK_FOLDER, openDocumentThroughDialog, openWelcome, watchForErrors } f
 // Rust side's; here the manifest command arrives as the app-command event the
 // renderer also listens for, and is dispatched to the same handler.
 
-const APP_COMMAND_EVENT_NAME = 'fuwa:dispatch-command' // hooks/appCommandDispatcher.ts
+const APP_COMMAND_EVENT_NAME = 'fuwa:dispatch-command' // src/shell/app-command-dispatcher.ts
 
 const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
 const documentTheme = (page: Page) => page.locator('html').getAttribute('data-theme')

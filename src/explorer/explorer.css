@@ -45,7 +45,7 @@
 
 /* --- The empty states. --- */
 
-/* No Folder open: the copy under "explorer", the indigo button, the drop hint. */
+/* No Folder open: the copy under "Explorer", the indigo button, the drop hint. */
 .fuwa-explorer__no-folder {
   display: flex;
   flex-direction: column;

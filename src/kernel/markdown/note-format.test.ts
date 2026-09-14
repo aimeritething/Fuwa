@@ -8,7 +8,7 @@ import {
   noteFormatFromContent,
 } from './note-format'
 
-describe('note-format', () => {
+describe('noteFormat', () => {
   it('defaults to text when _display is missing', () => {
     expect(noteFormatFromContent('---\ntype: Sheet\n---\nMetric,January')).toBe(NOTE_FORMAT_TEXT)
     expect(contentHasSheetFormat('---\ntype: Sheet\n---\nMetric,January')).toBe(false)

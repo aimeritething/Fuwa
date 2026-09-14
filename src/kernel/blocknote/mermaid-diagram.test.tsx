@@ -26,7 +26,7 @@ vi.mock('mermaid', () => ({
   default: mermaidMock,
 }))
 
-describe('mermaid-diagram', () => {
+describe('MermaidDiagram', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mermaidMock.render.mockResolvedValue({

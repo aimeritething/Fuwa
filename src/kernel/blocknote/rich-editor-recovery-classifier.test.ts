@@ -85,7 +85,7 @@ const sharedRecoveryCases: SharedRecoveryCase[] = [
   },
 ]
 
-describe('rich-editor-recovery-classifier', () => {
+describe('richEditorRecoveryClassifier', () => {
   it('defines the shared recovery reason source once', () => {
     expect(SHARED_RICH_EDITOR_RECOVERY_REASONS).toEqual(
       sharedRecoveryCases.map(({ reason }) => reason),

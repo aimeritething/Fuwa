@@ -9,7 +9,7 @@ import {
   vaultRelativePathLabel,
 } from './note-path-identity'
 
-describe('note-path-identity', () => {
+describe('notePathIdentity', () => {
   it('matches macOS /tmp aliases and separator variants without folding case', () => {
     expect(notePathsMatch('/private/tmp/vault/Project\\Active.md', '/tmp/vault/Project/Active.md')).toBe(true)
     expect(notePathsMatch('/tmp/vault/Project.md', '/tmp/vault/project.md')).toBe(false)

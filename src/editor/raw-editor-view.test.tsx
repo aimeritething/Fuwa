@@ -15,7 +15,7 @@ type CodeMirrorHost = HTMLElement & {
   __cmView?: EditorView
 }
 
-describe('raw-editor-view', () => {
+describe('RawEditorView', () => {
   it('renders CodeMirror container', () => {
     render(<RawEditorView {...defaultProps} />)
     expect(screen.getByTestId('raw-editor-codemirror')).toBeInTheDocument()

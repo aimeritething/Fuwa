@@ -48,7 +48,7 @@ function panel(editor: Record<string, unknown>) {
 	);
 }
 
-describe("file-panel", () => {
+describe("FilePanel", () => {
 	it("ignores a completed upload when a note reload removed its block", async () => {
 		let currentBlock: { id: string; type: string } | undefined = {
 			id: "image-block",

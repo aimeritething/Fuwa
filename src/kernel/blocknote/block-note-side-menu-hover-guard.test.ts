@@ -49,7 +49,7 @@ function expectHoverSuppression(options: {
   ).toBe(options.expected)
 }
 
-describe('block-note-side-menu-hover-guard', () => {
+describe('blockNoteSideMenuHoverGuard', () => {
   it('treats the side-menu gutter as part of the hover bridge', () => {
     expect(
       isWithinBlockNoteHandleHoverBridge(

@@ -61,7 +61,7 @@ function dispatchMouseEvent(target: Node, type: string, options: MouseEventInit 
   return event
 }
 
-describe('use-editor-link-activation', () => {
+describe('useEditorLinkActivation', () => {
   beforeEach(() => {
     mockOpenExternalUrl.mockClear()
     mockOpenLocalFile.mockClear()

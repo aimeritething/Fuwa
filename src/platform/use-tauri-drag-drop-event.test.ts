@@ -39,7 +39,7 @@ async function waitForNativeDragDropListener(): Promise<void> {
   })
 }
 
-describe('use-tauri-drag-drop-event', () => {
+describe('useTauriDragDropEvent', () => {
   beforeEach(() => {
     tauriMode = true
     capturedDragDropHandler = undefined

@@ -13,7 +13,7 @@ vi.mock('@/lib/telemetry', () => ({
   trackEvent,
 }))
 
-describe('plain-text-paste', () => {
+describe('plainTextPaste', () => {
   afterEach(() => {
     vi.clearAllMocks()
     document.body.innerHTML = ''

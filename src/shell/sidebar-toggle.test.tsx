@@ -7,7 +7,7 @@ function renderWithTooltips(ui: React.ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>)
 }
 
-describe('sidebar-toggle', () => {
+describe('SidebarToggle', () => {
   it('hides the sidebar from its top row, with the shortcut in its mono tooltip', async () => {
     const onToggle = vi.fn()
     renderWithTooltips(<SidebarToggle collapsed={false} onToggle={onToggle} />)

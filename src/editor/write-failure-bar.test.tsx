@@ -4,7 +4,7 @@ import { WriteFailureBar } from './write-failure-bar'
 
 const PATH = '/Users/fuwa/Documents/Notes/Welcome.md'
 
-describe('write-failure-bar', () => {
+describe('WriteFailureBar', () => {
   it('names the path that could not be written and shows what the boundary said', () => {
     render(<WriteFailureBar path={PATH} message="Permission denied (os error 13)" onRetry={vi.fn()} onDiscard={vi.fn()} />)
 

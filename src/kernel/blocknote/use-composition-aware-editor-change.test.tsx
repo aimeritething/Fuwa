@@ -14,7 +14,7 @@ function CompositionChangeHarness({ onChange }: { onChange: () => void }) {
   )
 }
 
-describe('use-composition-aware-editor-change', () => {
+describe('useCompositionAwareEditorChange', () => {
   afterEach(() => {
     vi.useRealTimers()
   })

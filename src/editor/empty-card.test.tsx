@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { EmptyCard } from './empty-card'
 import { TooltipProvider } from '@/ui/tooltip'
 
-describe('empty-card', () => {
+describe('EmptyCard', () => {
   it('with no Folder open shows the dim wordmark and the one hint, open folder', () => {
     render(<EmptyCard hasFolder={false} sidebarCollapsed={false} onShowSidebar={vi.fn()} />)
 

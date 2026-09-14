@@ -8,7 +8,7 @@ import { TooltipProvider } from '@/ui/tooltip'
 const tab = (path: string): Tab => ({ entry: noteEntryForPath(path, ''), content: '' })
 const tabs = [tab('/n/a.md'), tab('/n/b.md'), tab('/n/c.md')]
 
-describe('tab-bar', () => {
+describe('TabBar', () => {
   it('shows one Tab per open Document with the active one selected', () => {
     render(<TabBar tabs={tabs} activeTabPath="/n/b.md" onActivate={vi.fn()} onClose={vi.fn()} />)
 

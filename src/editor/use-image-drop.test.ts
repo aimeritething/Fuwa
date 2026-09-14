@@ -182,7 +182,7 @@ describe('uploadImageFile', () => {
   })
 })
 
-describe('use-image-drop', () => {
+describe('useImageDrop', () => {
   let container: HTMLDivElement
 
   beforeEach(() => {

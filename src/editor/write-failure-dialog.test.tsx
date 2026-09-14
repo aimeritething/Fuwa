@@ -4,7 +4,7 @@ import { WriteFailureDialog } from './write-failure-dialog'
 
 const PATH = '/Users/fuwa/Documents/Notes/Welcome.md'
 
-describe('write-failure-dialog', () => {
+describe('WriteFailureDialog', () => {
   it('is absent without a prompt', () => {
     render(<WriteFailureDialog prompt={null} onAnswer={vi.fn()} onDismiss={vi.fn()} />)
 

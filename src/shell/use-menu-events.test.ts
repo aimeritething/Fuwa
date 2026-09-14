@@ -49,7 +49,7 @@ async function flushMicrotasks() {
   })
 }
 
-describe('use-menu-events', () => {
+describe('useMenuEvents', () => {
   beforeEach(() => {
     runtime.inTauri = false
     runtime.invoke.mockClear()
