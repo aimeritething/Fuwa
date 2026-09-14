@@ -41,3 +41,14 @@ A spec reaches the fixture as `window.__fuwaMockVault`:
 
 Shared helpers (opening the welcome Document, driving the dialogs, reading the saved
 content and the stored Session, typing at the end of the Document) live in `harness.ts`.
+
+## The appearance baseline
+
+`screenshots.spec.ts` freezes five composite states of the window, light and dark, as PNGs in
+`screenshots.spec.ts-snapshots/`: first launch, a Folder with a Document in Rich mode, the
+same Folder with a Frontmatter Document in Raw mode, the Command Menu open, and the formatting
+toolbar over a selection. It is a tool, not a gate: CI never runs it. Before a UI PR, run
+`pnpm smoke:screenshots` on the branch; a red test means the pixels moved, and the
+expected / actual / diff images in `test-results/` are what to look at. Once the new look is
+accepted, `pnpm smoke:screenshots --update-snapshots` re-freezes it. The threshold and the
+reasoning sit at the top of the spec.
