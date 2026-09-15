@@ -35,14 +35,6 @@
   overflow-wrap: anywhere;
 }
 
-.fuwa-sidebar-row__parent {
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--text-secondary);
-  font-size: 11px;
-}
-
 /* --- The empty states. --- */
 
 /* No Folder open: the copy under "Explorer", the indigo button, the drop hint. */
@@ -118,10 +110,6 @@
 }
 
 /* --- Header actions: hover-only, "+" and "…". --- */
-.fuwa-explorer__header {
-  justify-content: space-between;
-}
-
 .fuwa-explorer__actions {
   display: flex;
   align-items: center;
@@ -198,6 +186,18 @@
   color: var(--text-muted);
   font-size: 11px;
   overflow-wrap: anywhere;
+}
+
+/* The selected row. Its `aria-selected` sits on the treeitem above the row,
+   so the row itself carries `data-active` until the Explorer is rewritten;
+   the sidebar row (shell/sidebar-row.tsx) reads `aria-selected` on itself. */
+.fuwa-explorer__row[data-active] {
+  background: var(--sidebar-row-active);
+  color: var(--text-heading);
+}
+
+.fuwa-explorer__row[data-active] > svg {
+  color: var(--text-primary);
 }
 
 /* --- Drag-and-drop move: the folder row under the cursor

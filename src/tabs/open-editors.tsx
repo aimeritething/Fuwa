@@ -4,7 +4,7 @@ import type { Tab } from '@/types'
 import { isImageFilePath } from './image-file'
 import { documentLocation } from '@/folder/explorer'
 import { CloseAffordance } from './close-affordance'
-import '@/shell/sidebar.css'
+import { SidebarLabel, SidebarRow, SidebarRowIcon, SidebarRowName } from '@/shell/sidebar-row'
 
 export interface OpenEditorsProps {
   folder?: string | null
@@ -27,9 +27,9 @@ export const OpenEditors = memo(function OpenEditors({ tabs, folder, activeTabPa
   if (tabs.length === 0) return null
 
   return (
-    <section className="fuwa-open-editors" data-testid="open-editors">
-      <div className="fuwa-sidebar__label">{LABEL}</div>
-      <div className="fuwa-open-editors__rows" role="listbox" aria-label={LABEL}>
+    <section className="flex flex-none flex-col" data-testid="open-editors">
+      <SidebarLabel>{LABEL}</SidebarLabel>
+      <div className="flex flex-col gap-px" role="listbox" aria-label={LABEL}>
         {tabs.map(({ entry }) => (
           <OpenEditorRow
             key={entry.path}
@@ -56,26 +56,23 @@ interface OpenEditorRowProps {
 }
 
 function OpenEditorRow({ path, filename, parent, active, onActivate, onClose }: OpenEditorRowProps) {
-  const Icon = isImageFilePath(path) ? Image : FileText
   return (
-    <div
-      className="fuwa-sidebar-row"
+    <SidebarRow
       role="option"
       aria-selected={active}
       aria-label={filename}
       tabIndex={active ? 0 : -1}
       title={path}
       data-testid={`open-editor:${path}`}
-      data-active={active || undefined}
       onClick={() => onActivate(path)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onActivate(path)
       }}
     >
-      <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
-      <span className="fuwa-sidebar-row__name">{filename}</span>
-      {parent && <span className="fuwa-sidebar-row__parent">{parent}</span>}
+      <SidebarRowIcon icon={isImageFilePath(path) ? Image : FileText} />
+      <SidebarRowName data-testid="open-editor-name">{filename}</SidebarRowName>
+      {parent && <span className="flex-initial truncate text-2xs text-text-secondary" data-testid="open-editor-parent">{parent}</span>}
       <CloseAffordance name={filename} onClose={() => onClose(path)} />
-    </div>
+    </SidebarRow>
   )
 }

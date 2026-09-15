@@ -53,7 +53,7 @@ test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows th
   await page.keyboard.press('Meta+BracketLeft')
   await expectExpanded(page)
   // The sidebar's top row is the tab bar's height, so the traffic lights keep one y in both states.
-  const top = sidebar(page).locator('.fuwa-sidebar__top')
+  const top = sidebar(page).getByTestId('sidebar-top')
   await expect(top).toHaveCSS('height', '44px')
   expect((await top.boundingBox())!.y).toBe(0)
   expect((await tabBar.boundingBox())!.y).toBe(8)

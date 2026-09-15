@@ -1,6 +1,7 @@
 import { useSidebarInlineRenameInput } from '@/shell/sidebar-hooks'
 import { stripBlockedNameCharacters, type ExplorerRowKind } from '@/folder/explorer-names'
 import { EXPLORER_ROW_ICONS, explorerNameIndent, explorerRowIndent } from './explorer-row'
+import { SidebarRow, SidebarRowIcon } from '@/shell/sidebar-row'
 
 /**
  * The in-row inline input behind creation and Rename…; it edits the stem
@@ -35,9 +36,9 @@ export function ExplorerNameInput(props: ExplorerNameInputProps) {
 
   return (
     <div className="fuwa-explorer__rename">
-      <div className="fuwa-sidebar-row fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}>
+      <SidebarRow className="fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}>
         <span className="fuwa-explorer__disclosure" />
-        <Icon size={14} className="fuwa-sidebar-row__icon" aria-hidden="true" />
+        <SidebarRowIcon icon={Icon} />
         <input
           ref={inputRef}
           className="fuwa-explorer__rename-input"
@@ -51,7 +52,7 @@ export function ExplorerNameInput(props: ExplorerNameInputProps) {
           onKeyDown={handleKeyDown}
         />
         {extension && <span className="fuwa-explorer__rename-extension">{extension}</span>}
-      </div>
+      </SidebarRow>
       {error && (
         <div
           className="fuwa-explorer__rename-error"

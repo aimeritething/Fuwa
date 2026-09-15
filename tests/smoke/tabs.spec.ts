@@ -12,10 +12,10 @@ const READING_LIST_PATH = `${MOCK_FOLDER}/Reading list.md`
 const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
 
 const tabNames = (page: Page) => page.getByRole('tab').allTextContents()
-const rowNames = (page: Page) => page.getByRole('option').locator('.fuwa-sidebar-row__name').allTextContents()
-const rowParents = (page: Page) => page.getByRole('option').locator('.fuwa-sidebar-row__parent').allTextContents()
+const rowNames = (page: Page) => page.getByRole('option').getByTestId('open-editor-name').allTextContents()
+const rowParents = (page: Page) => page.getByRole('option').getByTestId('open-editor-parent').allTextContents()
 const activeTab = (page: Page) => page.getByRole('tab', { selected: true })
-const activeRow = (page: Page) => page.getByRole('option', { selected: true }).locator('.fuwa-sidebar-row__name')
+const activeRow = (page: Page) => page.getByRole('option', { selected: true }).getByTestId('open-editor-name')
 
 async function openThree(page: Page) {
   await page.goto('/')
