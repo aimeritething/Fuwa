@@ -282,7 +282,7 @@ describe('createMathInputExtension', () => {
     const fixture = createFixture()
     const latex = 'x^2'
     const mathElement = document.createElement('span')
-    mathElement.className = 'math math--inline'
+    mathElement.dataset.mathMode = 'inline'
     mathElement.dataset.latex = latex
     const glyphText = document.createTextNode('x')
     mathElement.append(glyphText)
@@ -313,7 +313,7 @@ describe('createMathInputExtension', () => {
     const fixture = createFixture()
     const latex = 'x^2'
     const mathElement = document.createElement('span')
-    mathElement.className = 'math math--inline'
+    mathElement.dataset.mathMode = 'inline'
     mathElement.dataset.latex = latex
     const glyphText = document.createTextNode('x')
     mathElement.append(glyphText)
@@ -344,7 +344,7 @@ describe('createMathInputExtension', () => {
     const fixture = createFixture()
     const latex = '\\sqrt{x}'
     const mathElement = document.createElement('span')
-    mathElement.className = 'math math--block'
+    mathElement.dataset.mathMode = 'block'
     mathElement.dataset.latex = latex
     const renderedNode = createMathNode(MATH_BLOCK_TYPE, latex)
     fixture.docNodes.push({ node: renderedNode, pos: 20 })

@@ -7,7 +7,7 @@ import App from './app.tsx'
 import { applyStoredThemeMode } from '@/shell/theme-mode'
 import { installMockVault, isTauri } from '@/platform/tauri'
 
-const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
+const TLDRAW_CONTEXT_MENU_SELECTOR = '[data-content-type="tldrawBlock"]'
 
 function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false

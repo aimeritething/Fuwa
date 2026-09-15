@@ -11,7 +11,7 @@ import {
 
 const INLINE_WHITESPACE_RE = /^[^\S\r\n]$/
 const NEWLINE_INPUT_TYPES = new Set(['insertParagraph', 'insertLineBreak'])
-const MATH_SELECTOR = '.math[data-latex]'
+const MATH_SELECTOR = '[data-math-mode][data-latex]'
 const MATH_NODE_SEARCH_RADIUS = 8
 type EditorViewLike = NonNullable<ReturnType<typeof useCreateBlockNote>['prosemirrorView']>
 type EditorLike = ReturnType<typeof useCreateBlockNote>
@@ -157,7 +157,7 @@ function readRenderedMathTarget(target: EventTarget | null): { element: HTMLElem
 
   return {
     element,
-    kind: element.classList.contains('math--block') ? 'block' : 'inline',
+    kind: element.dataset.mathMode === 'block' ? 'block' : 'inline',
     latex,
   }
 }

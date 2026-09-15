@@ -1,5 +1,7 @@
+import { createReactBlockSpec } from '@blocknote/react'
 import { ArrowsOut as Maximize2, PencilSimpleLine } from '@phosphor-icons/react'
 import { useEffect, useId, useMemo, useState, type SyntheticEvent } from 'react'
+import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '@/kernel/markdown/mermaid-markdown'
 import { Button } from '@/ui/button'
 import {
   Dialog,
@@ -11,7 +13,17 @@ import {
 import { APP_COMMAND_EVENT_NAME, APP_COMMAND_IDS } from '@/shell/app-command-dispatcher'
 import { translate } from '@/lib/i18n'
 import { trackEvent } from '@/lib/telemetry'
+import { readFencedPreElement } from './fenced-pre-element'
 import { SafeSvgDiv } from './safe-markup'
+
+export const MERMAID_BLOCK_CONFIG = {
+  type: MERMAID_BLOCK_TYPE,
+  propSchema: {
+    source: { default: '' },
+    diagram: { default: '' },
+  },
+  content: 'none',
+} as const
 
 type MermaidApi = typeof import('mermaid')['default']
 
@@ -49,6 +61,12 @@ const MERMAID_RENDER_HOST_STYLE = [
   'overflow:hidden',
 ].join(';')
 const OPEN_RAW_EDITOR_LABEL = translate('en', 'editor.toolbar.rawOpen')
+
+// The two floating buttons show under the pointer or keyboard focus, and
+// always on a device with no pointer to hover with.
+const FLOATING_BUTTON_CLASS = 'absolute top-2 z-raised bg-surface-card opacity-0 shadow-menu group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'
+// The rendered SVG at its own size, centred; the box scrolls when it is wider.
+const SVG_CLASS = '[&_svg]:block [&_svg]:h-auto [&_svg]:max-w-none [&_svg]:min-w-min'
 
 function renderIdFromReactId(reactId: string): string {
   const safeId = reactId.replace(/[^a-zA-Z0-9_-]/g, '')
@@ -194,7 +212,7 @@ function MermaidRawEditorButton() {
   return (
     <Button
       aria-label={OPEN_RAW_EDITOR_LABEL}
-      className="mermaid-diagram__edit-button"
+      className={`${FLOATING_BUTTON_CLASS} right-11`}
       contentEditable={false}
       onClick={openRawEditorForMermaidSource}
       onMouseDown={stopMermaidViewportEvent}
@@ -214,7 +232,7 @@ function MermaidLightbox({ svg }: { svg: string }) {
       <DialogTrigger asChild>
         <Button
           aria-label="Open Mermaid diagram"
-          className="mermaid-diagram__expand-button"
+          className={`${FLOATING_BUTTON_CLASS} right-2`}
           size="icon-sm"
           title="Open diagram"
           type="button"
@@ -223,14 +241,14 @@ function MermaidLightbox({ svg }: { svg: string }) {
           <Maximize2 aria-hidden="true" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="mermaid-diagram__dialog" showCloseButton>
+      <DialogContent variant="bare" showCloseButton>
         <DialogTitle className="sr-only">Mermaid diagram</DialogTitle>
         <DialogDescription className="sr-only">
           Expanded view of the rendered Mermaid diagram.
         </DialogDescription>
         <MermaidSvgViewport
           ariaLabel="Expanded Mermaid diagram"
-          className="mermaid-diagram__dialog-viewport"
+          className={`${SVG_CLASS} h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] overflow-auto rounded-xl bg-surface-card p-6 text-text-primary focus-visible:focus-ring [&_svg]:m-auto`}
           svg={svg}
           testId="mermaid-diagram-dialog-viewport"
         />
@@ -240,8 +258,18 @@ function MermaidLightbox({ svg }: { svg: string }) {
 }
 
 function MermaidSourceFallback({ source }: { source: string }) {
-  return <pre role="img" aria-label="Mermaid source"><code>{source}</code></pre>
+  return (
+    <pre
+      className="m-0 max-w-full overflow-auto rounded-md bg-inline-code-bg p-2.5 text-xs leading-normal text-inherit"
+      role="img"
+      aria-label="Mermaid source"
+    >
+      <code>{source}</code>
+    </pre>
+  )
 }
+
+const FIGURE_CLASS = 'group relative my-2.5 w-full text-text-primary'
 
 export function MermaidDiagram({ diagram, source }: MermaidDiagramProps) {
   const reactId = useId()
@@ -266,24 +294,51 @@ export function MermaidDiagram({ diagram, source }: MermaidDiagramProps) {
   const currentState = state.diagram === diagram ? state : { diagram, svg: '', error: false }
   if (!diagram.trim() || currentState.error) {
     return (
-      <figure className="mermaid-diagram mermaid-diagram--error" data-testid="mermaid-diagram-error">
+      <figure
+        className={`${FIGURE_CLASS} rounded-lg border-hairline border-chroma-red bg-chroma-red/8 p-3`}
+        data-testid="mermaid-diagram-error"
+      >
         <MermaidRawEditorButton />
-        <figcaption>Mermaid diagram unavailable</figcaption>
+        <figcaption className="mb-2 text-xs leading-normal font-semibold text-chroma-red">Mermaid diagram unavailable</figcaption>
         <MermaidSourceFallback source={source} />
       </figure>
     )
   }
 
   return (
-    <figure className="mermaid-diagram" data-testid="mermaid-diagram">
+    <figure className={FIGURE_CLASS} data-testid="mermaid-diagram">
       <MermaidRawEditorButton />
       <MermaidLightbox svg={currentState.svg} />
       <MermaidSvgViewport
         ariaLabel="Mermaid diagram"
-        className="mermaid-diagram__viewport"
+        className={`${SVG_CLASS} max-w-full overflow-auto rounded-lg border-hairline border-border-default bg-surface-card p-3.5 focus-visible:focus-ring [&_svg]:mx-auto`}
         svg={currentState.svg}
         testId="mermaid-diagram-viewport"
       />
     </figure>
   )
 }
+
+function readMermaidPreElement(element: HTMLElement): { source: string; diagram: string } | undefined {
+  const diagram = readFencedPreElement(element, 'mermaid')
+  if (diagram === undefined) return undefined
+
+  return {
+    diagram,
+    source: mermaidFenceSource({ diagram }),
+  }
+}
+
+export const MermaidBlockSpec = createReactBlockSpec(
+  MERMAID_BLOCK_CONFIG,
+  {
+    runsBefore: ['codeBlock'],
+    parse: readMermaidPreElement,
+    render: (props) => (
+      <MermaidDiagram
+        diagram={props.block.props.diagram}
+        source={props.block.props.source}
+      />
+    ),
+  },
+)

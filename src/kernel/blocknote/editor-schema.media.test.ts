@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  mediaBlockPropsForPreviewRuntime,
-  schema,
-} from './editor-schema'
+import { schema } from './editor-schema'
+import { mediaBlockPropsForPreviewRuntime } from './media-blocks'
 
 describe('editor schema media blocks', () => {
   it('keeps embedded audio and video blocks available in the editor schema', () => {

@@ -1,5 +1,6 @@
+import { BlockNoteContext } from '@blocknote/react'
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Editor } from 'tldraw'
 import { TldrawWhiteboard } from './tldraw-whiteboard'
@@ -218,11 +219,31 @@ function renderWhiteboard(overrides: Partial<ComponentProps<typeof TldrawWhitebo
   )
 }
 
+/** The BlockNoteView context the board reads its colour scheme from. */
+function EditorTheme({ colorScheme, children }: { colorScheme: 'light' | 'dark'; children: ReactNode }) {
+  return (
+    <BlockNoteContext.Provider value={{ colorSchemePreference: colorScheme }}>
+      {children}
+    </BlockNoteContext.Provider>
+  )
+}
+
+function renderWhiteboardInEditor(colorScheme: 'light' | 'dark') {
+  const view = render(
+    <EditorTheme colorScheme={colorScheme}><TldrawWhiteboard {...whiteboardProps()} /></EditorTheme>,
+    { wrapper: TooltipProvider },
+  )
+  return {
+    ...view,
+    rerenderWith: (nextColorScheme: 'light' | 'dark') => view.rerender(
+      <EditorTheme colorScheme={nextColorScheme}><TldrawWhiteboard {...whiteboardProps()} /></EditorTheme>,
+    ),
+  }
+}
+
 describe('TldrawWhiteboard', () => {
   afterEach(() => {
     cleanup()
-    document.documentElement.removeAttribute('data-theme')
-    document.documentElement.classList.remove('dark')
     vi.clearAllMocks()
   })
 
@@ -234,30 +255,26 @@ describe('TldrawWhiteboard', () => {
     expectBundledTldrawAssetUrls(renderedTldrawAssetUrls())
   })
 
-  it('passes the app dark mode to tldraw', () => {
-    document.documentElement.setAttribute('data-theme', 'dark')
-    document.documentElement.classList.add('dark')
+  it('passes the editor colour scheme to tldraw', () => {
+    renderWhiteboardInEditor('dark')
 
+    expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('dark')
+  })
+
+  it('falls back to dark outside an editor', () => {
     renderWhiteboard()
 
     expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('dark')
   })
 
-  it('updates the tldraw color scheme when the app theme changes', async () => {
-    document.documentElement.setAttribute('data-theme', 'light')
-
-    renderWhiteboard()
+  it('updates the tldraw colour scheme when the editor theme changes', () => {
+    const { rerenderWith } = renderWhiteboardInEditor('light')
 
     expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('light')
 
-    act(() => {
-      document.documentElement.setAttribute('data-theme', 'dark')
-      document.documentElement.classList.add('dark')
-    })
+    rerenderWith('dark')
 
-    await waitFor(() => {
-      expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('dark')
-    })
+    expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('dark')
   })
 
   it('installs the text measurement guard before tldraw runtime guards mount', () => {

@@ -1,7 +1,6 @@
-import { readFileSync } from 'node:fs'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { MathBlockEditor } from './editor-schema'
+import { MathBlockEditor } from './math-block'
 import { subscribeRichEditorExternalChange } from './editor-external-change-events'
 
 function renderMathBlockEditor(latex = '\\sqrt{x}') {
@@ -23,7 +22,7 @@ describe('MathBlockEditor', () => {
   it('renders display math without exposing Markdown delimiters as editor content', () => {
     renderMathBlockEditor()
 
-    expect(document.querySelector('.math--block')).toHaveAttribute('data-latex', '\\sqrt{x}')
+    expect(screen.getByRole('img')).toHaveAttribute('data-latex', '\\sqrt{x}')
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
@@ -40,7 +39,7 @@ describe('MathBlockEditor', () => {
     const onExternalChange = vi.fn()
     const unsubscribe = subscribeRichEditorExternalChange(editor, onExternalChange)
 
-    fireEvent.doubleClick(document.querySelector('.math--block')!)
+    fireEvent.doubleClick(screen.getByRole('img'))
     const source = screen.getByRole('textbox')
     fireEvent.change(source, { target: { value: '\\frac{1}{2}' } })
     fireEvent.blur(source)
@@ -64,7 +63,7 @@ describe('MathBlockEditor', () => {
       throw new Error('Block with ID math-block not found')
     })
 
-    fireEvent.doubleClick(document.querySelector('.math--block')!)
+    fireEvent.doubleClick(screen.getByRole('img'))
     const source = screen.getByRole('textbox')
     fireEvent.change(source, { target: { value: '\\frac{1}{2}' } })
 
@@ -85,7 +84,7 @@ describe('MathBlockEditor', () => {
   it('cancels math block editing without changing the block', () => {
     const { editor } = renderMathBlockEditor()
 
-    fireEvent.doubleClick(document.querySelector('.math--block')!)
+    fireEvent.doubleClick(screen.getByRole('img'))
     const source = screen.getByRole('textbox')
     fireEvent.change(source, { target: { value: '\\frac{1}{2}' } })
     fireEvent.keyDown(source, { key: 'Escape' })
@@ -98,10 +97,9 @@ describe('MathBlockEditor', () => {
   it('uses editor selection colors and a single focused border while editing', () => {
     renderMathBlockEditor()
 
-    fireEvent.doubleClick(document.querySelector('.math--block')!)
+    fireEvent.doubleClick(screen.getByRole('img'))
     const source = screen.getByRole('textbox')
 
-    expect(source).toHaveClass('math-block-source')
     expect(source).toHaveClass('selection:bg-state-selection')
     expect(source).toHaveClass('selection:text-text-primary')
     expect(source).toHaveClass('focus-visible:ring-0')
@@ -109,22 +107,14 @@ describe('MathBlockEditor', () => {
   })
 
   it('keeps display math selection chrome scoped to the rendered formula width', () => {
-    const blocknoteCss = readFileSync(`${process.cwd()}/src/kernel/blocknote/blocknote.css`, 'utf8')
+    renderMathBlockEditor()
 
-    expect(blocknoteCss).toContain('.math-block-shell {')
-    expect(blocknoteCss).toContain('max-width: 100%;')
-    expect(blocknoteCss).toContain('overflow-x: auto;')
-    expect(blocknoteCss).toContain('.math-block-shell:not(.math-block-shell--editing) {')
-    expect(blocknoteCss).toContain('width: fit-content;')
-    expect(blocknoteCss).toContain('margin-inline: auto;')
-    expect(blocknoteCss).toContain('.math-block-shell--editing {')
-    expect(blocknoteCss).toContain('width: 100%;')
-  })
+    const shell = screen.getByRole('button')
+    expect(shell).toHaveClass('w-fit', 'mx-auto', 'max-w-full', 'overflow-x-auto')
 
-  it('does not stack divider bottom spacing with following heading top spacing', () => {
-    const blocknoteCss = readFileSync(`${process.cwd()}/src/kernel/blocknote/blocknote.css`, 'utf8')
-
-    expect(blocknoteCss).toContain('.bn-block-outer:has(hr) + .bn-block-outer:has(> .bn-block > [data-content-type="heading"]) {')
-    expect(blocknoteCss).toContain('margin-top: var(--editor-divider-followed-by-heading-margin-top);')
+    fireEvent.doubleClick(screen.getByRole('img'))
+    const editingShell = screen.getByRole('textbox').parentElement?.parentElement
+    expect(editingShell).toHaveClass('w-full', 'max-w-full', 'overflow-x-auto')
+    expect(editingShell).not.toHaveClass('w-fit')
   })
 })
