@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -94,9 +94,8 @@ describe('literal colours', () => {
     const literal = /#[0-9a-f]{3,8}\b|rgba?\(/i
     const checks: Array<[string, string]> = [
       ['index.css', appCss.slice(0, lightBlock.start) + appCss.slice(lightBlock.end, darkBlock.start) + appCss.slice(darkBlock.end)],
+      ['kernel/blocknote/blocknote.css', readFileSync(join(SRC, 'kernel', 'blocknote', 'blocknote.css'), 'utf8')],
     ]
-    const blocknoteCss = join(SRC, 'kernel', 'blocknote', 'blocknote.css')
-    if (existsSync(blocknoteCss)) checks.push(['kernel/blocknote/blocknote.css', readFileSync(blocknoteCss, 'utf8')])
     for (const [name, text] of checks) {
       const hit = text.match(literal)
       expect(hit ? `${name}: ${hit[0]}` : null).toBeNull()

@@ -186,17 +186,6 @@
   z-index: 2;
 }
 
-.bn-editor .fuwa-rich-find-match {
-  border-radius: 2px;
-  background: var(--chroma-yellow-bg);
-  box-shadow: 0 0 0 1px var(--chroma-yellow-bg);
-}
-
-.bn-editor .fuwa-rich-find-match--active {
-  background: color-mix(in srgb, var(--chroma-orange) 38%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chroma-orange) 38%, transparent);
-}
-
 /* Raw mode: CodeMirror fills the card below the path row and
    scrolls itself; the find scope around it stays a flex column so the
    carried find bar sits above the editor. */

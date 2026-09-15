@@ -109,23 +109,22 @@ describe('MathBlockEditor', () => {
   })
 
   it('keeps display math selection chrome scoped to the rendered formula width', () => {
-    const editorThemeCss = readFileSync(`${process.cwd()}/src/editor/editor-theme.css`, 'utf8')
+    const blocknoteCss = readFileSync(`${process.cwd()}/src/kernel/blocknote/blocknote.css`, 'utf8')
 
-    expect(editorThemeCss).toContain('.editor__blocknote-container .math-block-shell {')
-    expect(editorThemeCss).toContain('max-width: 100%;')
-    expect(editorThemeCss).toContain('overflow-x: auto;')
-    expect(editorThemeCss).toContain('.editor__blocknote-container .math-block-shell:not(.math-block-shell--editing) {')
-    expect(editorThemeCss).toContain('width: fit-content;')
-    expect(editorThemeCss).toContain('margin-inline: auto;')
-    expect(editorThemeCss).toContain('.editor__blocknote-container .math-block-shell--editing {')
-    expect(editorThemeCss).toContain('width: 100%;')
+    expect(blocknoteCss).toContain('.math-block-shell {')
+    expect(blocknoteCss).toContain('max-width: 100%;')
+    expect(blocknoteCss).toContain('overflow-x: auto;')
+    expect(blocknoteCss).toContain('.math-block-shell:not(.math-block-shell--editing) {')
+    expect(blocknoteCss).toContain('width: fit-content;')
+    expect(blocknoteCss).toContain('margin-inline: auto;')
+    expect(blocknoteCss).toContain('.math-block-shell--editing {')
+    expect(blocknoteCss).toContain('width: 100%;')
   })
 
   it('does not stack divider bottom spacing with following heading top spacing', () => {
-    const editorThemeCss = readFileSync(`${process.cwd()}/src/editor/editor-theme.css`, 'utf8')
+    const blocknoteCss = readFileSync(`${process.cwd()}/src/kernel/blocknote/blocknote.css`, 'utf8')
 
-    expect(editorThemeCss).toContain('.editor__blocknote-container .bn-block-outer:has(hr)')
-    expect(editorThemeCss).toContain('+ .bn-block-outer:has(> .bn-block > [data-content-type="heading"])')
-    expect(editorThemeCss).toContain('margin-top: var(--editor-divider-followed-by-heading-margin-top) !important;')
+    expect(blocknoteCss).toContain('.bn-block-outer:has(hr) + .bn-block-outer:has(> .bn-block > [data-content-type="heading"]) {')
+    expect(blocknoteCss).toContain('margin-top: var(--editor-divider-followed-by-heading-margin-top);')
   })
 })

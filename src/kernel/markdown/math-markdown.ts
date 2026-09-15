@@ -585,6 +585,9 @@ export function renderMathToHtml({ latex, displayMode }: MathRenderRequest): str
   try {
     return katex.renderToString(latex, {
       displayMode,
+      // KaTeX writes this colour inline on its error span, where no stylesheet
+      // rule reaches it; the token keeps it Fuwa's red in both themes.
+      errorColor: 'var(--chroma-red)',
       throwOnError: false,
       trust: false,
     })

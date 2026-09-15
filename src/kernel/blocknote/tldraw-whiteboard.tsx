@@ -17,7 +17,6 @@ import {
   type TLStoreSnapshot,
   type TLUserPreferences,
 } from 'tldraw'
-import 'tldraw/tldraw.css'
 import { useDocumentThemeMode } from '@/shell/use-document-theme-mode'
 import { resolveEffectiveLocale, translate, type AppLocale } from '@/lib/i18n'
 import type { ResolvedThemeMode } from '@/shell/theme-mode'

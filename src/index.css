@@ -1,6 +1,18 @@
+/* The cascade order, declared before Tailwind declares its own four layers.
+   The third-party stylesheets sit in `vendor`, above `base` and below
+   `components`: the Kernel's overrides (kernel/blocknote/blocknote.css) win
+   over them without `!important`, a utility class in tsx wins over both, and
+   Tailwind's preflight, a universal margin / padding / border reset in
+   `base`, cannot strip BlockNote, KaTeX and tldraw of theirs. */
+@layer theme, base, vendor, components, utilities;
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@blocknote/shadcn/style.css";
+@import "@blocknote/shadcn/style.css" layer(vendor);
+@import "katex/dist/katex.min.css" layer(vendor);
+@import "tldraw/tldraw.css" layer(vendor);
+@import "@fontsource-variable/inter/wght.css" layer(vendor);
+@import "@fontsource-variable/jetbrains-mono/wght.css" layer(vendor);
+@import "./kernel/blocknote/blocknote.css";
 @source "../node_modules/@blocknote/shadcn";
 
 /* `data-theme` on <html> is the only theme switch. Tailwind's `dark:` follows
@@ -538,8 +550,6 @@
     option,
     [contenteditable]:not([contenteditable="false"]),
     [contenteditable]:not([contenteditable="false"]) *,
-    .editor__blocknote-container .bn-editor,
-    .editor__blocknote-container .bn-editor *,
     .raw-editor-codemirror,
     .raw-editor-codemirror .cm-editor,
     .raw-editor-codemirror .cm-scroller,
@@ -597,14 +607,6 @@
       transition-duration: 0.01ms !important;
     }
   }
-}
-
-/* The popover material for the kernel's menus: a hairline border and the
-   menu shadow. */
-.bn-shadcn .bn-menu-dropdown,
-.bn-shadcn .bn-toolbar {
-  border: var(--hairline) solid var(--border-popover);
-  box-shadow: var(--shadow-menu);
 }
 
 /* The focus ring: outline gone, a 1px ring in the focus colour. Written with
