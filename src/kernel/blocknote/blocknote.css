@@ -1,0 +1,1385 @@
+/* ==============================================================
+   blocknote.css — the Kernel's stylesheet: every `.bn-*` / ProseMirror
+   override, the KaTeX and tldraw rules and, until PR 8 / PR 9, the rules
+   for Fuwa's own block elements. index.css imports it right after the
+   vendor stylesheets; nothing else does.
+
+   Layers. The overrides sit in `components`: above `vendor`, which holds
+   BlockNote's, KaTeX's and tldraw's own CSS, and below `utilities`, so a
+   Tailwind class in tsx beats a rule here and no rule needs an important flag.
+   Two blocks stand outside that layer, each with its reason written above
+   it: the `@layer utilities` block for the elements the BlockNote shadcn
+   package styles with Tailwind classes of its own, and the unlayered block
+   at the end, which BlockNote's runtime placeholder rules and the
+   not-yet-migrated rules for Fuwa's elements share.
+
+   Selectors: `.bn-editor` already scopes, so no container prefix; at most
+   three segments; BlockNote's own attributes over class chains. Values:
+   the tokens from index.css, structural numbers, `--_` file constants.
+   ============================================================== */
+
+@layer components {
+  /* ---------------------------------------------------------------
+     File constants: the measures with no token, named here so the rules
+     below carry no bare numbers. On the root, so the portaled menus read
+     them too.
+     --------------------------------------------------------------- */
+  :root {
+    --_block-selection-mix: 82%;
+    --_checkbox-tick-left: 4px;
+    --_checkbox-tick-top: 1px;
+    --_checkbox-tick-width: 4px;
+    --_checkbox-tick-height: 7px;
+    --_checkbox-tick-stroke: 1.5px;
+    --_table-cell-min-height: 21px;
+    --_code-block-line-height: 1.4;
+    --_code-block-header-gap: 4.9px;
+    --_code-line-numbers-gutter: 38.5px;
+    --_select-max-width: 252px;
+    --_select-padding-vertical: 3px;
+    --_select-line-height: 1.3;
+    --_select-border-mix: 42%;
+    --_inline-code-line-height: 1.3;
+    --_link-underline-offset: 2px;
+    --_find-match-active-mix: 38%;
+    --_suggestion-row-padding-vertical: 3px;
+  }
+
+  /* ---------------------------------------------------------------
+     The editor surface
+     --------------------------------------------------------------- */
+  .bn-container {
+    width: 100%;
+    height: 100%;
+    background: var(--surface-card);
+    color: var(--text-primary);
+    font-size: var(--editor-font-size);
+    /* BlockNote's colour variables, pointed at Fuwa's tokens. */
+    --bn-colors-editor-background: var(--surface-card);
+    --bn-colors-editor-text: var(--text-primary);
+    --bn-colors-menu-background: var(--surface-popover);
+    --bn-colors-menu-text: var(--text-primary);
+    --bn-colors-tooltip-background: var(--surface-popover);
+    --bn-colors-tooltip-text: var(--text-primary);
+    --bn-colors-hovered-background: var(--menu-item-hover);
+    --bn-colors-hovered-text: var(--text-heading);
+    --bn-colors-selected-background: var(--state-selected);
+    --bn-colors-selected-text: var(--text-primary);
+    --bn-colors-border: var(--border-popover);
+    --bn-colors-side-menu: var(--text-muted);
+  }
+
+  .bn-editor {
+    width: 100%;
+    max-width: var(--editor-max-width);
+    margin: 0 auto;
+    padding: var(--editor-padding-vertical) var(--editor-padding-horizontal);
+    /* Half the viewport below the last line, so the end of a Document scrolls up. */
+    padding-bottom: max(var(--editor-padding-vertical), 50vh);
+    font-family: var(--editor-font-family);
+    font-size: var(--editor-font-size);
+    font-weight: var(--editor-font-weight);
+    line-height: var(--editor-line-height);
+    letter-spacing: var(--editor-letter-spacing);
+    color: var(--text-primary);
+    caret-color: var(--text-primary);
+  }
+
+  /* index.css makes the app non-selectable; the Document's text is, its buttons are not. */
+  .bn-editor,
+  .bn-editor * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  .bn-editor :is(button, [role="button"]),
+  .bn-editor :is(button, [role="button"]) * {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .bn-editor ::selection {
+    background: var(--state-selection);
+  }
+
+  .bn-editor :is(.bn-block-group, .bn-block-outer, .bn-block, .bn-block-content)::selection,
+  .ProseMirror-trailingBreak::selection,
+  .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child)::selection {
+    background: transparent;
+  }
+
+  .bn-block-outer {
+    line-height: var(--editor-line-height);
+    /* The bullet marker sizes: a 6px dot at the 15px editor size, scaling
+       with it. On the outer, so a block's drag preview keeps them too. */
+    --_lists-marker-inner-radius: calc(var(--editor-font-size) * 0.133333);
+    --_lists-marker-radius: calc(var(--editor-font-size) * 0.2);
+    --_lists-marker-fade-radius: calc(var(--editor-font-size) * 0.233333);
+    --_lists-marker-size: calc(var(--editor-font-size) * 0.4);
+  }
+
+  /* Each block resolves its own base direction, for mixed LTR / RTL Documents;
+     the content sits 8px in from the side menu. */
+  .bn-block-content {
+    margin-inline-start: calc(var(--spacing) * 2);
+    text-align: start;
+  }
+
+  .bn-inline-content {
+    unicode-bidi: plaintext;
+    text-align: start;
+  }
+
+  .fuwa-rich-editor-text-direction-rtl,
+  [data-fuwa-text-direction="rtl"],
+  [data-fuwa-text-direction="rtl"] :is(blockquote, .bn-inline-content) {
+    direction: rtl;
+  }
+
+  [data-fuwa-text-direction="rtl"]:is(blockquote),
+  [data-fuwa-text-direction="rtl"] blockquote {
+    border-left-width: 0;
+    border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
+    padding-inline-start: var(--blockquote-padding-left);
+  }
+
+  /* ---------------------------------------------------------------
+     Block selection (rich-editor-block-selection-extension.ts)
+     --------------------------------------------------------------- */
+  .bn-block-outer.fuwa-rich-editor-block-selected {
+    --_block-selection-right-outset: 10px;
+    --_block-selection-top-outset: 2px;
+
+    caret-color: transparent;
+    isolation: isolate;
+    outline: none;
+    position: relative;
+  }
+
+  .bn-block-outer.fuwa-rich-editor-block-selected *,
+  .bn-block.fuwa-rich-editor-block-selected,
+  .bn-block.fuwa-rich-editor-block-selected * {
+    caret-color: transparent;
+  }
+
+  .bn-block-outer.fuwa-rich-editor-block-selected::after {
+    background: color-mix(in srgb, var(--state-selection) var(--_block-selection-mix), transparent);
+    border-radius: var(--radius-md);
+    content: "";
+    inset:
+      calc(var(--_block-selection-top-outset) * -1)
+      calc(var(--_block-selection-right-outset) * -1)
+      calc(var(--_block-selection-top-outset) * -1)
+      0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+  }
+
+  .bn-block-outer.fuwa-rich-editor-block-selected:has(> .bn-block > [data-content-type="paragraph"])::after {
+    bottom: calc(var(--editor-paragraph-spacing) - var(--_block-selection-top-outset));
+  }
+
+  .bn-block-outer.fuwa-rich-editor-block-selected:has(hr)::after {
+    content: none;
+  }
+
+  .bn-block-outer.fuwa-rich-editor-block-selected > .bn-block {
+    position: relative;
+    z-index: 1;
+  }
+
+  .bn-block.fuwa-rich-editor-block-selected {
+    background: color-mix(in srgb, var(--state-selection) var(--_block-selection-mix), transparent);
+    border-radius: var(--radius-md);
+    box-decoration-break: clone;
+  }
+
+  .bn-block.fuwa-rich-editor-block-selected:has(hr) {
+    background: transparent;
+  }
+
+  /* ---------------------------------------------------------------
+     The side menu: its buttons in a row, one text line tall
+     --------------------------------------------------------------- */
+  .bn-side-menu {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0;
+  }
+
+  .bn-side-menu :is(button, .fuwa-block-drag-handle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bn-side-menu [draggable="true"] * {
+    pointer-events: none;
+  }
+
+  /* ---------------------------------------------------------------
+     Blocks, by data-content-type
+     --------------------------------------------------------------- */
+
+  /* Paragraph */
+  [data-content-type="paragraph"] {
+    margin-bottom: var(--editor-paragraph-spacing);
+  }
+
+  /* Headings. Spacing goes on .bn-block-outer, where BlockNote measures
+     for the side menu; the inner elements carry no margin. BlockNote renders
+     H1 without data-level, hence :has(h1) and :not([data-level]). */
+  .bn-block-outer:has(h1) {
+    margin-top: var(--headings-h1-margin-top);
+    margin-bottom: var(--headings-h1-margin-bottom);
+  }
+
+  /* A heading that opens the Document carries no top margin: the column's own
+     padding is the space above it. */
+  .bn-editor > .bn-block-group > .bn-block-outer:first-child:has(> .bn-block > [data-content-type="heading"]) {
+    margin-top: 0;
+  }
+
+  /* Headings are the one place with an OpenType feature: contextual alternates. */
+  [data-content-type="heading"] .bn-inline-content {
+    font-feature-settings: "calt";
+  }
+
+  [data-content-type="heading"]:is(:not([data-level]), [data-level="1"]) .bn-inline-content {
+    font-size: var(--headings-h1-font-size);
+    font-weight: var(--headings-h1-font-weight);
+    line-height: var(--headings-h1-line-height);
+    color: var(--text-heading);
+    letter-spacing: var(--headings-h1-letter-spacing);
+  }
+
+  .bn-block-outer:has(> .bn-block > [data-content-type="heading"][data-level="2"]) {
+    margin-top: var(--headings-h2-margin-top);
+    margin-bottom: var(--headings-h2-margin-bottom);
+  }
+
+  [data-content-type="heading"][data-level="2"] .bn-inline-content {
+    font-size: var(--headings-h2-font-size);
+    font-weight: var(--headings-h2-font-weight);
+    line-height: var(--headings-h2-line-height);
+    color: var(--text-heading);
+    letter-spacing: var(--headings-h2-letter-spacing);
+  }
+
+  .bn-block-outer:has(> .bn-block > [data-content-type="heading"][data-level="3"]) {
+    margin-top: var(--headings-h3-margin-top);
+    margin-bottom: var(--headings-h3-margin-bottom);
+  }
+
+  [data-content-type="heading"][data-level="3"] .bn-inline-content {
+    font-size: var(--headings-h3-font-size);
+    font-weight: var(--headings-h3-font-weight);
+    line-height: var(--headings-h3-line-height);
+    color: var(--text-heading);
+    letter-spacing: var(--headings-h3-letter-spacing);
+  }
+
+  .bn-block-outer:has(> .bn-block > [data-content-type="heading"][data-level="4"]) {
+    margin-top: var(--headings-h4-margin-top);
+    margin-bottom: var(--headings-h4-margin-bottom);
+  }
+
+  [data-content-type="heading"][data-level="4"] .bn-inline-content {
+    font-size: var(--headings-h4-font-size);
+    font-weight: var(--headings-h4-font-weight);
+    line-height: var(--headings-h4-line-height);
+    color: var(--text-heading);
+    letter-spacing: var(--headings-h4-letter-spacing);
+  }
+
+  /* Lists. BlockNote draws the marker as a glyph in a 24px ::before box; the
+     bullet becomes a dot, hollow one level down, square two down: the nested
+     groups set the gradient, the ::before reads it. */
+  .bn-block-group .bn-block-group {
+    margin-inline-start: var(--lists-indent-size);
+    --_lists-marker: radial-gradient(
+      circle,
+      transparent 0 var(--_lists-marker-inner-radius),
+      var(--text-primary) var(--_lists-marker-inner-radius) var(--_lists-marker-radius),
+      transparent var(--_lists-marker-fade-radius)
+    );
+  }
+
+  .bn-block-group .bn-block-group .bn-block-group {
+    --_lists-marker:
+      linear-gradient(var(--text-primary), var(--text-primary))
+      center / var(--_lists-marker-size) var(--_lists-marker-size) no-repeat;
+  }
+
+  /* No vertical nesting lines. */
+  .bn-block-group .bn-block-group .bn-block-outer::before {
+    border-inline-start: none;
+  }
+
+  [data-content-type="bulletListItem"] {
+    padding-inline-start: var(--lists-padding-left);
+    margin-bottom: var(--lists-item-spacing);
+    gap: var(--lists-bullet-gap);
+  }
+
+  [data-content-type="bulletListItem"]::before {
+    background: var(--_lists-marker, radial-gradient(
+      circle,
+      var(--text-primary) 0 var(--_lists-marker-radius),
+      transparent var(--_lists-marker-fade-radius)
+    ));
+    color: transparent;
+    font-size: 0;
+    min-width: var(--lists-indent-size);
+    width: var(--lists-indent-size);
+    /* Centred on the first line of text. */
+    height: calc(var(--editor-font-size) * var(--editor-line-height));
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  [data-content-type="numberedListItem"] {
+    padding-inline-start: var(--lists-padding-left);
+    margin-bottom: var(--lists-item-spacing);
+    gap: var(--lists-bullet-gap);
+  }
+
+  [data-content-type="numberedListItem"]::before {
+    color: var(--text-primary);
+    font-size: var(--editor-font-size);
+    min-width: var(--lists-indent-size);
+    width: var(--lists-indent-size);
+    height: calc(var(--editor-font-size) * var(--editor-line-height));
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* Check list. BlockNote renders div > input[type=checkbox]; the box is drawn
+     here rather than by the platform: 14px, a 1px faint border, filled with
+     the body colour when checked, the tick cut from the editor surface. */
+  [data-content-type="checkListItem"] {
+    margin-bottom: var(--lists-item-spacing);
+    gap: var(--checkboxes-gap);
+  }
+
+  [data-content-type="checkListItem"] input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: var(--checkboxes-size);
+    height: var(--checkboxes-size);
+    min-width: var(--checkboxes-size);
+    min-height: var(--checkboxes-size);
+    margin: 0;
+    border-radius: var(--checkboxes-border-radius);
+    border: 1px solid var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  [data-content-type="checkListItem"] input[type="checkbox"]:checked {
+    border-color: var(--text-primary);
+    background: var(--text-primary);
+  }
+
+  [data-content-type="checkListItem"] input[type="checkbox"]:checked::after {
+    content: "";
+    position: absolute;
+    left: var(--_checkbox-tick-left);
+    top: var(--_checkbox-tick-top);
+    width: var(--_checkbox-tick-width);
+    height: var(--_checkbox-tick-height);
+    border: solid var(--surface-card);
+    border-width: 0 var(--_checkbox-tick-stroke) var(--_checkbox-tick-stroke) 0;
+    transform: rotate(45deg);
+  }
+
+  [data-content-type="checkListItem"] input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--state-focus-ring);
+  }
+
+  /* The box's container: one marker box wide, centred on the first line. */
+  [data-content-type="checkListItem"] > div[contenteditable="false"] {
+    width: var(--lists-indent-size);
+    min-width: var(--lists-indent-size);
+    height: calc(var(--editor-font-size) * var(--editor-line-height));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Blockquote: a 4px rounded bar, the text colour unchanged. */
+  [data-content-type="quote"] blockquote {
+    border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
+    border-start-start-radius: var(--radius-sm);
+    border-end-start-radius: var(--radius-sm);
+    padding-inline-start: var(--blockquote-padding-left);
+    margin-top: var(--blockquote-margin-vertical);
+    margin-bottom: var(--blockquote-margin-vertical);
+    color: inherit;
+    font-style: normal;
+  }
+
+  /* BlockNote models a Markdown blockquote's paragraphs as sibling blocks.
+     Consecutive quote blocks drop the padding between them (BlockNote's 3px
+     on each .bn-block-content) so their bars read as one quote. The outer
+     sets the value, the quote content one level down reads it, a nested
+     group resets it. */
+  .bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has(+ .bn-block-outer > .bn-block > [data-content-type="quote"]) {
+    --_quote-padding-bottom: 0;
+  }
+
+  .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) + .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) {
+    --_quote-padding-top: 0;
+  }
+
+  .bn-block-outer .bn-block-group {
+    --_quote-padding-top: initial;
+    --_quote-padding-bottom: initial;
+  }
+
+  [data-content-type="quote"] {
+    --_block-content-padding: 3px;
+    padding-top: var(--_quote-padding-top, var(--_block-content-padding));
+    padding-bottom: var(--_quote-padding-bottom, var(--_block-content-padding));
+  }
+
+  /* Table: hairline grid, 6px radius, shaded header row. */
+  [data-content-type="table"] table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border: var(--hairline) solid var(--border-default);
+    border-radius: var(--radius-md);
+    font-size: var(--table-font-size);
+  }
+
+  [data-content-type="table"] :is(th, td) {
+    border-width: 0;
+    border-inline-start: var(--hairline) solid var(--border-default);
+    border-color: var(--border-default);
+  }
+
+  [data-content-type="table"] :is(th, td):first-child {
+    border-inline-start-width: 0;
+  }
+
+  [data-content-type="table"] tr:not(:first-child) :is(th, td) {
+    border-top: var(--hairline) solid var(--border-default);
+  }
+
+  [data-content-type="table"] tr:first-child :is(th, td):first-child {
+    border-start-start-radius: var(--radius-md);
+  }
+
+  [data-content-type="table"] tr:first-child :is(th, td):last-child {
+    border-start-end-radius: var(--radius-md);
+  }
+
+  [data-content-type="table"] th {
+    background: var(--surface-shade);
+    font-weight: var(--inline-bold-font-weight);
+    padding: var(--table-cell-padding-vertical) var(--table-cell-padding-horizontal);
+  }
+
+  [data-content-type="table"] td {
+    padding: var(--table-cell-padding-vertical) var(--table-cell-padding-horizontal);
+    text-align: start;
+  }
+
+  /* BlockNote sizes the cell paragraph in rem; pinned to what it rendered at
+     under the old 14px root so the editor body does not follow the UI root. */
+  [data-content-type="table"] :is(th, td) > p {
+    min-height: var(--_table-cell-min-height);
+  }
+
+  /* The hairline grid stays visible beneath ProseMirror's selected-cell
+     overlay, tinted with the accent. */
+  [data-content-type="table"] .selectedCell::after {
+    inset: var(--hairline);
+    background: var(--accent-bg);
+  }
+
+  /* Horizontal rule */
+  .bn-editor hr {
+    border: none;
+    border-top: var(--hr-thickness) solid var(--border-strong);
+    margin: var(--hr-margin-vertical) 0;
+  }
+
+  .bn-block-outer:has(hr) + .bn-block-outer:has(> .bn-block > [data-content-type="heading"]) {
+    margin-top: var(--editor-divider-followed-by-heading-margin-top);
+  }
+
+  /* Code block: on the canvas colour with a hairline border and a 6px radius,
+     13px / 1.4 in the mono face, instead of BlockNote's fixed dark shell. */
+  [data-content-type="codeBlock"] {
+    position: relative;
+    background-color: var(--surface-app);
+    border: var(--hairline) solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--inline-code-font-family);
+    font-size: var(--text-sm);
+    line-height: var(--_code-block-line-height);
+    letter-spacing: 0;
+  }
+
+  [data-content-type="codeBlock"] > pre {
+    color: inherit;
+    overflow-x: hidden;
+    overflow-wrap: anywhere;
+    /* 16px all round, plus a strip above for the kernel's language control. */
+    padding: calc(var(--spacing) * 7) calc(var(--spacing) * 4) calc(var(--spacing) * 4);
+    position: relative;
+    white-space: pre-wrap;
+  }
+
+  [data-content-type="codeBlock"] > div {
+    display: flex;
+    margin-bottom: var(--_code-block-header-gap);
+  }
+
+  /* BlockNote's language select: kept in the tree for BlockNote, hidden; the
+     kernel's own language control sits over it. */
+  [data-content-type="codeBlock"] select {
+    min-height: calc(var(--spacing) * 7);
+    max-width: min(var(--_select-max-width), 100%);
+    padding: var(--_select-padding-vertical) calc(var(--spacing) * 7) var(--_select-padding-vertical) calc(var(--spacing) * 2);
+    border: 1px solid color-mix(in srgb, var(--text-secondary) var(--_select-border-mix), transparent);
+    border-radius: var(--radius-md);
+    appearance: auto;
+    background-color: var(--surface-app);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--text-xs);
+    line-height: var(--_select-line-height);
+    visibility: hidden;
+  }
+
+  [data-content-type="codeBlock"] select > option {
+    background: var(--surface-popover);
+    color: var(--text-primary);
+  }
+
+  [data-content-type="codeBlock"] select:is(:hover, :focus-visible) {
+    border-color: var(--text-secondary);
+    outline: 0;
+  }
+
+  [data-content-type="codeBlock"] pre > code {
+    background-color: transparent;
+    color: inherit;
+    border-radius: 0;
+    display: block;
+    overflow-wrap: anywhere;
+    /* Room for the line numbers (code-block-line-numbers.ts). */
+    padding: 0 0 0 var(--_code-line-numbers-gutter);
+    white-space: pre-wrap;
+  }
+
+  /* HTML block: the block content is a bare frame for html-block.tsx. */
+  [data-content-type="htmlBlock"] {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    width: 100%;
+  }
+
+  /* File block: the add-file label, pinned like the table cell. */
+  [data-file-block] .bn-add-file-button-text {
+    font-size: var(--text-sm);
+  }
+
+  /* ---------------------------------------------------------------
+     Inline marks
+     --------------------------------------------------------------- */
+  .bn-editor strong {
+    font-weight: var(--inline-bold-font-weight);
+    color: var(--text-heading);
+  }
+
+  .bn-editor em {
+    font-style: italic;
+    color: inherit;
+  }
+
+  .bn-editor :is(s, del) {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+  }
+
+  .bn-inline-content code {
+    font-family: var(--inline-code-font-family);
+    font-size: var(--inline-code-font-size);
+    line-height: var(--_inline-code-line-height);
+    background-color: var(--inline-code-bg);
+    box-shadow: inset 0 0 0 var(--hairline) var(--inline-code-border);
+    padding: var(--inline-code-padding-vertical) var(--inline-code-padding-horizontal);
+    border-radius: var(--inline-code-border-radius);
+    color: inherit;
+  }
+
+  /* Markdown highlight: the chromatic roles, yellow by default. */
+  .bn-editor mark.markdown-highlight {
+    background-color: var(--chroma-yellow-bg);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+  }
+
+  mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="green"]),
+  [data-style-type="backgroundColor"][data-value="green"]:has(mark.markdown-highlight),
+  [data-style-type="backgroundColor"][data-value="green"] mark.markdown-highlight,
+  mark.markdown-highlight [data-style-type="backgroundColor"][data-value="green"] {
+    background-color: var(--chroma-green-bg);
+  }
+
+  mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="red"]),
+  [data-style-type="backgroundColor"][data-value="red"]:has(mark.markdown-highlight),
+  [data-style-type="backgroundColor"][data-value="red"] mark.markdown-highlight,
+  mark.markdown-highlight [data-style-type="backgroundColor"][data-value="red"] {
+    background-color: var(--chroma-red-bg);
+  }
+
+  mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="blue"]),
+  [data-style-type="backgroundColor"][data-value="blue"]:has(mark.markdown-highlight),
+  [data-style-type="backgroundColor"][data-value="blue"] mark.markdown-highlight,
+  mark.markdown-highlight [data-style-type="backgroundColor"][data-value="blue"] {
+    background-color: var(--chroma-blue-bg);
+  }
+
+  mark.markdown-highlight:has([data-style-type="backgroundColor"][data-value="purple"]),
+  [data-style-type="backgroundColor"][data-value="purple"]:has(mark.markdown-highlight),
+  [data-style-type="backgroundColor"][data-value="purple"] mark.markdown-highlight,
+  mark.markdown-highlight [data-style-type="backgroundColor"][data-value="purple"] {
+    background-color: var(--chroma-purple-bg);
+  }
+
+  /* Links: underline on hover only; the pointer while ⌘ is held (data-follow-links). */
+  .bn-editor a {
+    color: var(--text-link);
+    text-decoration: none;
+    cursor: text;
+  }
+
+  .bn-editor a:hover {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: var(--_link-underline-offset);
+  }
+
+  [data-follow-links] .bn-editor a {
+    cursor: pointer;
+  }
+
+  /* Find in Rich mode: every match tinted, the current one stronger. */
+  .bn-editor .fuwa-rich-find-match {
+    border-radius: var(--radius-sm);
+    background: var(--chroma-yellow-bg);
+    box-shadow: 0 0 0 1px var(--chroma-yellow-bg);
+  }
+
+  .bn-editor .fuwa-rich-find-match--active {
+    background: color-mix(in srgb, var(--chroma-orange) var(--_find-match-active-mix), transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--chroma-orange) var(--_find-match-active-mix), transparent);
+  }
+
+  /* ---------------------------------------------------------------
+     Toolbars and menus (the material, the row geometry and the icon
+     sizes are in the utilities block)
+     --------------------------------------------------------------- */
+  .bn-suggestion-menu-label {
+    color: var(--text-secondary);
+  }
+
+  /* The Turn into submenu shrinks to its widest item. */
+  .fuwa-turn-into-menu-dropdown .bn-menu-item {
+    min-width: max-content;
+    white-space: nowrap;
+    width: auto;
+  }
+
+  /* ---------------------------------------------------------------
+     KaTeX and the math nodes (editor-schema.tsx)
+     --------------------------------------------------------------- */
+  .math {
+    color: var(--text-primary);
+    cursor: text;
+  }
+
+  .math--inline {
+    display: inline-flex;
+    max-width: 100%;
+    vertical-align: baseline;
+  }
+
+  .math--block {
+    display: block;
+    min-width: max-content;
+    text-align: center;
+  }
+
+  /* KaTeX writes the error colour inline; math-markdown.ts hands it the token
+     as `errorColor`, so only the wrapping is left to set here. */
+  .math .katex-error {
+    white-space: pre-wrap;
+  }
+
+  /* ---------------------------------------------------------------
+     tldraw inside a whiteboard block (tldraw-whiteboard.tsx)
+     --------------------------------------------------------------- */
+  .tldraw-whiteboard .tl-container {
+    --color-background: var(--surface-card);
+    /* tldraw's own layer ladder, compressed: inside a whiteboard nothing
+       rises above the block's own controls (z 90 and 95, in the block below);
+       only the order of these ordinals matters, so they stay numbers. */
+    --tl-layer-menu-click-capture: 25;
+    --tl-layer-panels: 30;
+    --tl-layer-menus: 40;
+    --tl-layer-toasts: 50;
+    --tl-layer-cursor: 60;
+    --tl-layer-header-footer: 70;
+    --tl-layer-following-indicator: 80;
+  }
+}
+
+/* ==============================================================
+   The elements the BlockNote shadcn package dresses itself. Its Toolbar,
+   SuggestionMenu and DropdownMenuContent roots, its rows and its Button
+   carry Tailwind classes of their own (rounded-lg / rounded-md, shadow-md,
+   the 1px border, px-2 py-1.5 on a row, h-9 px-4 py-2 and a 16px svg on
+   a button), which Fuwa's build generates from the `@source` line in
+   index.css into the `utilities` layer. A rule in `components` cannot beat
+   them whatever its specificity, so the few rules that must sit in that
+   layer too, after Tailwind's (index.css imports this file after
+   tailwindcss), and win on specificity or, at equal specificity, on
+   order. PR 9 hands the roots to Fuwa's ui/ components and this block
+   shrinks with it.
+   ============================================================== */
+@layer utilities {
+  /* The package's own corrections to its Button, restated. Its side menu
+     buttons and its table handles are that Button, and style.css pulls
+     them back (24px tall and unpadded, the svg at its own size, pointer
+     events on the icon) with rules that beat the classes only while
+     unlayered; in `vendor` they lose, and the side menu grew to 40 by 36
+     with 16px icons. */
+  .bn-shadcn svg:not([class*="size-"]) {
+    width: revert;
+    height: revert;
+  }
+
+  .bn-shadcn svg {
+    pointer-events: all;
+  }
+
+  .bn-shadcn .bn-side-menu .bn-button {
+    height: calc(var(--spacing) * 6);
+    padding: 0;
+  }
+
+  .bn-shadcn .bn-table-cell-handle {
+    height: calc(var(--spacing) * 3);
+    padding: 0 var(--spacing);
+  }
+
+  /* BlockNote's outline on a selected node, restated for the math block:
+     its shell is a ui/Button whose `outline-none` beats the vendor rule
+     now. The width is BlockNote's 4px; the colour is the focus ring token
+     where BlockNote has a literal blue. */
+  .ProseMirror-selectednode > .bn-block-content > .math-block-shell {
+    border-radius: var(--radius-sm);
+    outline: var(--spacing) solid var(--state-focus-ring);
+  }
+
+  /* Toolbar and menu icons keep one size whatever the icon set's default;
+     more specific than the revert above. */
+  :is(.bn-toolbar, .bn-menu-dropdown, .bn-grid-suggestion-menu) button svg:not([class*="size-"]) {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+    flex-shrink: 0;
+  }
+
+  /* The formatting toolbar, the link toolbar, the slash menu and, until
+     PR 9, the drag handle menu: one rule for the popover material, the menu
+     radius and the menu shadow. */
+  .bn-shadcn .bn-toolbar,
+  .bn-shadcn .bn-suggestion-menu,
+  .bn-shadcn .bn-menu-dropdown {
+    background: var(--surface-popover);
+    color: var(--text-primary);
+    border: var(--hairline) solid var(--border-popover);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-menu);
+  }
+
+  /* A slash menu row: 32px, 8px radius, 13px, the body colour under the
+     pointer and when selected too (the package's hover: / aria-selected:
+     classes turn it to the heading colour). The shadcn item repeats the
+     row's class on its icon cell, its title and its subtitle, so the rule
+     lands on those too, which is what the row's geometry has relied on. */
+  .bn-suggestion-menu-item,
+  .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) {
+    color: var(--text-primary);
+    height: calc(var(--spacing) * 8);
+    min-height: calc(var(--spacing) * 8);
+    padding: var(--_suggestion-row-padding-vertical) calc(var(--spacing) * 2);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-sm);
+  }
+
+  /* The Turn into submenu shrinks to its widest item (min-w-[8rem] otherwise). */
+  .fuwa-turn-into-menu-dropdown {
+    min-width: 0;
+    width: auto;
+  }
+}
+
+/* ==============================================================
+   Unlayered, on purpose.
+
+   BlockNote's placeholder plugin inserts its rules through a runtime
+   <style> element, so they are unlayered; the Title placeholder for an
+   empty H1 has to be unlayered as well, and one class more specific than
+   BlockNote's `.placeholder-selector-… .bn-block-content[…]` (0,6,1).
+   ============================================================== */
+.bn-block-content[data-content-type="heading"]:is(:not([data-level]), [data-level="1"]):is([data-is-empty-and-focused], [data-is-only-empty-block]) .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child)::before {
+  content: "Title";
+}
+
+/* ==============================================================
+   PR 8 / PR 9 搬进 tsx
+
+   The rules for Fuwa's own block elements (`.html-block*`,
+   `.mermaid-diagram*`, `.markdown-highlight-*`, `.editor__code-block-*`,
+   `.tldraw-whiteboard*`, `.fuwa-callout*`, the math block's shell and the
+   slash menu's icon swap), moved here from editor-theme.css and editor.css
+   as they were, apart from the important flags and the literal colours.
+   They stay unlayered, as they were: several of these elements also carry
+   utility classes (the mermaid dialog, the highlight triggers, the code
+   copy button, the math block's Button), and a layered rule would lose to
+   those where the unlayered one wins today. PR 8 (blocks) and PR 9 (menus)
+   turn each into utility classes on the element and empty this block.
+   ============================================================== */
+
+/* --- Slash menu icons (PR 9). The rest of `.fuwa-slash-menu*` is still in
+   editor.css, unlayered, where `.fuwa-slash-menu-icon__fill` starts at
+   opacity 0; the swap on the highlighted row has to be unlayered and one
+   class more specific to beat it. --- */
+.bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__regular {
+  opacity: 0;
+}
+
+.bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__fill {
+  opacity: 1;
+}
+
+/* --- Math block shell (PR 8): a ui/Button (editor-schema.tsx) whose
+   `px-3 py-1` a layered rule cannot beat. --- */
+.math-block-shell {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 6px 0;
+}
+
+.math-block-shell:not(.math-block-shell--editing) {
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.math-block-shell--editing {
+  width: 100%;
+}
+
+.math-block-source::selection {
+  background: var(--state-selection);
+  color: var(--text-primary);
+}
+
+/* --- Markdown highlight controls (PR 9) --- */
+.markdown-highlight-toolbar-color-host {
+  position: relative;
+  z-index: 41;
+}
+
+.markdown-highlight-toolbar-main {
+  margin-right: 14px;
+}
+
+.markdown-highlight-toolbar-control {
+  position: fixed;
+  z-index: 41;
+}
+
+.markdown-highlight-toolbar-trigger {
+  width: 18px;
+  min-width: 18px;
+  padding: 0;
+  color: var(--text-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.markdown-highlight-toolbar-trigger-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.markdown-highlight-boundary-host {
+  position: relative;
+  z-index: 39;
+}
+
+.markdown-highlight-boundary-control {
+  position: fixed;
+  z-index: 39;
+  transform: translateY(-50%);
+}
+
+.markdown-highlight-boundary-trigger {
+  color: var(--text-primary);
+  background: var(--surface-popover);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-menu);
+}
+
+.markdown-highlight-color-swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.markdown-highlight-color-swatch--yellow {
+  color: var(--chroma-yellow);
+  background: var(--chroma-yellow-bg);
+}
+
+.markdown-highlight-color-swatch--green {
+  color: var(--chroma-green);
+  background: var(--chroma-green-bg);
+}
+
+.markdown-highlight-color-swatch--red {
+  color: var(--chroma-red);
+  background: var(--chroma-red-bg);
+}
+
+.markdown-highlight-color-swatch--blue {
+  color: var(--chroma-blue);
+  background: var(--chroma-blue-bg);
+}
+
+.markdown-highlight-color-swatch--purple {
+  color: var(--chroma-purple);
+  background: var(--chroma-purple-bg);
+}
+
+/* --- Mermaid diagram (PR 8) --- */
+.mermaid-diagram {
+  position: relative;
+  width: 100%;
+  margin: 10px 0;
+  color: var(--text-primary);
+}
+
+.mermaid-diagram__viewport {
+  max-width: 100%;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-card);
+}
+
+.mermaid-diagram__edit-button,
+.mermaid-diagram__expand-button {
+  position: absolute;
+  top: 8px;
+  z-index: 1;
+  opacity: 0;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-menu);
+}
+
+.mermaid-diagram__edit-button {
+  right: 44px;
+}
+
+.mermaid-diagram__expand-button {
+  right: 8px;
+}
+
+.mermaid-diagram:is(:hover, :focus-within) .mermaid-diagram__edit-button,
+.mermaid-diagram:is(:hover, :focus-within) .mermaid-diagram__expand-button {
+  opacity: 1;
+}
+
+.mermaid-diagram__viewport:focus-visible {
+  outline: 2px solid var(--state-focus-ring);
+  outline-offset: 2px;
+}
+
+.mermaid-diagram__viewport svg {
+  display: block;
+  max-width: none;
+  min-width: min-content;
+  height: auto;
+  margin: 0 auto;
+}
+
+@media (hover: none) {
+  .mermaid-diagram__edit-button,
+  .mermaid-diagram__expand-button {
+    opacity: 1;
+  }
+}
+
+.mermaid-diagram__dialog {
+  width: calc(100vw - 32px);
+  max-width: calc(100vw - 32px);
+  height: calc(100dvh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+  padding: 0;
+}
+
+.mermaid-diagram__dialog-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 24px;
+  color: var(--text-primary);
+  background: var(--surface-card);
+}
+
+.mermaid-diagram__dialog-viewport:focus-visible {
+  outline: 2px solid var(--state-focus-ring);
+  outline-offset: -2px;
+}
+
+.mermaid-diagram__dialog-viewport svg {
+  display: block;
+  max-width: none;
+  min-width: min-content;
+  height: auto;
+  margin: auto;
+}
+
+.mermaid-diagram--error {
+  padding: 12px;
+  border: 1px solid var(--chroma-red);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chroma-red) 8%, transparent);
+}
+
+.mermaid-diagram--error figcaption {
+  margin-bottom: 8px;
+  color: var(--chroma-red);
+  font-size: 11.9px;
+  font-weight: 600;
+}
+
+.mermaid-diagram--error pre {
+  max-width: 100%;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--inline-code-bg);
+  color: inherit;
+  font-size: 11.9px;
+}
+
+/* --- Whiteboard block (PR 8) --- */
+.tldraw-whiteboard {
+  position: relative;
+  width: min(var(--whiteboard-width, 100%), 100%);
+  max-width: 100%;
+  height: var(--whiteboard-height, 520px);
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-card);
+  user-select: none;
+}
+
+body.tldraw-whiteboard-fullscreen-open {
+  overflow: hidden;
+}
+
+.tldraw-whiteboard.tldraw-whiteboard--fullscreen {
+  position: fixed;
+  inset: 8px;
+  z-index: 1200;
+  width: auto;
+  max-width: none;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: var(--shadow-dialog);
+}
+
+.tldraw-whiteboard__fullscreen-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 90;
+  background: var(--surface-app);
+  box-shadow: var(--shadow-card);
+}
+
+.tldraw-whiteboard--fullscreen .tldraw-whiteboard__fullscreen-button {
+  top: 12px;
+  right: 12px;
+}
+
+.tldraw-whiteboard__permission-error {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: 95;
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--chroma-red) 34%, var(--border-default));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-app) 94%, var(--chroma-red));
+  color: var(--text-primary);
+  font-size: 11.9px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-menu);
+}
+
+.tldraw-whiteboard__permission-error strong {
+  color: var(--chroma-red);
+  font-size: 12.04px;
+}
+
+.tldraw-whiteboard__resize-handle {
+  position: absolute;
+  z-index: 2;
+  background: transparent;
+  touch-action: none;
+}
+
+.tldraw-whiteboard--fullscreen .tldraw-whiteboard__resize-handle {
+  display: none;
+}
+
+.tldraw-whiteboard__resize-handle--width {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.tldraw-whiteboard__resize-handle--height {
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  cursor: ns-resize;
+}
+
+.tldraw-whiteboard__resize-handle--corner {
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+
+.tldraw-whiteboard__resize-handle--corner::after {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
+  border-bottom: 2px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
+  content: '';
+}
+
+/* --- Code block controls (PR 8) --- */
+.editor__code-block-copy {
+  position: absolute;
+  z-index: 4;
+}
+
+.editor__code-block-copy [data-editor-code-copy-button] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--text-secondary);
+  padding: 0;
+}
+
+.editor__code-block-copy [data-editor-code-copy-button]:hover,
+.editor__code-block-copy [data-editor-code-copy-button]:focus-visible {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.editor__code-block-language-overlay {
+  position: fixed;
+  z-index: 40;
+}
+
+.editor__code-block-language-overlay .editor__code-block-language-trigger {
+  color: var(--text-secondary);
+}
+
+.editor__code-line-number {
+  color: var(--text-muted);
+  display: inline-block;
+  margin-inline-end: 14px;
+  margin-inline-start: -42px;
+  pointer-events: none;
+  text-align: right;
+  user-select: none;
+  width: 28px;
+}
+
+.editor__code-line-number::before {
+  content: attr(data-code-line-number);
+}
+
+/* --- HTML block (PR 8) --- */
+.html-block {
+  background: var(--surface-card);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  min-height: 180px;
+  overflow: hidden;
+  position: relative;
+  transition: border-color 120ms ease;
+  width: 100%;
+}
+
+.html-block:hover {
+  border-color: var(--border-default);
+}
+
+.html-block__toolbar {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  transition: opacity 120ms ease;
+  z-index: 2;
+}
+
+.html-block:focus-within .html-block__toolbar,
+.html-block:hover .html-block__toolbar {
+  opacity: 1;
+}
+
+.html-block__toolbar [data-slot="button"] {
+  background: color-mix(in srgb, var(--surface-popover) 92%, transparent);
+  box-shadow: var(--shadow-card);
+}
+
+.html-block__frame {
+  border: 0;
+  height: 100%;
+  width: 100%;
+  background: Canvas;
+  display: block;
+}
+
+.html-block__fallback {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.html-block__resize-handle {
+  bottom: 6px;
+  cursor: ns-resize;
+  opacity: 0;
+  position: absolute;
+  right: 6px;
+  z-index: 2;
+}
+
+.html-block:focus-within .html-block__resize-handle,
+.html-block:hover .html-block__resize-handle {
+  opacity: 1;
+}
+
+/* --- Callout block (PR 8). Linear-style: the family's chromatic role at 2%
+   for the ground and 20% for a hairline border, 6px radius. --- */
+.fuwa-callout {
+  --_callout-accent: var(--chroma-teal);
+  --_callout-accent-text: var(--chroma-teal-text);
+  margin: 7px 0;
+  overflow: hidden;
+  border: var(--hairline) solid color-mix(in srgb, var(--_callout-accent) 20%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--_callout-accent) 2%, transparent);
+}
+
+.fuwa-callout--success {
+  --_callout-accent: var(--chroma-green);
+  --_callout-accent-text: var(--chroma-green-text);
+}
+
+.fuwa-callout--warning {
+  --_callout-accent: var(--chroma-orange);
+  --_callout-accent-text: var(--chroma-orange-text);
+}
+
+.fuwa-callout--error {
+  --_callout-accent: var(--chroma-red);
+  --_callout-accent-text: var(--chroma-red-text);
+}
+
+.fuwa-callout--example {
+  --_callout-accent: var(--chroma-purple);
+  --_callout-accent-text: var(--chroma-purple-text);
+}
+
+.fuwa-callout--quote {
+  --_callout-accent: var(--text-secondary);
+  --_callout-accent-text: var(--text-secondary);
+}
+
+.fuwa-callout__header {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10.5px 1.75px;
+  color: var(--_callout-accent-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fuwa-callout__header > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fuwa-callout__body {
+  padding: 2.1px 10.5px 9.1px;
+  color: var(--text-primary);
+}
+
+.fuwa-callout__body[hidden] {
+  display: none;
+}

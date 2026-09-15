@@ -399,7 +399,7 @@ function getBlockTypeItemIconElement(
   item: ReturnType<typeof getBlockTypeSelectItems>[number],
 ) {
   const Icon = item.icon
-  return <Icon size={16} />
+  return <Icon className="size-4" size={16} />
 }
 
 function isSelectedBlockTypeItem(
@@ -626,7 +626,7 @@ function BlockTypeSelect() {
         >
           {selectedItem.iconElement}
           {selectedItem.name}
-          <ChevronDown size={16} />
+          <ChevronDown className="size-4" size={16} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="bn-select">

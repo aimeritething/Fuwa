@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { useCreateBlockNote } from '@blocknote/react'
-import 'katex/dist/katex.min.css'
 import { useEditorTabSwap } from '@/kernel/resolve/use-editor-tab-swap'
 import { useEditorFocus } from './use-editor-focus'
 import { useEditorFocusScope } from './editor-focus-ownership'
@@ -49,7 +48,6 @@ import { useFilenameAutolinkGuard } from '@/kernel/blocknote/use-filename-autoli
 import { useRawModeWithFlush } from './use-raw-mode-with-flush'
 import { WriteFailureBar } from './write-failure-bar'
 import './editor.css'
-import './editor-theme.css'
 import './editor-shell.css'
 
 /**

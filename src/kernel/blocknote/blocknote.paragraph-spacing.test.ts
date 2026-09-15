@@ -19,7 +19,7 @@ function isNonZeroLength(value: string): boolean {
 
 describe('editor paragraph spacing theme', () => {
   it('uses the paragraph spacing variable for rich-editor paragraph gaps', () => {
-    expect(readCss('editor/editor-theme.css')).toMatch(
+    expect(readCss('kernel/blocknote/blocknote.css')).toMatch(
       /margin-bottom:\s*var\(--editor-paragraph-spacing\)/,
     )
   })
@@ -32,19 +32,16 @@ describe('editor paragraph spacing theme', () => {
   })
 
   it('joins adjacent blockquote blocks into one continuous visual quote', () => {
-    const editorThemeCss = readCss('editor/editor-theme.css').replace(/\s+/gu, ' ')
+    const blocknoteCss = readCss('kernel/blocknote/blocknote.css').replace(/\s+/gu, ' ')
 
-    expect(editorThemeCss).toContain(
-      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has( + .bn-block-outer > .bn-block > [data-content-type="quote"] ) > .bn-block > [data-content-type="quote"] { padding-bottom: 0;',
+    expect(blocknoteCss).toContain(
+      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has(+ .bn-block-outer > .bn-block > [data-content-type="quote"]) { --_quote-padding-bottom: 0; }',
     )
-    expect(editorThemeCss).toContain(
-      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]):has( + .bn-block-outer > .bn-block > [data-content-type="quote"] ) blockquote { margin-bottom: 0;',
+    expect(blocknoteCss).toContain(
+      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]) + .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) { --_quote-padding-top: 0; }',
     )
-    expect(editorThemeCss).toContain(
-      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]) + .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) > .bn-block > [data-content-type="quote"] { padding-top: 0;',
-    )
-    expect(editorThemeCss).toContain(
-      '.bn-block-outer:has(> .bn-block > [data-content-type="quote"]) + .bn-block-outer:has(> .bn-block > [data-content-type="quote"]) blockquote { margin-top: 0;',
+    expect(blocknoteCss).toContain(
+      '[data-content-type="quote"] { --_block-content-padding: 3px; padding-top: var(--_quote-padding-top, var(--_block-content-padding)); padding-bottom: var(--_quote-padding-bottom, var(--_block-content-padding)); }',
     )
   })
 })
