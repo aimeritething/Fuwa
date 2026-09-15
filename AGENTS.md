@@ -10,14 +10,11 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
 - `src/` — the React app, cut by feature. Inside each directory files sit flat; cross-directory
   imports use `@/<dir>/…`, imports within a directory are relative.
   - `kernel/` — the Kernel: the ProseMirror, BlockNote and CodeMirror code and the Markdown
-    round-trip. `blocknote/` (`editor-schema.ts` assembling the blocks, each block its own
-    `<name>-block.tsx`; the menus: `formatting-toolbar*.tsx`, `block-type-select.tsx`,
-    `text-style-toggle.tsx`, `slash-menu*.tsx`, `block-note-side-menu.tsx`, `link-toolbar.tsx`;
-    `shadcn-components.tsx`, the `ui/` primitives BlockNote's own menus render;
-    `blocknote.css`, the rules on BlockNote, KaTeX and tldraw DOM; extensions, copy/paste,
-    find, the BlockNote regression tests), `markdown/` (the round-trip: frontmatter, fences,
-    wikilinks, per-block serializers), `resolve/` (the open-time pipeline: cache, preload,
-    worker, swap), `raw/` (CodeMirror).
+    round-trip. `blocknote/` (the schema, each block as `<name>-block.tsx`, the toolbar and
+    menu files, `shadcn-components.tsx` for BlockNote's own menus, `blocknote.css` on
+    third-party DOM, extensions, copy/paste, find, the BlockNote regression tests),
+    `markdown/` (the round-trip: frontmatter, fences, wikilinks, per-block serializers),
+    `resolve/` (the open-time pipeline: cache, preload, worker, swap), `raw/` (CodeMirror).
   - `editor/` — Fuwa's editing surface: `editor.tsx`, Rich / Raw views, Autosave, Write failure,
     Toast, an Image file's Tab.
   - `explorer/`, `folder/` (disk: `use-folder`, the watcher, asset scope, the Rust command

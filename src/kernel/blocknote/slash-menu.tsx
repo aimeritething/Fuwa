@@ -210,7 +210,7 @@ export function SlashMenu({
         createPortal(
           <div
             aria-label={items.find((item) => item.key === openSubmenu.key)?.title}
-            className="fixed z-popover flex max-h-[min(26rem,calc(100vh-1rem))] min-w-40 flex-col gap-0.5 overflow-y-auto rounded-xl border-hairline border-border-popover bg-surface-popover p-1 text-text-primary shadow-menu"
+            className="fixed z-popover flex max-h-[min(26rem,calc(100vh-1rem))] min-w-40 flex-col gap-0.5 overflow-y-auto rounded-xl bg-surface-popover text-text-primary border-hairline border-border-popover shadow-menu p-1"
             role="menu"
             style={{ left: openSubmenu.left, top: openSubmenu.top }}
           >

@@ -80,7 +80,7 @@ export function FileDownloadButton({ vaultPath }: { vaultPath?: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button aria-label={label} data-test="fileDownload" onClick={handleOpen} variant="ghost">
+        <Button aria-label={label} className="min-w-7 px-2 has-[>svg]:px-2" data-test="fileDownload" onClick={handleOpen} variant="ghost">
           <ArrowSquareOut aria-hidden="true" />
         </Button>
       </TooltipTrigger>
