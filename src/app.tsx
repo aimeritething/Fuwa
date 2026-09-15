@@ -450,7 +450,7 @@ export default function App() {
   // Session's Tab, for a frame before the right state (the window's own
   // background colour is the canvas until then).
   return (
-    <div className="fuwa-shell" data-restoring={!(restored && finderOpenSettled) || undefined}>
+    <div className="flex h-full w-full bg-surface-app text-text-primary data-restoring:invisible" data-testid="shell" data-restoring={!(restored && finderOpenSettled) || undefined}>
       {!sidebar.collapsed && (
       <Sidebar width={sidebar.width} onWidthChange={setSidebarWidth} onToggle={toggleSidebar}>
         <OpenEditors

@@ -339,7 +339,9 @@ export function SingleEditorView(options: {
       ref={containerRef}
       role="application"
       aria-label="Rich text editor"
-      className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`}
+      // The `editor__blocknote-container` name is the Kernel's hook (EDITOR_CONTAINER_SELECTOR); the look is the utilities.
+      className="editor__blocknote-container relative flex min-h-0 flex-1 cursor-text data-drag-over:outline-2 data-drag-over:outline-dashed data-drag-over:-outline-offset-2 data-drag-over:outline-state-focus-ring"
+      data-drag-over={isDragOver || undefined}
       onCopyCapture={handleCopyCapture}
       onFocusCapture={handleFocusCapture}
       onMouseLeave={clearCopyTarget}
@@ -348,8 +350,8 @@ export function SingleEditorView(options: {
       onPasteCapture={handlePasteCapture}
     >
       {isDragOver && (
-        <div className="editor__drop-overlay">
-          <div className="editor__drop-overlay-label">Drop image here</div>
+        <div className="pointer-events-none absolute inset-0 z-overlay flex items-center justify-center bg-state-drag-target">
+          <div className="rounded-lg bg-surface-popover px-5 py-2.5 text-sm font-medium text-accent-base shadow-menu">Drop image here</div>
         </div>
       )}
       <BlockNoteRenderRecoveryBoundary onRecover={(_, reason) => repairEditorDocumentForRenderRecovery(editor, reason)}>

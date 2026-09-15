@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
+import { Toggle } from '@/ui/toggle'
 import { cn } from '@/lib/cn'
 import { translate, type AppLocale } from '@/lib/i18n'
 import type { FindControlsProps, ReplaceControlsProps } from './raw-editor-find-control-types'
@@ -326,28 +327,22 @@ function FindModeControls({
 }: Pick<FindControlsProps, 'caseSensitive' | 'close' | 'locale' | 'regex' | 'toggleCaseSensitive' | 'toggleRegex'>) {
   return (
     <>
-      <Button
-        type="button"
-        variant={regex ? 'secondary' : 'ghost'}
-        size="xs"
+      <Toggle
+        pressed={regex}
         aria-label={translate(locale, 'editor.find.regex')}
-        aria-pressed={regex}
         title={translate(locale, 'editor.find.regex')}
-        onClick={toggleRegex}
+        onPressedChange={toggleRegex}
       >
         .*
-      </Button>
-      <Button
-        type="button"
-        variant={caseSensitive ? 'secondary' : 'ghost'}
-        size="xs"
+      </Toggle>
+      <Toggle
+        pressed={caseSensitive}
         aria-label={translate(locale, 'editor.find.matchCase')}
-        aria-pressed={caseSensitive}
         title={translate(locale, 'editor.find.matchCase')}
-        onClick={toggleCaseSensitive}
+        onPressedChange={toggleCaseSensitive}
       >
         Aa
-      </Button>
+      </Toggle>
       <Button
         type="button"
         variant="ghost"
@@ -483,12 +478,8 @@ export function RawEditorFindBar(props: RawEditorFindBarProps) {
   return (
     <div
       ref={barRef}
-      className="flex shrink-0 flex-col gap-1.5 border-b px-3 py-2"
+      className="flex shrink-0 flex-col gap-1.5 border-b border-border-default bg-surface-card px-3 py-2"
       data-testid="raw-editor-find-bar"
-      style={{
-        background: 'var(--surface-card)',
-        borderColor: 'var(--border-default)',
-      }}
     >
       <RawEditorFindBarContent
         controller={controller}

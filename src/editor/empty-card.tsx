@@ -20,16 +20,16 @@ export function EmptyCard({ hasFolder, sidebarCollapsed, onShowSidebar }: EmptyC
   const hints = hasFolder ? FOLDER_HINTS : NO_FOLDER_HINTS
   return (
     <>
-      <div className="fuwa-card__top" data-tauri-drag-region>
+      <div className="flex h-11 flex-none items-center" data-tauri-drag-region>
         {sidebarCollapsed && <CollapsedChrome onShowSidebar={onShowSidebar} />}
       </div>
-      <div className="fuwa-empty" data-testid="editor-empty-state">
-        <span className="fuwa-empty__wordmark">Fuwa</span>
-        <div className="fuwa-empty__hints">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2.5 text-text-muted" data-testid="editor-empty-state">
+        <span className="text-sm font-medium tracking-[-0.01em]">Fuwa</span>
+        <div className="flex gap-5.5 font-mono text-xs tracking-normal">
           {hints.map(([keys, action], index) => (
-            <span key={keys} className="fuwa-empty__hint-group">
-              {index > 0 && <span className="fuwa-empty__dot" aria-hidden="true">·</span>}
-              <span data-testid="empty-hint"><b>{keys}</b>{action}</span>
+            <span key={keys} className="flex gap-5.5">
+              {index > 0 && <span aria-hidden="true">·</span>}
+              <span data-testid="empty-hint"><b className="mr-1.5 font-normal text-text-secondary">{keys}</b>{action}</span>
             </span>
           ))}
         </div>

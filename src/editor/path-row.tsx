@@ -70,16 +70,17 @@ export function PathRow({ filename, path, folder, savedAt, image, mode }: PathRo
   const savedLabel = useSavedLabel(image ? null : savedAt)
 
   return (
-    <div className="fuwa-path-row" data-testid="path-row">
-      <div className="fuwa-path-row__crumb" data-testid="path-row-crumb">
+    <div className="flex h-9 flex-none items-center gap-1.5 pr-3 pl-4 text-sm text-text-secondary" data-testid="path-row">
+      <div className="flex min-w-0 items-center gap-1.5" data-testid="path-row-crumb">
         {path && documentLocation(path, folder).parents.map((parent, index) => (
-          <span className="fuwa-path-row__parent" key={index}>{parent} <span aria-hidden="true">›</span> </span>
+          <span key={index}>{parent} <span aria-hidden="true">›</span> </span>
         ))}
-        <span className="fuwa-path-row__name">{filename}</span>
+        <span className="truncate text-text-primary">{filename}</span>
       </div>
-      <div className="fuwa-path-row__meta">
+      {/* Right-hand slot: saved time, then the Frontmatter badge and Rich | Raw, or an Image Tab's meta and actions. */}
+      <div className="ml-auto flex items-center gap-3">
         {savedLabel && (
-          <span className="fuwa-path-row__saved" data-testid="path-row-saved">{savedLabel}</span>
+          <span className="cursor-default font-mono text-2xs tracking-normal tabular-nums" data-testid="path-row-saved">{savedLabel}</span>
         )}
         {image && <ImageMeta image={image} />}
         {mode && <FrontmatterBadge mode={mode} />}
@@ -89,13 +90,17 @@ export function PathRow({ filename, path, folder, savedAt, image, mode }: PathRo
   )
 }
 
-/** The badge says Frontmatter is there and hidden; clicking it goes to where it can be seen. */
+/**
+ * The badge says Frontmatter is there and hidden; clicking it goes to where it
+ * can be seen. A mono hairline pill in the saved label's colour, a button and
+ * not a Badge: hovering says it can be clicked, which lands in Raw mode.
+ */
 function FrontmatterBadge({ mode }: { mode: PathRowMode }) {
   if (!mode.frontmatterLabel) return null
   return (
     <button
       type="button"
-      className="fuwa-path-row__frontmatter"
+      className="h-5 flex-none cursor-default rounded-md px-1.75 font-mono text-2xs leading-5 tracking-normal whitespace-nowrap tabular-nums text-text-secondary ring-(length:--hairline) ring-border-default hover:bg-control-tertiary-hover hover:text-text-primary focus-visible:focus-ring"
       data-testid="path-row-frontmatter"
       onClick={() => mode.onChange('raw')}
     >
@@ -105,15 +110,17 @@ function FrontmatterBadge({ mode }: { mode: PathRowMode }) {
 }
 
 /**
- * `Rich | Raw`: two segments, the current one raised, each with a mono
- * tooltip naming the shortcut. Invalid Frontmatter leaves the Rich segment
- * in place but unavailable, its tooltip saying why. It is
- * marked with aria-disabled rather than the disabled attribute so it still
- * takes the pointer and can show that tooltip.
+ * `Rich | Raw`: a hairline-ringed track on the shade surface, two segments,
+ * the current one raised like the active tab, each with a tooltip naming the
+ * shortcut as a chip. Invalid Frontmatter leaves the Rich segment in place
+ * but unavailable, faded, its tooltip saying why. It is marked with
+ * aria-disabled rather than the disabled attribute so it still takes the
+ * pointer and can show that tooltip; `aria-checked` is the one source of
+ * which segment is current.
  */
 function ModeControl({ mode }: { mode: PathRowMode }) {
   return (
-    <div className="fuwa-mode" role="radiogroup" aria-label="Editor mode" data-testid="path-row-mode">
+    <div className="flex h-5.5 flex-none items-center gap-0.5 rounded-md bg-surface-shade p-0.5 ring-(length:--hairline) ring-border-default" role="radiogroup" aria-label="Editor mode" data-testid="path-row-mode">
       {MODES.map((segment) => {
         const active = segment === mode.value
         const disabledReason = segment === 'rich' ? mode.richDisabledReason : null
@@ -122,11 +129,10 @@ function ModeControl({ mode }: { mode: PathRowMode }) {
             <button
               type="button"
               role="radio"
-              className="fuwa-mode__segment"
+              className="h-4.5 cursor-default rounded-sm px-2 text-xs leading-4.5 font-medium tracking-[-0.01em] text-text-secondary hover:text-text-heading focus-visible:focus-ring aria-checked:bg-tab-active aria-checked:text-text-heading aria-checked:shadow-raised aria-disabled:text-text-muted"
               aria-checked={active}
               aria-disabled={disabledReason !== null || undefined}
               data-testid={`path-row-mode-${segment}`}
-              data-active={active || undefined}
               onClick={() => {
                 if (active || disabledReason !== null) return
                 mode.onChange(segment)
@@ -154,10 +160,10 @@ function ImageMeta({ image }: { image: PathRowImage }) {
   return (
     <>
       {image.metadata && (
-        <span className="fuwa-path-row__image-meta" data-testid="path-row-image-meta">{image.metadata}</span>
+        <span className="cursor-default font-mono text-2xs tracking-normal whitespace-nowrap tabular-nums" data-testid="path-row-image-meta">{image.metadata}</span>
       )}
       {/* The buttons are "Open ↗" and "Copy path"; the arrow is the label, not an icon beside it. */}
-      <span className="fuwa-path-row__actions">
+      <span className="-ml-1 flex flex-none items-center gap-0.5">
         <Button type="button" variant="ghost" size="xs" onClick={image.onOpenExternal}>Open ↗</Button>
         <Button type="button" variant="ghost" size="xs" onClick={image.onCopyPath}>Copy path</Button>
       </span>

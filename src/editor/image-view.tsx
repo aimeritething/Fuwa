@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react'
 import { imageAssetUrl } from '@/platform/image-asset'
 import type { ImageNaturalSize } from '@/tabs/image-file'
 import { FilePreviewFallback, FilePreviewImage } from './file-preview'
-import './image-view.css'
 
 /**
  * An Image Tab's body. The picture sits in the middle of the
@@ -39,8 +38,9 @@ export function ImageView({ path, filename, version, onNaturalSize, onOpenExtern
     onNaturalSize(null)
   }, [onNaturalSize, src])
 
+  // The prose column's padding on both axes, so a picture sits where a Document's first line would.
   return (
-    <div className="fuwa-image-view" data-testid="image-view">
+    <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden px-(--editor-padding-horizontal) py-(--editor-padding-vertical)" data-testid="image-view">
       {src !== null && src !== failedSrc ? (
         <FilePreviewImage src={src} alt={filename} onLoad={handleLoad} onError={handleError} />
       ) : (

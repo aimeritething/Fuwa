@@ -68,16 +68,11 @@ function RawEditorYamlErrorBanner({ error }: { error: string | null }) {
 
   return (
     <div
-      className="flex items-center gap-2 px-4 py-2 text-xs border-b shrink-0"
-      style={{
-        background: 'var(--feedback-warning-bg)',
-        borderColor: 'var(--chroma-orange)',
-        color: 'var(--feedback-warning-text)',
-      }}
+      className="flex shrink-0 items-center gap-2 border-b border-chroma-orange bg-feedback-warning-bg px-4 py-2 text-xs text-feedback-warning-text"
       role="alert"
       data-testid="raw-editor-yaml-error"
     >
-      <span style={{ fontWeight: 600 }}>YAML error:</span>
+      <span className="font-semibold">YAML error:</span>
       <span>{error}</span>
     </div>
   )
@@ -255,10 +250,10 @@ interface RawEditorSurfaceProps {
 function RawEditorSurface(options: RawEditorSurfaceProps) {
   const { containerRef, findOpen, findRequest, locale, path, pendingChanges, rawDoc, replaceOpen, rootRef, setFindOpen, setReplaceOpen, showFrontmatterWarning, viewRef } = options
   return (
-    <div ref={rootRef} className="flex flex-1 flex-col min-h-0 relative" style={{ background: 'var(--surface-app)' }}>
+    <div ref={rootRef} className="relative flex min-h-0 flex-1 flex-col bg-surface-app">
       <RawEditorYamlErrorBanner error={showFrontmatterWarning ? pendingChanges.yamlError : null} />
       <RawEditorFindBar doc={rawDoc} locale={locale} onClose={() => setFindOpen(false)} onReplaceOpenChange={setReplaceOpen} open={findOpen} path={path} replaceOpen={replaceOpen} request={findRequest} viewRef={viewRef} />
-      <div ref={containerRef} className="raw-editor-codemirror flex flex-1 min-h-0" data-testid="raw-editor-codemirror" role="presentation" />
+      <div ref={containerRef} className="raw-editor-codemirror flex min-h-0 w-full flex-1" data-testid="raw-editor-codemirror" role="presentation" />
     </div>
   )
 }

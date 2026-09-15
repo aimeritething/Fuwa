@@ -48,6 +48,18 @@
   /* ---------------------------------------------------------------
      The editor surface
      --------------------------------------------------------------- */
+  /* No motion inside the editor: BlockNote's own CSS animates indentation,
+     a heading's size and the table widgets, and none of it belongs on
+     Fuwa's surface. The caret blink and the selection are neither a
+     transition nor an animation and stay. Fuwa's own controls inside the
+     container keep their `transition-colors`: a utility wins over this. */
+  .bn-container *,
+  .bn-container *::before,
+  .bn-container *::after {
+    transition: none;
+    animation: none;
+  }
+
   .bn-container {
     width: 100%;
     height: 100%;
