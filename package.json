@@ -17,7 +17,6 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "smoke": "playwright install chromium && playwright test",
-    "smoke:screenshots": "playwright install chromium && playwright test tests/smoke/screenshots.spec.ts",
     "tauri": "node scripts/tauri-cli.mjs"
   },
   "dependencies": {
