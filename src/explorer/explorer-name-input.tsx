@@ -1,6 +1,7 @@
 import { useSidebarInlineRenameInput } from '@/shell/sidebar-hooks'
 import { stripBlockedNameCharacters, type ExplorerRowKind } from '@/folder/explorer-names'
 import { EXPLORER_ROW_ICONS, explorerNameIndent, explorerRowIndent } from './explorer-row'
+import { ExplorerDisclosureSlot } from './explorer-disclosure'
 import { SidebarRow, SidebarRowIcon } from '@/shell/sidebar-row'
 
 /**
@@ -34,28 +35,28 @@ export function ExplorerNameInput(props: ExplorerNameInputProps) {
     onSubmit,
   })
 
+  // The row's indent and the message's are runtime numbers, so they stay inline.
   return (
-    <div className="fuwa-explorer__rename">
-      <SidebarRow className="fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}>
-        <span className="fuwa-explorer__disclosure" />
+    <div>
+      <SidebarRow className="mb-px" style={{ paddingLeft: explorerRowIndent(depth) }}>
+        <ExplorerDisclosureSlot />
         <SidebarRowIcon icon={Icon} />
         <input
           ref={inputRef}
-          className="fuwa-explorer__rename-input"
+          className="h-5 min-w-0 flex-1 rounded-sm border-hairline border-border-default bg-surface-card px-1 text-text-primary outline-none focus:border-state-focus-ring aria-invalid:border-chroma-red"
           data-testid="explorer-rename-input"
           aria-label="Name"
           aria-invalid={error ? true : undefined}
-          data-invalid={error ? true : undefined}
           value={value}
           onChange={(event) => setValue(stripBlockedNameCharacters(event.target.value))}
           onBlur={() => { void submitValue() }}
           onKeyDown={handleKeyDown}
         />
-        {extension && <span className="fuwa-explorer__rename-extension">{extension}</span>}
+        {extension && <span className="flex-none text-text-muted">{extension}</span>}
       </SidebarRow>
       {error && (
         <div
-          className="fuwa-explorer__rename-error"
+          className="pr-2 pb-0.5 text-2xs text-text-muted wrap-anywhere"
           role="alert"
           data-testid="explorer-rename-error"
           style={{ paddingLeft: explorerNameIndent(depth) }}

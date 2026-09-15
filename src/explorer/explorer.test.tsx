@@ -258,7 +258,7 @@ describe('the inline rename input', () => {
 
     expect(screen.getByTestId('explorer-rename-error'))
       .toHaveTextContent('A Document named Readme.md already exists')
-    expect(screen.getByTestId('explorer-rename-input')).toHaveAttribute('data-invalid')
+    expect(screen.getByTestId('explorer-rename-input')).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('replaces only the row it is editing', () => {

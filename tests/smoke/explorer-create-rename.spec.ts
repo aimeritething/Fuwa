@@ -84,12 +84,12 @@ test('a committed rename re-sorts the row and moves the Tab with it', async ({ p
   await page.keyboard.press('Enter')
 
   const explorer = page.getByTestId('explorer')
-  await expect(explorer.locator('.fuwa-explorer__row'))
+  await expect(explorer.locator('[data-testid^="explorer-row:"]'))
     .toHaveText(['Notes', 'Attachments', 'Projects', 'Aardvark.md', 'Reading list.md'])
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('aria-label', 'Aardvark.md')
   await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Aardvark.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('data-active', 'true')
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Aardvark.md`).locator('..')).toHaveAttribute('aria-selected', 'true')
 })
 
 test('a colliding name is refused inline, and Escape puts the row back', async ({ page }) => {
@@ -102,7 +102,7 @@ test('a colliding name is refused inline, and Escape puts the row back', async (
 
   await expect(page.getByTestId('explorer-rename-error'))
     .toHaveText('A Document named Reading list.md already exists')
-  await expect(renameInput(page)).toHaveAttribute('data-invalid', 'true')
+  await expect(renameInput(page)).toHaveAttribute('aria-invalid', 'true')
   expect(await folderPaths(page)).toContain(`${MOCK_FOLDER}/Welcome.md`)
 
   await page.keyboard.press('Escape')
@@ -146,7 +146,7 @@ test('renaming a folder retargets every Tab beneath it', async ({ page }) => {
   await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
   // The folder is what was renamed, so the folder row keeps the selection —
   // not the Document that moved with it.
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Work`)).toHaveAttribute('data-active', 'true')
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Work`).locator('..')).toHaveAttribute('aria-selected', 'true')
 })
 
 test('right-click leaves the selection and the active Tab alone', async ({ page }) => {
@@ -157,7 +157,7 @@ test('right-click leaves the selection and the active Tab alone', async ({ page 
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Reading list.md`).click({ button: 'right' })
 
   await expect(page.getByRole('menuitem', { name: 'Copy Path' })).toBeVisible()
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toHaveAttribute('data-active', 'true')
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`).locator('..')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Reading list.md`)).toHaveCount(0)
 })
 

@@ -15,9 +15,11 @@ function ScrollArea({
       className={cn("relative", className)}
       {...props}
     >
+      {/* Radix lays the content out as a table so it can outgrow the viewport
+          sideways; Fuwa's lists truncate instead, so the wrapper is a block. */}
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:focus-ring"
+        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:focus-ring [&>div]:block!"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

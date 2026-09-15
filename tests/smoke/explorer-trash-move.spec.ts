@@ -110,8 +110,8 @@ test('dragging a Document onto a folder moves it, and its Tab follows without a 
 
   // The row re-sorted into the folder, which the active Tab keeps revealed,
   // and it is still the selected row.
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Welcome.md`))
-    .toHaveAttribute('data-active', 'true')
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Welcome.md`).locator('..'))
+    .toHaveAttribute('aria-selected', 'true')
 })
 
 test('a name the folder already holds refuses the move and says so', async ({ page }) => {
