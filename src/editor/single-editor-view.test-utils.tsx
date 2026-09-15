@@ -290,7 +290,7 @@ export function renderEditorHarness(editor = createEditor(), options: { vaultPat
 export function renderEditorHarnessInScrollArea(editor = createEditor()) {
   render(
     <div className="editor-scroll-area" data-testid="editor-scroll-area">
-      <div className="editor-content-wrapper">
+      <div>
         <SingleEditorView
           editor={editor as never}
           onNavigateWikilink={vi.fn()}

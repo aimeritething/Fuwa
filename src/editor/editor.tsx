@@ -47,8 +47,6 @@ import { createTodoBlockShortcutExtension } from '@/kernel/blocknote/todo-block-
 import { useFilenameAutolinkGuard } from '@/kernel/blocknote/use-filename-autolink-guard'
 import { useRawModeWithFlush } from './use-raw-mode-with-flush'
 import { WriteFailureBar } from './write-failure-bar'
-import './editor.css'
-import './editor-shell.css'
 
 /**
  * Fuwa's editor shell (rewritten, not copied). It creates the
@@ -69,6 +67,25 @@ const RAW_SAVE_HANDLED_BY_APP = () => {}
 const RICH_UNAVAILABLE_REASON = 'Fix the frontmatter to use Rich mode'
 
 type FlushPendingContentRef = MutableRefObject<((path: string) => void) | null>
+
+/**
+ * The floating card on the canvas: 12px radius, a hairline ring under the
+ * card's shadow, 8px off the canvas edge. Collapsed ("Flush") it goes
+ * edge-to-edge with no margin, no radius and no ring, and its top row seats
+ * the traffic lights. The ring and the shadow share one `box-shadow`, so the
+ * collapsed card writes the property itself: `shadow-none` would leave a
+ * list of empty shadows where the sidebar spec reads `none`.
+ */
+const CARD_CLASS = 'relative my-2 mr-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-card shadow-card ring-(length:--hairline) ring-border-default data-collapsed:m-0 data-collapsed:rounded-none data-collapsed:[box-shadow:none]'
+/**
+ * The scroll context around the Rich surface, the find bar sticky at its top.
+ * `overflow-anchor` is off so a side menu appearing near the viewport edge
+ * does not shift a long Document; the `editor-scroll-area` name is what the
+ * Kernel's side menu and the mode-position sync select on.
+ */
+const RICH_SCROLL_AREA_CLASS = 'editor-scroll-area flex min-h-0 flex-1 flex-col overflow-y-auto [overflow-anchor:none]'
+/** Raw mode: CodeMirror scrolls itself below the carried find bar, so the scope clips instead. */
+const RAW_SCOPE_CLASS = 'editor-scroll-area flex min-h-0 flex-1 flex-col overflow-hidden'
 
 export interface EditorProps {
   tabs: Tab[]
@@ -377,7 +394,7 @@ function ImageTab({ path, folder, imageFile, reloads }: {
           onCopyPath: () => copyImagePath(path),
         }}
       />
-      <div className="fuwa-image-view-scope">
+      <div className="flex min-h-0 min-w-0 flex-1">
         <ImageView
           path={path}
           filename={filename}
@@ -401,7 +418,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
 
   if (!openTab) {
     return (
-      <div className="fuwa-card" data-testid="editor-card" data-collapsed={collapsed}>
+      <div className={CARD_CLASS} data-testid="editor-card" data-collapsed={collapsed}>
         <EmptyCard hasFolder={Boolean(props.folder)} sidebarCollapsed={sidebarCollapsed} onShowSidebar={onShowSidebar} />
         <Toast message={props.toast} />
       </div>
@@ -409,7 +426,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
   }
 
   return (
-    <div className="fuwa-card" data-testid="editor-card" data-collapsed={collapsed}>
+    <div className={CARD_CLASS} data-testid="editor-card" data-collapsed={collapsed}>
       <TabBar
         tabs={tabs}
         activeTabPath={activeTabPath}
@@ -435,7 +452,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
           )}
           {/* The two surfaces are exclusive: Raw mode shows the exact bytes in CodeMirror and BlockNote is not mounted. */}
           {raw.rawMode ? (
-            <EditorFindScope className="editor-scroll-area fuwa-raw-scope">
+            <EditorFindScope className={RAW_SCOPE_CLASS}>
               <RawEditorView
                 key={activeTab.entry.path}
                 content={raw.rawModeContent ?? activeTab.content}
@@ -447,9 +464,10 @@ export const Editor = memo(function Editor(props: EditorProps) {
               />
             </EditorFindScope>
           ) : (
-            <EditorFindScope className="editor-scroll-area">
+            <EditorFindScope className={RICH_SCROLL_AREA_CLASS}>
               <RichEditorFindBar key={activeTab.entry.path} editor={editor} path={activeTab.entry.path} request={findRequest} />
-              <div className="editor-content-wrapper">
+              {/* The prose column: the Kernel's .bn-editor centres itself at --editor-max-width, so no padding here. */}
+              <div className="mx-auto flex min-h-0 w-full max-w-(--editor-max-width) flex-1 flex-col">
                 <SingleEditorView
                   editor={editor}
                   onNavigateWikilink={NO_WIKILINK_NAVIGATION}

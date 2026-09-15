@@ -4,6 +4,7 @@ import type { EditorView } from '@tiptap/pm/view'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
+import { Toggle } from '@/ui/toggle'
 import { translate, type AppLocale } from '@/lib/i18n'
 import { clampEditorFindIndex, nextEditorFindIndex, type EditorFindOptions } from '@/kernel/blocknote/editor-find'
 import type { RawEditorFindRequest } from './raw-editor-find-types'
@@ -130,9 +131,8 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
 
   return (
     <div
-      className="fuwa-rich-find-bar flex shrink-0 items-center gap-1.5 border-b px-3 py-2"
+      className="sticky top-0 z-raised flex shrink-0 items-center gap-1.5 border-b border-border-default bg-surface-card px-3 py-2"
       data-testid="rich-editor-find-bar"
-      style={{ background: 'var(--surface-card)', borderColor: 'var(--border-default)' }}
       onKeyDown={onBarKeyDown}
     >
       <Input
@@ -158,12 +158,12 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
       <Button type="button" variant="ghost" size="icon-xs" aria-label={translate(locale, 'editor.find.nextMatch')} title={translate(locale, 'editor.find.nextMatch')} disabled={matchCount === 0} onClick={moveNext}>
         <ChevronDown />
       </Button>
-      <Button type="button" variant={regex ? 'secondary' : 'ghost'} size="xs" aria-label={translate(locale, 'editor.find.regex')} aria-pressed={regex} title={translate(locale, 'editor.find.regex')} onClick={() => setRegex((value) => !value)}>
+      <Toggle pressed={regex} onPressedChange={setRegex} aria-label={translate(locale, 'editor.find.regex')} title={translate(locale, 'editor.find.regex')}>
         .*
-      </Button>
-      <Button type="button" variant={caseSensitive ? 'secondary' : 'ghost'} size="xs" aria-label={translate(locale, 'editor.find.matchCase')} aria-pressed={caseSensitive} title={translate(locale, 'editor.find.matchCase')} onClick={() => setCaseSensitive((value) => !value)}>
+      </Toggle>
+      <Toggle pressed={caseSensitive} onPressedChange={setCaseSensitive} aria-label={translate(locale, 'editor.find.matchCase')} title={translate(locale, 'editor.find.matchCase')}>
         Aa
-      </Button>
+      </Toggle>
       <Button type="button" variant="ghost" size="icon-xs" aria-label={translate(locale, 'editor.find.close')} title={translate(locale, 'editor.find.close')} onClick={close}>
         <X />
       </Button>

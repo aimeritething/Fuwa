@@ -12,17 +12,22 @@ export interface WriteFailureBarProps {
  * The error bar: shown on a Tab whose last write was
  * refused, between the path row and the content. The buffer keeps the edit;
  * Retry writes it again and Discard changes puts the disk bytes back. Drawn as
- * a Linear callout in the red chromatic role, with Retry as the primary
- * control. Never on an Image Tab, which is never written.
+ * a Linear callout in the red chromatic role (the accent at 2% behind, a 20%
+ * hairline around, 6px radius), with Retry as the primary control. Never on
+ * an Image Tab, which is never written.
  */
 export function WriteFailureBar({ path, message, onRetry, onDiscard }: WriteFailureBarProps) {
   return (
-    <div className="fuwa-write-failure" role="alert" data-testid="write-failure-bar">
-      <div className="fuwa-write-failure__text">
-        <span className="fuwa-write-failure__title">Couldn't save to {path}</span>
-        <span className="fuwa-write-failure__detail">{message}</span>
+    <div
+      className="mx-4 mb-2 flex flex-none items-center gap-3 rounded-md bg-chroma-red/2 py-2 pr-2 pl-3 text-sm tracking-[-0.01em] ring-(length:--hairline) ring-chroma-red/20"
+      role="alert"
+      data-testid="write-failure-bar"
+    >
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate font-medium text-chroma-red-text">Couldn't save to {path}</span>
+        <span className="truncate font-mono text-2xs tracking-normal text-text-secondary">{message}</span>
       </div>
-      <div className="fuwa-write-failure__actions">
+      <div className="ml-auto flex flex-none gap-1.5">
         <Button size="sm" onClick={onRetry}>Retry</Button>
         <Button size="sm" variant="secondary" onClick={onDiscard}>Discard changes</Button>
       </div>
