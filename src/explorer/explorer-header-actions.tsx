@@ -1,4 +1,6 @@
+import type { ComponentProps } from 'react'
 import { DotsThree, Plus } from '@phosphor-icons/react'
+import { cn } from '@/lib/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +11,9 @@ import {
 /**
  * The Explorer header's hover-only actions: "+" makes a new
  * Document where the selection points, and "…" holds exactly New Folder,
- * Collapse All, Reveal in Finder and Close Folder.
+ * Collapse All, Reveal in Finder and Close Folder. They show while the
+ * pointer is over the Explorer (its section is the `explorer` group), while
+ * one of them has focus, and while the menu is open.
  */
 
 interface ExplorerHeaderActionsProps {
@@ -20,29 +24,34 @@ interface ExplorerHeaderActionsProps {
   onCloseFolder: () => void
 }
 
+/** An 18px icon button on the label row; the open menu keeps it in its hover colours. */
+function HeaderAction({ className, ...props }: ComponentProps<'button'>) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex size-4.5 flex-none items-center justify-center rounded-sm text-text-secondary transition-colors duration-150 ease-out',
+        'hover:bg-control-tertiary-hover hover:text-text-primary data-[state=open]:bg-control-tertiary-hover data-[state=open]:text-text-primary focus-visible:focus-ring',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
 export function ExplorerHeaderActions(props: ExplorerHeaderActionsProps) {
   const { onNewDocument, onNewFolder, onCollapseAll, onReveal, onCloseFolder } = props
 
   return (
-    <div className="fuwa-explorer__actions">
-      <button
-        type="button"
-        className="fuwa-explorer__action"
-        data-testid="explorer-new-document"
-        title="New Document"
-        aria-label="New Document"
-        onClick={onNewDocument}
-      >
+    <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover/explorer:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100">
+      <HeaderAction data-testid="explorer-new-document" title="New Document" aria-label="New Document" onClick={onNewDocument}>
         <Plus size={12} aria-hidden="true" />
-      </button>
+      </HeaderAction>
       <DropdownMenu>
-        <DropdownMenuTrigger
-          className="fuwa-explorer__action"
-          data-testid="explorer-more-actions"
-          title="More actions"
-          aria-label="More actions"
-        >
-          <DotsThree size={14} aria-hidden="true" />
+        <DropdownMenuTrigger asChild>
+          <HeaderAction data-testid="explorer-more-actions" title="More actions" aria-label="More actions">
+            <DotsThree size={14} aria-hidden="true" />
+          </HeaderAction>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" data-testid="explorer-header-menu">
           <DropdownMenuItem onSelect={onNewFolder}>New Folder</DropdownMenuItem>

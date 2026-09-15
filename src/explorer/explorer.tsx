@@ -1,10 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { CaretDown, CaretRight } from '@phosphor-icons/react'
 import { ContextMenu, ContextMenuTrigger } from '@/ui/context-menu'
 import type { SidebarSelection } from '@/types'
 import { holdsDocument, type ExplorerNode } from '@/folder/explorer'
 import type { ExplorerActions } from './use-explorer-actions'
 import { isPathInsideVaultRoot } from '@/lib/vault-path-containment'
+import { cn } from '@/lib/cn'
 import { clearDraggedNotePath, readDraggedNotePath, writeNoteDragData } from './note-drag-drop'
 import { ancestorTreePaths } from './folder-tree-utils'
 import { useFolderTreeDisclosure } from './use-folder-tree-disclosure'
@@ -12,10 +12,12 @@ import { ExplorerContextMenu } from './explorer-context-menu'
 import { ExplorerHeaderActions } from './explorer-header-actions'
 import { ExplorerNameInput } from './explorer-name-input'
 import { EXPLORER_ROW_ICONS, explorerRowIndent } from './explorer-row'
+import { ExplorerDisclosure, ExplorerDisclosureSlot } from './explorer-disclosure'
 import type { ExplorerMenuAction, ExplorerMenuTargetKind } from './explorer-menu-items'
 import { Button } from '@/ui/button'
+import { Kbd } from '@/ui/kbd'
+import { ScrollArea } from '@/ui/scroll-area'
 import { SidebarLabel, SidebarRow, SidebarRowIcon, SidebarRowName } from '@/shell/sidebar-row'
-import './explorer.css'
 
 const NO_FOLDER_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
 
@@ -40,15 +42,16 @@ type LoadedProps = ExplorerProps & { folder: string; tree: ExplorerNode }
  * The Explorer: the Folder as a tree of Documents, sub-folders and Image
  * files, with the write operations over it — creation, inline rename, Move to
  * Trash and the drag-and-drop move, all reached from the Linear-styled context
- * menu or the row itself.
+ * menu or the row itself. The section is a named `group` so the header's
+ * hover-only actions can read the pointer over any of it.
  */
 export const Explorer = memo(function Explorer(props: ExplorerProps) {
   const { folder, tree, error, onOpenFolder } = props
   if (!folder || !tree) return <NoFolder error={error} onOpenFolder={onOpenFolder} />
   return (
-    <section className="fuwa-explorer" data-testid="explorer">
+    <section className="group/explorer mt-3 flex min-h-0 flex-col" data-testid="explorer">
       <ExplorerBody key={folder} {...props} folder={folder} tree={tree} />
-      {error && <div className="fuwa-explorer__message" role="status">{error}</div>}
+      {error && <div className="p-2 text-xs leading-normal wrap-anywhere" role="status">{error}</div>}
     </section>
   )
 })
@@ -60,18 +63,24 @@ export const Explorer = memo(function Explorer(props: ExplorerProps) {
  */
 function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder: () => void }) {
   return (
-    <section className="fuwa-explorer" data-testid="explorer">
+    <section className="mt-3 flex min-h-0 flex-col" data-testid="explorer">
       <SidebarLabel className="justify-between">Explorer</SidebarLabel>
-      <div className="fuwa-explorer__no-folder" data-testid="explorer-no-folder">
-        <h4 className="fuwa-explorer__no-folder-title">No folder open</h4>
-        <p className="fuwa-explorer__no-folder-copy">Fuwa reads Markdown from one folder at a time. Open one to browse it here.</p>
-        {error && <p className="fuwa-explorer__folder-missing" role="status" data-testid="explorer-folder-missing">{error}</p>}
+      <div className="flex cursor-default flex-col gap-2 px-2 pt-2.5 pb-2" data-testid="explorer-no-folder">
+        <h4 className="text-sm leading-normal font-medium text-text-primary">No folder open</h4>
+        <p className="mb-0.5 text-xs leading-normal font-normal text-text-secondary">Fuwa reads Markdown from one folder at a time. Open one to browse it here.</p>
+        {error && (
+          <p className="mb-0.5 font-mono text-2xs leading-normal font-normal text-chroma-red-text wrap-anywhere" role="status" data-testid="explorer-folder-missing">
+            {error}
+          </p>
+        )}
         <div>
           <Button type="button" aria-label="Open Folder ⌘O" onClick={onOpenFolder} data-testid="explorer-open-folder">
-            Open Folder<kbd className="fuwa-explorer__kbd">⌘O</kbd>
+            Open Folder<Kbd>⌘O</Kbd>
           </Button>
         </div>
-        <p className="fuwa-explorer__no-folder-or">or drop a <code>.md</code> file onto the window</p>
+        <p className="mt-0.5 text-xs leading-normal font-normal text-text-muted">
+          or drop a <code className="font-mono text-2xs">.md</code> file onto the window
+        </p>
       </div>
     </section>
   )
@@ -96,7 +105,8 @@ function useRevealedInTree(path: string | null | undefined, folder: string, expa
 
 /**
  * The Folder's tree and the header actions over it, remounted per Folder so
- * the disclosure state starts fresh when the Folder changes.
+ * the disclosure state starts fresh when the Folder changes. The tree scrolls
+ * inside a `ScrollArea`; the section shrinks to give it the room.
  */
 function ExplorerBody(props: LoadedProps) {
   const { folder, tree, activeTabPath, actions, onCloseFolder } = props
@@ -126,14 +136,16 @@ function ExplorerBody(props: LoadedProps) {
           onCloseFolder={onCloseFolder}
         />
       </SidebarLabel>
-      <div ref={treeRef} className="fuwa-explorer__tree" role="tree" aria-label={tree.name}>
+      <ScrollArea ref={treeRef} className="min-h-0" role="tree" aria-label={tree.name}>
         <ExplorerRow {...props} node={tree} depth={0} expanded={expanded} onToggle={toggleFolder} />
         {/* The empty-Folder line: no `.md` anywhere under the root. It goes with the first ⌘N. */}
         {!holdsDocument(tree) && (
-          <div className="fuwa-explorer__no-documents" data-testid="explorer-no-documents">No documents yet · ⌘N</div>
+          <div className="cursor-default py-1 pr-2 pl-4 font-mono text-2xs font-normal text-text-muted" data-testid="explorer-no-documents">
+            No documents yet · ⌘N
+          </div>
         )}
         <EmptyAreaMenu actions={actions} folder={folder} />
-      </div>
+      </ScrollArea>
     </>
   )
 }
@@ -148,7 +160,7 @@ function EmptyAreaMenu({ actions, folder }: { actions: ExplorerActions; folder: 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        <div className="fuwa-explorer__empty-area" data-testid="explorer-empty-area" />
+        <div className="min-h-6" data-testid="explorer-empty-area" />
       </ContextMenuTrigger>
       <ExplorerContextMenu target="empty" onAction={onAction} />
     </ContextMenu>
@@ -256,13 +268,25 @@ function ExplorerRow(props: RowProps) {
     )
   }
 
+  // The selection is the treeitem's `aria-selected`, right above the row. The
+  // row reads that parent and only that parent (`in-aria-selected:` would match
+  // any ancestor, and a selected folder's children sit inside its treeitem).
+  // The folder row under a dragged file takes the selected colours and an inset
+  // ring, so it is clear which folder the file would land in.
   return (
     <div role="treeitem" aria-label={node.name} aria-selected={selected} aria-expanded={isFolder ? isExpanded : undefined}
       aria-level={depth + 1}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <SidebarRow className="fuwa-explorer__row" style={{ paddingLeft: explorerRowIndent(depth) }}
-            data-active={selected || undefined} data-drop-target={isDropTarget || undefined}
+          <SidebarRow
+            className={cn(
+              'mb-px [[aria-selected=true]>&]:bg-sidebar-row-active [[aria-selected=true]>&]:text-text-heading',
+              'data-drop-target:bg-sidebar-row-active data-drop-target:text-text-heading data-drop-target:ring-1 data-drop-target:ring-state-focus-ring data-drop-target:ring-inset',
+              // WebKit will not start an HTML5 drag from inside `user-select: none` (the whole shell) without this.
+              !isFolder && '[-webkit-user-drag:element]',
+            )}
+            style={{ paddingLeft: explorerRowIndent(depth) }}
+            data-drop-target={isDropTarget || undefined}
             data-testid={`explorer-row:${node.path}`} tabIndex={0} title={node.path}
             {...dragProps} {...dropProps}
             onClick={select} onKeyDown={(event) => {
@@ -271,13 +295,8 @@ function ExplorerRow(props: RowProps) {
                 event.preventDefault(); onToggle(relative)
               }
             }}>
-            {isFolder ? (
-              <button className="fuwa-explorer__disclosure" tabIndex={-1} aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${node.name}`}
-                onClick={(event) => { event.stopPropagation(); onToggle(relative) }}>
-                {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
-              </button>
-            ) : <span className="fuwa-explorer__disclosure" />}
-            <SidebarRowIcon icon={Icon} />
+            {isFolder ? <ExplorerDisclosure name={node.name} expanded={isExpanded} onToggle={() => onToggle(relative)} /> : <ExplorerDisclosureSlot />}
+            <SidebarRowIcon icon={Icon} className="[[aria-selected=true]>*>&]:text-text-primary" />
             <SidebarRowName>{node.name}</SidebarRowName>
           </SidebarRow>
         </ContextMenuTrigger>
