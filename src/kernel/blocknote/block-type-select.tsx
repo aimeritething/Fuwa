@@ -17,7 +17,7 @@ import {
   TextHSix,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import type { BlockSchema, InlineContentSchema, StyleSchema } from '@blocknote/core'
 import { Button } from '@/ui/button'
 import {
@@ -37,6 +37,11 @@ import {
   type RichEditorBlockTypeKey,
 } from './rich-editor-block-types'
 import { turnBlocksIntoType } from './rich-editor-block-type-commands'
+import {
+  keepEditorFocusAfterMenuClose,
+  keepFocusWhenLeavingClosingMenuItem,
+  useToolbarMenu,
+} from './toolbar-menu-state'
 
 export type BlockTypeSelectItem = RichEditorBlockTypeDefinition & {
   icon: PhosphorIcon
@@ -44,22 +49,6 @@ export type BlockTypeSelectItem = RichEditorBlockTypeDefinition & {
 
 type BlockTypeSelectOption = BlockTypeSelectItem & {
   isSelected: boolean
-}
-
-// The open state of the block type menu, shared with the toolbar controller so
-// the toolbar stays while the menu is open; on its own outside the controller.
-export type BlockTypeMenuState = {
-  opened: boolean
-  setOpened(opened: boolean): void
-}
-
-// eslint-disable-next-line react-refresh/only-export-components -- the menu's state lives beside the menu
-export const BlockTypeMenuContext = createContext<BlockTypeMenuState | null>(null)
-
-function useBlockTypeMenuState(): BlockTypeMenuState {
-  const sharedState = useContext(BlockTypeMenuContext)
-  const [localOpened, setLocalOpened] = useState(false)
-  return sharedState ?? { opened: localOpened, setOpened: setLocalOpened }
 }
 
 const BLOCK_TYPE_SELECT_ICONS: Record<RichEditorBlockTypeKey, PhosphorIcon> = {
@@ -133,7 +122,8 @@ export function BlockTypeSelect() {
     [editor, firstSelectedBlock],
   )
   const selectedItem = selectItems.find((item) => item.isSelected)
-  const menuState = useBlockTypeMenuState()
+  // Shared with the toolbar controller, so the toolbar stays while the menu is open.
+  const menuState = useToolbarMenu('blockType')
   const selectedBlockIdsRef = useRef<string[]>([])
   const captureSelectedBlockIds = useCallback(() => {
     selectedBlockIdsRef.current = selectedBlocks.map((block) => block.id)
@@ -179,7 +169,10 @@ export function BlockTypeSelect() {
           <CaretDown className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
+      <DropdownMenuContent
+        align="start"
+        onCloseAutoFocus={(event) => keepEditorFocusAfterMenuClose(editor.domElement, event)}
+      >
         {selectItems.map((item) => {
           const Icon = item.icon
           return (
@@ -188,6 +181,7 @@ export function BlockTypeSelect() {
               onClick={() => {
                 handleBlockTypeChange(item)
               }}
+              onPointerLeave={(event) => keepFocusWhenLeavingClosingMenuItem(menuState.opened, event)}
             >
               <Icon className="size-4" />
               {item.name}

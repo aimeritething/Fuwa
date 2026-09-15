@@ -1,9 +1,9 @@
 import type { useCreateBlockNote } from '@blocknote/react'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { trackEvent } from '@/lib/telemetry'
 import { dispatchRichEditorExternalChange } from './editor-external-change-events'
 import {
   DEFAULT_MARKDOWN_HIGHLIGHT_COLOR,
-  markdownHighlightColorFromStyles,
   type MarkdownHighlightColor,
 } from '@/kernel/markdown/markdown-highlight-markdown'
 import { selectionOrHighlightRange } from './markdown-highlight-range'
@@ -22,6 +22,25 @@ function validRange(editor: HighlightEditor, range: HighlightRange | null): rang
   return range.from >= 0
     && range.to > range.from
     && range.to <= editor.prosemirrorState.doc.content.size
+}
+
+// True when every text node in the range carries the highlight mark. A
+// selection that only overlaps a highlight is not highlighted yet, so the
+// toggle extends it, as the bold toggle does.
+function rangeIsHighlighted(editor: HighlightEditor, range: HighlightRange): boolean {
+  const { doc, schema } = editor.prosemirrorState
+  const highlightMark = schema.marks.highlight
+  if (!highlightMark) return false
+
+  let sawText = false
+  let highlighted = true
+  doc.nodesBetween(range.from, range.to, (node: ProseMirrorNode) => {
+    if (!node.isText) return highlighted
+    sawText = true
+    if (!highlightMark.isInSet(node.marks)) highlighted = false
+    return highlighted
+  })
+  return sawText && highlighted
 }
 
 function updateHighlightMarks(
@@ -66,14 +85,13 @@ export function applyMarkdownHighlightColor(
 }
 
 export function toggleDefaultMarkdownHighlight(editor: HighlightEditor) {
-  const activeColor = markdownHighlightColorFromStyles(editor.getActiveStyles())
   const range = selectionOrHighlightRange(editor)
 
   if (validRange(editor, range)) {
     updateHighlightMarks(
       editor,
       range,
-      activeColor === null ? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR : null,
+      rangeIsHighlighted(editor, range) ? null : DEFAULT_MARKDOWN_HIGHLIGHT_COLOR,
     )
     return
   }

@@ -23,7 +23,8 @@ export function HighlightBoundaryColorControl({ editor }: { editor: HighlightEdi
       <MarkdownHighlightColorMenu
         currentColor={state.color}
         editor={editor}
-        range={state}
+        locale={locale}
+        readRange={() => state}
         source="cursor"
         trigger={(
           <Button

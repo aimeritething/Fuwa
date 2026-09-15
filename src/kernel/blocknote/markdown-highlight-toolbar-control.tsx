@@ -1,83 +1,61 @@
+import { useEditorState } from '@blocknote/react'
 import { CaretDown } from '@phosphor-icons/react'
-import { useEffect, useState } from 'react'
-import { translate } from '@/lib/i18n'
+import { translate, type AppLocale } from '@/lib/i18n'
 import {
   DEFAULT_MARKDOWN_HIGHLIGHT_COLOR,
   markdownHighlightColorFromStyles,
 } from '@/kernel/markdown/markdown-highlight-markdown'
 import { MarkdownHighlightColorMenu } from './markdown-highlight-color-menu'
-import {
-  useDocumentLocale,
-  useEditorRevision,
-  useToolbarControlState,
-} from './markdown-highlight-control-state'
-import {
-  toggleDefaultMarkdownHighlight,
-  type HighlightEditor,
-} from './markdown-highlight-model'
+import type { HighlightEditor } from './markdown-highlight-model'
 import { selectionOrHighlightRange } from './markdown-highlight-range'
+import { useToolbarMenu } from './toolbar-menu-state'
 import { Button } from '@/ui/button'
 
+// The colour caret after the formatting toolbar's highlight toggle. It sits in
+// the toolbar's own tree: its menu is portaled, but the trigger controls it
+// (aria-controls), so the controller keeps the toolbar while focus is there.
 export function ToolbarHighlightColorControl({
-  container,
   editor,
+  locale,
 }: {
-  container: Element
   editor: HighlightEditor
+  locale: AppLocale
 }) {
-  const [open, setOpen] = useState(false)
-  useEditorRevision(editor)
-  const control = useToolbarControlState(container)
-  const locale = useDocumentLocale()
-  const range = selectionOrHighlightRange(editor)
-  const currentColor = markdownHighlightColorFromStyles(editor.getActiveStyles())
-    ?? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
+  // Shared with the toolbar controller, so the toolbar stays while the menu is open.
+  const menu = useToolbarMenu('highlightColor')
+  const currentColor = useEditorState({
+    editor,
+    selector: ({ editor }) => markdownHighlightColorFromStyles(editor.getActiveStyles()),
+  }) ?? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
   const label = translate(locale, 'editor.formatting.highlightColor')
 
-  useEffect(() => {
-    const button = control?.button
-    if (!button) return
-
-    const toggleDefault = (event: Event) => {
-      event.preventDefault()
-      event.stopImmediatePropagation()
-      toggleDefaultMarkdownHighlight(editor)
-    }
-    button.addEventListener('click', toggleDefault, true)
-    return () => {
-      button.removeEventListener('click', toggleDefault, true)
-    }
-  }, [control?.button, editor])
-
-  if (!control) return null
-
   return (
-    <div
-      className="fixed z-popover"
-      style={{ left: control.left, top: control.top }}
-    >
-      <MarkdownHighlightColorMenu
-        currentColor={currentColor}
-        editor={editor}
-        onOpenChange={setOpen}
-        open={open}
-        range={range}
-        source="toolbar"
-        trigger={(
-          <Button
-            aria-label={label}
-            className="w-4.5 min-w-4.5 rounded-none rounded-e-sm p-0 text-text-primary"
-            data-test="highlightColorMenu"
-            onClick={() => setOpen(current => !current)}
-            onPointerDown={event => event.preventDefault()}
-            size="icon-xs"
-            title={label}
-            variant="ghost"
-          >
-            <CaretDown aria-hidden="true" className="size-3" />
-          </Button>
-        )}
-      />
-    </div>
+    <MarkdownHighlightColorMenu
+      currentColor={currentColor}
+      editor={editor}
+      locale={locale}
+      onOpenChange={menu.setOpened}
+      open={menu.opened}
+      readRange={() => selectionOrHighlightRange(editor)}
+      source="toolbar"
+      trigger={(
+        <Button
+          aria-label={label}
+          className="h-7 w-4.5 min-w-4.5 rounded-s-none p-0 text-text-primary"
+          data-test="highlightColorMenu"
+          // As the block type trigger: keep the editor's selection, take the
+          // focus so the toolbar counts as focused while the menu is open.
+          onMouseDown={(event) => {
+            event.preventDefault()
+            event.currentTarget.focus()
+          }}
+          size="icon-xs"
+          title={label}
+          variant="ghost"
+        >
+          <CaretDown aria-hidden="true" className="size-3" />
+        </Button>
+      )}
+    />
   )
 }

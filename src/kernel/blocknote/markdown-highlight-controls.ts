@@ -1,7 +1,6 @@
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { HighlightBoundaryColorControl } from './markdown-highlight-boundary-control'
-import { ToolbarHighlightColorControl } from './markdown-highlight-toolbar-control'
 import type { HighlightEditor } from './markdown-highlight-model'
 
 export {
@@ -10,25 +9,15 @@ export {
 } from './markdown-highlight-model'
 export { readMarkdownHighlightRange } from './markdown-highlight-range'
 
+// The boundary control (the colour button beside a highlight the cursor sits
+// in) is mounted by the extension in its own root; the toolbar's colour caret
+// is part of the formatting toolbar itself (markdown-highlight-toolbar-control.tsx).
+
 function unmountControl(root: Root, host: HTMLElement) {
   queueMicrotask(() => {
     root.unmount()
     host.remove()
   })
-}
-
-function mountToolbarControl(
-  editor: HighlightEditor,
-  container: Element,
-  ownerDocument: Document,
-): { host: HTMLElement; root: Root } {
-  const host = ownerDocument.createElement('div')
-  host.className = 'relative z-popover'
-  ownerDocument.body.appendChild(host)
-
-  const root = createRoot(host)
-  root.render(createElement(ToolbarHighlightColorControl, { container, editor }))
-  return { host, root }
 }
 
 function mountBoundaryControl(editor: HighlightEditor, ownerDocument: Document): {
@@ -37,6 +26,7 @@ function mountBoundaryControl(editor: HighlightEditor, ownerDocument: Document):
 } {
   const host = ownerDocument.createElement('div')
   host.className = 'relative z-sticky'
+  host.dataset.test = 'highlightBoundaryControlHost'
   ownerDocument.body.appendChild(host)
   const root = createRoot(host)
   root.render(createElement(HighlightBoundaryColorControl, { editor }))
@@ -52,13 +42,8 @@ export function mountMarkdownHighlightControls({
   editor: HighlightEditor
   signal: AbortSignal
 }) {
-  const container = dom.closest('.editor__blocknote-container') ?? dom.parentElement
-  if (!container) return
-
-  const toolbarControl = mountToolbarControl(editor, container, dom.ownerDocument)
   const boundaryControl = mountBoundaryControl(editor, dom.ownerDocument)
   signal.addEventListener('abort', () => {
-    unmountControl(toolbarControl.root, toolbarControl.host)
     unmountControl(boundaryControl.root, boundaryControl.host)
   }, { once: true })
 }

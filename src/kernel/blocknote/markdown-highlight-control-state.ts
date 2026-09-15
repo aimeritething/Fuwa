@@ -12,32 +12,12 @@ export type CursorControlState = MarkdownHighlightRange & {
   top: number
 }
 
-export type ToolbarControlState = {
-  button: HTMLElement
-  left: number
-  top: number
-}
-
 function currentLocale(): AppLocale {
   return resolveEffectiveLocale(document.documentElement.lang)
 }
 
 export function colorLabel(locale: AppLocale, color: MarkdownHighlightColor): string {
   return translate(locale, markdownHighlightColorOption(color).localeKey)
-}
-
-export function useEditorRevision(editor: HighlightEditor) {
-  const [, setRevision] = useState(0)
-
-  useEffect(() => {
-    const update = () => setRevision(current => current + 1)
-    const unsubscribeChange = editor.onChange(update)
-    const unsubscribeSelection = editor.onSelectionChange(update)
-    return () => {
-      unsubscribeChange()
-      unsubscribeSelection()
-    }
-  }, [editor])
 }
 
 export function useDocumentLocale(): AppLocale {
@@ -82,35 +62,6 @@ export function useCursorControlState(editor: HighlightEditor): CursorControlSta
       document.removeEventListener('scroll', update, true)
     }
   }, [editor, update])
-
-  return state
-}
-
-function readToolbarControlState(container: Element): ToolbarControlState | null {
-  const button = container.querySelector<HTMLElement>(
-    '.bn-formatting-toolbar [data-test="highlight"]',
-  )
-  if (!button?.isConnected) return null
-
-  const rect = button.getBoundingClientRect()
-  return { button, left: rect.right - 4, top: rect.top }
-}
-
-export function useToolbarControlState(container: Element): ToolbarControlState | null {
-  const [state, setState] = useState(() => readToolbarControlState(container))
-  const update = useCallback(() => setState(readToolbarControlState(container)), [container])
-
-  useEffect(() => {
-    const observer = new MutationObserver(update)
-    observer.observe(container, { childList: true, subtree: true })
-    window.addEventListener('resize', update)
-    document.addEventListener('scroll', update, true)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', update)
-      document.removeEventListener('scroll', update, true)
-    }
-  }, [container, update])
 
   return state
 }

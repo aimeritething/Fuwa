@@ -1,11 +1,13 @@
 import { Check } from '@phosphor-icons/react'
 import { cva } from 'class-variance-authority'
 import type { ReactNode } from 'react'
+import type { AppLocale } from '@/lib/i18n'
 import {
   MARKDOWN_HIGHLIGHT_COLORS,
   type MarkdownHighlightColor,
 } from '@/kernel/markdown/markdown-highlight-markdown'
-import { colorLabel, useDocumentLocale } from './markdown-highlight-control-state'
+import { keepEditorFocusAfterMenuClose, keepFocusWhenLeavingClosingMenuItem } from './toolbar-menu-state'
+import { colorLabel } from './markdown-highlight-control-state'
 import {
   applyMarkdownHighlightColor,
   type HighlightControlSource,
@@ -35,25 +37,33 @@ const swatchVariants = cva('size-3.5 shrink-0 rounded-full border border-current
 interface MarkdownHighlightColorMenuProps {
   currentColor: MarkdownHighlightColor
   editor: HighlightEditor
+  locale: AppLocale
   onOpenChange?: (open: boolean) => void
   open?: boolean
-  range: HighlightRange | null
+  // Read when a colour is chosen, so the range is the editor's at that moment.
+  readRange: () => HighlightRange | null
   source: HighlightControlSource
   trigger: ReactNode
 }
 
+// Non-modal, as the block type menu: a modal menu would take the pointer
+// events from the toolbar and the editor around it while open.
 export function MarkdownHighlightColorMenu(props: MarkdownHighlightColorMenuProps) {
-  const { currentColor, editor, onOpenChange, open, range, source, trigger } = props
-  const locale = useDocumentLocale()
+  const { currentColor, editor, locale, onOpenChange, open, readRange, source, trigger } = props
 
   return (
-    <DropdownMenu onOpenChange={onOpenChange} open={open}>
+    <DropdownMenu modal={false} onOpenChange={onOpenChange} open={open}>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-36">
+      <DropdownMenuContent
+        align="end"
+        className="min-w-36"
+        onCloseAutoFocus={(event) => keepEditorFocusAfterMenuClose(editor.domElement, event)}
+      >
         {MARKDOWN_HIGHLIGHT_COLORS.map(color => (
           <DropdownMenuItem
             key={color}
-            onSelect={() => applyMarkdownHighlightColor(editor, color, range, source)}
+            onPointerLeave={(event) => keepFocusWhenLeavingClosingMenuItem(open === true, event)}
+            onSelect={() => applyMarkdownHighlightColor(editor, color, readRange(), source)}
           >
             <span aria-hidden="true" className={swatchVariants({ color })} />
             <span>{colorLabel(locale, color)}</span>

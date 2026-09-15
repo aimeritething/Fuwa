@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { BlockNoteEditor } from '@blocknote/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { schema } from './editor-schema'
@@ -13,6 +13,7 @@ import {
   readMarkdownHighlightRange,
   toggleDefaultMarkdownHighlight,
 } from './markdown-highlight-controls'
+import { ToolbarHighlightColorControl } from './markdown-highlight-toolbar-control'
 
 const { trackEventMock } = vi.hoisted(() => ({
   trackEventMock: vi.fn(),
@@ -113,34 +114,65 @@ describe('Markdown highlight color controls', () => {
     expect(serializeMarkdownHighlightAwareBlocks(editor, editor.document)).toBe('plain')
   })
 
-  it('mounts a shadcn color trigger beside the existing toolbar button and cleans it up', async () => {
+  it('extends a highlight over a selection that only overlaps it, as the bold toggle does', async () => {
+    const editor = await editorFromMarkdown('Start ==marked== end')
+    const start = textRange(editor, 'art ')
+    const marked = textRange(editor, 'marked')
+    selectText(editor, start.from, marked.from + 3)
+
+    toggleDefaultMarkdownHighlight(editor)
+    expect(serializeMarkdownHighlightAwareBlocks(editor, editor.document)).toBe('St==art marked== end')
+  })
+
+  it('removes a highlight from a selection that lies entirely inside one', async () => {
+    const editor = await editorFromMarkdown('Start ==marked== end')
+    const marked = textRange(editor, 'marked')
+    selectText(editor, marked.from + 1, marked.to - 1)
+
+    toggleDefaultMarkdownHighlight(editor)
+    expect(serializeMarkdownHighlightAwareBlocks(editor, editor.document)).toBe('Start ==m==arke==d== end')
+  })
+
+  it('removes the whole highlight from a collapsed cursor at its start without recolouring it', async () => {
+    const editor = await editorFromMarkdown('Start ==🟢marked== end')
+    const marked = textRange(editor, 'marked')
+    selectText(editor, marked.from)
+
+    toggleDefaultMarkdownHighlight(editor)
+    expect(serializeMarkdownHighlightAwareBlocks(editor, editor.document)).toBe('Start marked end')
+  })
+
+  it('renders the toolbar colour caret and applies the chosen colour to the selection', async () => {
+    const editor = await editorFromMarkdown('Start marked end')
+    const marked = textRange(editor, 'marked')
+    selectText(editor, marked.from, marked.to)
+
+    render(<ToolbarHighlightColorControl editor={editor} locale="en" />)
+
+    const caret = screen.getByRole('button', { name: 'Choose highlight color' })
+    fireEvent.pointerDown(caret)
+    fireEvent.click(caret)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Red' }))
+
+    expect(serializeMarkdownHighlightAwareBlocks(editor, editor.document)).toBe('Start ==🔴marked== end')
+    expect(trackEventMock).toHaveBeenCalledWith('markdown_highlight_color_selected', {
+      color: 'red',
+      source: 'toolbar',
+    })
+  })
+
+  it('mounts the boundary control in its own root and removes it when the editor unmounts', async () => {
     const editor = await editorFromMarkdown('plain')
-    const container = document.createElement('div')
-    container.className = 'editor__blocknote-container'
     const editorDom = document.createElement('div')
-    const toolbar = document.createElement('div')
-    toolbar.className = 'bn-formatting-toolbar'
-    const highlightButton = document.createElement('button')
-    highlightButton.dataset.test = 'highlight'
-    toolbar.appendChild(highlightButton)
-    container.append(editorDom, toolbar)
-    document.body.appendChild(container)
+    document.body.appendChild(editorDom)
     const controller = new AbortController()
 
     await act(async () => {
-      mountMarkdownHighlightControls({
-        dom: editorDom,
-        editor,
-        signal: controller.signal,
-      })
+      mountMarkdownHighlightControls({ dom: editorDom, editor, signal: controller.signal })
     })
-
-    expect(document.querySelector('[data-test="highlightColorMenu"]')).not.toBeNull()
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Choose highlight color' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Choose highlight color' }))
-    expect(screen.getByRole('menuitem', { name: 'Red' })).toBeVisible()
+    expect(document.querySelector('[data-test="highlightBoundaryControlHost"]')).not.toBeNull()
 
     await act(async () => controller.abort())
-    expect(document.querySelector('[data-test="highlightColorMenu"]')).toBeNull()
+    expect(document.querySelector('[data-test="highlightBoundaryControlHost"]')).toBeNull()
   })
 })

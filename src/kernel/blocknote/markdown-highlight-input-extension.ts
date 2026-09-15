@@ -1,3 +1,4 @@
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import {
   readMarkdownHighlightInputReplacement,
   type MarkdownHighlightCursorText,
@@ -15,6 +16,10 @@ import {
 
 const FINAL_MARKDOWN_HIGHLIGHT_INPUT = '='
 const CODE_BLOCK_NODE_TYPE = 'codeBlock'
+const HARD_BREAK_NODE_TYPE = 'hardBreak'
+// Stands in for an inline leaf (a wikilink, inline math) in the text the
+// replacement scans, so its character offsets stay equal to document offsets.
+const INLINE_LEAF_PLACEHOLDER = '\uFFFC'
 type EditorViewLike = RichEditorInputView
 type TextblockParent = EditorViewLike['state']['selection']['$from']['parent']
 
@@ -32,6 +37,13 @@ function isCodeBlockTextblock(parent: TextblockParent): boolean {
     && Reflect.get(type, 'name') === CODE_BLOCK_NODE_TYPE
 }
 
+// A hard break reads as a newline, which the replacement refuses inside a
+// highlight; any other leaf reads as one placeholder character, so the text
+// stays position-for-position with the document.
+function inlineLeafText(leaf: ProseMirrorNode): string {
+  return leaf.type.name === HARD_BREAK_NODE_TYPE ? '\n' : INLINE_LEAF_PLACEHOLDER
+}
+
 function readCursorText(view: EditorViewLike): MarkdownHighlightCursorText | null {
   const { from, to, $from } = view.state.selection
   if (from !== to) return null
@@ -39,7 +51,7 @@ function readCursorText(view: EditorViewLike): MarkdownHighlightCursorText | nul
   if (isCodeBlockTextblock($from.parent)) return null
 
   return {
-    beforeText: $from.parent.textBetween(0, $from.parentOffset, '', ''),
+    beforeText: $from.parent.textBetween(0, $from.parentOffset, '', inlineLeafText),
     cursor: from,
     parentStart: from - $from.parentOffset,
   }

@@ -122,6 +122,47 @@ describe('markdown highlight round-trip', () => {
     }])
   })
 
+  it('keeps an empty ==== pair and a prefix-only ==🔴== pair literal', () => {
+    const blocks = injectMarkdownHighlightsInBlocks([{
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'a ==== b ==🔴== c ==d==', styles: {} }],
+      children: [],
+    }])
+
+    expect(blocks).toEqual([{
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'a ', styles: {} },
+        { type: 'text', text: '==', styles: {} },
+        { type: 'text', text: '==', styles: {} },
+        { type: 'text', text: ' b ', styles: {} },
+        { type: 'text', text: '==', styles: {} },
+        { type: 'text', text: '🔴', styles: {} },
+        { type: 'text', text: '==', styles: {} },
+        { type: 'text', text: ' c ', styles: {} },
+        { type: 'text', text: 'd', styles: { [MARKDOWN_HIGHLIGHT_STYLE]: true } },
+      ],
+      children: [],
+    }])
+  })
+
+  it('returns literal delimiters in the styles they were cut from', () => {
+    const blocks = injectMarkdownHighlightsInBlocks([{
+      type: 'paragraph',
+      content: [{ type: 'text', text: '====', styles: { bold: true } }],
+      children: [],
+    }])
+
+    expect(blocks).toEqual([{
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: '==', styles: { bold: true } },
+        { type: 'text', text: '==', styles: { bold: true } },
+      ],
+      children: [],
+    }])
+  })
+
   it('leaves fenced code block equality operators literal', () => {
     const blocks = injectMarkdownHighlightsInBlocks([{
       type: 'codeBlock',
