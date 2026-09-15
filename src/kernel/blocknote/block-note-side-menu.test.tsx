@@ -47,7 +47,7 @@ describe('SideMenu', () => {
 
     expect(screen.getByText('Delete')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Turn into...' })).toHaveAttribute('aria-haspopup', 'menu')
-    expect(screen.getByTestId('menu-sub-dropdown')).toHaveClass('fuwa-turn-into-menu-dropdown')
+    expect(screen.getByTestId('menu-sub-dropdown')).toHaveClass('min-w-0')
     for (const label of turnIntoButtonLabels) {
       expect(screen.getByTestId(`menu-item-icon-${label}`)).toBeInTheDocument()
     }

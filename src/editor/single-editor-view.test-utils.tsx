@@ -31,6 +31,7 @@ interface BlockNoteViewProps {
   slashMenu?: boolean
   sideMenu?: boolean
   onChange?: () => void
+  shadCNComponents?: unknown
   theme?: string
 }
 
@@ -111,6 +112,7 @@ vi.mock('@blocknote/shadcn', () => ({
       linkToolbar,
       slashMenu,
       sideMenu,
+      shadCNComponents,
       ...restProps
     } = props
     state.capturedBlockNoteOnChange = props.onChange ?? null
@@ -118,6 +120,7 @@ vi.mock('@blocknote/shadcn', () => ({
     void formattingToolbar
     void slashMenu
     void sideMenu
+    void shadCNComponents
 
     return (
       <div
@@ -152,12 +155,15 @@ vi.mock('@/kernel/blocknote/block-note-side-menu-hover-guard', () => ({
   useBlockNoteSideMenuHoverGuard: (containerRef: unknown) => state.hoverGuardMock(containerRef),
 }))
 
-vi.mock('@/kernel/blocknote/editor-formatting-config', () => ({
+vi.mock('@/kernel/blocknote/slash-menu-items', () => ({
   getSlashMenuItems: vi.fn(async () => []),
 }))
 
-vi.mock('@/kernel/blocknote/editor-formatting', () => ({
+vi.mock('@/kernel/blocknote/formatting-toolbar', () => ({
   FormattingToolbar: () => <div data-testid="formatting-toolbar" />,
+}))
+
+vi.mock('@/kernel/blocknote/formatting-toolbar-controller', () => ({
   FormattingToolbarController: (props: Record<string, unknown>) => {
     state.capturedToolbarProps = props
     return <div data-testid="formatting-toolbar-controller" />

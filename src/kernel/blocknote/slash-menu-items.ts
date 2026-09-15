@@ -3,7 +3,7 @@ import {
   getDefaultReactSlashMenuItems,
   type DefaultReactSuggestionItem,
 } from '@blocknote/react'
-import { createElement, type ReactElement } from 'react'
+import { createElement } from 'react'
 import {
   CalendarBlank,
   CalendarDots,
@@ -28,8 +28,6 @@ import {
   TextHTwo,
   TextHThree,
   TextHFour,
-  TextHFive,
-  TextHSix,
   Video,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
@@ -39,11 +37,6 @@ import {
   OBSIDIAN_CALLOUT_DEFINITIONS,
   type ObsidianCalloutType,
 } from './callout-catalog'
-import {
-  RICH_EDITOR_BLOCK_TYPE_DEFINITIONS,
-  type RichEditorBlockTypeDefinition,
-  type RichEditorBlockTypeKey,
-} from './rich-editor-block-types'
 import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '@/kernel/markdown/html-block-markdown'
 import { MATH_BLOCK_TYPE } from '@/kernel/markdown/math-markdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '@/kernel/markdown/mermaid-markdown'
@@ -53,9 +46,6 @@ import { calloutIconForType } from './callout-icons'
 export type SlashMenuItem = DefaultReactSuggestionItem & {
   key: string
   submenuItems?: SlashMenuItem[]
-}
-type BlockTypeSelectItem = RichEditorBlockTypeDefinition & {
-  icon: PhosphorIcon
 }
 type SlashInsertEditor = {
   getTextCursorPosition: () => { block: unknown }
@@ -93,14 +83,6 @@ export const MERMAID_SLASH_COMMAND_DIAGRAM = [
 export const MATH_SLASH_COMMAND_LATEX = '\\sqrt{a^2 + b^2}'
 export const HTML_SLASH_COMMAND_SOURCE = ''
 
-const UNSUPPORTED_FORMATTING_TOOLBAR_KEYS = new Set([
-  'underlineStyleButton',
-  'textAlignLeftButton',
-  'textAlignCenterButton',
-  'textAlignRightButton',
-  'colorStyleButton',
-])
-
 const UNSUPPORTED_SLASH_MENU_KEYS = new Set([
   'heading_5',
   'heading_6',
@@ -109,21 +91,6 @@ const UNSUPPORTED_SLASH_MENU_KEYS = new Set([
   'toggle_heading_3',
   'toggle_list',
 ])
-
-const BLOCK_TYPE_SELECT_ICONS: Record<RichEditorBlockTypeKey, PhosphorIcon> = {
-  'bullet-list': ListBullets,
-  checklist: ListChecks,
-  'code-block': CodeBlock,
-  'heading-1': TextHOne,
-  'heading-2': TextHTwo,
-  'heading-3': TextHThree,
-  'heading-4': TextHFour,
-  'heading-5': TextHFive,
-  'heading-6': TextHSix,
-  'numbered-list': ListNumbers,
-  paragraph: Paragraph,
-  quote: Quotes,
-}
 
 const SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
   audio: SpeakerHigh,
@@ -306,7 +273,7 @@ export function createCalloutSlashMenuItem(
     aliases: [...aliases],
     icon: createElement(calloutIconForType(type), {
       'aria-hidden': true,
-      className: 'size-[18px]',
+      className: 'size-4.5',
       size: 18,
       weight: 'regular',
     }),
@@ -370,37 +337,27 @@ export function addItemsToMediaGroup(
   return nextItems
 }
 
+/**
+ * A menu icon that swaps from the regular to the filled weight while its row
+ * is highlighted: the row carries `group`, the two icons sit on top of each
+ * other and trade opacity on the group's hover and aria-selected.
+ */
 export function createSlashMenuIcon(Icon: PhosphorIcon) {
   return createElement(
     'span',
-    { className: 'fuwa-slash-menu-icon' },
+    { className: 'relative inline-flex size-5 items-center justify-center' },
     createElement(Icon, {
       'aria-hidden': true,
-      className: 'fuwa-slash-menu-icon__regular',
+      className: 'size-4.5 group-hover:opacity-0 group-aria-selected:opacity-0',
       size: 18,
       weight: 'regular',
     }),
     createElement(Icon, {
       'aria-hidden': true,
-      className: 'fuwa-slash-menu-icon__fill',
+      className: 'absolute inset-0 size-4.5 opacity-0 group-hover:opacity-100 group-aria-selected:opacity-100',
       size: 18,
       weight: 'fill',
     }),
-  )
-}
-
-export function getBlockTypeSelectItems() {
-  return RICH_EDITOR_BLOCK_TYPE_DEFINITIONS.map((item): BlockTypeSelectItem => ({
-    ...item,
-    icon: BLOCK_TYPE_SELECT_ICONS[item.key],
-  }))
-}
-
-export function filterFormattingToolbarItems<T extends ReactElement>(
-  items: T[],
-): T[] {
-  return items.filter(
-    (item) => !UNSUPPORTED_FORMATTING_TOOLBAR_KEYS.has(String(item.key)),
   )
 }
 

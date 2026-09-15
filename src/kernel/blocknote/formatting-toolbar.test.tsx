@@ -43,27 +43,6 @@ vi.mock('@blocknote/react', () => ({
     return <div data-testid="mock-position-popover">{props.children}</div>
   },
   useBlockNoteEditor: useBlockNoteEditorMock,
-  useComponentsContext: () => ({
-    FormattingToolbar: {
-      Button: ({
-        children,
-        icon,
-        label,
-        onClick,
-      }: {
-        children?: ReactNode
-        icon?: ReactNode
-        label: string
-        onClick: () => void
-      }) => (
-        <button onClick={onClick} type="button">
-          {icon}
-          {label}
-          {children}
-        </button>
-      ),
-    },
-  }),
   useDictionary: () => ({
     formatting_toolbar: {
       file_download: {
@@ -97,23 +76,33 @@ vi.mock('@/ui/dropdown-menu', () => ({
   DropdownMenuItem: ({ children, ...props }: { children?: ReactNode }) => <button type="button" {...props}>{children}</button>,
 }))
 
+vi.mock('@/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  TooltipTrigger: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  TooltipContent: () => null,
+}))
+
 vi.mock('@phosphor-icons/react', () => ({
   ArrowSquareOut: MockIcon,
   CaretDown: MockIcon,
   Check: MockIcon,
   Code: MockIcon,
+  CodeBlock: MockIcon,
   Highlighter: MockIcon,
+  ListBullets: MockIcon,
+  ListChecks: MockIcon,
+  ListNumbers: MockIcon,
+  Paragraph: MockIcon,
+  Quotes: MockIcon,
   TextB: MockIcon,
+  TextHFive: MockIcon,
+  TextHFour: MockIcon,
+  TextHOne: MockIcon,
+  TextHSix: MockIcon,
+  TextHThree: MockIcon,
+  TextHTwo: MockIcon,
   TextItalic: MockIcon,
   TextStrikethrough: MockIcon,
-}))
-
-vi.mock('./editor-formatting-config', () => ({
-  filterFormattingToolbarItems: (items: ReactNode[]) => items,
-  getBlockTypeSelectItems: () => [
-    { name: 'Paragraph', type: 'paragraph', props: {}, icon: MockIcon },
-    { name: 'Heading 1', type: 'heading', props: { level: 1 }, icon: MockIcon },
-  ],
 }))
 
 vi.mock('./block-note-formatting-toolbar-hover-guard', () => ({
@@ -127,10 +116,8 @@ vi.mock('@/platform/url', () => ({
 }))
 
 import { openLocalFile } from '@/platform/url'
-import {
-  FormattingToolbar,
-  FormattingToolbarController,
-} from './editor-formatting'
+import { FormattingToolbar } from './formatting-toolbar'
+import { FormattingToolbarController } from './formatting-toolbar-controller'
 
 const mockOpenLocalFile = vi.mocked(openLocalFile)
 
@@ -169,7 +156,7 @@ function createMockEditor(blockType = 'image', props: Record<string, unknown> = 
   }
 }
 
-describe('editorFormatting behavior', () => {
+describe('the formatting toolbar and its controller', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     document.body.innerHTML = ''

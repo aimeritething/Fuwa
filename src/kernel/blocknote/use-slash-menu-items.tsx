@@ -6,7 +6,7 @@ import type {
   useCreateBlockNote,
 } from '@blocknote/react'
 import { createTranslator, type AppLocale } from '@/lib/i18n'
-import { getSlashMenuItems } from './editor-formatting-config'
+import { getSlashMenuItems } from './slash-menu-items'
 
 export type SuggestionAction = () => void
 type SuggestionItemWithClick = { onItemClick?: SuggestionAction }

@@ -11,9 +11,9 @@ import { FilePanelController } from './file-panel'
 import { LinkToolbar } from '@/kernel/blocknote/link-toolbar'
 import { SlashMenu } from '@/kernel/blocknote/slash-menu'
 import { CollapsedHeadingsController, SideMenu } from '@/kernel/blocknote/block-note-side-menu'
-import { FormattingToolbar, FormattingToolbarController } from '@/kernel/blocknote/editor-formatting'
-import type { SuggestionAction } from '@/kernel/blocknote/single-editor-suggestion-items'
-import type { useSuggestionMenuItems } from '@/kernel/blocknote/single-editor-suggestion-items'
+import { FormattingToolbar } from '@/kernel/blocknote/formatting-toolbar'
+import { FormattingToolbarController } from '@/kernel/blocknote/formatting-toolbar-controller'
+import type { SuggestionAction, useSuggestionMenuItems } from '@/kernel/blocknote/use-slash-menu-items'
 
 type EditorInteractionControllersProps = ReturnType<typeof useSuggestionMenuItems> & {
   locale: AppLocale

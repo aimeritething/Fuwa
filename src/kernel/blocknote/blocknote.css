@@ -1,17 +1,17 @@
 /* ==============================================================
    blocknote.css — the Kernel's stylesheet: every `.bn-*` / ProseMirror
-   override, the KaTeX and tldraw rules and, until PR 9, the rules for
-   Fuwa's own menu and control elements. index.css imports it right after the
-   vendor stylesheets; nothing else does.
+   override and the KaTeX and tldraw rules. Every selector lands on DOM a
+   third party renders; Fuwa's own elements carry utility classes in their
+   tsx. index.css imports it right after the vendor stylesheets; nothing
+   else does.
 
    Layers. The overrides sit in `components`: above `vendor`, which holds
    BlockNote's, KaTeX's and tldraw's own CSS, and below `utilities`, so a
    Tailwind class in tsx beats a rule here and no rule needs an important flag.
    Two blocks stand outside that layer, each with its reason written above
    it: the `@layer utilities` block for the elements the BlockNote shadcn
-   package styles with Tailwind classes of its own, and the unlayered block
-   at the end, which BlockNote's runtime placeholder rules and the
-   not-yet-migrated rules for Fuwa's elements share.
+   adapters dress with Tailwind classes of their own, and the unlayered
+   Title placeholder at the end.
 
    Selectors: `.bn-editor` already scopes, so no container prefix; at most
    three segments; BlockNote's own attributes over class chains. Values:
@@ -208,12 +208,6 @@
     flex-wrap: nowrap;
     align-items: center;
     gap: 0;
-  }
-
-  .bn-side-menu :is(button, .fuwa-block-drag-handle) {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
 
   .bn-side-menu [draggable="true"] * {
@@ -583,7 +577,7 @@
     white-space: pre-wrap;
   }
 
-  /* HTML block: the block content is a bare frame for html-block.tsx. */
+  /* HTML block: the block content is a bare frame for the block's own section. */
   [data-content-type="htmlBlock"] {
     background: transparent;
     border: 0;
@@ -690,18 +684,11 @@
   }
 
   /* ---------------------------------------------------------------
-     Toolbars and menus (the material, the row geometry and the icon
-     sizes are in the utilities block)
+     Toolbars and menus (the material and the row geometry are in the
+     utilities block)
      --------------------------------------------------------------- */
   .bn-suggestion-menu-label {
     color: var(--text-secondary);
-  }
-
-  /* The Turn into submenu shrinks to its widest item. */
-  .fuwa-turn-into-menu-dropdown .bn-menu-item {
-    min-width: max-content;
-    white-space: nowrap;
-    width: auto;
   }
 
   /* ---------------------------------------------------------------
@@ -714,7 +701,7 @@
   }
 
   /* ---------------------------------------------------------------
-     tldraw inside a whiteboard block (tldraw-whiteboard.tsx)
+     tldraw inside a whiteboard block
      --------------------------------------------------------------- */
   [data-content-type="tldrawBlock"] .tl-container {
     --color-background: var(--surface-card);
@@ -734,44 +721,20 @@
 }
 
 /* ==============================================================
-   The elements the BlockNote shadcn package dresses itself. Its Toolbar,
-   SuggestionMenu and DropdownMenuContent roots, its rows and its Button
-   carry Tailwind classes of their own (rounded-lg / rounded-md, shadow-md,
-   the 1px border, px-2 py-1.5 on a row, h-9 px-4 py-2 and a 16px svg on
-   a button), which Fuwa's build generates from the `@source` line in
-   index.css into the `utilities` layer. A rule in `components` cannot beat
+   The elements the BlockNote shadcn adapters dress themselves. The
+   adapters' Toolbar and SuggestionMenu roots and the suggestion rows carry
+   Tailwind classes of their own (rounded-lg / rounded-md, shadow-md, the
+   1px border, px-2 py-1.5 on a row), which Fuwa's build generates from
+   the `@source` line in index.css into the `utilities` layer, and which no
+   `shadCNComponents` entry reaches. A rule in `components` cannot beat
    them whatever its specificity, so the few rules that must sit in that
    layer too, after Tailwind's (index.css imports this file after
-   tailwindcss), and win on specificity or, at equal specificity, on
-   order. PR 9 hands the roots to Fuwa's ui/ components and this block
-   shrinks with it.
+   tailwindcss), and win on specificity or, at equal specificity, on order.
+   The primitives inside (buttons, toggles, menus, inputs) are Fuwa's own
+   ui/ components, handed over in shadcn-components.tsx, and need nothing
+   here.
    ============================================================== */
 @layer utilities {
-  /* The package's own corrections to its Button, restated. Its side menu
-     buttons and its table handles are that Button, and style.css pulls
-     them back (24px tall and unpadded, the svg at its own size, pointer
-     events on the icon) with rules that beat the classes only while
-     unlayered; in `vendor` they lose, and the side menu grew to 40 by 36
-     with 16px icons. */
-  .bn-shadcn svg:not([class*="size-"]) {
-    width: revert;
-    height: revert;
-  }
-
-  .bn-shadcn svg {
-    pointer-events: all;
-  }
-
-  .bn-shadcn .bn-side-menu .bn-button {
-    height: calc(var(--spacing) * 6);
-    padding: 0;
-  }
-
-  .bn-shadcn .bn-table-cell-handle {
-    height: calc(var(--spacing) * 3);
-    padding: 0 var(--spacing);
-  }
-
   /* BlockNote's outline on a selected node, restated for the math block:
      its shell (math-block.tsx) is a ui/Button whose `outline-none` beats the
      vendor rule. The width is BlockNote's 4px; the colour is the focus ring
@@ -781,20 +744,14 @@
     outline: var(--spacing) solid var(--state-focus-ring);
   }
 
-  /* Toolbar and menu icons keep one size whatever the icon set's default;
-     more specific than the revert above. */
-  :is(.bn-toolbar, .bn-menu-dropdown, .bn-grid-suggestion-menu) button svg:not([class*="size-"]) {
-    width: calc(var(--spacing) * 4);
-    height: calc(var(--spacing) * 4);
-    flex-shrink: 0;
-  }
-
-  /* The formatting toolbar, the link toolbar, the slash menu and, until
-     PR 9, the drag handle menu: one rule for the popover material, the menu
-     radius and the menu shadow. */
+  /* The formatting toolbar, the link toolbar, the slash menu and the file
+     panel: one rule for the popover material, the menu radius and the menu
+     shadow. The file panel's root is the adapter's Tabs, which carries a
+     background, radius and padding of its own; its padding comes down to
+     the menu inset here too. */
   .bn-shadcn .bn-toolbar,
   .bn-shadcn .bn-suggestion-menu,
-  .bn-shadcn .bn-menu-dropdown {
+  .bn-shadcn .bn-panel {
     background: var(--surface-popover);
     color: var(--text-primary);
     border: var(--hairline) solid var(--border-popover);
@@ -802,8 +759,26 @@
     box-shadow: var(--shadow-menu);
   }
 
+  .bn-shadcn .bn-panel {
+    padding: var(--spacing);
+  }
+
+  /* BlockNote's table handles: its own icons inside Fuwa's Button. The drag
+     handle keeps its 24px glyph against the Button's 16px svg rule; the cell
+     handle keeps the package's 12px height (its own correction sits in
+     vendor and loses to the Button's classes). */
+  .bn-shadcn .bn-table-handle svg {
+    width: calc(var(--spacing) * 6);
+    height: calc(var(--spacing) * 6);
+  }
+
+  .bn-shadcn .bn-table-cell-handle {
+    height: calc(var(--spacing) * 3);
+    padding: 0 var(--spacing);
+  }
+
   /* A slash menu row: 32px, 8px radius, 13px, the body colour under the
-     pointer and when selected too (the package's hover: / aria-selected:
+     pointer and when selected too (the adapter's hover: / aria-selected:
      classes turn it to the heading colour). The shadcn item repeats the
      row's class on its icon cell, its title and its subtitle, so the rule
      lands on those too, which is what the row's geometry has relied on. */
@@ -815,12 +790,6 @@
     padding: var(--_suggestion-row-padding-vertical) calc(var(--spacing) * 2);
     border-radius: var(--radius-lg);
     font-size: var(--text-sm);
-  }
-
-  /* The Turn into submenu shrinks to its widest item (min-w-[8rem] otherwise). */
-  .fuwa-turn-into-menu-dropdown {
-    min-width: 0;
-    width: auto;
   }
 }
 
@@ -834,138 +803,4 @@
    ============================================================== */
 .bn-block-content[data-content-type="heading"]:is(:not([data-level]), [data-level="1"]):is([data-is-empty-and-focused], [data-is-only-empty-block]) .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child)::before {
   content: "Title";
-}
-
-/* ==============================================================
-   PR 9 搬进 tsx
-
-   The rules for Fuwa's own menu and control elements (the slash menu's
-   icon swap, `.markdown-highlight-*`, `.editor__code-block-*`), moved here
-   from editor-theme.css and editor.css as they were, apart from the
-   important flags and the literal colours. They stay unlayered, as they
-   were: these elements also carry utility classes (the highlight triggers,
-   the code copy button), and a layered rule would lose to those where the
-   unlayered one wins today. PR 8 turned the blocks' rules (html, mermaid,
-   whiteboard, callout, math, the code line numbers) into utility classes
-   in their tsx; PR 9 (menus) does the same for these and empties the block.
-   ============================================================== */
-
-/* --- Slash menu icons (PR 9). The rest of `.fuwa-slash-menu*` is still in
-   editor.css, unlayered, where `.fuwa-slash-menu-icon__fill` starts at
-   opacity 0; the swap on the highlighted row has to be unlayered and one
-   class more specific to beat it. --- */
-.bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__regular {
-  opacity: 0;
-}
-
-.bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__fill {
-  opacity: 1;
-}
-
-/* --- Markdown highlight controls (PR 9) --- */
-.markdown-highlight-toolbar-color-host {
-  position: relative;
-  z-index: 41;
-}
-
-.markdown-highlight-toolbar-main {
-  margin-right: 14px;
-}
-
-.markdown-highlight-toolbar-control {
-  position: fixed;
-  z-index: 41;
-}
-
-.markdown-highlight-toolbar-trigger {
-  width: 18px;
-  min-width: 18px;
-  padding: 0;
-  color: var(--text-primary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.markdown-highlight-toolbar-trigger-icon {
-  width: 11px;
-  height: 11px;
-}
-
-.markdown-highlight-boundary-host {
-  position: relative;
-  z-index: 39;
-}
-
-.markdown-highlight-boundary-control {
-  position: fixed;
-  z-index: 39;
-  transform: translateY(-50%);
-}
-
-.markdown-highlight-boundary-trigger {
-  color: var(--text-primary);
-  background: var(--surface-popover);
-  border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-menu);
-}
-
-.markdown-highlight-color-swatch {
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-}
-
-.markdown-highlight-color-swatch--yellow {
-  color: var(--chroma-yellow);
-  background: var(--chroma-yellow-bg);
-}
-
-.markdown-highlight-color-swatch--green {
-  color: var(--chroma-green);
-  background: var(--chroma-green-bg);
-}
-
-.markdown-highlight-color-swatch--red {
-  color: var(--chroma-red);
-  background: var(--chroma-red-bg);
-}
-
-.markdown-highlight-color-swatch--blue {
-  color: var(--chroma-blue);
-  background: var(--chroma-blue-bg);
-}
-
-.markdown-highlight-color-swatch--purple {
-  color: var(--chroma-purple);
-  background: var(--chroma-purple-bg);
-}
-
-/* --- Code block controls (PR 9) --- */
-.editor__code-block-copy {
-  position: absolute;
-  z-index: 4;
-}
-
-.editor__code-block-copy [data-editor-code-copy-button] {
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-  color: var(--text-secondary);
-  padding: 0;
-}
-
-.editor__code-block-copy [data-editor-code-copy-button]:hover,
-.editor__code-block-copy [data-editor-code-copy-button]:focus-visible {
-  background: transparent;
-  color: var(--text-primary);
-}
-
-.editor__code-block-language-overlay {
-  position: fixed;
-  z-index: 40;
-}
-
-.editor__code-block-language-overlay .editor__code-block-language-trigger {
-  color: var(--text-secondary);
 }

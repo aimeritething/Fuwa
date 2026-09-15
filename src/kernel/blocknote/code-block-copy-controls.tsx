@@ -46,13 +46,12 @@ export function CodeBlockCopyButton({ copyTarget, locale }: { copyTarget: CodeBl
   const label = t('editor.codeBlock.copy')
   const { active, handleCopy, setActive } = useCodeBlockCopyAction(copyTarget)
   return (
-    <div className="editor__code-block-copy" contentEditable={false} data-editor-code-copy style={{ left: copyTarget.left, top: copyTarget.top }}>
+    <div className="absolute z-raised" contentEditable={false} data-editor-code-copy style={{ left: copyTarget.left, top: copyTarget.top }}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             aria-label={label}
             className="border-transparent bg-transparent text-text-secondary shadow-none hover:bg-transparent hover:text-text-primary focus-visible:bg-transparent focus-visible:text-text-primary"
-            data-editor-code-copy-button
             onBlur={() => setActive(false)}
             onClick={handleCopy}
             onFocus={() => setActive(true)}

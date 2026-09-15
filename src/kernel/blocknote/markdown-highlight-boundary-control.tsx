@@ -17,7 +17,7 @@ export function HighlightBoundaryColorControl({ editor }: { editor: HighlightEdi
 
   return (
     <div
-      className="markdown-highlight-boundary-control"
+      className="fixed z-sticky -translate-y-1/2"
       style={{ left: state.left, top: state.top }}
     >
       <MarkdownHighlightColorMenu
@@ -28,7 +28,7 @@ export function HighlightBoundaryColorControl({ editor }: { editor: HighlightEdi
         trigger={(
           <Button
             aria-label={label}
-            className="markdown-highlight-boundary-trigger"
+            className="bg-surface-popover text-text-primary border-hairline border-border-popover shadow-menu"
             data-test="highlightBoundaryColorMenu"
             onMouseDown={event => event.preventDefault()}
             size="icon-xs"

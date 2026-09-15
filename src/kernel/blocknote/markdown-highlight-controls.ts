@@ -23,7 +23,7 @@ function mountToolbarControl(
   ownerDocument: Document,
 ): { host: HTMLElement; root: Root } {
   const host = ownerDocument.createElement('div')
-  host.className = 'markdown-highlight-toolbar-color-host'
+  host.className = 'relative z-popover'
   ownerDocument.body.appendChild(host)
 
   const root = createRoot(host)
@@ -36,7 +36,7 @@ function mountBoundaryControl(editor: HighlightEditor, ownerDocument: Document):
   root: Root
 } {
   const host = ownerDocument.createElement('div')
-  host.className = 'markdown-highlight-boundary-host'
+  host.className = 'relative z-sticky'
   ownerDocument.body.appendChild(host)
   const root = createRoot(host)
   root.render(createElement(HighlightBoundaryColorControl, { editor }))

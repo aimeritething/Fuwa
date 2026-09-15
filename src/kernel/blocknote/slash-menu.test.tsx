@@ -27,7 +27,7 @@ vi.mock('@blocknote/react', () => ({
 }))
 
 import { SlashMenu } from './slash-menu'
-import type { SlashMenuItem } from './editor-formatting-config'
+import type { SlashMenuItem } from './slash-menu-items'
 
 function calloutItem(): SlashMenuItem {
   return {
@@ -69,7 +69,7 @@ describe('SlashMenu', () => {
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Callout' }))
 
     const submenu = screen.getByRole('menu', { name: 'Callout' })
-    expect(submenu).toHaveClass('fuwa-slash-menu__submenu')
+    expect(submenu).toHaveClass('fixed', 'rounded-xl', 'shadow-menu')
     fireEvent.click(screen.getByRole('menuitem', { name: 'Tip' }))
     expect(onItemClick).toHaveBeenCalledWith(item.submenuItems?.[1])
   })

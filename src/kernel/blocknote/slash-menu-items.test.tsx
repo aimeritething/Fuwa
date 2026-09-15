@@ -1,6 +1,5 @@
 import { Children, isValidElement, type ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { getFormattingToolbarItems } from '@blocknote/react'
 
 vi.mock('@/lib/telemetry', () => ({
   trackEvent: vi.fn(),
@@ -12,13 +11,11 @@ import {
   createDateTimeSlashMenuItems,
   createSandboxBlockSlashMenuItem,
   createMathSlashMenuItem,
-  filterFormattingToolbarItems,
   filterSlashMenuItems,
-  getBlockTypeSelectItems,
   HTML_SLASH_COMMAND_SOURCE,
   MATH_SLASH_COMMAND_LATEX,
   MERMAID_SLASH_COMMAND_DIAGRAM,
-} from './editor-formatting-config'
+} from './slash-menu-items'
 import { HTML_BLOCK_DEFAULT_HEIGHT, HTML_BLOCK_TYPE } from '@/kernel/markdown/html-block-markdown'
 import { trackEvent } from '@/lib/telemetry'
 import { MATH_BLOCK_TYPE } from '@/kernel/markdown/math-markdown'
@@ -45,44 +42,7 @@ function createSlashCommandEditorFixture() {
   }
 }
 
-describe('editorFormatting', () => {
-  it('keeps the markdown-safe toolbar controls and block type select', () => {
-    const itemKeys = filterFormattingToolbarItems(
-      getFormattingToolbarItems(getBlockTypeSelectItems()),
-    ).map((item) => String(item.key))
-
-    expect(itemKeys).toContain('blockTypeSelect')
-    expect(itemKeys).toContain('boldStyleButton')
-    expect(itemKeys).toContain('italicStyleButton')
-    expect(itemKeys).toContain('strikeStyleButton')
-    expect(itemKeys).toContain('createLinkButton')
-    expect(itemKeys).toContain('nestBlockButton')
-    expect(itemKeys).toContain('unnestBlockButton')
-
-    expect(itemKeys).not.toContain('underlineStyleButton')
-    expect(itemKeys).not.toContain('colorStyleButton')
-    expect(itemKeys).not.toContain('textAlignLeftButton')
-    expect(itemKeys).not.toContain('textAlignCenterButton')
-    expect(itemKeys).not.toContain('textAlignRightButton')
-  })
-
-  it('returns the audited markdown-safe block types for the toolbar select', () => {
-    expect(getBlockTypeSelectItems()).toEqual([
-      expect.objectContaining({ name: 'Paragraph', type: 'paragraph' }),
-      expect.objectContaining({ name: 'Heading 1', type: 'heading', props: { level: 1 } }),
-      expect.objectContaining({ name: 'Heading 2', type: 'heading', props: { level: 2 } }),
-      expect.objectContaining({ name: 'Heading 3', type: 'heading', props: { level: 3 } }),
-      expect.objectContaining({ name: 'Heading 4', type: 'heading', props: { level: 4 } }),
-      expect.objectContaining({ name: 'Heading 5', type: 'heading', props: { level: 5 } }),
-      expect.objectContaining({ name: 'Heading 6', type: 'heading', props: { level: 6 } }),
-      expect.objectContaining({ name: 'Quote', type: 'quote' }),
-      expect.objectContaining({ name: 'Bullet List', type: 'bulletListItem' }),
-      expect.objectContaining({ name: 'Numbered List', type: 'numberedListItem' }),
-      expect.objectContaining({ name: 'Checklist', type: 'checkListItem' }),
-      expect.objectContaining({ name: 'Code Block', type: 'codeBlock' }),
-    ])
-  })
-
+describe('slash menu items', () => {
   it('filters unsupported toggle slash-menu variants and removes command descriptions', () => {
     type SlashMenuTestItem = {
       key: string
@@ -136,10 +96,10 @@ describe('editorFormatting', () => {
     const iconChildren = Children.toArray(icon.props.children) as Array<
       ReactElement<{ className?: string; weight?: string }>
     >
-    expect(icon.props.className).toBe('fuwa-slash-menu-icon')
+    expect(icon.props.className).toBe('relative inline-flex size-5 items-center justify-center')
     expect(iconChildren.map((child) => child.props.className)).toEqual([
-      'fuwa-slash-menu-icon__regular',
-      'fuwa-slash-menu-icon__fill',
+      'size-4.5 group-hover:opacity-0 group-aria-selected:opacity-0',
+      'absolute inset-0 size-4.5 opacity-0 group-hover:opacity-100 group-aria-selected:opacity-100',
     ])
     expect(iconChildren.map((child) => child.props.weight)).toEqual([
       'regular',

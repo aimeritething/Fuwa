@@ -2,7 +2,7 @@ import { useBlockNoteEditor, useComponentsContext, useDictionary, type Suggestio
 import { useCallback, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/ui/button'
-import type { SlashMenuItem } from './editor-formatting-config'
+import type { SlashMenuItem } from './slash-menu-items'
 
 interface OpenSubmenu {
   key: string
@@ -177,7 +177,7 @@ export function SlashMenu({
         tabIndex={-1}
       >
         <Components.SuggestionMenu.Item
-          className="bn-suggestion-menu-item"
+          className="bn-suggestion-menu-item group"
           id={`bn-suggestion-menu-item-${index}`}
           isSelected={index === selectedIndex}
           item={item}
@@ -196,7 +196,7 @@ export function SlashMenu({
 
   return (
     <>
-      <Components.SuggestionMenu.Root id="bn-suggestion-menu" className="bn-suggestion-menu fuwa-slash-menu">
+      <Components.SuggestionMenu.Root id="bn-suggestion-menu" className="bn-suggestion-menu">
         {renderedItems}
         {renderedItems.length === 0 && loadingState !== 'loading-initial' && (
           <Components.SuggestionMenu.EmptyItem className="bn-suggestion-menu-item">
@@ -210,14 +210,14 @@ export function SlashMenu({
         createPortal(
           <div
             aria-label={items.find((item) => item.key === openSubmenu.key)?.title}
-            className="fuwa-slash-menu__submenu"
+            className="fixed z-popover flex max-h-[min(26rem,calc(100vh-1rem))] min-w-40 flex-col gap-0.5 overflow-y-auto rounded-xl bg-surface-popover text-text-primary border-hairline border-border-popover shadow-menu p-1"
             role="menu"
             style={{ left: openSubmenu.left, top: openSubmenu.top }}
           >
             {submenuItems.map((item, index) => (
               <Button
                 aria-selected={index === submenuIndex}
-                className="fuwa-slash-menu__submenu-item"
+                className="w-full justify-start gap-2 font-normal hover:bg-menu-item-hover hover:text-text-heading aria-selected:bg-menu-item-hover aria-selected:text-text-heading"
                 key={item.key}
                 onClick={() => onItemClick?.(item)}
                 onMouseDown={(event) => {
