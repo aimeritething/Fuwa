@@ -165,7 +165,7 @@ function CodeBlockLanguagePicker({
     >
       <SelectTrigger
         size="sm"
-        className="editor__code-block-language-trigger h-7 max-w-72 border-transparent bg-transparent px-2 py-0 text-xs text-text-secondary shadow-none hover:bg-state-hover hover:text-text-heading focus-visible:ring-1"
+        className="h-7 max-w-72 border-transparent bg-transparent px-2 py-0 text-xs text-text-secondary shadow-none hover:bg-state-hover hover:text-text-heading focus-visible:ring-1"
       >
         <SelectValue />
       </SelectTrigger>
@@ -183,7 +183,7 @@ export function CodeBlockLanguageControls({ editor }: { editor: CodeBlockLanguag
 
   return targets.map((target) => createPortal(
     <div
-      className="editor__code-block-language-overlay"
+      className="fixed z-overlay"
       data-code-block-id={target.blockId}
       style={{ left: target.left, minHeight: target.height, top: target.top }}
     >

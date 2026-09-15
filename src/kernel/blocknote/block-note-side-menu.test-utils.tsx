@@ -1,7 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import type {
-  DragEventHandler,
-  MouseEvent as ReactMouseEvent,
   PropsWithChildren,
   ReactNode,
 } from 'react'
@@ -18,15 +16,6 @@ export type MockBlock = {
   props?: Record<string, unknown>
   type: string
   content?: unknown
-}
-
-export type SideMenuButtonProps = {
-  draggable?: boolean
-  icon?: ReactNode
-  label: string
-  onClick?: (event: ReactMouseEvent<HTMLButtonElement>) => void
-  onDragEnd?: DragEventHandler<HTMLButtonElement>
-  onDragStart?: DragEventHandler<HTMLButtonElement>
 }
 
 export type MenuItemProps = PropsWithChildren<{
@@ -171,20 +160,6 @@ function mockMenuTrigger({ children, sub }: PropsWithChildren<{ sub?: boolean }>
   return <div data-testid={sub ? 'menu-sub-trigger' : 'menu-trigger'}>{children}</div>
 }
 
-function mockSideMenuButton({ draggable, label, onClick, onDragEnd, onDragStart }: SideMenuButtonProps) {
-  return (
-    <button
-      type="button"
-      draggable={draggable}
-      onClick={onClick}
-      onDragEnd={onDragEnd}
-      onDragStart={onDragStart}
-    >
-      {label}
-    </button>
-  )
-}
-
 vi.mock('@blocknote/core/extensions', () => ({
   SideMenuExtension: { key: 'side-menu' },
   SuggestionMenu: { key: 'suggestion-menu' },
@@ -248,9 +223,6 @@ vi.mock('@blocknote/react', () => ({
         Root: mockMenuRoot,
         Trigger: mockMenuTrigger,
       },
-    },
-    SideMenu: {
-      Button: mockSideMenuButton,
     },
   }),
   useDictionary: () => ({
@@ -412,7 +384,7 @@ export function rootSideMenuButtonText() {
   return screen.getAllByRole('button')
     .filter((button) => button.closest('[data-testid="side-menu"]') === sideMenu)
     .filter((button) => !button.closest('[data-testid="menu-sub-dropdown"]'))
-    .map((button) => button.textContent)
+    .map((button) => button.getAttribute('aria-label') ?? button.textContent)
 }
 
 export function renderPointerReorderFixture() {

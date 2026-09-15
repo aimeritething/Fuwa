@@ -30,7 +30,7 @@ import { useEditorPasteHandler } from '@/kernel/blocknote/title-heading-interact
 import {
   type SuggestionAction,
   useSuggestionMenuItems,
-} from '@/kernel/blocknote/single-editor-suggestion-items'
+} from '@/kernel/blocknote/use-slash-menu-items'
 import {
   useEditorContainerClickHandler,
   useEditorWhitespaceMouseSelection,
@@ -40,6 +40,7 @@ import { useSeedBlockNoteTableBridge } from '@/kernel/blocknote/use-seed-block-n
 import { EditorInteractionControllers } from './editor-interaction-controllers'
 import { handleEditorCopy } from '@/kernel/blocknote/editor-copy-handlers'
 import { CodeBlockCopyButton } from '@/kernel/blocknote/code-block-copy-controls'
+import { blockNoteShadCNComponents } from '@/kernel/blocknote/shadcn-components'
 import { useCodeBlockCopyTarget } from '@/kernel/blocknote/use-code-block-copy-target'
 
 const TOOLBAR_MOUSE_DOWN_ALLOW_SELECTOR = [
@@ -356,6 +357,7 @@ export function SingleEditorView(options: {
           <BlockNoteView
             key={recoveryKey}
             editor={editor}
+            shadCNComponents={blockNoteShadCNComponents}
             theme={themeMode}
             onChange={handleEditorChange}
             editable={editable}

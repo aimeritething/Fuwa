@@ -38,7 +38,6 @@ export function ToolbarHighlightColorControl({
     const button = control?.button
     if (!button) return
 
-    button.classList.add('markdown-highlight-toolbar-main')
     const toggleDefault = (event: Event) => {
       event.preventDefault()
       event.stopImmediatePropagation()
@@ -47,7 +46,6 @@ export function ToolbarHighlightColorControl({
     button.addEventListener('click', toggleDefault, true)
     return () => {
       button.removeEventListener('click', toggleDefault, true)
-      button.classList.remove('markdown-highlight-toolbar-main')
     }
   }, [control?.button, editor])
 
@@ -55,7 +53,7 @@ export function ToolbarHighlightColorControl({
 
   return (
     <div
-      className="markdown-highlight-toolbar-control"
+      className="fixed z-popover"
       style={{ left: control.left, top: control.top }}
     >
       <MarkdownHighlightColorMenu
@@ -68,7 +66,7 @@ export function ToolbarHighlightColorControl({
         trigger={(
           <Button
             aria-label={label}
-            className="markdown-highlight-toolbar-trigger"
+            className="w-4.5 min-w-4.5 rounded-none rounded-e-sm p-0 text-text-primary"
             data-test="highlightColorMenu"
             onClick={() => setOpen(current => !current)}
             onPointerDown={event => event.preventDefault()}
@@ -76,7 +74,7 @@ export function ToolbarHighlightColorControl({
             title={label}
             variant="ghost"
           >
-            <CaretDown aria-hidden="true" className="markdown-highlight-toolbar-trigger-icon" />
+            <CaretDown aria-hidden="true" className="size-3" />
           </Button>
         )}
       />

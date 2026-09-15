@@ -1,4 +1,5 @@
 import { Check } from '@phosphor-icons/react'
+import { cva } from 'class-variance-authority'
 import type { ReactNode } from 'react'
 import {
   MARKDOWN_HIGHLIGHT_COLORS,
@@ -17,6 +18,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/ui/dropdown-menu'
+
+// The colour chip before each name: the chroma as the ring, its wash as the fill.
+const swatchVariants = cva('size-3.5 shrink-0 rounded-full border border-current', {
+  variants: {
+    color: {
+      yellow: 'bg-chroma-yellow-bg text-chroma-yellow',
+      green: 'bg-chroma-green-bg text-chroma-green',
+      red: 'bg-chroma-red-bg text-chroma-red',
+      blue: 'bg-chroma-blue-bg text-chroma-blue',
+      purple: 'bg-chroma-purple-bg text-chroma-purple',
+    } satisfies Record<MarkdownHighlightColor, string>,
+  },
+})
 
 interface MarkdownHighlightColorMenuProps {
   currentColor: MarkdownHighlightColor
@@ -41,10 +55,7 @@ export function MarkdownHighlightColorMenu(props: MarkdownHighlightColorMenuProp
             key={color}
             onSelect={() => applyMarkdownHighlightColor(editor, color, range, source)}
           >
-            <span
-              aria-hidden="true"
-              className={`markdown-highlight-color-swatch markdown-highlight-color-swatch--${color}`}
-            />
+            <span aria-hidden="true" className={swatchVariants({ color })} />
             <span>{colorLabel(locale, color)}</span>
             {currentColor === color && <Check aria-hidden="true" className="ml-auto" />}
           </DropdownMenuItem>

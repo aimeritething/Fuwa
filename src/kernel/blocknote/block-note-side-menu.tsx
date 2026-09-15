@@ -21,6 +21,7 @@ import {
   type SideMenuProps,
 } from '@blocknote/react'
 import { translate, type AppLocale } from '@/lib/i18n'
+import { Button } from '@/ui/button'
 import { richEditorBlockTypeName } from './rich-editor-block-types'
 import {
   useCallback,
@@ -44,10 +45,8 @@ import {
   type SideMenuBlock,
 } from './side-menu-blocks'
 import { turnBlockIntoType } from './rich-editor-block-type-commands'
-import {
-  createSlashMenuIcon,
-  getBlockTypeSelectItems,
-} from './editor-formatting-config'
+import { getBlockTypeSelectItems } from './block-type-select'
+import { createSlashMenuIcon } from './slash-menu-items'
 
 type TableHeaderContent = Record<string, unknown> & {
   headerCols?: unknown
@@ -187,8 +186,11 @@ function useRequiredComponentsContext() {
   return components
 }
 
+// The side menu's buttons: 24px, the icon 20px, in the muted colour.
+const SIDE_MENU_BUTTON_CLASS = 'text-text-muted'
+const SIDE_MENU_ICON_CLASS = 'size-5'
+
 function AddBlockButton() {
-  const Components = useRequiredComponentsContext()
   const dict = useDictionary()
   const suggestionMenu = useExtension(SuggestionMenu)
   const { block, editor } = useSideMenuBlock()
@@ -218,12 +220,15 @@ function AddBlockButton() {
   if (!block) return null
 
   return (
-    <Components.SideMenu.Button
-      className="bn-button"
-      label={dict.side_menu.add_block_label}
+    <Button
+      aria-label={dict.side_menu.add_block_label}
+      className={SIDE_MENU_BUTTON_CLASS}
       onClick={onButtonClick}
-      icon={<Plus size={20} data-test="dragHandleAdd" />}
-    />
+      size="icon-xs"
+      variant="ghost"
+    >
+      <Plus className={SIDE_MENU_ICON_CLASS} data-test="dragHandleAdd" />
+    </Button>
   )
 }
 
@@ -241,7 +246,6 @@ function itemCollapseButtonLabel(locale: AppLocale, isCollapsed: boolean) {
 }
 
 function HeadingCollapseButton({ locale }: { locale: AppLocale }) {
-  const Components = useRequiredComponentsContext()
   const { block, editor } = useSideMenuBlock()
   const collapsedHeadingIds = useCollapsedHeadingIds(editor)
   const isCollapsed = Boolean(block?.id && collapsedHeadingIds.has(block.id))
@@ -266,12 +270,15 @@ function HeadingCollapseButton({ locale }: { locale: AppLocale }) {
   if (!isCollapsible) return null
 
   return (
-    <Components.SideMenu.Button
-      className="bn-button"
-      label={label}
+    <Button
+      aria-label={label}
+      className={SIDE_MENU_BUTTON_CLASS}
       onClick={onButtonClick}
-      icon={<Icon size={20} onClick={onButtonClick} data-test="headingCollapseToggle" />}
-    />
+      size="icon-xs"
+      variant="ghost"
+    >
+      <Icon className={SIDE_MENU_ICON_CLASS} onClick={onButtonClick} data-test="headingCollapseToggle" />
+    </Button>
   )
 }
 
@@ -306,18 +313,21 @@ function DragHandleButton({
     >
       <Components.Generic.Menu.Trigger>
         <span
-          className="fuwa-block-drag-handle"
+          className="inline-flex items-center justify-center"
           onPointerDown={onPointerDown}
           onClickCapture={onClickCapture}
         >
-          <Components.SideMenu.Button
-            label={dict.side_menu.drag_handle_label}
+          <Button
+            aria-label={dict.side_menu.drag_handle_label}
+            className={SIDE_MENU_BUTTON_CLASS}
             draggable={false}
-            onDragStart={(event) => event.preventDefault()}
             onDragEnd={sideMenu.blockDragEnd}
-            className="bn-button"
-            icon={<GripVertical size={20} data-test="dragHandle" />}
-          />
+            onDragStart={(event) => event.preventDefault()}
+            size="icon-xs"
+            variant="ghost"
+          >
+            <GripVertical className={SIDE_MENU_ICON_CLASS} data-test="dragHandle" />
+          </Button>
         </span>
       </Components.Generic.Menu.Trigger>
       {dragHandleMenu
@@ -404,11 +414,12 @@ function TurnBlockIntoSubmenu({ locale }: { locale: AppLocale }) {
           {translate(locale, 'editor.sideMenu.turnIntoMenu')}
         </Components.Generic.Menu.Item>
       </Components.Generic.Menu.Trigger>
-      <Components.Generic.Menu.Dropdown className="fuwa-turn-into-menu-dropdown" sub>
+      {/* The submenu shrinks to its widest item instead of the menu's minimum width. */}
+      <Components.Generic.Menu.Dropdown className="min-w-0" sub>
         {getBlockTypeSelectItems().map((item) => (
           <Components.Generic.Menu.Item
             key={item.key}
-            className="bn-menu-item"
+            className="bn-menu-item whitespace-nowrap"
             icon={createSlashMenuIcon(item.icon)}
             onClick={() => {
               runSideMenuAction(() => {
