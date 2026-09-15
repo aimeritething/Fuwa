@@ -31,6 +31,13 @@ describe('editor paragraph spacing theme', () => {
     expect(spacingValues.every(isNonZeroLength)).toBe(true)
   })
 
+  it('does not stack divider bottom spacing with following heading top spacing', () => {
+    const blocknoteCss = readCss('kernel/blocknote/blocknote.css')
+
+    expect(blocknoteCss).toContain('.bn-block-outer:has(hr) + .bn-block-outer:has(> .bn-block > [data-content-type="heading"]) {')
+    expect(blocknoteCss).toContain('margin-top: var(--editor-divider-followed-by-heading-margin-top);')
+  })
+
   it('joins adjacent blockquote blocks into one continuous visual quote', () => {
     const blocknoteCss = readCss('kernel/blocknote/blocknote.css').replace(/\s+/gu, ' ')
 

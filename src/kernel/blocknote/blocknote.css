@@ -1,7 +1,7 @@
 /* ==============================================================
    blocknote.css — the Kernel's stylesheet: every `.bn-*` / ProseMirror
-   override, the KaTeX and tldraw rules and, until PR 8 / PR 9, the rules
-   for Fuwa's own block elements. index.css imports it right after the
+   override, the KaTeX and tldraw rules and, until PR 9, the rules for
+   Fuwa's own menu and control elements. index.css imports it right after the
    vendor stylesheets; nothing else does.
 
    Layers. The overrides sit in `components`: above `vendor`, which holds
@@ -705,46 +705,31 @@
   }
 
   /* ---------------------------------------------------------------
-     KaTeX and the math nodes (editor-schema.tsx)
+     KaTeX (the math nodes themselves are utility classes in math-block.tsx)
      --------------------------------------------------------------- */
-  .math {
-    color: var(--text-primary);
-    cursor: text;
-  }
-
-  .math--inline {
-    display: inline-flex;
-    max-width: 100%;
-    vertical-align: baseline;
-  }
-
-  .math--block {
-    display: block;
-    min-width: max-content;
-    text-align: center;
-  }
-
   /* KaTeX writes the error colour inline; math-markdown.ts hands it the token
      as `errorColor`, so only the wrapping is left to set here. */
-  .math .katex-error {
+  .bn-editor .katex-error {
     white-space: pre-wrap;
   }
 
   /* ---------------------------------------------------------------
      tldraw inside a whiteboard block (tldraw-whiteboard.tsx)
      --------------------------------------------------------------- */
-  .tldraw-whiteboard .tl-container {
+  [data-content-type="tldrawBlock"] .tl-container {
     --color-background: var(--surface-card);
-    /* tldraw's own layer ladder, compressed: inside a whiteboard nothing
-       rises above the block's own controls (z 90 and 95, in the block below);
-       only the order of these ordinals matters, so they stay numbers. */
-    --tl-layer-menu-click-capture: 25;
-    --tl-layer-panels: 30;
-    --tl-layer-menus: 40;
-    --tl-layer-toasts: 50;
-    --tl-layer-cursor: 60;
-    --tl-layer-header-footer: 70;
-    --tl-layer-following-indicator: 80;
+    /* tldraw's own layer ladder, compressed: .tl-container is no stacking
+       context, so these compete with the block's own elements, which sit at
+       z-raised (the resize handles, beneath tldraw's UI as before) and
+       z-sticky (the fullscreen button and the permission notice, above it).
+       Only the order of these ordinals matters, so they stay numbers. */
+    --tl-layer-menu-click-capture: 2;
+    --tl-layer-panels: 3;
+    --tl-layer-menus: 4;
+    --tl-layer-toasts: 5;
+    --tl-layer-cursor: 6;
+    --tl-layer-header-footer: 7;
+    --tl-layer-following-indicator: 8;
   }
 }
 
@@ -788,10 +773,10 @@
   }
 
   /* BlockNote's outline on a selected node, restated for the math block:
-     its shell is a ui/Button whose `outline-none` beats the vendor rule
-     now. The width is BlockNote's 4px; the colour is the focus ring token
-     where BlockNote has a literal blue. */
-  .ProseMirror-selectednode > .bn-block-content > .math-block-shell {
+     its shell (math-block.tsx) is a ui/Button whose `outline-none` beats the
+     vendor rule. The width is BlockNote's 4px; the colour is the focus ring
+     token where BlockNote has a literal blue. */
+  .ProseMirror-selectednode > [data-content-type="mathBlock"] > * {
     border-radius: var(--radius-sm);
     outline: var(--spacing) solid var(--state-focus-ring);
   }
@@ -852,18 +837,17 @@
 }
 
 /* ==============================================================
-   PR 8 / PR 9 搬进 tsx
+   PR 9 搬进 tsx
 
-   The rules for Fuwa's own block elements (`.html-block*`,
-   `.mermaid-diagram*`, `.markdown-highlight-*`, `.editor__code-block-*`,
-   `.tldraw-whiteboard*`, `.fuwa-callout*`, the math block's shell and the
-   slash menu's icon swap), moved here from editor-theme.css and editor.css
-   as they were, apart from the important flags and the literal colours.
-   They stay unlayered, as they were: several of these elements also carry
-   utility classes (the mermaid dialog, the highlight triggers, the code
-   copy button, the math block's Button), and a layered rule would lose to
-   those where the unlayered one wins today. PR 8 (blocks) and PR 9 (menus)
-   turn each into utility classes on the element and empty this block.
+   The rules for Fuwa's own menu and control elements (the slash menu's
+   icon swap, `.markdown-highlight-*`, `.editor__code-block-*`), moved here
+   from editor-theme.css and editor.css as they were, apart from the
+   important flags and the literal colours. They stay unlayered, as they
+   were: these elements also carry utility classes (the highlight triggers,
+   the code copy button), and a layered rule would lose to those where the
+   unlayered one wins today. PR 8 turned the blocks' rules (html, mermaid,
+   whiteboard, callout, math, the code line numbers) into utility classes
+   in their tsx; PR 9 (menus) does the same for these and empties the block.
    ============================================================== */
 
 /* --- Slash menu icons (PR 9). The rest of `.fuwa-slash-menu*` is still in
@@ -876,28 +860,6 @@
 
 .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__fill {
   opacity: 1;
-}
-
-/* --- Math block shell (PR 8): a ui/Button (editor-schema.tsx) whose
-   `px-3 py-1` a layered rule cannot beat. --- */
-.math-block-shell {
-  max-width: 100%;
-  overflow-x: auto;
-  padding: 6px 0;
-}
-
-.math-block-shell:not(.math-block-shell--editing) {
-  width: fit-content;
-  margin-inline: auto;
-}
-
-.math-block-shell--editing {
-  width: 100%;
-}
-
-.math-block-source::selection {
-  background: var(--state-selection);
-  color: var(--text-primary);
 }
 
 /* --- Markdown highlight controls (PR 9) --- */
@@ -979,234 +941,7 @@
   background: var(--chroma-purple-bg);
 }
 
-/* --- Mermaid diagram (PR 8) --- */
-.mermaid-diagram {
-  position: relative;
-  width: 100%;
-  margin: 10px 0;
-  color: var(--text-primary);
-}
-
-.mermaid-diagram__viewport {
-  max-width: 100%;
-  overflow: auto;
-  padding: 14px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--surface-card);
-}
-
-.mermaid-diagram__edit-button,
-.mermaid-diagram__expand-button {
-  position: absolute;
-  top: 8px;
-  z-index: 1;
-  opacity: 0;
-  background: var(--surface-card);
-  box-shadow: var(--shadow-menu);
-}
-
-.mermaid-diagram__edit-button {
-  right: 44px;
-}
-
-.mermaid-diagram__expand-button {
-  right: 8px;
-}
-
-.mermaid-diagram:is(:hover, :focus-within) .mermaid-diagram__edit-button,
-.mermaid-diagram:is(:hover, :focus-within) .mermaid-diagram__expand-button {
-  opacity: 1;
-}
-
-.mermaid-diagram__viewport:focus-visible {
-  outline: 2px solid var(--state-focus-ring);
-  outline-offset: 2px;
-}
-
-.mermaid-diagram__viewport svg {
-  display: block;
-  max-width: none;
-  min-width: min-content;
-  height: auto;
-  margin: 0 auto;
-}
-
-@media (hover: none) {
-  .mermaid-diagram__edit-button,
-  .mermaid-diagram__expand-button {
-    opacity: 1;
-  }
-}
-
-.mermaid-diagram__dialog {
-  width: calc(100vw - 32px);
-  max-width: calc(100vw - 32px);
-  height: calc(100dvh - 32px);
-  max-height: calc(100dvh - 32px);
-  overflow: hidden;
-  padding: 0;
-}
-
-.mermaid-diagram__dialog-viewport {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-  padding: 24px;
-  color: var(--text-primary);
-  background: var(--surface-card);
-}
-
-.mermaid-diagram__dialog-viewport:focus-visible {
-  outline: 2px solid var(--state-focus-ring);
-  outline-offset: -2px;
-}
-
-.mermaid-diagram__dialog-viewport svg {
-  display: block;
-  max-width: none;
-  min-width: min-content;
-  height: auto;
-  margin: auto;
-}
-
-.mermaid-diagram--error {
-  padding: 12px;
-  border: 1px solid var(--chroma-red);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--chroma-red) 8%, transparent);
-}
-
-.mermaid-diagram--error figcaption {
-  margin-bottom: 8px;
-  color: var(--chroma-red);
-  font-size: 11.9px;
-  font-weight: 600;
-}
-
-.mermaid-diagram--error pre {
-  max-width: 100%;
-  overflow: auto;
-  margin: 0;
-  padding: 10px;
-  border-radius: 6px;
-  background: var(--inline-code-bg);
-  color: inherit;
-  font-size: 11.9px;
-}
-
-/* --- Whiteboard block (PR 8) --- */
-.tldraw-whiteboard {
-  position: relative;
-  width: min(var(--whiteboard-width, 100%), 100%);
-  max-width: 100%;
-  height: var(--whiteboard-height, 520px);
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--surface-card);
-  user-select: none;
-}
-
-body.tldraw-whiteboard-fullscreen-open {
-  overflow: hidden;
-}
-
-.tldraw-whiteboard.tldraw-whiteboard--fullscreen {
-  position: fixed;
-  inset: 8px;
-  z-index: 1200;
-  width: auto;
-  max-width: none;
-  height: auto;
-  border-radius: 10px;
-  box-shadow: var(--shadow-dialog);
-}
-
-.tldraw-whiteboard__fullscreen-button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 90;
-  background: var(--surface-app);
-  box-shadow: var(--shadow-card);
-}
-
-.tldraw-whiteboard--fullscreen .tldraw-whiteboard__fullscreen-button {
-  top: 12px;
-  right: 12px;
-}
-
-.tldraw-whiteboard__permission-error {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  left: 12px;
-  z-index: 95;
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--chroma-red) 34%, var(--border-default));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--surface-app) 94%, var(--chroma-red));
-  color: var(--text-primary);
-  font-size: 11.9px;
-  line-height: 1.4;
-  box-shadow: var(--shadow-menu);
-}
-
-.tldraw-whiteboard__permission-error strong {
-  color: var(--chroma-red);
-  font-size: 12.04px;
-}
-
-.tldraw-whiteboard__resize-handle {
-  position: absolute;
-  z-index: 2;
-  background: transparent;
-  touch-action: none;
-}
-
-.tldraw-whiteboard--fullscreen .tldraw-whiteboard__resize-handle {
-  display: none;
-}
-
-.tldraw-whiteboard__resize-handle--width {
-  top: 0;
-  right: 0;
-  width: 12px;
-  height: 100%;
-  cursor: ew-resize;
-}
-
-.tldraw-whiteboard__resize-handle--height {
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 12px;
-  cursor: ns-resize;
-}
-
-.tldraw-whiteboard__resize-handle--corner {
-  right: 0;
-  bottom: 0;
-  width: 18px;
-  height: 18px;
-  cursor: nwse-resize;
-}
-
-.tldraw-whiteboard__resize-handle--corner::after {
-  position: absolute;
-  right: 4px;
-  bottom: 4px;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
-  border-bottom: 2px solid color-mix(in srgb, var(--text-primary) 42%, transparent);
-  content: '';
-}
-
-/* --- Code block controls (PR 8) --- */
+/* --- Code block controls (PR 9) --- */
 .editor__code-block-copy {
   position: absolute;
   z-index: 4;
@@ -1233,153 +968,4 @@ body.tldraw-whiteboard-fullscreen-open {
 
 .editor__code-block-language-overlay .editor__code-block-language-trigger {
   color: var(--text-secondary);
-}
-
-.editor__code-line-number {
-  color: var(--text-muted);
-  display: inline-block;
-  margin-inline-end: 14px;
-  margin-inline-start: -42px;
-  pointer-events: none;
-  text-align: right;
-  user-select: none;
-  width: 28px;
-}
-
-.editor__code-line-number::before {
-  content: attr(data-code-line-number);
-}
-
-/* --- HTML block (PR 8) --- */
-.html-block {
-  background: var(--surface-card);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  min-height: 180px;
-  overflow: hidden;
-  position: relative;
-  transition: border-color 120ms ease;
-  width: 100%;
-}
-
-.html-block:hover {
-  border-color: var(--border-default);
-}
-
-.html-block__toolbar {
-  align-items: center;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  transition: opacity 120ms ease;
-  z-index: 2;
-}
-
-.html-block:focus-within .html-block__toolbar,
-.html-block:hover .html-block__toolbar {
-  opacity: 1;
-}
-
-.html-block__toolbar [data-slot="button"] {
-  background: color-mix(in srgb, var(--surface-popover) 92%, transparent);
-  box-shadow: var(--shadow-card);
-}
-
-.html-block__frame {
-  border: 0;
-  height: 100%;
-  width: 100%;
-  background: Canvas;
-  display: block;
-}
-
-.html-block__fallback {
-  align-items: center;
-  color: var(--text-secondary);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  height: 100%;
-  justify-content: center;
-  padding: 24px;
-  text-align: center;
-}
-
-.html-block__resize-handle {
-  bottom: 6px;
-  cursor: ns-resize;
-  opacity: 0;
-  position: absolute;
-  right: 6px;
-  z-index: 2;
-}
-
-.html-block:focus-within .html-block__resize-handle,
-.html-block:hover .html-block__resize-handle {
-  opacity: 1;
-}
-
-/* --- Callout block (PR 8). Linear-style: the family's chromatic role at 2%
-   for the ground and 20% for a hairline border, 6px radius. --- */
-.fuwa-callout {
-  --_callout-accent: var(--chroma-teal);
-  --_callout-accent-text: var(--chroma-teal-text);
-  margin: 7px 0;
-  overflow: hidden;
-  border: var(--hairline) solid color-mix(in srgb, var(--_callout-accent) 20%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--_callout-accent) 2%, transparent);
-}
-
-.fuwa-callout--success {
-  --_callout-accent: var(--chroma-green);
-  --_callout-accent-text: var(--chroma-green-text);
-}
-
-.fuwa-callout--warning {
-  --_callout-accent: var(--chroma-orange);
-  --_callout-accent-text: var(--chroma-orange-text);
-}
-
-.fuwa-callout--error {
-  --_callout-accent: var(--chroma-red);
-  --_callout-accent-text: var(--chroma-red-text);
-}
-
-.fuwa-callout--example {
-  --_callout-accent: var(--chroma-purple);
-  --_callout-accent-text: var(--chroma-purple-text);
-}
-
-.fuwa-callout--quote {
-  --_callout-accent: var(--text-secondary);
-  --_callout-accent-text: var(--text-secondary);
-}
-
-.fuwa-callout__header {
-  display: flex;
-  min-height: 28px;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 10.5px 1.75px;
-  color: var(--_callout-accent-text);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.fuwa-callout__header > svg {
-  width: 14px;
-  height: 14px;
-}
-
-.fuwa-callout__body {
-  padding: 2.1px 10.5px 9.1px;
-  color: var(--text-primary);
-}
-
-.fuwa-callout__body[hidden] {
-  display: none;
 }

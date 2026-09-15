@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_COMMAND_EVENT_NAME, APP_COMMAND_IDS } from '@/shell/app-command-dispatcher'
 import { RUNTIME_STYLE_NONCE } from '@/platform/runtime-style-nonce'
-import { MermaidDiagram } from './mermaid-diagram'
+import { MermaidDiagram } from './mermaid-block'
 
 const REPORTED_GANTT_DIAGRAM = [
   'gantt',

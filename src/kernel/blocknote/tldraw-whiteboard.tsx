@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type MutableRefObject, type PointerEvent as ReactPointerEvent } from 'react'
 import { getAssetUrlsByImport } from '@tldraw/assets/imports.vite'
+import { useBlockNoteContext } from '@blocknote/react'
 import { ArrowsIn, ArrowsOut } from '@phosphor-icons/react'
-import { Dialog as DialogPrimitive } from 'radix-ui'
 import {
   Box,
   Tldraw,
@@ -17,20 +17,21 @@ import {
   type TLStoreSnapshot,
   type TLUserPreferences,
 } from 'tldraw'
-import { useDocumentThemeMode } from '@/shell/use-document-theme-mode'
 import { resolveEffectiveLocale, translate, type AppLocale } from '@/lib/i18n'
-import type { ResolvedThemeMode } from '@/shell/theme-mode'
 import {
   isWhiteboardPlatformPermissionRejection,
   retainWhiteboardPlatformPermissionGuard,
 } from './whiteboard-platform-permission-rejection'
 import { Button } from '@/ui/button'
+import { Dialog } from '@/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { installTldrawTextMeasurementGuard } from './tldraw-text-measurement-guard'
 
 const EMPTY_TLDRAW_TRANSLATION_URL = 'data:application/json;base64,e30K'
 const TLDRAW_USER_ID = 'fuwa-whiteboard'
-const WHITEBOARD_FULLSCREEN_BODY_CLASS = 'tldraw-whiteboard-fullscreen-open'
+
+// The three resize handles: bare buttons at the board's edges, gone in fullscreen.
+const RESIZE_HANDLE_CLASS = 'absolute z-raised touch-none border-0 bg-transparent p-0 group-data-fullscreen:hidden'
 
 function resolveTldrawAssetUrl(assetUrl: string | undefined): string {
   return assetUrl ?? EMPTY_TLDRAW_TRANSLATION_URL
@@ -104,11 +105,11 @@ function cssSize({ height, width }: PixelSize): CSSProperties {
   } as CSSProperties
 }
 
-function tldrawUserPreferences(themeMode: ResolvedThemeMode): TLUserPreferences {
+function tldrawUserPreferences(colorScheme: 'light' | 'dark'): TLUserPreferences {
   return {
     ...defaultUserPreferences,
     id: TLDRAW_USER_ID,
-    colorScheme: themeMode,
+    colorScheme,
   }
 }
 
@@ -443,8 +444,11 @@ const TldrawDialog = memo(function TldrawDialog({ dialog, onClose }: TldrawDialo
 
   if (!readyToOpen) return null
 
+  // The overlay and the panel stay tldraw's own DOM inside its container: its
+  // --tl-* variables live on .tl-container, and a panel portaled to the body
+  // (ui/dialog's DialogContent) would lose them.
   return (
-    <DialogPrimitive.Root open onOpenChange={handleOpenChange}>
+    <Dialog open onOpenChange={handleOpenChange}>
       <div
         ref={overlayRef}
         dir="ltr"
@@ -456,7 +460,7 @@ const TldrawDialog = memo(function TldrawDialog({ dialog, onClose }: TldrawDialo
           onClose={closeDialogNow}
         />
       </div>
-    </DialogPrimitive.Root>
+    </Dialog>
   )
 })
 
@@ -501,11 +505,9 @@ function useFullscreenWhiteboard() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setFullscreen(false)
     }
-    document.body.classList.add(WHITEBOARD_FULLSCREEN_BODY_CLASS)
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      document.body.classList.remove(WHITEBOARD_FULLSCREEN_BODY_CLASS)
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [fullscreen])
@@ -551,8 +553,9 @@ export function TldrawWhiteboard({
     locale,
     fullscreen ? 'editor.whiteboard.exitFullscreen' : 'editor.whiteboard.enterFullscreen',
   )
-  const themeMode = useDocumentThemeMode()
-  const userPreferences = useMemo(() => tldrawUserPreferences(themeMode), [themeMode])
+  // The board follows the editor's theme prop (BlockNoteView), not the window's.
+  const colorScheme = useBlockNoteContext()?.colorSchemePreference ?? 'dark'
+  const userPreferences = useMemo(() => tldrawUserPreferences(colorScheme), [colorScheme])
   const tldrawUser = useTldrawUser({
     setUserPreferences: ignoreTldrawUserPreferencesUpdate,
     userPreferences,
@@ -654,9 +657,10 @@ export function TldrawWhiteboard({
   return (
     <div
       ref={boardRef}
-      className={fullscreen ? 'tldraw-whiteboard tldraw-whiteboard--fullscreen' : 'tldraw-whiteboard'}
+      className="group relative h-[var(--whiteboard-height,520px)] w-[min(var(--whiteboard-width,100%),100%)] max-w-full overflow-hidden rounded-lg border-hairline border-border-default bg-surface-card select-none data-fullscreen:fixed data-fullscreen:inset-2 data-fullscreen:z-popover data-fullscreen:h-auto data-fullscreen:w-auto data-fullscreen:max-w-none data-fullscreen:rounded-xl data-fullscreen:shadow-dialog"
       contentEditable={false}
       data-board-id={boardId}
+      data-fullscreen={fullscreen || undefined}
       style={cssSize(visibleSize)}
     >
       <Tldraw
@@ -670,10 +674,10 @@ export function TldrawWhiteboard({
       {platformPermissionDenied ? (
         <div
           role="alert"
-          className="tldraw-whiteboard__permission-error"
+          className="absolute right-3 bottom-3 left-3 z-sticky grid gap-1 rounded-lg border-hairline border-chroma-red/34 bg-[color-mix(in_srgb,var(--surface-app)_94%,var(--chroma-red))] px-3 py-2.5 text-xs leading-snug text-text-primary shadow-menu"
           data-testid="tldraw-whiteboard-permission-error"
         >
-          <strong>{translate(locale, 'editor.whiteboard.permissionDeniedTitle')}</strong>
+          <strong className="text-xs text-chroma-red">{translate(locale, 'editor.whiteboard.permissionDeniedTitle')}</strong>
           <span>{translate(locale, 'editor.whiteboard.permissionDeniedBody')}</span>
         </div>
       ) : null}
@@ -685,7 +689,7 @@ export function TldrawWhiteboard({
             size="icon-xs"
             aria-label={fullscreenLabel}
             aria-pressed={fullscreen}
-            className="tldraw-whiteboard__fullscreen-button"
+            className="absolute top-2 right-2 z-sticky bg-surface-app shadow-card group-data-fullscreen:top-3 group-data-fullscreen:right-3"
             data-testid="tldraw-whiteboard-fullscreen-toggle"
             title={fullscreenLabel}
             onClick={toggleFullscreen}
@@ -698,21 +702,21 @@ export function TldrawWhiteboard({
       <button
         type="button"
         aria-label="Resize whiteboard width"
-        className="tldraw-whiteboard__resize-handle tldraw-whiteboard__resize-handle--width border-0 bg-transparent p-0"
+        className={`${RESIZE_HANDLE_CLASS} top-0 right-0 h-full w-3 cursor-ew-resize`}
         data-resize-mode="width"
         onPointerDown={startResize}
       />
       <button
         type="button"
         aria-label="Resize whiteboard height"
-        className="tldraw-whiteboard__resize-handle tldraw-whiteboard__resize-handle--height border-0 bg-transparent p-0"
+        className={`${RESIZE_HANDLE_CLASS} bottom-0 left-0 h-3 w-full cursor-ns-resize`}
         data-resize-mode="height"
         onPointerDown={startResize}
       />
       <button
         type="button"
         aria-label="Resize whiteboard"
-        className="tldraw-whiteboard__resize-handle tldraw-whiteboard__resize-handle--corner border-0 bg-transparent p-0"
+        className={`${RESIZE_HANDLE_CLASS} right-0 bottom-0 size-4.5 cursor-nwse-resize after:absolute after:right-1 after:bottom-1 after:size-2 after:border-r-2 after:border-b-2 after:border-text-primary/42`}
         data-resize-mode="both"
         onPointerDown={startResize}
       />

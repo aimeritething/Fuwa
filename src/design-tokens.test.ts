@@ -72,7 +72,9 @@ describe('the shadcn aliases', () => {
     const asVariable = new RegExp(`var\\(--(?:color-)?(${names})\\)`)
     // A colour utility built on one of the names, with or without variants and an
     // opacity modifier, terminated so that `border-border-default` and `text-text-primary` do not match.
-    const asUtility = new RegExp(`(?:^|[\\s"'\`(:])(?:[\\w[\\]=-]+:)*(?:bg|text|border|ring|outline|fill|stroke|divide|placeholder|from|to|via|shadow|decoration|caret)-(${names})(?:/\\d+)?(?=[\\s"'\`)\\]/]|$)`, 'm')
+    // `shadow-card` is Fuwa's own shadow token (`--shadow-card`), not the `card` alias.
+    const shadowNames = SHADCN_NAMES.filter((name) => name !== 'card').join('|')
+    const asUtility = new RegExp(`(?:^|[\\s"'\`(:])(?:[\\w[\\]=-]+:)*(?:(?:bg|text|border|ring|outline|fill|stroke|divide|placeholder|from|to|via|decoration|caret)-(${names})|shadow-(${shadowNames}))(?:/\\d+)?(?=[\\s"'\`)\\]/]|$)`, 'm')
     const offenders: string[] = []
     for (const file of sourceFiles(SRC)) {
       const path = relative(SRC, file)

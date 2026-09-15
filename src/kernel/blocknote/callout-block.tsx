@@ -1,4 +1,5 @@
 import { createReactBlockSpec, type ReactCustomBlockRenderProps } from '@blocknote/react'
+import { cva } from 'class-variance-authority'
 import { createElement } from 'react'
 import { useAppLocale } from '@/lib/use-app-preferences'
 import { translate } from '@/lib/i18n'
@@ -9,7 +10,7 @@ import {
 import { resolveCalloutDefinition } from './callout-catalog'
 import { calloutIconForType } from './callout-icons'
 
-const CALLOUT_BLOCK_CONFIG = {
+export const CALLOUT_BLOCK_CONFIG = {
   type: CALLOUT_BLOCK_TYPE,
   propSchema: {
     calloutType: { default: 'note' },
@@ -24,6 +25,25 @@ type CalloutBlockViewProps = ReactCustomBlockRenderProps<
   'inline'
 >
 
+// Linear-style: the family's chromatic role at 2% for the ground and 20% for
+// a hairline border; the heading takes the role's text colour, the body the
+// body colour. The family is the callout catalog's visual axis.
+const calloutVariants = cva(
+  'my-[7px] overflow-hidden rounded-md border-hairline',
+  {
+    variants: {
+      family: {
+        note: 'border-chroma-teal/20 bg-chroma-teal/2 text-chroma-teal-text',
+        success: 'border-chroma-green/20 bg-chroma-green/2 text-chroma-green-text',
+        warning: 'border-chroma-orange/20 bg-chroma-orange/2 text-chroma-orange-text',
+        error: 'border-chroma-red/20 bg-chroma-red/2 text-chroma-red-text',
+        example: 'border-chroma-purple/20 bg-chroma-purple/2 text-chroma-purple-text',
+        quote: 'border-text-secondary/20 bg-text-secondary/2 text-text-secondary',
+      },
+    },
+  },
+)
+
 function CalloutHeading({
   calloutType,
   heading,
@@ -31,7 +51,11 @@ function CalloutHeading({
   calloutType: string
   heading: string
 }) {
-  const icon = createElement(calloutIconForType(calloutType), { 'aria-hidden': true, weight: 'fill' })
+  const icon = createElement(calloutIconForType(calloutType), {
+    'aria-hidden': true,
+    className: 'size-3.5',
+    weight: 'fill',
+  })
   return <>{icon}<span>{heading}</span></>
 }
 
@@ -43,16 +67,16 @@ function CalloutBlockView({ block, contentRef }: CalloutBlockViewProps) {
 
   return (
     <aside
-      className={`fuwa-callout fuwa-callout--${family}`}
+      className={calloutVariants({ family })}
       data-callout-type={calloutType}
     >
-      <div className="fuwa-callout__header">
+      <div className="flex min-h-7 items-center gap-[7px] px-[10.5px] pt-[7px] pb-[1.75px] font-semibold">
         <CalloutHeading
           calloutType={calloutType}
           heading={heading}
         />
       </div>
-      <div ref={contentRef} className="fuwa-callout__body" />
+      <div ref={contentRef} className="px-[10.5px] pt-[2.1px] pb-[9.1px] text-text-primary" />
     </aside>
   )
 }

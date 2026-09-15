@@ -1,3 +1,4 @@
+import { createReactBlockSpec } from '@blocknote/react'
 import {
   ArrowsClockwise,
   ArrowsOutLineVertical,
@@ -26,7 +27,18 @@ import {
 } from '@/kernel/markdown/html-block-markdown'
 import { htmlBlockPreview } from './html-block-sandbox'
 import { dispatchRichEditorExternalChange } from './editor-external-change-events'
+import { readFencedPreElement } from './fenced-pre-element'
 import { Button } from '@/ui/button'
+
+export const HTML_BLOCK_CONFIG = {
+  type: BLOCK_TYPE,
+  propSchema: {
+    height: { default: '320' },
+    html: { default: '' },
+    scripts: { default: 'blocked' },
+  },
+  content: 'none',
+} as const
 
 export interface HtmlBlockProps {
   height: string
@@ -259,6 +271,10 @@ function useHtmlBlockSourceCopy(currentMarkup: string) {
   }
 }
 
+// The floating buttons sit on a slightly translucent popover ground so the
+// preview shows through at the edges.
+const TOOLBAR_BUTTON_CLASS = 'bg-surface-popover/92 shadow-card'
+
 interface HtmlBlockToolbarProps {
   copySource: (event: SyntheticEvent) => void
   resetHeight: (event: SyntheticEvent) => void
@@ -266,18 +282,24 @@ interface HtmlBlockToolbarProps {
 
 function HtmlBlockToolbar({ copySource, resetHeight }: HtmlBlockToolbarProps) {
   return (
-    <div className="html-block__toolbar" aria-label={t('editor.htmlBlock.toolbar')} role="toolbar">
-      <Button aria-label={t('editor.htmlBlock.copySource')} onClick={copySource} onMouseDown={stopHtmlBlockEvent}
-        size="icon-xs" title={t('editor.htmlBlock.copySource')} type="button" variant="outline">
+    <div
+      className="absolute top-2 right-2 z-raised flex items-center gap-1 opacity-0 transition-opacity duration-150 ease-out group-focus-within:opacity-100 group-hover:opacity-100"
+      aria-label={t('editor.htmlBlock.toolbar')}
+      role="toolbar"
+    >
+      <Button aria-label={t('editor.htmlBlock.copySource')} className={TOOLBAR_BUTTON_CLASS} onClick={copySource}
+        onMouseDown={stopHtmlBlockEvent} size="icon-xs" title={t('editor.htmlBlock.copySource')} type="button"
+        variant="outline">
         <Copy aria-hidden="true" />
       </Button>
-      <Button aria-label={t('editor.htmlBlock.openRawEditor')} onClick={openRawEditorForHtmlSource}
-        onMouseDown={stopHtmlBlockEvent} size="icon-xs" title={t('editor.htmlBlock.openRawEditor')}
-        type="button" variant="outline">
+      <Button aria-label={t('editor.htmlBlock.openRawEditor')} className={TOOLBAR_BUTTON_CLASS}
+        onClick={openRawEditorForHtmlSource} onMouseDown={stopHtmlBlockEvent} size="icon-xs"
+        title={t('editor.htmlBlock.openRawEditor')} type="button" variant="outline">
         <Code aria-hidden="true" />
       </Button>
-      <Button aria-label={t('editor.htmlBlock.resetHeight')} onClick={resetHeight} onMouseDown={stopHtmlBlockEvent}
-        size="icon-xs" title={t('editor.htmlBlock.resetHeight')} type="button" variant="outline">
+      <Button aria-label={t('editor.htmlBlock.resetHeight')} className={TOOLBAR_BUTTON_CLASS} onClick={resetHeight}
+        onMouseDown={stopHtmlBlockEvent} size="icon-xs" title={t('editor.htmlBlock.resetHeight')} type="button"
+        variant="outline">
         <ArrowsClockwise aria-hidden="true" />
       </Button>
     </div>
@@ -294,12 +316,12 @@ interface HtmlBlockContentProps {
 
 function HtmlBlockContent({ blocked, frameRef, onFocus, onLoad, srcDoc }: HtmlBlockContentProps) {
   if (!blocked) {
-    return <iframe className="html-block__frame" onFocus={onFocus} onLoad={onLoad} referrerPolicy="no-referrer"
+    return <iframe className="block h-full w-full border-0 bg-[Canvas]" onFocus={onFocus} onLoad={onLoad} referrerPolicy="no-referrer"
       ref={frameRef} sandbox={HTML_BLOCK_SANDBOX_ATTRIBUTE} srcDoc={srcDoc}
       tabIndex={-1} title={t('editor.htmlBlock.previewTitle')} />
   }
   return (
-    <div className="html-block__fallback" role="alert">
+    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-text-secondary" role="alert">
       <span>{t('editor.htmlBlock.blockedFallback')}</span>
       <Button onClick={openRawEditorForHtmlSource} onMouseDown={stopHtmlBlockEvent} type="button" variant="outline" size="sm">
         <Code aria-hidden="true" />
@@ -314,7 +336,8 @@ function HtmlBlockResizeHandle({ onKeyDown, onPointerDown }: {
   onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void
 }) {
   return (
-    <Button aria-label={t('editor.htmlBlock.resizeHeight')} className="html-block__resize-handle"
+    <Button aria-label={t('editor.htmlBlock.resizeHeight')}
+      className="absolute right-1.5 bottom-1.5 z-raised cursor-ns-resize opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
       onKeyDown={onKeyDown} onMouseDown={stopHtmlBlockEvent} onPointerDown={onPointerDown}
       size="icon-xs" title={t('editor.htmlBlock.resizeHeight')} type="button" variant="ghost">
       <ArrowsOutLineVertical aria-hidden="true" />
@@ -332,7 +355,9 @@ export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
   const copySource = useHtmlBlockSourceCopy(currentMarkup)
 
   return (
-    <section className="html-block" contentEditable={false} data-html-block aria-label={t('editor.htmlBlock.previewTitle')}
+    <section
+      className="group relative min-h-45 w-full overflow-hidden rounded-lg border-hairline border-transparent bg-surface-card transition-colors duration-150 ease-out hover:border-border-default"
+      contentEditable={false} data-html-block aria-label={t('editor.htmlBlock.previewTitle')}
       onMouseDown={stopHtmlBlockEvent} onPointerDown={stopHtmlBlockEvent} style={{ height: `${height.displayHeight}px` }}
       suppressContentEditableWarning>
       <HtmlBlockToolbar copySource={copySource} resetHeight={height.resetHeight} />
@@ -342,3 +367,25 @@ export function HtmlBlock({ block, editor }: HtmlBlockViewProps) {
     </section>
   )
 }
+
+function readHtmlPreElement(element: HTMLElement): { height: string; html: string } | undefined {
+  const html = readFencedPreElement(element, 'html')
+  if (html === undefined) return undefined
+
+  return {
+    height: BLOCK_DEFAULT_HEIGHT,
+    html,
+  }
+}
+
+export const HtmlBlockSpec = createReactBlockSpec(
+  HTML_BLOCK_CONFIG,
+  {
+    runsBefore: ['codeBlock'],
+    meta: { selectable: false },
+    parse: readHtmlPreElement,
+    render: (props) => (
+      <HtmlBlock block={props.block} editor={props.editor} />
+    ),
+  },
+)
