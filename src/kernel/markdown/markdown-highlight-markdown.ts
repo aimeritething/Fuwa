@@ -4,6 +4,7 @@ import {
 } from './block-note-direct-markdown'
 
 export const MARKDOWN_HIGHLIGHT_STYLE = 'highlight' as const
+const MARKDOWN_HIGHLIGHT_DELIMITER = '=='
 export const MARKDOWN_HIGHLIGHT_COLOR_OPTIONS = [
   { color: 'yellow', localeKey: 'editor.formatting.highlightYellow', markdownPrefix: '' },
   { color: 'green', localeKey: 'editor.formatting.highlightGreen', markdownPrefix: '🟢' },
@@ -59,11 +60,7 @@ type MarkdownSerializer = DirectMarkdownCapableSerializer
 type BlockContent = unknown
 type TableCellValue = TableCellLike | string
 type InlineContentTransform = (content: InlineItem[]) => InlineItem[]
-type InlineSegment = { kind: 'delimiter' } | { kind: 'item'; item: InlineItem }
-type HighlightInjectionState = {
-  color: MarkdownHighlightColor | null
-  readsColorPrefix: boolean
-}
+type InlineSegment = { kind: 'delimiter'; literal: InlineItem } | { kind: 'item'; item: InlineItem }
 
 function isTextItem(item: InlineItem): item is InlineItem & { text: string } {
   return item.type === 'text' && typeof item.text === 'string'
@@ -118,18 +115,20 @@ function pushTextSegment(segments: InlineSegment[], item: InlineItem, text: stri
   if (text) segments.push({ kind: 'item', item: textItemWithText(item, text) })
 }
 
+// Each delimiter keeps the item it was cut from, so a pair that turns out not
+// to be a highlight goes back as literal text in its original styles.
 function splitTextItemAtHighlightDelimiters(item: InlineItem): InlineSegment[] {
   if (!isTextItem(item) || isCodeTextItem(item)) return [{ kind: 'item', item }]
 
   const segments: InlineSegment[] = []
   let cursor = 0
-  let delimiterIndex = item.text.indexOf('==')
+  let delimiterIndex = item.text.indexOf(MARKDOWN_HIGHLIGHT_DELIMITER)
 
   while (delimiterIndex !== -1) {
     pushTextSegment(segments, item, item.text.slice(cursor, delimiterIndex))
-    segments.push({ kind: 'delimiter' })
-    cursor = delimiterIndex + 2
-    delimiterIndex = item.text.indexOf('==', cursor)
+    segments.push({ kind: 'delimiter', literal: textItemWithText(item, MARKDOWN_HIGHLIGHT_DELIMITER) })
+    cursor = delimiterIndex + MARKDOWN_HIGHLIGHT_DELIMITER.length
+    delimiterIndex = item.text.indexOf(MARKDOWN_HIGHLIGHT_DELIMITER, cursor)
   }
 
   pushTextSegment(segments, item, item.text.slice(cursor))
@@ -155,41 +154,27 @@ function addHighlightStyle(item: InlineItem, color: MarkdownHighlightColor): Inl
   }
 }
 
-function toggleInjectedHighlight(state: HighlightInjectionState): InlineItem[] {
-  state.color = state.color === null ? DEFAULT_MARKDOWN_HIGHLIGHT_COLOR : null
-  state.readsColorPrefix = state.color !== null
-  return []
+// The items between one delimiter pair as highlighted content, or null when
+// the pair holds nothing (`====`, `==🔴==`): the colour prefix is read off the
+// first text item and dropped.
+function highlightPairContent(items: InlineItem[]): InlineItem[] | null {
+  const [first, ...rest] = items
+  if (!first) return null
+
+  let color: MarkdownHighlightColor = DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
+  let content = items
+  if (isTextItem(first)) {
+    const prefixed = readMarkdownHighlightPrefix(first.text)
+    color = prefixed.color
+    content = prefixed.text.length === 0 ? rest : [textItemWithText(first, prefixed.text), ...rest]
+  }
+  if (content.length === 0) return null
+
+  return content.map(item => addHighlightStyle(item, color))
 }
 
-function consumeHighlightColorPrefix(
-  item: InlineItem,
-  state: HighlightInjectionState,
-): InlineItem {
-  if (state.color === null || !state.readsColorPrefix) return item
-
-  state.readsColorPrefix = false
-  if (!isTextItem(item)) return item
-
-  const prefixed = readMarkdownHighlightPrefix(item.text)
-  state.color = prefixed.color
-  return textItemWithText(item, prefixed.text)
-}
-
-function isEmptyTextItem(item: InlineItem): boolean {
-  return isTextItem(item) && item.text.length === 0
-}
-
-function injectHighlightSegment(
-  segment: InlineSegment,
-  state: HighlightInjectionState,
-): InlineItem[] {
-  if (segment.kind === 'delimiter') return toggleInjectedHighlight(state)
-
-  const item = consumeHighlightColorPrefix(segment.item, state)
-  state.readsColorPrefix = false
-  if (isEmptyTextItem(item)) return []
-
-  return [state.color === null ? item : addHighlightStyle(item, state.color)]
+function segmentItems(segments: InlineSegment[]): InlineItem[] {
+  return segments.map(segment => segment.kind === 'item' ? segment.item : segment.literal)
 }
 
 function injectMarkdownHighlights(content: InlineItem[]): InlineItem[] {
@@ -197,8 +182,27 @@ function injectMarkdownHighlights(content: InlineItem[]): InlineItem[] {
   const delimiters = delimiterCount(segments)
   if (delimiters === 0 || delimiters % 2 !== 0) return content
 
-  const state: HighlightInjectionState = { color: null, readsColorPrefix: false }
-  return segments.flatMap(segment => injectHighlightSegment(segment, state))
+  const injected: InlineItem[] = []
+  let index = 0
+  while (index < segments.length) {
+    const segment = segments[index]
+    if (segment.kind === 'item') {
+      injected.push(segment.item)
+      index += 1
+      continue
+    }
+
+    const closing = segments.findIndex((candidate, at) => at > index && candidate.kind === 'delimiter')
+    const inner = segments.slice(index + 1, closing)
+    const highlighted = highlightPairContent(segmentItems(inner))
+    if (highlighted) {
+      injected.push(...highlighted)
+    } else {
+      injected.push(segment.literal, ...segmentItems(inner), (segments[closing] as { literal: InlineItem }).literal)
+    }
+    index = closing + 1
+  }
+  return injected
 }
 
 function withoutHighlightStyle(styles: TextStyles | undefined): TextStyles {
@@ -216,7 +220,7 @@ function isHighlightedTextItem(item: InlineItem): boolean {
 }
 
 function highlightMarker(prefix = ''): InlineItem {
-  return { type: 'text', text: `==${prefix}`, styles: {} }
+  return { type: 'text', text: `${MARKDOWN_HIGHLIGHT_DELIMITER}${prefix}`, styles: {} }
 }
 
 function restoreHighlightedTextItem(item: InlineItem): InlineItem {

@@ -24,7 +24,6 @@ import {
   type SetStateAction,
 } from 'react'
 import { useBlockNoteFormattingToolbarHoverGuard } from './block-note-formatting-toolbar-hover-guard'
-import { BlockTypeMenuContext, type BlockTypeMenuState } from './block-type-select'
 import { CodeBlockLanguageControls } from './code-block-language-controls'
 import { FormattingToolbar } from './formatting-toolbar'
 import {
@@ -33,13 +32,20 @@ import {
   isFileBlockType,
   type FormattingToolbarEditor,
 } from './formatting-toolbar-selection'
+import {
+  ToolbarMenuContext,
+  toolbarMenuAfter,
+  type ToolbarMenuKey,
+  type ToolbarMenuState,
+} from './toolbar-menu-state'
 import { useEditorComposing } from './use-editor-composing'
 
 // Fuwa's controller for the floating formatting toolbar, in place of
-// BlockNote's: the toolbar stays open while it is hovered or focused, or while
-// its block type menu is open, and for a short grace after the selection
-// collapses; it hides during IME composition; it is clamped to the viewport;
-// and it mounts the code block language controls alongside.
+// BlockNote's: the toolbar stays open while it is hovered or focused, while
+// one of its menus (block type, highlight colour) is open, and for a short
+// grace after the selection collapses; it hides during IME composition; it is
+// clamped to the viewport; and it mounts the code block language controls
+// alongside.
 
 const FORMATTER_CLOSE_GRACE_MS = 160
 const FORMATTER_VIEWPORT_PADDING_PX = 8
@@ -140,7 +146,7 @@ type FormattingToolbarStore = {
   setState(open: boolean): void
 }
 
-function useCloseBlockTypeMenuOnEditorInteraction(
+function useCloseToolbarMenuOnEditorInteraction(
   editor: FormattingToolbarEditor,
   opened: boolean,
   closeMenu: () => void,
@@ -253,11 +259,16 @@ function useFormattingToolbarInteractionState({
 }) {
   const [toolbarHasFocus, setToolbarHasFocus] = useState(false)
   const [toolbarHovered, setToolbarHovered] = useState(false)
-  const [blockTypeMenuOpened, setBlockTypeMenuOpened] = useState(false)
-  const blockTypeMenuState = useMemo<BlockTypeMenuState>(() => ({
-    opened: blockTypeMenuOpened,
-    setOpened: setBlockTypeMenuOpened,
-  }), [blockTypeMenuOpened])
+  const [openToolbarMenu, setOpenToolbarMenu] = useState<ToolbarMenuKey | null>(null)
+  const setToolbarMenuOpen = useCallback((key: ToolbarMenuKey, opened: boolean) => {
+    setOpenToolbarMenu(current => toolbarMenuAfter(current, key, opened))
+  }, [])
+  const closeToolbarMenu = useCallback(() => setOpenToolbarMenu(null), [])
+  const toolbarMenuState = useMemo<ToolbarMenuState>(() => ({
+    openMenu: openToolbarMenu,
+    setMenuOpen: setToolbarMenuOpen,
+  }), [openToolbarMenu, setToolbarMenuOpen])
+  const toolbarMenuOpened = openToolbarMenu !== null
   const { closeGraceActive, clearCloseGrace, dismissImmediately } = useFormattingToolbarCloseGrace({
     show,
     toolbarHasFocus,
@@ -267,52 +278,56 @@ function useFormattingToolbarInteractionState({
     formattingToolbarStore,
     show,
   )
-  const closeBlockTypeMenuFromEditor = useCallback(() => {
-    setBlockTypeMenuOpened(false)
+  const closeToolbarMenuFromEditor = useCallback(() => {
+    closeToolbarMenu()
     setToolbarHasFocus(false)
     setToolbarHovered(false)
     dismissImmediately()
     setFormattingToolbarOpen(false)
-  }, [dismissImmediately, setFormattingToolbarOpen])
-  useCloseBlockTypeMenuOnEditorInteraction(editor, blockTypeMenuOpened, closeBlockTypeMenuFromEditor)
+  }, [closeToolbarMenu, dismissImmediately, setFormattingToolbarOpen])
+  useCloseToolbarMenuOnEditorInteraction(editor, toolbarMenuOpened, closeToolbarMenuFromEditor)
 
   return {
-    blockTypeMenuState,
     clearCloseGrace,
+    closeToolbarMenu,
     isOpen: !isComposing
-      && (show || toolbarHasFocus || toolbarHovered || blockTypeMenuOpened || closeGraceActive),
-    setBlockTypeMenuOpened,
+      && (show || toolbarHasFocus || toolbarHovered || toolbarMenuOpened || closeGraceActive),
     setFormattingToolbarOpen,
     setToolbarHasFocus,
     setToolbarHovered,
+    toolbarMenuState,
   }
 }
 
 type FormattingToolbarSurfaceProps = {
   Component?: FC<FormattingToolbarProps>
-  blockTypeMenuState: BlockTypeMenuState
+  closeToolbarMenu: () => void
+  editorElement: HTMLElement | null
   floatingUIOptions: FloatingUIOptions
   position: { from: number; to: number } | undefined
-  setBlockTypeMenuOpened: Dispatch<SetStateAction<boolean>>
   setFormattingToolbarOpen: (open: boolean) => void
   setToolbarHasFocus: Dispatch<SetStateAction<boolean>>
   setToolbarHovered: Dispatch<SetStateAction<boolean>>
   shouldRender: boolean
+  toolbarMenuState: ToolbarMenuState
 }
 
 // The wrapper's own blur and pointerleave miss a control that goes away while
 // focused or under the pointer (the link form unmounts on Enter): the browser
 // fires neither on a removed node. The document's next focusin or pointerover
-// outside the toolbar settles the flags instead.
+// outside the toolbar settles the flags instead. A focusin the wrapper's blur
+// already settled (the flag is down) is left alone: the blur decided it.
 function useToolbarLeaveFallback({
   active,
   onFocusLeft,
   onPointerLeft,
+  toolbarHasFocusRef,
   wrapperRef,
 }: {
   active: boolean
-  onFocusLeft: () => void
+  onFocusLeft: (target: EventTarget | null) => void
   onPointerLeft: () => void
+  toolbarHasFocusRef: MutableRefObject<boolean>
   wrapperRef: MutableRefObject<HTMLDivElement | null>
 }) {
   useEffect(() => {
@@ -322,7 +337,7 @@ function useToolbarLeaveFallback({
       return wrapper !== null && isFocusStillWithinToolbar(wrapper, target)
     }
     const handleFocusIn = (event: FocusEvent) => {
-      if (!isWithin(event.target)) onFocusLeft()
+      if (toolbarHasFocusRef.current && !isWithin(event.target)) onFocusLeft(event.target)
     }
     const handlePointerOver = (event: PointerEvent) => {
       if (!isWithin(event.target)) onPointerLeft()
@@ -333,29 +348,46 @@ function useToolbarLeaveFallback({
       document.removeEventListener('focusin', handleFocusIn)
       document.removeEventListener('pointerover', handlePointerOver)
     }
-  }, [active, onFocusLeft, onPointerLeft, wrapperRef])
+  }, [active, onFocusLeft, onPointerLeft, toolbarHasFocusRef, wrapperRef])
 }
 
 function FormattingToolbarSurface(props: FormattingToolbarSurfaceProps) {
   const {
     Component,
-    blockTypeMenuState,
+    closeToolbarMenu,
+    editorElement,
     floatingUIOptions,
     position,
-    setBlockTypeMenuOpened,
     setFormattingToolbarOpen,
     setToolbarHasFocus,
     setToolbarHovered,
     shouldRender,
+    toolbarMenuState,
   } = props
   const wrapperRef = useRef<HTMLDivElement | null>(null)
-  const onFocusLeft = useCallback(() => {
+  const toolbarHasFocusRef = useRef(false)
+  const menuOpened = toolbarMenuState.openMenu !== null
+  // A choice in a toolbar menu acts on the editor and focuses it: that is the
+  // menu handing back, not focus leaving the toolbar, so the selection decides
+  // whether the toolbar stays (BlockNote's own show state), not the blur.
+  const onFocusLeft = useCallback((target: EventTarget | null) => {
+    const menuHandedBack = menuOpened
+      && target instanceof Node
+      && editorElement !== null
+      && editorElement.contains(target)
+    toolbarHasFocusRef.current = false
     setToolbarHasFocus(false)
-    setBlockTypeMenuOpened(false)
-    setFormattingToolbarOpen(false)
-  }, [setBlockTypeMenuOpened, setFormattingToolbarOpen, setToolbarHasFocus])
+    closeToolbarMenu()
+    if (!menuHandedBack) setFormattingToolbarOpen(false)
+  }, [closeToolbarMenu, editorElement, menuOpened, setFormattingToolbarOpen, setToolbarHasFocus])
   const onPointerLeft = useCallback(() => setToolbarHovered(false), [setToolbarHovered])
-  useToolbarLeaveFallback({ active: shouldRender, onFocusLeft, onPointerLeft, wrapperRef })
+  useToolbarLeaveFallback({
+    active: shouldRender,
+    onFocusLeft,
+    onPointerLeft,
+    toolbarHasFocusRef,
+    wrapperRef,
+  })
   return (
     <PositionPopover position={position} {...floatingUIOptions}>
       {shouldRender && (
@@ -365,17 +397,18 @@ function FormattingToolbarSurface(props: FormattingToolbarSurfaceProps) {
           onPointerLeave={(event) => {
             if (!isFocusStillWithinToolbar(event.currentTarget, event.relatedTarget)) setToolbarHovered(false)
           }}
-          onFocusCapture={() => setToolbarHasFocus(true)}
+          onFocusCapture={() => {
+            toolbarHasFocusRef.current = true
+            setToolbarHasFocus(true)
+          }}
           onBlurCapture={(event) => {
             if (isFocusStillWithinToolbar(event.currentTarget, event.relatedTarget)) return
-            setToolbarHasFocus(false)
-            setBlockTypeMenuOpened(false)
-            setFormattingToolbarOpen(false)
+            onFocusLeft(event.relatedTarget)
           }}
         >
-          <BlockTypeMenuContext.Provider value={blockTypeMenuState}>
+          <ToolbarMenuContext.Provider value={toolbarMenuState}>
             {Component ? <Component /> : <FormattingToolbar />}
-          </BlockTypeMenuContext.Provider>
+          </ToolbarMenuContext.Provider>
         </div>
       )}
     </PositionPopover>
@@ -392,13 +425,13 @@ export function FormattingToolbarController(props: FormattingToolbarControllerPr
   })
   const isComposing = useEditorComposing(editor)
   const {
-    blockTypeMenuState,
     clearCloseGrace,
+    closeToolbarMenu,
     isOpen,
-    setBlockTypeMenuOpened,
     setFormattingToolbarOpen,
     setToolbarHasFocus,
     setToolbarHovered,
+    toolbarMenuState,
   } = useFormattingToolbarInteractionState({
     editor,
     formattingToolbarStore: formattingToolbar.store,
@@ -460,7 +493,7 @@ export function FormattingToolbarController(props: FormattingToolbarControllerPr
           if (!open) {
             setToolbarHasFocus(false)
             setToolbarHovered(false)
-            setBlockTypeMenuOpened(false)
+            closeToolbarMenu()
             clearCloseGrace()
           }
           if (reason === 'escape-key') {
@@ -480,10 +513,10 @@ export function FormattingToolbarController(props: FormattingToolbarControllerPr
     }),
     [
       clearCloseGrace,
+      closeToolbarMenu,
       editor,
       placement,
       props.floatingUIOptions,
-      setBlockTypeMenuOpened,
       setFormattingToolbarOpen,
       setToolbarHasFocus,
       setToolbarHovered,
@@ -496,14 +529,15 @@ export function FormattingToolbarController(props: FormattingToolbarControllerPr
       <CodeBlockLanguageControls editor={editor} />
       <FormattingToolbarSurface
         Component={props.formattingToolbar}
-        blockTypeMenuState={blockTypeMenuState}
+        closeToolbarMenu={closeToolbarMenu}
+        editorElement={editor.domElement ?? null}
         floatingUIOptions={floatingUIOptions}
         position={position}
-        setBlockTypeMenuOpened={setBlockTypeMenuOpened}
         setFormattingToolbarOpen={setFormattingToolbarOpen}
         setToolbarHasFocus={setToolbarHasFocus}
         setToolbarHovered={setToolbarHovered}
         shouldRender={shouldRenderFloatingToolbar}
+        toolbarMenuState={toolbarMenuState}
       />
     </>
   )

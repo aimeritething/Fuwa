@@ -72,7 +72,10 @@ vi.mock('@blocknote/core/extensions', () => ({
 vi.mock('@/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children?: ReactNode }) => <div data-testid="block-type-menu">{children}</div>,
   DropdownMenuTrigger: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children, ...props }: { children?: ReactNode }) => <div {...props}>{children}</div>,
+  DropdownMenuContent: ({ children, onCloseAutoFocus, ...props }: { children?: ReactNode; onCloseAutoFocus?: unknown }) => {
+    void onCloseAutoFocus
+    return <div {...props}>{children}</div>
+  },
   DropdownMenuItem: ({ children, ...props }: { children?: ReactNode }) => <button type="button" {...props}>{children}</button>,
 }))
 
@@ -118,6 +121,7 @@ vi.mock('@/platform/url', () => ({
 import { openLocalFile } from '@/platform/url'
 import { FormattingToolbar } from './formatting-toolbar'
 import { FormattingToolbarController } from './formatting-toolbar-controller'
+import { useToolbarMenu } from './toolbar-menu-state'
 
 const mockOpenLocalFile = vi.mocked(openLocalFile)
 
@@ -143,9 +147,10 @@ function createMockEditor(blockType = 'image', props: Record<string, unknown> = 
         highlight: { type: 'highlight', propSchema: 'boolean' },
       },
     },
-    prosemirrorState: { selection: { from: 1, to: 5 } },
+    prosemirrorState: { doc: { content: { size: 0 } }, selection: { from: 1, to: 5 } },
     domElement,
     focus: vi.fn(),
+    removeStyles: vi.fn(),
     getActiveStyles: () => ({ bold: true }),
     getBlock: vi.fn((id: string) => (id === selectedBlock.id ? selectedBlock : undefined)),
     getSelection: () => ({ blocks: [selectedBlock] }),
@@ -173,13 +178,16 @@ describe('the formatting toolbar and its controller', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /bold/i }))
     fireEvent.click(screen.getByRole('button', { name: /inline code/i }))
-    fireEvent.click(screen.getByRole('button', { name: /highlight/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Highlight' }))
     fireEvent.click(screen.getByRole('button', { name: 'Heading 1' }))
 
     expect(editor.focus).toHaveBeenCalled()
     expect(editor.toggleStyles).toHaveBeenCalledWith({ bold: true })
     expect(editor.toggleStyles).toHaveBeenCalledWith({ code: true })
+    // The highlight toggle goes through the highlight model: colour mark off, then the style.
+    expect(editor.removeStyles).toHaveBeenCalledWith({ backgroundColor: 'default' })
     expect(editor.toggleStyles).toHaveBeenCalledWith({ highlight: true })
+    expect(screen.getByRole('button', { name: 'Choose highlight color' })).toBeInTheDocument()
     expect(editor.transact).toHaveBeenCalledTimes(1)
     expect(editor.updateBlock).toHaveBeenCalledWith(
       'file-block',
@@ -392,6 +400,38 @@ describe('the formatting toolbar and its controller', () => {
     fireEvent.pointerLeave(toolbarWrapper, { relatedTarget: menuItem })
 
     expect(formattingToolbarStore.setState).not.toHaveBeenCalledWith(false)
+  })
+
+  it('keeps the toolbar when a choice in one of its menus hands the focus back to the editor', () => {
+    const editor = createMockEditor('paragraph')
+    useBlockNoteEditorMock.mockReturnValue(editor)
+    function MenuToolbar() {
+      const menu = useToolbarMenu('highlightColor')
+      return (
+        <button data-testid="toolbar-action" onClick={() => menu.setOpened(true)} type="button">
+          {menu.opened ? 'open' : 'closed'}
+        </button>
+      )
+    }
+
+    render(<FormattingToolbarController formattingToolbar={MenuToolbar} />)
+    const toolbarWrapper = screen.getByTestId('toolbar-action').parentElement as HTMLElement
+
+    fireEvent.focus(toolbarWrapper)
+    fireEvent.click(screen.getByTestId('toolbar-action'))
+    expect(screen.getByTestId('toolbar-action')).toHaveTextContent('open')
+
+    // The choice acts on the editor and focuses it: the menu closes, the toolbar stays.
+    fireEvent.blur(toolbarWrapper, { relatedTarget: editor.domElement })
+    fireEvent.focusIn(editor.domElement)
+
+    expect(screen.getByTestId('toolbar-action')).toHaveTextContent('closed')
+    expect(formattingToolbarStore.setState).not.toHaveBeenCalledWith(false)
+
+    // With no menu open, the same focus move is focus leaving the toolbar.
+    fireEvent.focus(toolbarWrapper)
+    fireEvent.blur(toolbarWrapper, { relatedTarget: editor.domElement })
+    expect(formattingToolbarStore.setState).toHaveBeenCalledWith(false)
   })
 
   it('closes the toolbar when focus lands outside without a blur, as when the focused link form unmounts', () => {

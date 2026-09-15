@@ -1,3 +1,4 @@
+import type { MarkType } from '@tiptap/pm/model'
 import {
   DEFAULT_MARKDOWN_HIGHLIGHT_COLOR,
   MARKDOWN_HIGHLIGHT_STYLE,
@@ -7,8 +8,6 @@ import type { RichEditorInputView } from './rich-editor-input-transform'
 
 type EditorViewLike = RichEditorInputView
 type MarkLike = { type: { name: string } }
-type EditorMark = Parameters<EditorViewLike['state']['tr']['addMark']>[2]
-type MarkTypeLike = { create: (attributes?: Record<string, string>) => EditorMark }
 
 function hasCodeMark(marks: readonly MarkLike[] | null | undefined): boolean {
   return Boolean(marks?.some(mark => mark.type.name === 'code'))
@@ -32,11 +31,14 @@ export function rangeHasCodeMark(view: EditorViewLike, from: number, to: number)
   return containsCode
 }
 
-function readMarkType(view: EditorViewLike, name: string): MarkTypeLike | null {
-  const markType = Reflect.get(view.state.schema.marks, name) as MarkTypeLike | undefined
-  return markType ?? null
+function readMarkType(view: EditorViewLike, name: string): MarkType | null {
+  return (Reflect.get(view.state.schema.marks, name) as MarkType | undefined) ?? null
 }
 
+// The cursor lands at the end of the new marks, and ProseMirror marks are
+// inclusive there, so both are dropped from the stored marks: the next typed
+// character starts plain, as it does after `**bold**`. Every step resets the
+// stored marks, so the drops come after the last addMark.
 export function addHighlightMarks(
   transaction: EditorViewLike['state']['tr'],
   view: EditorViewLike,
@@ -46,16 +48,17 @@ export function addHighlightMarks(
 ): EditorViewLike['state']['tr'] | null {
   const highlightMarkType = readMarkType(view, MARKDOWN_HIGHLIGHT_STYLE)
   if (!highlightMarkType) return null
+  const backgroundColorMarkType = replacement.color === DEFAULT_MARKDOWN_HIGHLIGHT_COLOR
+    ? null
+    : readMarkType(view, 'backgroundColor')
+  if (replacement.color !== DEFAULT_MARKDOWN_HIGHLIGHT_COLOR && !backgroundColorMarkType) return null
 
   transaction.addMark(from, to, highlightMarkType.create())
-  if (replacement.color === DEFAULT_MARKDOWN_HIGHLIGHT_COLOR) return transaction
+  if (backgroundColorMarkType) {
+    transaction.addMark(from, to, backgroundColorMarkType.create({ stringValue: replacement.color }))
+  }
 
-  const backgroundColorMarkType = readMarkType(view, 'backgroundColor')
-  if (!backgroundColorMarkType) return null
-
-  return transaction.addMark(
-    from,
-    to,
-    backgroundColorMarkType.create({ stringValue: replacement.color }),
-  )
+  transaction.removeStoredMark(highlightMarkType)
+  if (backgroundColorMarkType) transaction.removeStoredMark(backgroundColorMarkType)
+  return transaction
 }

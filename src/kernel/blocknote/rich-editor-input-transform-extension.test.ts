@@ -6,6 +6,7 @@ import { createRichEditorMarkdownInputTransformExtension } from './rich-editor-i
 function createTransaction() {
   const transaction = {
     addMark: vi.fn(() => transaction),
+    removeStoredMark: vi.fn(() => transaction),
     delete: vi.fn(() => transaction),
     insertText: vi.fn(() => transaction),
     replaceWith: vi.fn(() => transaction),

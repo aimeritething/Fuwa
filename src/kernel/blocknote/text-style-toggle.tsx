@@ -12,13 +12,17 @@ import { useCallback } from 'react'
 import { cn } from '@/lib/cn'
 import { translate, type AppLocale } from '@/lib/i18n'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '@/kernel/markdown/markdown-highlight-markdown'
+import { toggleDefaultMarkdownHighlight } from './markdown-highlight-model'
+import { ToolbarHighlightColorControl } from './markdown-highlight-toolbar-control'
 import { Toggle } from '@/ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { getSelectedBlocksSafely, type FormattingToolbarEditor } from './formatting-toolbar-selection'
 
 // The five text style toggles of the formatting toolbar: bold, italic,
 // strikethrough, inline code and the Markdown highlight. Each is a ui/Toggle
-// pressed while the style is active at the selection.
+// pressed while the style is active at the selection. The highlight toggle
+// goes through the highlight model (it extends or clears a whole highlight,
+// colour mark included) and carries the colour caret after it.
 
 export type TextStyle =
   | 'bold'
@@ -112,6 +116,10 @@ export function TextStyleToggle({
   })
 
   const toggleStyle = useCallback(() => {
+    if (textStyle === MARKDOWN_HIGHLIGHT_STYLE) {
+      toggleDefaultMarkdownHighlight(editor)
+      return
+    }
     editor.focus()
     editor.toggleStyles({ [textStyle]: true } as never)
   }, [editor, textStyle])
@@ -120,14 +128,15 @@ export function TextStyleToggle({
 
   const Icon = TEXT_STYLE_ICONS[textStyle]
   const copy = textStyleCopy(textStyle, locale)
+  const isHighlight = textStyle === MARKDOWN_HIGHLIGHT_STYLE
 
-  return (
+  const toggle = (
     <Tooltip>
       <TooltipTrigger asChild>
         <Toggle
           aria-label={copy.label}
-          // The highlight toggle leaves room for its colour trigger (markdown-highlight-toolbar-control.tsx).
-          className={cn(textStyle === MARKDOWN_HIGHLIGHT_STYLE && 'me-3.5')}
+          // The highlight toggle and its colour caret read as one control.
+          className={cn(isHighlight && 'rounded-e-none')}
           // Restated: the tooltip trigger writes its own open / closed data-state over the toggle's.
           data-state={toggleState.active ? 'on' : 'off'}
           data-test={textStyle}
@@ -142,5 +151,14 @@ export function TextStyleToggle({
         <span>{copy.secondaryTooltip}</span>
       </TooltipContent>
     </Tooltip>
+  )
+
+  if (!isHighlight) return toggle
+
+  return (
+    <div className="flex items-center">
+      {toggle}
+      <ToolbarHighlightColorControl editor={editor} locale={locale} />
+    </div>
   )
 }

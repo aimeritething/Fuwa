@@ -9,13 +9,14 @@ function createTransaction() {
   const transaction = {
     addMark: vi.fn(() => transaction),
     delete: vi.fn(() => transaction),
+    removeStoredMark: vi.fn(() => transaction),
     scrollIntoView: vi.fn(() => transaction),
   }
   return transaction
 }
 
-function createView(beforeText: string, parentStart = 0, parentTypeName = 'paragraph') {
-  const cursor = parentStart + beforeText.length
+function createView(beforeText: string, parentStart = 0, parentTypeName = 'paragraph', leaves: Array<{ at: number; name: string }> = []) {
+  const cursor = parentStart + beforeText.length + leaves.length
   const transaction = createTransaction()
   const highlightMark = { type: { name: MARKDOWN_HIGHLIGHT_STYLE } }
   const highlightMarkType = { create: vi.fn(() => highlightMark) }
@@ -62,9 +63,22 @@ function createView(beforeText: string, parentStart = 0, parentTypeName = 'parag
           parent: {
             isTextblock: true,
             type: { name: parentTypeName },
-            textBetween: vi.fn(() => beforeText),
+            textBetween: vi.fn((
+              _from: number,
+              _to: number,
+              _blockSeparator: string,
+              leafText: (leaf: { type: { name: string } }) => string,
+            ) => {
+              let text = ''
+              let consumed = 0
+              for (const leaf of leaves) {
+                text += beforeText.slice(consumed, leaf.at) + leafText({ type: { name: leaf.name } })
+                consumed = leaf.at
+              }
+              return text + beforeText.slice(consumed)
+            }),
           },
-          parentOffset: beforeText.length,
+          parentOffset: beforeText.length + leaves.length,
           marks: vi.fn(() => []),
         },
       },
@@ -85,7 +99,12 @@ function createView(beforeText: string, parentStart = 0, parentTypeName = 'parag
   }
 }
 
-function createFixture(beforeText = 'Plain ==marked=', parentStart = 0, parentTypeName = 'paragraph') {
+function createFixture(
+  beforeText = 'Plain ==marked=',
+  parentStart = 0,
+  parentTypeName = 'paragraph',
+  leaves: Array<{ at: number; name: string }> = [],
+) {
   let beforeInputListener: EventListener | null = null
   const {
     backgroundColorMark,
@@ -99,6 +118,7 @@ function createFixture(beforeText = 'Plain ==marked=', parentStart = 0, parentTy
     beforeText,
     parentStart,
     parentTypeName,
+    leaves,
   )
   const dom = {
     addEventListener: vi.fn((type: string, listener: EventListener) => {
@@ -202,6 +222,7 @@ describe('createMarkdownHighlightInputExtension', () => {
     expect(fixture.transaction.delete).toHaveBeenNthCalledWith(2, 26, 28)
     expect(fixture.highlightMarkType.create).toHaveBeenCalledWith()
     expect(fixture.transaction.addMark).toHaveBeenCalledWith(26, 32, fixture.highlightMark)
+    expect(fixture.transaction.removeStoredMark).toHaveBeenCalledWith(fixture.highlightMarkType)
     expect(fixture.transaction.scrollIntoView).toHaveBeenCalled()
     expect(fixture.view.dispatch).toHaveBeenCalledWith(fixture.transaction)
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
@@ -219,8 +240,41 @@ describe('createMarkdownHighlightInputExtension', () => {
     expect(fixture.backgroundColorMarkType.create).toHaveBeenCalledWith({ stringValue: 'red' })
     expect(fixture.transaction.addMark).toHaveBeenNthCalledWith(1, 26, 32, fixture.highlightMark)
     expect(fixture.transaction.addMark).toHaveBeenNthCalledWith(2, 26, 32, fixture.backgroundColorMark)
+    expect(fixture.transaction.removeStoredMark).toHaveBeenNthCalledWith(1, fixture.highlightMarkType)
+    expect(fixture.transaction.removeStoredMark).toHaveBeenNthCalledWith(2, fixture.backgroundColorMarkType)
     expect(fixture.view.dispatch).toHaveBeenCalledWith(fixture.transaction)
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps document offsets when an inline leaf sits before the highlight in the paragraph', () => {
+    // "see " + wikilink + " ==hi=" — the wikilink is one document position with no text.
+    const fixture = createFixture('see  ==hi=', 20, 'paragraph', [{ at: 4, name: 'wikilink' }])
+    fixture.mount()
+
+    const event = fixture.fireInput()
+
+    expect(fixture.transaction.delete).toHaveBeenNthCalledWith(1, 30, 31)
+    expect(fixture.transaction.delete).toHaveBeenNthCalledWith(2, 26, 28)
+    expect(fixture.transaction.addMark).toHaveBeenCalledWith(26, 28, fixture.highlightMark)
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+  })
+
+  it('completes a highlight typed after a hard break', () => {
+    const fixture = createFixture('line one==two=', 20, 'paragraph', [{ at: 8, name: 'hardBreak' }])
+    fixture.mount()
+
+    fixture.fireInput()
+
+    // "line one" (8) + break (1) = 9; the opening "==" sits at 29, "two" at 31–34.
+    expect(fixture.transaction.delete).toHaveBeenNthCalledWith(2, 29, 31)
+    expect(fixture.transaction.addMark).toHaveBeenCalledWith(29, 32, fixture.highlightMark)
+  })
+
+  it('refuses a highlight that would span a hard break', () => {
+    const fixture = createFixture('==a b=', 0, 'paragraph', [{ at: 3, name: 'hardBreak' }])
+    fixture.mount()
+
+    expectNoHighlightTransform(fixture)
   })
 
   it('leaves highlight-looking syntax literal inside inline code', () => {
