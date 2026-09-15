@@ -12,14 +12,17 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("relative", className)}
+      className={cn("relative flex flex-col", className)}
       {...props}
     >
-      {/* Radix lays the content out as a table so it can outgrow the viewport
+      {/* The root is a flex column and the viewport its one shrinking item, so a
+          `max-h-*` or a shrunk flex height on the root bounds the viewport even
+          when nothing above it has a definite height (a content-sized dialog).
+          Radix lays the content out as a table so it can outgrow the viewport
           sideways; Fuwa's lists truncate instead, so the wrapper is a block. */}
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:focus-ring [&>div]:block!"
+        className="min-h-0 w-full flex-1 rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:focus-ring [&>div]:block!"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
