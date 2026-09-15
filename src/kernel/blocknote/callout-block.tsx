@@ -29,7 +29,7 @@ type CalloutBlockViewProps = ReactCustomBlockRenderProps<
 // a hairline border; the heading takes the role's text colour, the body the
 // body colour. The family is the callout catalog's visual axis.
 const calloutVariants = cva(
-  'my-[7px] overflow-hidden rounded-md border-hairline',
+  'my-2 overflow-hidden rounded-md border-hairline',
   {
     variants: {
       family: {
@@ -70,13 +70,13 @@ function CalloutBlockView({ block, contentRef }: CalloutBlockViewProps) {
       className={calloutVariants({ family })}
       data-callout-type={calloutType}
     >
-      <div className="flex min-h-7 items-center gap-[7px] px-[10.5px] pt-[7px] pb-[1.75px] font-semibold">
+      <div className="flex min-h-7 items-center gap-2 px-2.5 pt-2 pb-0.5 font-semibold">
         <CalloutHeading
           calloutType={calloutType}
           heading={heading}
         />
       </div>
-      <div ref={contentRef} className="px-[10.5px] pt-[2.1px] pb-[9.1px] text-text-primary" />
+      <div ref={contentRef} className="px-2.5 pt-0.5 pb-2 text-text-primary" />
     </aside>
   )
 }

@@ -674,7 +674,7 @@ export function TldrawWhiteboard({
       {platformPermissionDenied ? (
         <div
           role="alert"
-          className="absolute right-3 bottom-3 left-3 z-sticky grid gap-1 rounded-lg border-hairline border-chroma-red/34 bg-[color-mix(in_srgb,var(--surface-app)_94%,var(--chroma-red))] px-3 py-2.5 text-xs leading-snug text-text-primary shadow-menu"
+          className="absolute right-3 bottom-3 left-3 z-sticky grid gap-1 rounded-lg border-hairline border-[color-mix(in_srgb,var(--chroma-red)_34%,var(--border-default))] bg-[color-mix(in_srgb,var(--surface-app)_94%,var(--chroma-red))] px-3 py-2.5 text-xs leading-snug text-text-primary shadow-menu"
           data-testid="tldraw-whiteboard-permission-error"
         >
           <strong className="text-xs text-chroma-red">{translate(locale, 'editor.whiteboard.permissionDeniedTitle')}</strong>
