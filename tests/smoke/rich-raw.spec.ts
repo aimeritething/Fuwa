@@ -77,14 +77,15 @@ test('⌘\\ and the segmented control switch modes, the Markdown shows in Raw, a
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('the control carries a mono tooltip naming the shortcut', async ({ page }) => {
+test('the control carries a tooltip naming the shortcut as a mono chip', async ({ page }) => {
   await openWelcome(page)
 
   await rawSegment(page).hover()
 
   const tip = page.getByRole('tooltip')
   await expect(tip).toHaveText('Raw ⌘\\')
-  await expect(tip).toHaveCSS('font-family', /JetBrains Mono/)
+  await expect(tip.locator('kbd')).toHaveText('⌘\\')
+  await expect(tip.locator('kbd')).toHaveCSS('font-family', /JetBrains Mono/)
 })
 
 test('Raw edits reach disk with the exact bytes, and ⌘S writes them at once', async ({ page }) => {

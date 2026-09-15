@@ -26,7 +26,7 @@ import {
   retainWhiteboardPlatformPermissionGuard,
 } from './whiteboard-platform-permission-rejection'
 import { Button } from '@/ui/button'
-import { ActionTooltip } from '@/ui/action-tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { installTldrawTextMeasurementGuard } from './tldraw-text-measurement-guard'
 
 const EMPTY_TLDRAW_TRANSLATION_URL = 'data:application/json;base64,e30K'
@@ -678,21 +678,24 @@ export function TldrawWhiteboard({
           <span>{translate(locale, 'editor.whiteboard.permissionDeniedBody')}</span>
         </div>
       ) : null}
-      <ActionTooltip copy={{ label: fullscreenLabel }} side="left">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-xs"
-          aria-label={fullscreenLabel}
-          aria-pressed={fullscreen}
-          className="tldraw-whiteboard__fullscreen-button"
-          data-testid="tldraw-whiteboard-fullscreen-toggle"
-          title={fullscreenLabel}
-          onClick={toggleFullscreen}
-        >
-          {fullscreen ? <ArrowsIn aria-hidden="true" /> : <ArrowsOut aria-hidden="true" />}
-        </Button>
-      </ActionTooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-xs"
+            aria-label={fullscreenLabel}
+            aria-pressed={fullscreen}
+            className="tldraw-whiteboard__fullscreen-button"
+            data-testid="tldraw-whiteboard-fullscreen-toggle"
+            title={fullscreenLabel}
+            onClick={toggleFullscreen}
+          >
+            {fullscreen ? <ArrowsIn aria-hidden="true" /> : <ArrowsOut aria-hidden="true" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">{fullscreenLabel}</TooltipContent>
+      </Tooltip>
       <button
         type="button"
         aria-label="Resize whiteboard width"

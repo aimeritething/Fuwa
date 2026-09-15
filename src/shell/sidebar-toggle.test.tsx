@@ -8,7 +8,7 @@ function renderWithTooltips(ui: React.ReactElement) {
 }
 
 describe('SidebarToggle', () => {
-  it('hides the sidebar from its top row, with the shortcut in its mono tooltip', async () => {
+  it('hides the sidebar from its top row, with the shortcut as a chip in its tooltip', async () => {
     const onToggle = vi.fn()
     renderWithTooltips(<SidebarToggle collapsed={false} onToggle={onToggle} />)
 
@@ -17,7 +17,9 @@ describe('SidebarToggle', () => {
     expect(onToggle).toHaveBeenCalledTimes(1)
 
     fireEvent.focus(button)
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Hide sidebar ⌘[')
+    const tip = await screen.findByRole('tooltip')
+    expect(tip).toHaveTextContent('Hide sidebar ⌘[')
+    expect(tip.querySelector('kbd')).toHaveTextContent('⌘[')
   })
 
   it('shows the sidebar again once collapsed', async () => {

@@ -1,14 +1,16 @@
 "use client"
 
-import * as React from "react"
+import { Component, type ComponentProps, type ReactNode } from "react"
+import { cn } from "@/lib/cn"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
-import { cn } from "./utils"
+import { Kbd } from "./kbd"
+import { markRecoveredTooltipError } from "./tooltip-recovery"
 
 function TooltipProvider({
   delayDuration = 0,
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+}: ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
@@ -18,48 +20,67 @@ function TooltipProvider({
   )
 }
 
+// The one Provider sits in main.tsx, so tooltips share its skip delay; a
+// Tooltip does not wrap its own.
 function Tooltip({
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+}: ComponentProps<typeof TooltipPrimitive.Root>) {
   return <TooltipPrimitive.Root data-slot="tooltip" {...props} />
 }
 
 function TooltipTrigger({
   ...props
-}: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+}: ComponentProps<typeof TooltipPrimitive.Trigger>) {
   return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
 }
 
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(function TooltipContent({
+// Radix's tooltip content can throw when BlockNote unmounts its trigger
+// mid-render; the boundary drops the content and keeps the trigger mounted.
+class TooltipBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    markRecoveredTooltipError(error)
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
+function TooltipContent({
   className,
   sideOffset = 4,
-  collisionPadding = 8,
+  shortcut,
   children,
-  style,
   ...props
-}, forwardedRef) {
+}: ComponentProps<typeof TooltipPrimitive.Content> & {
+  /** Drawn as a `Kbd` chip after the label. */
+  shortcut?: string
+}) {
   return (
-    <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Content
-        ref={forwardedRef}
-        data-slot="tooltip-content"
-        sideOffset={sideOffset}
-        collisionPadding={collisionPadding}
-        className={cn(
-          // The menu surface: popover ground, hairline border, 8px radius, 11px.
-          "fuwa-menu-surface bg-popover text-popover-foreground z-50 w-fit max-w-[min(var(--radix-tooltip-content-available-width,22rem),22rem)] origin-(--radix-tooltip-content-transform-origin) rounded-lg px-2 py-[5px] text-[11px] leading-[15px] text-balance",
-          className
-        )}
-        style={style}
-        {...props}
-      >
-        {children}
-      </TooltipPrimitive.Content>
-    </TooltipPrimitive.Portal>
+    <TooltipBoundary>
+      <TooltipPrimitive.Portal>
+        <TooltipPrimitive.Content
+          data-slot="tooltip-content"
+          sideOffset={sideOffset}
+          className={cn(
+            "z-popover flex w-fit items-center gap-2 origin-(--radix-tooltip-content-transform-origin) rounded-lg border-hairline border-border-popover bg-surface-popover px-2 py-[5px] text-2xs font-medium text-balance text-text-primary shadow-menu",
+            className
+          )}
+          {...props}
+        >
+          {children}
+          {/* The space keeps the text reading `label shortcut`; flex never draws it. */}
+          {shortcut && <> <Kbd>{shortcut}</Kbd></>}
+        </TooltipPrimitive.Content>
+      </TooltipPrimitive.Portal>
+    </TooltipBoundary>
   )
-})
+}
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
