@@ -74,6 +74,25 @@ describe('SlashMenu', () => {
     expect(onItemClick).toHaveBeenCalledWith(item.submenuItems?.[1])
   })
 
+  it('slides the submenu up when level with its row it would run off the viewport', () => {
+    const rect = (overrides: Partial<DOMRect>) => ({
+      bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0, x: 0, y: 0, toJSON: () => ({}), ...overrides,
+    }) as DOMRect
+    const boundsSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.getAttribute('role') === 'menu' ? rect({ height: 400 }) : rect({ right: 300, top: 700 })
+    })
+    const innerHeight = window.innerHeight
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 800 })
+
+    render(<SlashMenu items={[calloutItem()]} loadingState="loaded" selectedIndex={0} onItemClick={vi.fn()} />)
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Callout' }))
+
+    expect(screen.getByRole('menu', { name: 'Callout' })).toHaveStyle({ left: '304px', top: '392px' })
+
+    boundsSpy.mockRestore()
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: innerHeight })
+  })
+
   it('supports right-arrow entry and keyboard selection inside the submenu', () => {
     const item = calloutItem()
     const onItemClick = vi.fn()

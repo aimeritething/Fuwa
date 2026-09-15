@@ -348,6 +348,7 @@ export function dispatchPointerEvent(
 ) {
   target.dispatchEvent(new PointerEvent(type, {
     bubbles: true,
+    buttons: type === 'pointerup' ? 0 : 1,
     cancelable: true,
     isPrimary: true,
     pointerId: 1,

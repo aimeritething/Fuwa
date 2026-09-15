@@ -257,6 +257,21 @@ describe('SideMenu', () => {
     expect(mockSideMenu.freezeMenu).toHaveBeenCalled()
   })
 
+  it('ignores the button-less pointerdown the menu trigger dispatches on pointer up', () => {
+    // BlockNote's shadcn menu trigger opens on pointer up by re-dispatching the
+    // pointerup as a pointerdown; a gesture armed on it never sees a pointerup.
+    const { dragHandle } = renderPointerReorderFixture()
+    const handle = requireParentElement(dragHandle)
+
+    dispatchPointerEvent(handle, 'pointerdown', { button: 0, clientX: 80, clientY: 90 })
+    dispatchPointerEvent(document, 'pointerup', { clientX: 80, clientY: 90 })
+    dispatchPointerEvent(handle, 'pointerdown', { button: 0, buttons: 0, clientX: 80, clientY: 90 })
+    dispatchPointerEvent(document, 'pointermove', { clientX: 180, clientY: 122 })
+
+    expect(screen.queryByTestId('editor-block-drag-preview')).not.toBeInTheDocument()
+    expect(mockEditor.removeBlocks).not.toHaveBeenCalled()
+  })
+
   it('suppresses the follow-up menu click after a pointer reorder', () => {
     const { dragHandle } = renderPointerReorderFixture()
 
