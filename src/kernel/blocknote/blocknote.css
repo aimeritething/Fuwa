@@ -8,7 +8,7 @@
    BlockNote's, KaTeX's and tldraw's own CSS, and below `utilities`, so a
    Tailwind class in tsx beats a rule here and no rule needs an important flag.
    Two blocks stand outside that layer, each with its reason written above
-   it: the `@layer utilities` block for the roots the BlockNote shadcn
+   it: the `@layer utilities` block for the elements the BlockNote shadcn
    package styles with Tailwind classes of its own, and the unlayered block
    at the end, which BlockNote's runtime placeholder rules and the
    not-yet-migrated rules for Fuwa's elements share.
@@ -19,6 +19,32 @@
    ============================================================== */
 
 @layer components {
+  /* ---------------------------------------------------------------
+     File constants: the measures with no token, named here so the rules
+     below carry no bare numbers. On the root, so the portaled menus read
+     them too.
+     --------------------------------------------------------------- */
+  :root {
+    --_block-selection-mix: 82%;
+    --_checkbox-tick-left: 4px;
+    --_checkbox-tick-top: 1px;
+    --_checkbox-tick-width: 4px;
+    --_checkbox-tick-height: 7px;
+    --_checkbox-tick-stroke: 1.5px;
+    --_table-cell-min-height: 21px;
+    --_code-block-line-height: 1.4;
+    --_code-block-header-gap: 4.9px;
+    --_code-line-numbers-gutter: 38.5px;
+    --_select-max-width: 252px;
+    --_select-padding-vertical: 3px;
+    --_select-line-height: 1.3;
+    --_select-border-mix: 42%;
+    --_inline-code-line-height: 1.3;
+    --_link-underline-offset: 2px;
+    --_find-match-active-mix: 38%;
+    --_suggestion-row-padding-vertical: 3px;
+  }
+
   /* ---------------------------------------------------------------
      The editor surface
      --------------------------------------------------------------- */
@@ -137,7 +163,7 @@
   }
 
   .bn-block-outer.fuwa-rich-editor-block-selected::after {
-    background: color-mix(in srgb, var(--state-selection) 82%, transparent);
+    background: color-mix(in srgb, var(--state-selection) var(--_block-selection-mix), transparent);
     border-radius: var(--radius-md);
     content: "";
     inset:
@@ -151,7 +177,7 @@
   }
 
   .bn-block-outer.fuwa-rich-editor-block-selected:has(> .bn-block > [data-content-type="paragraph"])::after {
-    bottom: calc(var(--editor-paragraph-spacing) - 2px);
+    bottom: calc(var(--editor-paragraph-spacing) - var(--_block-selection-top-outset));
   }
 
   .bn-block-outer.fuwa-rich-editor-block-selected:has(hr)::after {
@@ -164,7 +190,7 @@
   }
 
   .bn-block.fuwa-rich-editor-block-selected {
-    background: color-mix(in srgb, var(--state-selection) 82%, transparent);
+    background: color-mix(in srgb, var(--state-selection) var(--_block-selection-mix), transparent);
     border-radius: var(--radius-md);
     box-decoration-break: clone;
   }
@@ -362,12 +388,12 @@
   [data-content-type="checkListItem"] input[type="checkbox"]:checked::after {
     content: "";
     position: absolute;
-    left: 4px;
-    top: 1px;
-    width: 4px;
-    height: 7px;
+    left: var(--_checkbox-tick-left);
+    top: var(--_checkbox-tick-top);
+    width: var(--_checkbox-tick-width);
+    height: var(--_checkbox-tick-height);
     border: solid var(--surface-card);
-    border-width: 0 1.5px 1.5px 0;
+    border-width: 0 var(--_checkbox-tick-stroke) var(--_checkbox-tick-stroke) 0;
     transform: rotate(45deg);
   }
 
@@ -442,7 +468,7 @@
     border-inline-start-width: 0;
   }
 
-  [data-content-type="table"] tr + tr :is(th, td) {
+  [data-content-type="table"] tr:not(:first-child) :is(th, td) {
     border-top: var(--hairline) solid var(--border-default);
   }
 
@@ -456,7 +482,7 @@
 
   [data-content-type="table"] th {
     background: var(--surface-shade);
-    font-weight: 600;
+    font-weight: var(--inline-bold-font-weight);
     padding: var(--table-cell-padding-vertical) var(--table-cell-padding-horizontal);
   }
 
@@ -468,7 +494,7 @@
   /* BlockNote sizes the cell paragraph in rem; pinned to what it rendered at
      under the old 14px root so the editor body does not follow the UI root. */
   [data-content-type="table"] :is(th, td) > p {
-    min-height: 21px;
+    min-height: var(--_table-cell-min-height);
   }
 
   /* The hairline grid stays visible beneath ProseMirror's selected-cell
@@ -499,7 +525,7 @@
     color: var(--text-primary);
     font-family: var(--inline-code-font-family);
     font-size: var(--text-sm);
-    line-height: 1.4;
+    line-height: var(--_code-block-line-height);
     letter-spacing: 0;
   }
 
@@ -515,16 +541,16 @@
 
   [data-content-type="codeBlock"] > div {
     display: flex;
-    margin-bottom: 4.9px;
+    margin-bottom: var(--_code-block-header-gap);
   }
 
   /* BlockNote's language select: kept in the tree for BlockNote, hidden; the
      kernel's own language control sits over it. */
   [data-content-type="codeBlock"] select {
     min-height: calc(var(--spacing) * 7);
-    max-width: min(252px, 100%);
-    padding: 3px calc(var(--spacing) * 7) 3px calc(var(--spacing) * 2);
-    border: 1px solid color-mix(in srgb, var(--text-secondary) 42%, transparent);
+    max-width: min(var(--_select-max-width), 100%);
+    padding: var(--_select-padding-vertical) calc(var(--spacing) * 7) var(--_select-padding-vertical) calc(var(--spacing) * 2);
+    border: 1px solid color-mix(in srgb, var(--text-secondary) var(--_select-border-mix), transparent);
     border-radius: var(--radius-md);
     appearance: auto;
     background-color: var(--surface-app);
@@ -532,7 +558,7 @@
     cursor: pointer;
     font: inherit;
     font-size: var(--text-xs);
-    line-height: 1.3;
+    line-height: var(--_select-line-height);
     visibility: hidden;
   }
 
@@ -543,7 +569,7 @@
 
   [data-content-type="codeBlock"] select:is(:hover, :focus-visible) {
     border-color: var(--text-secondary);
-    outline: 2px solid transparent;
+    outline: 0;
   }
 
   [data-content-type="codeBlock"] pre > code {
@@ -553,7 +579,7 @@
     display: block;
     overflow-wrap: anywhere;
     /* Room for the line numbers (code-block-line-numbers.ts). */
-    padding: 0 0 0 38.5px;
+    padding: 0 0 0 var(--_code-line-numbers-gutter);
     white-space: pre-wrap;
   }
 
@@ -591,7 +617,7 @@
   .bn-inline-content code {
     font-family: var(--inline-code-font-family);
     font-size: var(--inline-code-font-size);
-    line-height: 1.3;
+    line-height: var(--_inline-code-line-height);
     background-color: var(--inline-code-bg);
     box-shadow: inset 0 0 0 var(--hairline) var(--inline-code-border);
     padding: var(--inline-code-padding-vertical) var(--inline-code-padding-horizontal);
@@ -644,7 +670,7 @@
   .bn-editor a:hover {
     text-decoration: underline;
     text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
+    text-underline-offset: var(--_link-underline-offset);
   }
 
   [data-follow-links] .bn-editor a {
@@ -659,32 +685,16 @@
   }
 
   .bn-editor .fuwa-rich-find-match--active {
-    background: color-mix(in srgb, var(--chroma-orange) 38%, transparent);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--chroma-orange) 38%, transparent);
+    background: color-mix(in srgb, var(--chroma-orange) var(--_find-match-active-mix), transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--chroma-orange) var(--_find-match-active-mix), transparent);
   }
 
   /* ---------------------------------------------------------------
-     Toolbars and menus (the roots' material is in the utilities block)
+     Toolbars and menus (the material, the row geometry and the icon
+     sizes are in the utilities block)
      --------------------------------------------------------------- */
-
-  /* Toolbar and menu icons keep one size; react-icons defaults inherit 1em. */
-  :is(.bn-toolbar, .bn-menu-dropdown, .bn-grid-suggestion-menu) button svg {
-    width: calc(var(--spacing) * 4);
-    height: calc(var(--spacing) * 4);
-    flex-shrink: 0;
-  }
-
   .bn-suggestion-menu-label {
     color: var(--text-secondary);
-  }
-
-  /* The slash menu's icons swap to their filled twin on the highlighted row. */
-  .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__regular {
-    opacity: 0;
-  }
-
-  .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__fill {
-    opacity: 1;
   }
 
   /* The Turn into submenu shrinks to its widest item. */
@@ -714,26 +724,6 @@
     text-align: center;
   }
 
-  .math-block-shell {
-    max-width: 100%;
-    overflow-x: auto;
-    padding: calc(var(--spacing) * 1.5) 0;
-  }
-
-  .math-block-shell:not(.math-block-shell--editing) {
-    width: fit-content;
-    margin-inline: auto;
-  }
-
-  .math-block-shell--editing {
-    width: 100%;
-  }
-
-  .math-block-source::selection {
-    background: var(--state-selection);
-    color: var(--text-primary);
-  }
-
   /* KaTeX writes the error colour inline; math-markdown.ts hands it the token
      as `errorColor`, so only the wrapping is left to set here. */
   .math .katex-error {
@@ -759,16 +749,61 @@
 }
 
 /* ==============================================================
-   The roots the BlockNote shadcn package dresses itself. Its Toolbar,
-   SuggestionMenu and DropdownMenuContent carry Tailwind classes of their
-   own (rounded-lg / rounded-md, shadow-md, the 1px border, px-2 py-1.5 on
-   the rows), which Fuwa's build generates from the `@source` line in
+   The elements the BlockNote shadcn package dresses itself. Its Toolbar,
+   SuggestionMenu and DropdownMenuContent roots, its rows and its Button
+   carry Tailwind classes of their own (rounded-lg / rounded-md, shadow-md,
+   the 1px border, px-2 py-1.5 on a row, h-9 px-4 py-2 and a 16px svg on
+   a button), which Fuwa's build generates from the `@source` line in
    index.css into the `utilities` layer. A rule in `components` cannot beat
    them whatever its specificity, so the few rules that must sit in that
-   layer too and win on specificity. PR 9 hands these roots to Fuwa's ui/
-   components and this block shrinks with it.
+   layer too, after Tailwind's (index.css imports this file after
+   tailwindcss), and win on specificity or, at equal specificity, on
+   order. PR 9 hands the roots to Fuwa's ui/ components and this block
+   shrinks with it.
    ============================================================== */
 @layer utilities {
+  /* The package's own corrections to its Button, restated. Its side menu
+     buttons and its table handles are that Button, and style.css pulls
+     them back (24px tall and unpadded, the svg at its own size, pointer
+     events on the icon) with rules that beat the classes only while
+     unlayered; in `vendor` they lose, and the side menu grew to 40 by 36
+     with 16px icons. */
+  .bn-shadcn svg:not([class*="size-"]) {
+    width: revert;
+    height: revert;
+  }
+
+  .bn-shadcn svg {
+    pointer-events: all;
+  }
+
+  .bn-shadcn .bn-side-menu .bn-button {
+    height: calc(var(--spacing) * 6);
+    padding: 0;
+  }
+
+  .bn-shadcn .bn-table-cell-handle {
+    height: calc(var(--spacing) * 3);
+    padding: 0 var(--spacing);
+  }
+
+  /* BlockNote's outline on a selected node, restated for the math block:
+     its shell is a ui/Button whose `outline-none` beats the vendor rule
+     now. The width is BlockNote's 4px; the colour is the focus ring token
+     where BlockNote has a literal blue. */
+  .ProseMirror-selectednode > .bn-block-content > .math-block-shell {
+    border-radius: var(--radius-sm);
+    outline: var(--spacing) solid var(--state-focus-ring);
+  }
+
+  /* Toolbar and menu icons keep one size whatever the icon set's default;
+     more specific than the revert above. */
+  :is(.bn-toolbar, .bn-menu-dropdown, .bn-grid-suggestion-menu) button svg:not([class*="size-"]) {
+    width: calc(var(--spacing) * 4);
+    height: calc(var(--spacing) * 4);
+    flex-shrink: 0;
+  }
+
   /* The formatting toolbar, the link toolbar, the slash menu and, until
      PR 9, the drag handle menu: one rule for the popover material, the menu
      radius and the menu shadow. */
@@ -782,14 +817,17 @@
     box-shadow: var(--shadow-menu);
   }
 
-  /* A slash menu row: 32px, 8px radius, 13px. The shadcn item repeats the
+  /* A slash menu row: 32px, 8px radius, 13px, the body colour under the
+     pointer and when selected too (the package's hover: / aria-selected:
+     classes turn it to the heading colour). The shadcn item repeats the
      row's class on its icon cell, its title and its subtitle, so the rule
      lands on those too, which is what the row's geometry has relied on. */
-  .bn-suggestion-menu-item {
+  .bn-suggestion-menu-item,
+  .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) {
     color: var(--text-primary);
     height: calc(var(--spacing) * 8);
     min-height: calc(var(--spacing) * 8);
-    padding: 3px calc(var(--spacing) * 2);
+    padding: var(--_suggestion-row-padding-vertical) calc(var(--spacing) * 2);
     border-radius: var(--radius-lg);
     font-size: var(--text-sm);
   }
@@ -818,15 +856,49 @@
 
    The rules for Fuwa's own block elements (`.html-block*`,
    `.mermaid-diagram*`, `.markdown-highlight-*`, `.editor__code-block-*`,
-   `.tldraw-whiteboard*`, `.fuwa-callout*`), moved here from
-   editor-theme.css and editor.css as they were, apart from the
-   important flags and the literal colours. They stay unlayered, as they were:
-   several of these elements also carry utility classes (the mermaid dialog,
-   the highlight triggers, the code copy button), and a layered rule would
-   lose to those where the unlayered one wins today. PR 8 (blocks) and PR 9
-   (menus) turn each into utility classes on the element and empty this
-   block.
+   `.tldraw-whiteboard*`, `.fuwa-callout*`, the math block's shell and the
+   slash menu's icon swap), moved here from editor-theme.css and editor.css
+   as they were, apart from the important flags and the literal colours.
+   They stay unlayered, as they were: several of these elements also carry
+   utility classes (the mermaid dialog, the highlight triggers, the code
+   copy button, the math block's Button), and a layered rule would lose to
+   those where the unlayered one wins today. PR 8 (blocks) and PR 9 (menus)
+   turn each into utility classes on the element and empty this block.
    ============================================================== */
+
+/* --- Slash menu icons (PR 9). The rest of `.fuwa-slash-menu*` is still in
+   editor.css, unlayered, where `.fuwa-slash-menu-icon__fill` starts at
+   opacity 0; the swap on the highlighted row has to be unlayered and one
+   class more specific to beat it. --- */
+.bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__regular {
+  opacity: 0;
+}
+
+.bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) .fuwa-slash-menu-icon__fill {
+  opacity: 1;
+}
+
+/* --- Math block shell (PR 8): a ui/Button (editor-schema.tsx) whose
+   `px-3 py-1` a layered rule cannot beat. --- */
+.math-block-shell {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 6px 0;
+}
+
+.math-block-shell:not(.math-block-shell--editing) {
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.math-block-shell--editing {
+  width: 100%;
+}
+
+.math-block-source::selection {
+  background: var(--state-selection);
+  color: var(--text-primary);
+}
 
 /* --- Markdown highlight controls (PR 9) --- */
 .markdown-highlight-toolbar-color-host {
