@@ -1,6 +1,8 @@
 import { Command as CommandIcon, FileText, Image as ImageIcon, type Icon } from '@phosphor-icons/react'
-import { Dialog as DialogPrimitive } from 'radix-ui'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
+import { cn } from '@/lib/cn'
+import { Dialog, DialogContent, DialogTitle } from '@/ui/dialog'
+import { ScrollArea } from '@/ui/scroll-area'
 import {
   matchCommandMenu,
   type CommandMenuEntry,
@@ -9,7 +11,6 @@ import {
   type CommandMenuMode,
   type CommandMenuRange,
 } from './command-menu-matcher'
-import './command-menu.css'
 
 export interface CommandMenuProps {
   open: boolean
@@ -57,13 +58,13 @@ function rowId(index: number): string {
   return `fuwa-command-menu-row-${index}`
 }
 
-/** The name with the matched characters emphasised. */
+/** The name with the matched characters emphasised: bold, no highlight box. */
 function emphasised(name: string, ranges: readonly CommandMenuRange[]): ReactNode[] {
   const parts: ReactNode[] = []
   let cursor = 0
   for (const [start, end] of ranges) {
     if (start > cursor) parts.push(name.slice(cursor, start))
-    parts.push(<mark key={start}>{name.slice(start, end)}</mark>)
+    parts.push(<mark key={start} className="bg-transparent font-semibold text-text-heading">{name.slice(start, end)}</mark>)
     cursor = end
   }
   if (cursor < name.length) parts.push(name.slice(cursor))
@@ -86,6 +87,11 @@ interface CommandMenuRowProps {
   onPick: (entry: CommandMenuEntry, event: MouseEvent) => void
 }
 
+/**
+ * One 40px row: icon, name, the muted detail, the shortcut in the menu
+ * sub-theme's Inter 11/500, and the 64px right-aligned type column. The
+ * highlighted row is the one `aria-selected`; a disabled command is dimmed.
+ */
 function CommandMenuRow({ match, index, active, onHover, onPick }: CommandMenuRowProps) {
   const { entry, ranges } = match
   const RowIcon = ROW_ICONS[entry.kind]
@@ -96,30 +102,34 @@ function CommandMenuRow({ match, index, active, onHover, onPick }: CommandMenuRo
       role="option"
       aria-selected={active}
       aria-disabled={enabled ? undefined : true}
-      className="fuwa-command-menu__row"
+      className="group flex h-10 cursor-default items-center gap-2.5 rounded-lg px-2.5 text-sm whitespace-nowrap aria-selected:bg-menu-item-hover aria-selected:text-text-heading aria-disabled:opacity-45"
       data-testid="command-menu-row"
       data-kind={entry.kind}
       data-id={entry.id}
-      data-active={active || undefined}
       onMouseMove={() => onHover(index)}
       onClick={(event) => onPick(entry, event)}
     >
-      <RowIcon size={16} className="fuwa-command-menu__icon" aria-hidden="true" />
-      <span className="fuwa-command-menu__name" data-testid="command-menu-row-name">{emphasised(entry.name, ranges)}</span>
+      <RowIcon size={16} className="flex-none text-text-secondary group-aria-selected:text-text-primary" aria-hidden="true" />
+      <span className="min-w-0 flex-initial truncate" data-testid="command-menu-row-name">{emphasised(entry.name, ranges)}</span>
       {entry.detail && (
-        <span className="fuwa-command-menu__detail" data-testid="command-menu-row-detail">{entry.detail}</span>
+        <span className="min-w-0 flex-auto truncate text-xs text-text-secondary" data-testid="command-menu-row-detail">{entry.detail}</span>
       )}
       {entry.shortcut && (
-        <span className="fuwa-command-menu__shortcut" data-testid="command-menu-row-shortcut">{entry.shortcut}</span>
+        <span className="ml-auto flex-none font-sans text-2xs font-medium text-menu-shortcut" data-testid="command-menu-row-shortcut">{entry.shortcut}</span>
       )}
-      <span className="fuwa-command-menu__type" data-testid="command-menu-row-type">{TYPE_LABELS[entry.kind]}</span>
+      {/* Without a shortcut the type column pushes itself to the right edge. */}
+      <span className={cn('w-16 flex-none text-right text-2xs text-text-secondary', !entry.shortcut && 'ml-auto')} data-testid="command-menu-row-type">
+        {TYPE_LABELS[entry.kind]}
+      </span>
     </li>
   )
 }
 
 /**
- * The palette's body. Mounted only while open, so the query and the selection
- * start fresh every time; a mode switch while open keeps the query.
+ * The palette's body: the 56px input row, the results in a scroll area under
+ * it with no group header, the mono footer. Mounted only while open, so the
+ * query and the selection start fresh every time; a mode switch while open
+ * keeps the query.
  */
 function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePick }: CommandMenuPanelProps) {
   const [query, setQuery] = useState('')
@@ -157,9 +167,10 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePic
 
   return (
     <>
-      <DialogPrimitive.Title className="sr-only">{TITLES[mode]}</DialogPrimitive.Title>
+      <DialogTitle className="sr-only">{TITLES[mode]}</DialogTitle>
       <input
-        className="fuwa-command-menu__input"
+        // 17px light with a touch of negative tracking: the palette's one display size, outside the four-tier UI scale.
+        className="h-14 flex-none border-b-hairline border-border-popover bg-transparent px-5 text-[17px] font-light tracking-[-0.01em] text-text-heading outline-none placeholder:text-text-secondary"
         data-testid="command-menu-input"
         role="combobox"
         aria-expanded="true"
@@ -178,31 +189,35 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePic
         }}
         onKeyDown={onKeyDown}
       />
-      <ul id={LIST_ID} ref={listRef} role="listbox" aria-label={TITLES[mode]} className="fuwa-command-menu__list">
-        {matches.length === 0 && (
-          <li className="fuwa-command-menu__empty" data-testid="command-menu-empty" aria-disabled="true">No matches</li>
-        )}
-        {matches.map((match, index) => (
-          <CommandMenuRow
-            key={`${match.entry.kind}:${match.entry.id}`}
-            match={match}
-            index={index}
-            active={index === activeIndex}
-            onHover={setSelectedIndex}
-            onPick={(entry, event) => pick(entry, event.metaKey)}
-          />
-        ))}
-      </ul>
-      <footer className="fuwa-command-menu__footer" data-testid="command-menu-footer">{FOOTER}</footer>
+      <ScrollArea className="max-h-100 min-h-0 flex-auto">
+        <ul id={LIST_ID} ref={listRef} role="listbox" aria-label={TITLES[mode]} className="list-none p-1.5">
+          {matches.length === 0 && (
+            <li className="flex h-10 items-center px-2.5 text-sm text-text-secondary" data-testid="command-menu-empty" aria-disabled="true">No matches</li>
+          )}
+          {matches.map((match, index) => (
+            <CommandMenuRow
+              key={`${match.entry.kind}:${match.entry.id}`}
+              match={match}
+              index={index}
+              active={index === activeIndex}
+              onHover={setSelectedIndex}
+              onPick={(entry, event) => pick(entry, event.metaKey)}
+            />
+          ))}
+        </ul>
+      </ScrollArea>
+      <footer className="flex h-8 flex-none items-center border-t-hairline border-border-popover px-4 font-mono text-2xs text-text-secondary" data-testid="command-menu-footer">
+        {FOOTER}
+      </footer>
     </>
   )
 }
 
 /**
  * The Command Menu and Quick Open: one palette, two
- * modes, over the whole window. Radix's dialog gives it the backdrop, the
- * focus trap and esc; the rows and the matcher are Fuwa's own. New Fuwa code
- * on the shared command manifest.
+ * modes, over the whole window. The `palette` dialog gives it the backdrop,
+ * the focus trap, esc and its place a quarter of the way down; the rows and
+ * the matcher are Fuwa's own. New Fuwa code on the shared command manifest.
  */
 export function CommandMenu({ open, mode, entries, onClose, onRunCommand, onOpenFile }: CommandMenuProps) {
   // Esc and a click outside hand focus back to where it was (the editor); a
@@ -213,23 +228,21 @@ export function CommandMenu({ open, mode, entries, onClose, onRunCommand, onOpen
     pickedRef.current = true
   }
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (!next) onClose() }}>
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fuwa-command-menu__backdrop" />
-        <DialogPrimitive.Content
-          className="fuwa-command-menu"
-          data-testid="command-menu"
-          data-mode={mode}
-          data-command-palette="true"
-          aria-describedby={undefined}
-          onCloseAutoFocus={(event) => {
-            if (pickedRef.current) event.preventDefault()
-            pickedRef.current = false
-          }}
-        >
-          <CommandMenuPanel mode={mode} entries={entries} onRunCommand={onRunCommand} onOpenFile={onOpenFile} onBeforePick={markPicked} />
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
+      <DialogContent
+        variant="palette"
+        className="w-140 max-w-[calc(100vw-32px)] max-h-[calc(76%-24px)] overflow-hidden"
+        data-testid="command-menu"
+        data-mode={mode}
+        data-command-palette="true"
+        aria-describedby={undefined}
+        onCloseAutoFocus={(event) => {
+          if (pickedRef.current) event.preventDefault()
+          pickedRef.current = false
+        }}
+      >
+        <CommandMenuPanel mode={mode} entries={entries} onRunCommand={onRunCommand} onOpenFile={onOpenFile} onBeforePick={markPicked} />
+      </DialogContent>
+    </Dialog>
   )
 }

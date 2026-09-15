@@ -60,6 +60,8 @@ test('⌘K opens the palette at its geometry, lists every command with its short
   await page.keyboard.press('Meta+k')
 
   await expect(palette(page)).toHaveAttribute('data-mode', 'commands')
+  // The palette zooms in over 150ms; its geometry is the settled one.
+  await palette(page).evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished)))
   const box = (await palette(page).boundingBox())!
   const viewport = page.viewportSize()!
   expect(box.width).toBe(560)
