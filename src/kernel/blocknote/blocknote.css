@@ -791,17 +791,40 @@
 
   /* A slash menu row: 32px, 8px radius, 13px, the body colour under the
      pointer and when selected too (the adapter's hover: / aria-selected:
-     classes turn it to the heading colour). The shadcn item repeats the
-     row's class on its icon cell, its title and its subtitle, so the rule
-     lands on those too, which is what the row's geometry has relied on. */
-  .bn-suggestion-menu-item,
-  .bn-suggestion-menu-item:is(:hover, [aria-selected="true"]) {
+     classes turn it to the heading colour). The adapter repeats the row's
+     class on its icon cell, its title and its subtitle, so the row's
+     geometry is keyed on the row's role and taken back off the three
+     inner elements: without that the title and the (empty) subtitle each
+     take the row's 32px and the titles overflow into the rows below. */
+  .bn-suggestion-menu-item[role="option"],
+  .bn-suggestion-menu-item[role="option"]:is(:hover, [aria-selected="true"]) {
     color: var(--text-primary);
     height: calc(var(--spacing) * 8);
     min-height: calc(var(--spacing) * 8);
     padding: var(--_suggestion-row-padding-vertical) calc(var(--spacing) * 2);
     border-radius: var(--radius-lg);
     font-size: var(--text-sm);
+  }
+
+  .bn-suggestion-menu-item[role="option"] .bn-suggestion-menu-item {
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border-radius: 0;
+    font-size: var(--text-sm);
+  }
+
+  /* The icon cell: a fixed 28px column (the adapter pads it to 44px). */
+  .bn-suggestion-menu-item[role="option"] > [data-position="left"] {
+    display: flex;
+    width: calc(var(--spacing) * 7);
+    flex: none;
+    justify-content: center;
+  }
+
+  /* Fuwa hands the adapter no subtext; the empty subtitle still renders. */
+  .bn-suggestion-menu-item[role="option"] .bn-suggestion-menu-item:empty {
+    display: none;
   }
 }
 

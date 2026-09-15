@@ -46,11 +46,27 @@ const FORMATTER_VIEWPORT_PADDING_PX = 8
 type FloatingOptions = NonNullable<FloatingUIOptions['useFloatingOptions']>
 type FloatingMiddleware = NonNullable<FloatingOptions['middleware']>[number]
 
+// What the toolbar opens (the block type menu, the link form) is portaled to
+// the body, so a pointer or focus move into it leaves the toolbar's DOM
+// subtree; it counts as within the toolbar when a trigger in the toolbar
+// controls it (Radix marks the pair with aria-controls and an id).
+function isControlledFromToolbar(toolbar: Element, target: Node) {
+  for (
+    let element = target instanceof Element ? target : target.parentElement;
+    element && element !== toolbar.ownerDocument.body;
+    element = element.parentElement
+  ) {
+    if (element.id && toolbar.querySelector(`[aria-controls="${CSS.escape(element.id)}"]`)) return true
+  }
+  return false
+}
+
 function isFocusStillWithinToolbar(
   currentTarget: EventTarget & Element,
   nextTarget: EventTarget | null,
 ) {
-  return nextTarget instanceof Node && currentTarget.contains(nextTarget)
+  if (!(nextTarget instanceof Node)) return false
+  return currentTarget.contains(nextTarget) || isControlledFromToolbar(currentTarget, nextTarget)
 }
 
 function clearToolbarCloseGrace(
@@ -284,6 +300,42 @@ type FormattingToolbarSurfaceProps = {
   shouldRender: boolean
 }
 
+// The wrapper's own blur and pointerleave miss a control that goes away while
+// focused or under the pointer (the link form unmounts on Enter): the browser
+// fires neither on a removed node. The document's next focusin or pointerover
+// outside the toolbar settles the flags instead.
+function useToolbarLeaveFallback({
+  active,
+  onFocusLeft,
+  onPointerLeft,
+  wrapperRef,
+}: {
+  active: boolean
+  onFocusLeft: () => void
+  onPointerLeft: () => void
+  wrapperRef: MutableRefObject<HTMLDivElement | null>
+}) {
+  useEffect(() => {
+    if (!active) return
+    const isWithin = (target: EventTarget | null) => {
+      const wrapper = wrapperRef.current
+      return wrapper !== null && isFocusStillWithinToolbar(wrapper, target)
+    }
+    const handleFocusIn = (event: FocusEvent) => {
+      if (!isWithin(event.target)) onFocusLeft()
+    }
+    const handlePointerOver = (event: PointerEvent) => {
+      if (!isWithin(event.target)) onPointerLeft()
+    }
+    document.addEventListener('focusin', handleFocusIn)
+    document.addEventListener('pointerover', handlePointerOver)
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn)
+      document.removeEventListener('pointerover', handlePointerOver)
+    }
+  }, [active, onFocusLeft, onPointerLeft, wrapperRef])
+}
+
 function FormattingToolbarSurface(props: FormattingToolbarSurfaceProps) {
   const {
     Component,
@@ -296,10 +348,19 @@ function FormattingToolbarSurface(props: FormattingToolbarSurfaceProps) {
     setToolbarHovered,
     shouldRender,
   } = props
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const onFocusLeft = useCallback(() => {
+    setToolbarHasFocus(false)
+    setBlockTypeMenuOpened(false)
+    setFormattingToolbarOpen(false)
+  }, [setBlockTypeMenuOpened, setFormattingToolbarOpen, setToolbarHasFocus])
+  const onPointerLeft = useCallback(() => setToolbarHovered(false), [setToolbarHovered])
+  useToolbarLeaveFallback({ active: shouldRender, onFocusLeft, onPointerLeft, wrapperRef })
   return (
     <PositionPopover position={position} {...floatingUIOptions}>
       {shouldRender && (
         <div
+          ref={wrapperRef}
           onPointerEnter={() => setToolbarHovered(true)}
           onPointerLeave={(event) => {
             if (!isFocusStillWithinToolbar(event.currentTarget, event.relatedTarget)) setToolbarHovered(false)

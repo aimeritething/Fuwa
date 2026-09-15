@@ -369,6 +369,75 @@ describe('the formatting toolbar and its controller', () => {
     expect(formattingToolbarStore.setState).toHaveBeenCalledWith(false)
   })
 
+  it('keeps the toolbar when focus moves into a menu a toolbar trigger controls', () => {
+    useBlockNoteEditorMock.mockReturnValue(createMockEditor('paragraph'))
+    const menu = document.createElement('div')
+    menu.id = 'toolbar-menu'
+    menu.setAttribute('role', 'menu')
+    const menuItem = document.createElement('button')
+    menu.appendChild(menuItem)
+    document.body.appendChild(menu)
+
+    render(
+      <FormattingToolbarController
+        formattingToolbar={() => (
+          <button aria-controls="toolbar-menu" aria-expanded="true" data-testid="toolbar-action" type="button">Toolbar</button>
+        )}
+      />,
+    )
+    const toolbarWrapper = screen.getByTestId('toolbar-action').parentElement as HTMLElement
+
+    fireEvent.focus(toolbarWrapper)
+    fireEvent.blur(toolbarWrapper, { relatedTarget: menuItem })
+    fireEvent.pointerLeave(toolbarWrapper, { relatedTarget: menuItem })
+
+    expect(formattingToolbarStore.setState).not.toHaveBeenCalledWith(false)
+  })
+
+  it('closes the toolbar when focus lands outside without a blur, as when the focused link form unmounts', () => {
+    const editor = createMockEditor('paragraph')
+    useBlockNoteEditorMock.mockReturnValue(editor)
+
+    render(
+      <FormattingToolbarController
+        formattingToolbar={() => <button data-testid="toolbar-action" type="button">Toolbar</button>}
+      />,
+    )
+    const toolbarWrapper = screen.getByTestId('toolbar-action').parentElement as HTMLElement
+
+    fireEvent.focus(toolbarWrapper)
+    expect(formattingToolbarStore.setState).not.toHaveBeenCalledWith(false)
+
+    fireEvent.focusIn(editor.domElement)
+
+    expect(formattingToolbarStore.setState).toHaveBeenCalledWith(false)
+  })
+
+  it('drops the hover hold when the pointer turns up outside without a leave', () => {
+    vi.useFakeTimers()
+    const editor = createMockEditor('paragraph')
+    useBlockNoteEditorMock.mockReturnValue(editor)
+
+    const { rerender } = render(
+      <FormattingToolbarController
+        formattingToolbar={() => <button data-testid="toolbar-action" type="button">Toolbar</button>}
+      />,
+    )
+    const toolbarWrapper = screen.getByTestId('toolbar-action').parentElement as HTMLElement
+    fireEvent.pointerEnter(toolbarWrapper)
+    showState.value = false
+    rerender(<FormattingToolbarController formattingToolbar={() => <button data-testid="toolbar-action" type="button">Toolbar</button>} />)
+    expect(screen.getByTestId('toolbar-action')).toBeInTheDocument()
+
+    fireEvent.pointerOver(editor.domElement)
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(screen.queryByTestId('toolbar-action')).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
   it('deduplicates floating toolbar store writes during close races', () => {
     const editor = createMockEditor('paragraph')
     useBlockNoteEditorMock.mockReturnValue(editor)

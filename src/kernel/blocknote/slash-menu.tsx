@@ -12,6 +12,16 @@ interface OpenSubmenu {
 
 type SubmenuKeyboardAction = { kind: 'close' } | { kind: 'move'; delta: number } | { kind: 'open' } | { kind: 'select' }
 
+const SUBMENU_VIEWPORT_PADDING_PX = 8
+
+// The submenu opens level with its row; near the bottom of the viewport that
+// would run it off screen, so it slides up as far as needed (and no higher
+// than the padding).
+function clampedSubmenuTop(top: number, submenuHeight: number, viewportHeight: number): number {
+  const maxTop = viewportHeight - submenuHeight - SUBMENU_VIEWPORT_PADDING_PX
+  return Math.max(SUBMENU_VIEWPORT_PADDING_PX, Math.min(top, maxTop))
+}
+
 function stopMenuKeyboardEvent(event: KeyboardEvent) {
   event.preventDefault()
   event.stopImmediatePropagation()
@@ -111,7 +121,15 @@ export function SlashMenu({
   const itemElements = useRef(new Map<string, Element>())
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu | null>(null)
   const [submenuIndex, setSubmenuIndex] = useState(0)
+  const submenuElement = useRef<HTMLDivElement>(null)
   const submenuItems = submenuForKey(items, openSubmenu?.key)
+
+  useLayoutEffect(() => {
+    const element = submenuElement.current
+    if (!element || !openSubmenu) return
+    const top = clampedSubmenuTop(openSubmenu.top, element.getBoundingClientRect().height, window.innerHeight)
+    if (top !== openSubmenu.top) setOpenSubmenu({ ...openSubmenu, top })
+  }, [openSubmenu])
 
   const openItemSubmenu = useCallback((item: SlashMenuItem) => {
     if (!item.submenuItems?.length) {
@@ -211,6 +229,7 @@ export function SlashMenu({
           <div
             aria-label={items.find((item) => item.key === openSubmenu.key)?.title}
             className="fixed z-popover flex max-h-[min(26rem,calc(100vh-1rem))] min-w-40 flex-col gap-0.5 overflow-y-auto rounded-xl bg-surface-popover text-text-primary border-hairline border-border-popover shadow-menu p-1"
+            ref={submenuElement}
             role="menu"
             style={{ left: openSubmenu.left, top: openSubmenu.top }}
           >

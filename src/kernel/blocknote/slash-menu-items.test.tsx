@@ -6,6 +6,7 @@ vi.mock('@/lib/telemetry', () => ({
 }))
 
 import {
+  addItemsToGroup,
   addItemsToMediaGroup,
   createCalloutSlashMenuItem,
   createDateTimeSlashMenuItems,
@@ -136,6 +137,21 @@ describe('slash menu items', () => {
       '    edit["Switch to the raw editor to edit"]',
       '```',
     ].join('\n'))
+  })
+
+  it('keeps a group in one run when another group sits between it and the last group', () => {
+    // A run split in two renders the group label twice and duplicates the key.
+    const item = (key: string, group: string) => ({ key, title: key, group, onItemClick: () => {} })
+    const withMedia = addItemsToMediaGroup(
+      [item('image', 'Media'), item('heading_4', 'Subheadings'), item('emoji', 'Others')],
+      [item('mermaid', 'Media')],
+    )
+    expect(withMedia.map((entry) => entry.key)).toEqual(['image', 'mermaid', 'heading_4', 'emoji'])
+
+    const withOthers = addItemsToGroup(withMedia, 'Others', [item('date', 'Others')])
+    expect(withOthers.map((entry) => entry.key)).toEqual(['image', 'mermaid', 'heading_4', 'emoji', 'date'])
+
+    expect(addItemsToGroup(withMedia, undefined, [item('date', 'Others')]).at(-1)?.key).toBe('date')
   })
 
   it('places custom media commands before the existing non-media slash-menu group', () => {

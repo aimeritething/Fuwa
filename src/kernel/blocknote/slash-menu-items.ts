@@ -321,20 +321,43 @@ function createBlockSlashMenuItem(
   } as SlashMenuItem
 }
 
+/**
+ * The slash menu shows one label per run of items sharing a group, so items
+ * added to a group must sit inside that group's run; a run split in two
+ * renders the label twice (and React warns on the duplicate key). Custom
+ * items go after the last item of their group; a group not in the list is
+ * appended.
+ */
+function lastIndexOfGroup(items: SlashMenuItem[], group: string): number {
+  let lastIndex = -1
+  items.forEach((item, index) => {
+    if (item.group === group) lastIndex = index
+  })
+  return lastIndex
+}
+
+export function addItemsToGroup(
+  items: SlashMenuItem[],
+  group: string | undefined,
+  newItems: SlashMenuItem[],
+): SlashMenuItem[] {
+  const nextItems = [...items]
+  const lastIndex = group === undefined ? -1 : lastIndexOfGroup(nextItems, group)
+
+  if (lastIndex === -1) {
+    nextItems.push(...newItems)
+    return nextItems
+  }
+
+  nextItems.splice(lastIndex + 1, 0, ...newItems)
+  return nextItems
+}
+
 export function addItemsToMediaGroup(
   items: SlashMenuItem[],
   mediaItems: SlashMenuItem[],
 ): SlashMenuItem[] {
-  const nextItems = [...items]
-  const insertIndex = nextItems.findIndex((item) => item.key === 'emoji')
-
-  if (insertIndex === -1) {
-    nextItems.push(...mediaItems)
-    return nextItems
-  }
-
-  nextItems.splice(insertIndex, 0, ...mediaItems)
-  return nextItems
+  return addItemsToGroup(items, items.find((item) => item.key === 'image')?.group ?? 'Media', mediaItems)
 }
 
 /**
@@ -394,15 +417,18 @@ export function getSlashMenuItems(
     ...item,
     group: otherGroup,
   }))
-  const items = addItemsToMediaGroup(
-    defaultItems,
-    [
-      createMermaidSlashMenuItem(editor),
-      createMathSlashMenuItem(editor, labels),
-      createSandboxBlockSlashMenuItem(editor, labels),
-      createWhiteboardSlashMenuItem(editor),
-      ...dateTimeItems,
-    ],
+  const items = addItemsToGroup(
+    addItemsToMediaGroup(
+      defaultItems,
+      [
+        createMermaidSlashMenuItem(editor),
+        createMathSlashMenuItem(editor, labels),
+        createSandboxBlockSlashMenuItem(editor, labels),
+        createWhiteboardSlashMenuItem(editor),
+      ],
+    ),
+    otherGroup,
+    dateTimeItems,
   )
 
   return filterSuggestionItems(
