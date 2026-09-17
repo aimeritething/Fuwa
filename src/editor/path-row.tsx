@@ -1,12 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { APP_COMMAND_DEFINITIONS, APP_COMMAND_IDS } from '@/shell/app-command-catalog'
 import type { EditorMode } from '@/types'
 import { documentLocation } from '@/folder/explorer'
-import { formatSavedLabel } from './path-row-saved-label'
 import { Button } from '@/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
-const SAVED_LABEL_TICK_MS = 1_000
 /** Toggle Rich/Raw's shortcut as the manifest writes it (`⌘\\`): Fuwa v0.1 is a macOS app, like the sidebar toggle's `⌘[`. */
 const TOGGLE_SHORTCUT = APP_COMMAND_DEFINITIONS[APP_COMMAND_IDS.editToggleRawEditor].shortcut?.display ?? ''
 const MODE_LABELS: Record<EditorMode, string> = { rich: 'Rich', raw: 'Raw' }
@@ -36,39 +34,21 @@ interface PathRowProps {
   filename: string
   path?: string
   folder?: string | null
-  /** When the last write landed on disk, or null before the first one. */
-  savedAt: number | null
-  /** Set on an Image Tab, which is never written and so has no save state to show. */
+  /** Set on an Image Tab. */
   image?: PathRowImage | null
   /** Set on a Document Tab: its Rich | Raw control and, when there is one, the Frontmatter badge. */
   mode?: PathRowMode | null
 }
 
-/** A clock that advances once a second while a save time is on show. */
-function useSavedLabel(savedAt: number | null): string | null {
-  const [now, setNow] = useState(() => Date.now())
-
-  useEffect(() => {
-    if (savedAt === null) return
-    const timer = window.setInterval(() => setNow(Date.now()), SAVED_LABEL_TICK_MS)
-    return () => window.clearInterval(timer)
-  }, [savedAt])
-
-  if (savedAt === null) return null
-  return formatSavedLabel(savedAt, Math.max(now, savedAt))
-}
-
 /**
  * The row under the tab bar: the Document's name on the left and, on the
- * right in order, its save state, the mono `frontmatter · N keys` badge when
- * the Document has Frontmatter, and the `Rich | Raw` segmented control. An
- * Image Tab fills that slot instead with the picture's dimensions and size and
- * the two buttons that hand the file to a real image app; it has no save
- * state, no Frontmatter and no mode.
+ * right the mono `frontmatter · N keys` badge when the Document has
+ * Frontmatter, then the `Rich | Raw` segmented control. A landed write shows
+ * nothing here. An Image Tab fills that slot instead with the picture's
+ * dimensions and size and the two buttons that hand the file to a real image
+ * app; it has no Frontmatter and no mode.
  */
-export function PathRow({ filename, path, folder, savedAt, image, mode }: PathRowProps) {
-  const savedLabel = useSavedLabel(image ? null : savedAt)
-
+export function PathRow({ filename, path, folder, image, mode }: PathRowProps) {
   return (
     <div className="flex h-9 flex-none items-center gap-1.5 pr-3 pl-4 text-sm text-text-secondary" data-testid="path-row">
       <div className="flex min-w-0 items-center gap-1.5" data-testid="path-row-crumb">
@@ -77,11 +57,8 @@ export function PathRow({ filename, path, folder, savedAt, image, mode }: PathRo
         ))}
         <span className="truncate text-text-primary">{filename}</span>
       </div>
-      {/* Right-hand slot: saved time, then the Frontmatter badge and Rich | Raw, or an Image Tab's meta and actions. */}
+      {/* Right-hand slot: the Frontmatter badge and Rich | Raw, or an Image Tab's meta and actions. */}
       <div className="ml-auto flex items-center gap-3">
-        {savedLabel && (
-          <span className="cursor-default font-mono text-2xs tracking-normal tabular-nums" data-testid="path-row-saved">{savedLabel}</span>
-        )}
         {image && <ImageMeta image={image} />}
         {mode && <FrontmatterBadge mode={mode} />}
         {mode && <ModeControl mode={mode} />}
@@ -92,7 +69,7 @@ export function PathRow({ filename, path, folder, savedAt, image, mode }: PathRo
 
 /**
  * The badge says Frontmatter is there and hidden; clicking it goes to where it
- * can be seen. A mono hairline pill in the saved label's colour, a button and
+ * can be seen. A mono hairline pill in the row's secondary text colour, a button and
  * not a Badge: hovering says it can be clicked, which lands in Raw mode.
  */
 function FrontmatterBadge({ mode }: { mode: PathRowMode }) {

@@ -15,7 +15,7 @@ import {
 
 const AUTOSAVE_IDLE_MS = 1_500
 
-test('typing triggers an Autosave invoke after the idle wait, and the path row reads saved', async ({ page }) => {
+test('typing triggers an Autosave invoke after the idle wait', async ({ page }) => {
   const errors = watchForErrors(page)
   await openWelcome(page)
 
@@ -30,7 +30,6 @@ test('typing triggers an Autosave invoke after the idle wait, and the path row r
   expect(String(call.args?.content)).toContain('Typed in the smoke spec.')
   expect(String(call.args?.content)).toMatch(/^# Welcome\n/)
   expect(await savedContent(page, WELCOME_PATH)).toContain('Typed in the smoke spec.')
-  await expect(page.getByTestId('path-row-saved')).toHaveText(/^saved /)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
@@ -44,7 +43,6 @@ test('⌘S writes the latest keystrokes immediately', async ({ page }) => {
 
   await expect.poll(() => saveCalls(page), { timeout: 1_000 }).toHaveLength(1)
   expect(await savedContent(page, WELCOME_PATH)).toContain('Saved by hand.')
-  await expect(page.getByTestId('path-row-saved')).toHaveText(/^saved /)
 
   // The idle timer that was already running must not write a second copy.
   await page.waitForTimeout(AUTOSAVE_IDLE_MS + 500)
@@ -64,12 +62,12 @@ test('opening a Document and saving without edits leaves the bytes untouched', a
   expect(await savedContent(page, WELCOME_PATH)).toBe(before)
 })
 
-test('a refused write is reported, keeps the buffer and leaves the saved time alone', async ({ page }) => {
+test('a refused write is reported, keeps the buffer and leaves the file alone', async ({ page }) => {
   const errors = watchForErrors(page)
   await openWelcome(page)
   await typeAtEnd(page, ' First.')
   await page.keyboard.press('Meta+s')
-  await expect(page.getByTestId('path-row-saved')).toHaveText('saved just now')
+  await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('First.')
   const written = await savedContent(page, WELCOME_PATH)
 
   await page.evaluate((path) => window.__fuwaMockVault?.markReadOnly([path]), WELCOME_PATH)
@@ -78,7 +76,6 @@ test('a refused write is reported, keeps the buffer and leaves the saved time al
   await expect.poll(() => saveCalls(page), { timeout: AUTOSAVE_IDLE_MS + 3_000 }).toHaveLength(2)
 
   expect(await savedContent(page, WELCOME_PATH)).toBe(written)
-  await expect(page.getByTestId('path-row-saved')).not.toHaveText('saved just now')
   expect(errors.consoleErrors.some((text) => text.includes('Could not save'))).toBe(true)
 
   // The buffer survived: once the path is writable again, ⌘S lands it.
@@ -86,7 +83,6 @@ test('a refused write is reported, keeps the buffer and leaves the saved time al
   await page.keyboard.press('Meta+s')
   await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('Blocked.')
   expect(await savedContent(page, WELCOME_PATH)).toContain('First.')
-  await expect(page.getByTestId('path-row-saved')).toHaveText('saved just now')
   expect(errors.pageErrors).toEqual([])
 })
 
@@ -104,7 +100,6 @@ test('opening another Document first writes the pending edits of the current one
   await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('Pending.')
   const [call] = await saveCalls(page)
   expect(call.args).toMatchObject({ path: WELCOME_PATH, vaultPath: MOCK_FOLDER })
-  await expect(page.getByTestId('path-row-saved')).toHaveCount(0)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })

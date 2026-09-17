@@ -96,8 +96,6 @@ export interface EditorProps {
   vaultPath?: string
   folder?: string | null
   hasPendingEditorContentRef?: MutableRefObject<((path: string) => boolean) | null>
-  /** When the active Document's last write landed on disk. */
-  savedAt: number | null
   /** Receives the serialized Markdown after the rich editor's idle debounce. */
   onContentChange?: (path: string, content: string) => void
   /** Receives the Raw editor's bytes after its own idle debounce, and on every flush. */
@@ -387,7 +385,6 @@ function ImageTab({ path, folder, imageFile, reloads }: {
         filename={filename}
         path={path}
         folder={folder}
-        savedAt={null}
         image={{
           metadata: imageMetadataLabel(naturalSize, fileSize),
           onOpenExternal: openExternally,
@@ -410,7 +407,7 @@ function ImageTab({ path, folder, imageFile, reloads }: {
 export const Editor = memo(function Editor(props: EditorProps) {
   const { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest } = useEditorRuntime(props)
   const {
-    tabs, activeTabPath, vaultPath, savedAt, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
+    tabs, activeTabPath, vaultPath, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
     sidebarCollapsed, onShowSidebar,
   } = props
   const openTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
@@ -441,7 +438,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       )}
       {activeTab && (
         <>
-          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} savedAt={savedAt} mode={raw.pathRowMode} />
+          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} mode={raw.pathRowMode} />
           {writeFailure && (
             <WriteFailureBar
               path={writeFailure.path}

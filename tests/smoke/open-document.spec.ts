@@ -19,7 +19,6 @@ test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ p
   await expect(editor.locator('h1')).toHaveText('Welcome')
   await expect(editor).toContainText('This Folder lives in memory.')
   await expect(page.getByTestId('path-row')).toContainText('Welcome.md')
-  await expect(page.getByTestId('path-row-saved')).toHaveCount(0)
   await expect(page.getByTestId('editor-empty-state')).toHaveCount(0)
 
   const readCalls = await page.evaluate(() =>

@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import type { Tab } from './types'
 import { CommandMenu } from '@/command-menu/command-menu'
 import { Editor } from '@/editor/editor'
@@ -76,23 +76,6 @@ function useOpenNoteRoots(tabs: Tab[], folder: string | null): readonly string[]
   return useMemo(() => (rootsKey === '' ? [] : rootsKey.split('\n')), [rootsKey])
 }
 
-/** When each open Document's last write landed; the path row shows the active one's. */
-function useSavedTimes() {
-  const [savedAtByPath, setSavedAtByPath] = useState<Record<string, number>>({})
-  const markSaved = useCallback((path: string) => {
-    setSavedAtByPath((prev) => ({ ...prev, [path]: Date.now() }))
-  }, [])
-  const forgetSaved = useCallback((path: string) => {
-    setSavedAtByPath((prev) => {
-      if (!(path in prev)) return prev
-      const rest = { ...prev }
-      delete rest[path]
-      return rest
-    })
-  }, [])
-  return { savedAtByPath, markSaved, forgetSaved }
-}
-
 export default function App() {
   const { toast, showToast } = useToast()
   const folderState = useFolder()
@@ -126,7 +109,6 @@ export default function App() {
     restoreSidebar,
   })
   useThemeMode(appearance.themeMode, restored)
-  const { savedAtByPath, markSaved, forgetSaved } = useSavedTimes()
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
   const flushPendingRawContentRef = useRef<((path: string) => void) | null>(null)
   const hasPendingEditorContentRef = useRef<((path: string) => boolean) | null>(null)
@@ -150,10 +132,7 @@ export default function App() {
   // A write that lands, from any path, clears the Document's error bar.
   const writeFailureRecord = useWriteFailureRecord()
   const { clearFailure: clearWriteFailure, recordFailure: recordWriteFailure } = writeFailureRecord
-  const onNotePersisted = useCallback((path: string) => {
-    markSaved(path)
-    clearWriteFailure(path)
-  }, [clearWriteFailure, markSaved])
+  const onNotePersisted = clearWriteFailure
 
   const { handleContentChange, savePendingForPath, discardPending, hasPendingSave } = useEditorSave({
     setTabs,
@@ -194,11 +173,6 @@ export default function App() {
     await reloadTab(path)
   }, [discardPending, reloadTab])
 
-  const closeTabAndForget = useCallback((path: string) => {
-    closeTab(path)
-    forgetSaved(path)
-  }, [closeTab, forgetSaved])
-
   const writeFailures = useWriteFailures({
     record: writeFailureRecord,
     tabs,
@@ -206,7 +180,7 @@ export default function App() {
     settleActiveNote,
     writeBuffer,
     revertToDisk,
-    closeTab: closeTabAndForget,
+    closeTab: closeTab,
     exitApp,
   })
   const { settleAndRecord, closeTabOrAsk, retry, discard, quit, answerPrompt, dismissPrompt } = writeFailures
@@ -256,9 +230,9 @@ export default function App() {
     for (const path of pathsUnder(prefix)) {
       discardPending(path)
       clearWriteFailure(path)
-      closeTabAndForget(path)
+      closeTab(path)
     }
-  }, [clearWriteFailure, closeTabAndForget, discardPending, pathsUnder])
+  }, [clearWriteFailure, closeTab, discardPending, pathsUnder])
 
   const tabCommands = useTabCommands({
     activeTabPath,
@@ -311,8 +285,8 @@ export default function App() {
       await savePendingForPath(path)
     }
     closeAllTabs()
-    for (const tab of tabs) { forgetSaved(tab.entry.path); clearWriteFailure(tab.entry.path) }
-  }, [activeTabPath, clearWriteFailure, closeAllTabs, closeTabOrAsk, forgetSaved, retry, savePendingForPath, settleAndRecord, tabs, writeFailureRecord.failuresRef])
+    for (const tab of tabs) clearWriteFailure(tab.entry.path)
+  }, [activeTabPath, clearWriteFailure, closeAllTabs, closeTabOrAsk, retry, savePendingForPath, settleAndRecord, tabs, writeFailureRecord.failuresRef])
 
   const onOpenFolder = useCallback(() => {
     void (async () => {
@@ -443,8 +417,6 @@ export default function App() {
   // unpainted until the launch Document is in place.
   const { settled: finderOpenSettled } = useFinderOpen({ openNote: openLoneNote, settleActiveNote: settleAndRecord, ready: restored })
 
-  const savedAt = activeTabPath ? savedAtByPath[activeTabPath] ?? null : null
-
   // Nothing is painted until the Session is back and any Finder launch
   // Document is open, so a launch never shows the expanded sidebar, or the
   // Session's Tab, for a frame before the right state (the window's own
@@ -479,7 +451,6 @@ export default function App() {
         vaultPath={vaultPath}
         folder={folder}
         hasPendingEditorContentRef={hasPendingEditorContentRef}
-        savedAt={savedAt}
         onContentChange={onContentChange}
         onRawContentChange={onRawContentChange}
         flushPendingEditorContentRef={flushPendingEditorContentRef}

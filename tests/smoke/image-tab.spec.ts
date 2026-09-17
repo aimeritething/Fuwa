@@ -56,7 +56,6 @@ test('an Image file opens as a Tab with its picture, dimensions, size and two ha
   await expect(page.getByTestId(`open-editor:${LAKE}`)).toBeVisible()
   await expect(page.getByTestId('path-row')).toContainText('Notes › Attachments › lake.png')
   await expect(page.getByTestId('path-row-image-meta')).toHaveText('1920 × 1080 · 240 KB')
-  await expect(page.getByTestId('path-row-saved')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Copy path' })).toBeVisible()
   await expect(page.locator('.bn-editor')).toHaveCount(0)

@@ -101,7 +101,6 @@ test('Raw edits reach disk with the exact bytes, and ⌘S writes them at once', 
 
   await expect.poll(() => saveCalls(page), { timeout: 1_000 }).toHaveLength(1)
   expect(await savedContent(page, WELCOME_PATH)).toMatch(/Raw bytes\.\n?$/)
-  await expect(page.getByTestId('path-row-saved')).toHaveText(/^saved /)
   // The raw editor's own idle timer must not write a second copy.
   await page.waitForTimeout(2_000)
   expect(await saveCalls(page)).toHaveLength(1)
@@ -148,7 +147,6 @@ test('a Document with Frontmatter renders none of it in Rich, badges the key cou
   await expect(page.locator('.bn-editor')).not.toContainText('title')
   const badge = page.getByTestId('path-row-frontmatter')
   await expect(badge).toHaveText('frontmatter · 1 key')
-  await expect(page.getByTestId('path-row-saved')).toHaveCount(0)
 
   await typeAtEnd(page, ' Body edit.')
   await page.keyboard.press('Meta+s')

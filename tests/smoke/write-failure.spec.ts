@@ -38,7 +38,7 @@ async function pressQuit(page: Page) {
 async function editThenRefuse(page: Page, path: string) {
   await typeAtEnd(page, ' First.')
   await page.keyboard.press('Meta+s')
-  await expect(page.getByTestId('path-row-saved')).toHaveText('saved just now')
+  await expect.poll(() => savedContent(page, path)).toContain('First.')
   await page.evaluate((target) => window.__fuwaMockVault?.markReadOnly([target]), path)
   await page.waitForTimeout(AUTOSAVE_IDLE_MS)
   await typeAtEnd(page, ' Blocked.')
@@ -78,7 +78,6 @@ test('Retry writes the file once it is writable again and the bar disappears', a
   await expect(errorBar(page)).toHaveCount(0)
   expect(await savedContent(page, WELCOME_PATH)).toContain('First.')
   expect(await savedContent(page, WELCOME_PATH)).toContain('Blocked.')
-  await expect(page.getByTestId('path-row-saved')).toHaveText('saved just now')
   expect(errors.pageErrors).toEqual([])
 })
 
