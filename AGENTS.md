@@ -1,56 +1,39 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository.
+Fuwa is a small macOS desktop app (React + Tauri) for reading and editing Markdown
+Documents in a Folder on disk. Names follow the glossary in `CONTEXT.md`; read the
+`docs/adr/` entries that touch the area you change. Issues: `docs/agents/issue-tracker.md`.
 
-## Repo overview
+## Layout
 
-Fuwa is a small macOS desktop app for reading and editing Markdown Documents in a Folder
-on disk. Directory names follow the glossary in `CONTEXT.md`.
+`src/` is cut by feature, files flat inside each directory. Cross-directory imports use
+`@/<dir>/…`; imports within a directory are relative.
 
-- `src/` — the React app, cut by feature. Inside each directory files sit flat; cross-directory
-  imports use `@/<dir>/…`, imports within a directory are relative.
-  - `kernel/` — the Kernel: the ProseMirror, BlockNote and CodeMirror code and the Markdown
-    round-trip. `blocknote/` (the schema, each block as `<name>-block.tsx`, the toolbar and
-    menu files, `shadcn-components.tsx` for BlockNote's own menus, `blocknote.css` on
-    third-party DOM, extensions, copy/paste, find, the BlockNote regression tests),
-    `markdown/` (the round-trip: frontmatter, fences, wikilinks, per-block serializers),
-    `resolve/` (the open-time pipeline: cache, preload, worker, swap), `raw/` (CodeMirror).
-  - `editor/` — Fuwa's editing surface: `editor.tsx` (the floating card), the path row with its
-    Copy path button and Rich | Raw segments, Rich / Raw views and their find bars, Autosave,
-    Write failure, the Sonner toasts, an Image file's Tab. All utility classes; the directory has
-    no CSS file.
-  - `explorer/`, `folder/` (disk: `use-folder`, the watcher, asset scope, the Rust command
-    wrappers; `explorer/` imports `folder/`, never the reverse), `tabs/`, `session/`,
-    `command-menu/`, `shell/` (sidebar, theme, shortcuts, menu events, `app-command-manifest.json`,
-    which `src-tauri/src/menu.rs` also reads via `include_str!`).
-  - `ui/` — the shadcn primitives, regenerated from the templates with Fuwa's values, and
-    `kbd`. `platform/` — `tauri.ts` (`isTauri` / mock dispatch), `mock/` (the in-memory Folder
-    fixture that stands in for Rust outside Tauri), window, URL, clipboard, storage keys.
-    `lib/` — leaf helpers (`cn`, i18n, telemetry stubs, path identity).
+- `kernel/` — the Kernel: BlockNote (`blocknote/`), the Markdown round-trip (`markdown/`),
+  the open-time pipeline (`resolve/`), CodeMirror (`raw/`).
+- `editor/` — the editing surface: the floating card, path row, Rich / Raw views, Autosave,
+  Write failure, toasts. Utility classes only; no CSS file.
+- `folder/` — disk: the watcher, asset scope, the Rust command wrappers. `explorer/`
+  imports `folder/`, never the reverse.
+- `shell/` — sidebar, theme, shortcuts, menu events. `app-command-manifest.json` is also
+  read by `src-tauri/src/menu.rs`.
+- `ui/` — shadcn primitives regenerated from the templates with Fuwa's values.
+- `platform/` — `tauri.ts` and `mock/`, the in-memory Folder fixture that stands in for
+  Rust outside Tauri (so `pnpm dev` and the smoke specs run without it).
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
-- `tests/smoke/` — Playwright specs; its `README.md` describes the Folder fixture they drive.
-  Unit tests sit beside the code as `*.test.ts(x)`; a test with no source file of its own lives
-  in the directory it guards; test helpers are `*.test-utils.ts(x)`. File names are kebab-case.
-- `docs/adr/` — decisions; read the ones touching the area you change.
-  `docs/agents/` — domain-doc conventions and where issues are tracked (`issue-tracker.md`).
-- `patches/` — six pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in
-  `pnpm-workspace.yaml`. Bumping those packages means re-applying the patches.
 
-## Setup
+Unit tests sit beside the code as `*.test.ts(x)`; helpers are `*.test-utils.ts(x)`; a test
+with no source file of its own lives in the directory it guards. `tests/smoke/` holds the
+Playwright specs (`pnpm smoke`, manual; its `README.md` describes the fixture).
 
-pnpm 10.33, node >= 22, Rust >= 1.77.2. `pnpm install` applies the patches. The Vite dev
-server listens on port 5202; outside Tauri every command goes to the mock Folder fixture.
+`patches/` holds pnpm patches on BlockNote, TipTap and prosemirror-tables, pinned in
+`pnpm-workspace.yaml`. Bumping those packages means re-applying the patches.
 
-## Common commands
+## Commands
 
-| Command | Notes |
-| -- | -- |
-| `pnpm tauri dev` | The full app. The wrapper adds `src-tauri/tauri.dev.conf.json` (identifier `com.aimerite.fuwa.dev`) so a dev build never collides with an installed Fuwa. |
-| `pnpm dev` | Frontend only, in the browser, against the mock fixture. |
-| `pnpm tsc` / `pnpm lint` / `pnpm test` | Type-check, ESLint (warnings fail the run), Vitest. |
-| `cargo clippy --all-targets` / `cargo test` | Run in `src-tauri/`. |
-| `pnpm smoke` | Playwright in Chromium. Manual, not in CI. Set `FUWA_SMOKE_PORT` when 5202 is taken. |
-| `pnpm tauri build` | The `.app` bundle. Manual. |
+Scripts are in `package.json`. `pnpm tauri dev` runs the full app under a dev identifier
+so it never collides with an installed Fuwa; `pnpm dev` runs the frontend alone against the
+mock fixture.
 
-CI runs tsc, ESLint, Vitest, clippy and `cargo test` on every push and pull request; run
-the same set locally before calling work done.
+Before calling work done, run what CI runs: `pnpm tsc`, `pnpm lint`, `pnpm test`, and in
+`src-tauri/` `cargo clippy --all-targets` and `cargo test`.
