@@ -197,6 +197,20 @@
         ]
       }
     },
+    "editCopyPath": {
+      "id": "edit-copy-path",
+      "route": { "kind": "handler", "handler": "onCopyPath" },
+      "menuOwned": true,
+      "shortcut": {
+        "combo": "command-or-ctrl-shift",
+        "key": ",",
+        "aliases": ["<"],
+        "code": "Comma",
+        "display": "⌘⇧,",
+        "accelerator": "CmdOrCtrl+Shift+,",
+        "requiresManualNativeAcceleratorQa": true
+      }
+    },
     "viewAppearanceSystem": {
       "id": "view-appearance-system",
       "route": { "kind": "handler", "handler": "onAppearanceSystem" },
@@ -405,7 +419,9 @@
         { "kind": "separator" },
         { "kind": "command", "command": "editPastePlainText", "label": "Paste without Formatting" },
         { "kind": "separator" },
-        { "kind": "command", "command": "editFindInNote", "label": "Find" }
+        { "kind": "command", "command": "editFindInNote", "label": "Find" },
+        { "kind": "separator" },
+        { "kind": "command", "command": "editCopyPath", "label": "Copy Path" }
       ]
     },
     {
@@ -448,7 +464,8 @@
       { "command": "editFindInNote" }
     ],
     "tabDependent": [
-      { "command": "fileCloseTab" }
+      { "command": "fileCloseTab" },
+      { "command": "editCopyPath" }
     ],
     "vaultDependent": [
       { "command": "fileNewNote" },

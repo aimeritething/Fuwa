@@ -97,7 +97,7 @@ interface Options {
    * point: the Tab's buffered edits go with it.
    */
   dropTabsUnder: (prefix: string) => void
-  /** The one toast surface: a refused move, and a refused Trash. */
+  /** A toast saying a move or a Trash was refused. */
   showToast: (message: string) => void
 }
 

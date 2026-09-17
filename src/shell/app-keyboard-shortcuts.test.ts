@@ -110,6 +110,17 @@ describe('handleAppKeyboardEvent', () => {
     expect(handlers.onQuickOpen).toHaveBeenCalledTimes(1)
   })
 
+  it('⌘⇧, is Copy path, whether the shifted key reads "," or "<", even from inside the editor', () => {
+    document.body.innerHTML = '<div class="bn-editor" contenteditable="true" tabindex="0">Text</div>'
+    document.querySelector<HTMLElement>('.bn-editor')!.focus()
+    const handlers = actions({ onCopyPath: vi.fn() })
+    const event = press(',', { shiftKey: true, code: 'Comma' })
+    handleAppKeyboardEvent(handlers, event)
+    handleAppKeyboardEvent(handlers, press('<', { shiftKey: true, code: 'Comma' }))
+    expect(handlers.onCopyPath).toHaveBeenCalledTimes(2)
+    expect(event.defaultPrevented).toBe(true)
+  })
+
   it('⌘F opens find with the editor focused, or with nothing focused', () => {
     document.body.innerHTML = '<div data-editor-find-scope="true"><div class="bn-editor" contenteditable="true" tabindex="0">Text</div></div>'
     const handlers = actions()

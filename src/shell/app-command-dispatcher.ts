@@ -41,6 +41,8 @@ export interface AppCommandHandlers {
   onCommandPalette: () => void
   onToggleSidebar?: () => void
   onToggleRawEditor?: () => void
+  /** ⌘⇧,: the active Tab's absolute path onto the clipboard; disabled with no Tab. */
+  onCopyPath?: () => void
   onAppearanceSystem?: () => void
   onAppearanceDark?: () => void
   onAppearanceLight?: () => void
@@ -77,6 +79,7 @@ type SimpleHandlerKey = keyof Pick<
   | 'onCommandPalette'
   | 'onToggleSidebar'
   | 'onToggleRawEditor'
+  | 'onCopyPath'
   | 'onAppearanceSystem'
   | 'onAppearanceDark'
   | 'onAppearanceLight'
@@ -114,6 +117,7 @@ const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecuto
   ['onCommandPalette', (handlers) => handlers.onCommandPalette()],
   ['onToggleSidebar', (handlers) => handlers.onToggleSidebar?.()],
   ['onToggleRawEditor', (handlers) => handlers.onToggleRawEditor?.()],
+  ['onCopyPath', (handlers) => handlers.onCopyPath?.()],
   ['onAppearanceSystem', (handlers) => handlers.onAppearanceSystem?.()],
   ['onAppearanceDark', (handlers) => handlers.onAppearanceDark?.()],
   ['onAppearanceLight', (handlers) => handlers.onAppearanceLight?.()],

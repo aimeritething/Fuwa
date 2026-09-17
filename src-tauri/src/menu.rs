@@ -598,7 +598,7 @@ mod tests {
         );
         assert_eq!(
             menu_state_group_ids(TAB_DEPENDENT_GROUP),
-            ["file-close-tab"]
+            ["file-close-tab", "edit-copy-path"]
         );
         assert_eq!(
             menu_state_group_ids(VAULT_DEPENDENT_GROUP),
@@ -644,6 +644,8 @@ mod tests {
                 Some("edit-paste-plain-text"),
                 None,
                 Some("edit-find-in-note"),
+                None,
+                Some("edit-copy-path"),
             ]
         );
     }

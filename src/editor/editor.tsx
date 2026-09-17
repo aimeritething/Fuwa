@@ -5,6 +5,7 @@ import { useEditorFocus } from './use-editor-focus'
 import { useEditorFocusScope } from './editor-focus-ownership'
 import { RUNTIME_STYLE_NONCE } from '@/platform/runtime-style-nonce'
 import type { EditorMode, Tab } from '@/types'
+import type { ThemeMode } from '@/shell/theme-mode'
 import type { ListedFile } from '@/folder/explorer'
 import { documentRoot } from '@/folder/explorer'
 import { documentFrontmatter, frontmatterBadgeLabel } from '@/kernel/markdown/frontmatter-status'
@@ -20,7 +21,7 @@ import { uploadEditorImage } from './editor-image-upload'
 import { schema } from '@/kernel/blocknote/editor-schema'
 import { createImeCompositionKeyGuardExtension } from '@/kernel/blocknote/ime-composition-key-guard-extension'
 import { createMarkdownHighlightShortcutExtension } from '@/kernel/blocknote/markdown-highlight-shortcut-extension'
-import { copyImagePath, openImageExternally } from './image-tab-actions'
+import { openImageExternally } from './image-tab-actions'
 import { EmptyCard } from './empty-card'
 import { ImageView } from './image-view'
 import { PathRow, type PathRowMode } from './path-row'
@@ -28,7 +29,7 @@ import { RawEditorView } from './raw-editor-view'
 import type { RawEditorFindRequest } from './raw-editor-find-types'
 import { RichEditorFindBar } from './rich-editor-find-bar'
 import { createRichEditorFindExtension } from '@/kernel/blocknote/rich-editor-find'
-import { Toast } from './toast'
+import { EditorToaster } from './editor-toaster'
 import { TabBar } from '@/tabs/tab-bar'
 import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from '@/kernel/blocknote/rich-editor-block-note-options'
 import { createRichEditorBlockSelectionExtension } from '@/kernel/blocknote/rich-editor-block-selection-extension'
@@ -117,8 +118,10 @@ export interface EditorProps {
   writeFailure: WriteFailure | null
   onRetryWrite: (path: string) => void
   onDiscardWrite: (path: string) => void
-  /** The Explorer's one line of bad news, at the bottom of the card. */
-  toast: string | null
+  /** Copy path (⌘⇧,), the same handler the app command runs; the path row's link button calls it. */
+  onCopyPath?: () => void
+  /** The View → Appearance choice, which the toasts at the card's bottom-right follow. */
+  themeMode: ThemeMode
   /** Collapsed, the card goes edge-to-edge and its top row seats the traffic lights and the sidebar icon. */
   sidebarCollapsed: boolean
   onShowSidebar: () => void
@@ -366,11 +369,12 @@ function EditorFindScope({
  * watcher refreshes the Folder. There is no save state, no Frontmatter badge,
  * no Rich/Raw and no error bar: an Image Tab is never written.
  */
-function ImageTab({ path, folder, imageFile, reloads }: {
+function ImageTab({ path, folder, imageFile, reloads, onCopyPath }: {
   path: string
   folder?: string | null
   imageFile?: ListedFile | null
   reloads: number
+  onCopyPath?: () => void
 }) {
   const fileSize = imageFile?.fileSize ?? 0
   const version = imageFetchVersion(imageFile ?? null, reloads)
@@ -388,8 +392,8 @@ function ImageTab({ path, folder, imageFile, reloads }: {
         image={{
           metadata: imageMetadataLabel(naturalSize, fileSize),
           onOpenExternal: openExternally,
-          onCopyPath: () => copyImagePath(path),
         }}
+        onCopyPath={onCopyPath}
       />
       <div className="flex min-h-0 min-w-0 flex-1">
         <ImageView
@@ -416,14 +420,16 @@ export const Editor = memo(function Editor(props: EditorProps) {
   if (!openTab) {
     return (
       <div className={CARD_CLASS} data-testid="editor-card" data-collapsed={collapsed}>
+        <EditorToaster theme={props.themeMode} />
         <EmptyCard hasFolder={Boolean(props.folder)} sidebarCollapsed={sidebarCollapsed} onShowSidebar={onShowSidebar} />
-        <Toast message={props.toast} />
       </div>
     )
   }
 
   return (
     <div className={CARD_CLASS} data-testid="editor-card" data-collapsed={collapsed}>
+      {/* First in both of the card's shapes, so closing the last Tab keeps the toaster and its toasts mounted. */}
+      <EditorToaster theme={props.themeMode} />
       <TabBar
         tabs={tabs}
         activeTabPath={activeTabPath}
@@ -434,11 +440,11 @@ export const Editor = memo(function Editor(props: EditorProps) {
       />
       {/* The two bodies are exclusive: an Image Tab leaves the runtime with no active Document. */}
       {imageTabPath !== null && (
-        <ImageTab path={imageTabPath} folder={props.folder} imageFile={props.imageFile} reloads={openTab.reloads ?? 0} />
+        <ImageTab path={imageTabPath} folder={props.folder} imageFile={props.imageFile} reloads={openTab.reloads ?? 0} onCopyPath={props.onCopyPath} />
       )}
       {activeTab && (
         <>
-          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} mode={raw.pathRowMode} />
+          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} mode={raw.pathRowMode} onCopyPath={props.onCopyPath} />
           {writeFailure && (
             <WriteFailureBar
               path={writeFailure.path}
@@ -478,7 +484,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
           )}
         </>
       )}
-      <Toast message={props.toast} />
     </div>
   )
 })

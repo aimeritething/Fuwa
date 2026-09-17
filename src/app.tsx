@@ -25,7 +25,7 @@ import { useMenuEvents, type MenuEventHandlers } from '@/shell/use-menu-events'
 import { useNoteTabs } from '@/tabs/use-note-tabs'
 import { useSession } from '@/session/use-session'
 import { useSidebar } from '@/shell/use-sidebar'
-import { useToast } from '@/editor/use-toast'
+import { copyPathWithToast, showRefusalToast } from '@/editor/toasts'
 import { useTabCommands } from '@/tabs/use-tab-commands'
 import { useThemeMode } from '@/shell/use-theme-mode'
 import { useWriteFailureRecord, useWriteFailures } from '@/editor/use-write-failures'
@@ -77,7 +77,6 @@ function useOpenNoteRoots(tabs: Tab[], folder: string | null): readonly string[]
 }
 
 export default function App() {
-  const { toast, showToast } = useToast()
   const folderState = useFolder()
   const { folder, changeFolder } = folderState
   const {
@@ -266,7 +265,7 @@ export default function App() {
     retargetTabs,
     settleTabsUnder,
     dropTabsUnder,
-    showToast,
+    showToast: showRefusalToast,
   })
 
   const settleAndCloseAll = useCallback(async () => {
@@ -346,6 +345,11 @@ export default function App() {
   const onToggleRawEditor = useCallback(() => rawToggleRef.current?.(), [])
   // Find (⌘F, Edit menu) follows the same rule: no Document, no handler.
   const onFindInNote = useCallback(() => findRef.current?.(), [])
+  // Copy path (⌘⇧,, Edit menu, the path row's link button) works on any Tab,
+  // an Image Tab included, so it goes with no Tab rather than no Document.
+  const onCopyPath = useCallback(() => {
+    if (activeTabPath) copyPathWithToast(activeTabPath)
+  }, [activeTabPath])
 
   // Paste without Formatting (⌘⇧V, Edit menu): the clipboard's text, read
   // through the carried Rust clipboard module in Tauri, inserted as plain
@@ -376,6 +380,7 @@ export default function App() {
     onToggleSidebar: toggleSidebar,
     onToggleRawEditor: activeDocumentPath ? onToggleRawEditor : undefined,
     onFindInNote: activeDocumentPath ? onFindInNote : undefined,
+    onCopyPath: hasTab ? onCopyPath : undefined,
     ...tabCommands.handlers,
     ...appearance.handlers,
     onCreateNote: explorerActions.createDocument,
@@ -385,7 +390,7 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, toggleSidebar])
+  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onCopyPath, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, toggleSidebar])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
 
@@ -463,7 +468,8 @@ export default function App() {
         writeFailure={writeFailures.failureFor(activeTabPath)}
         onRetryWrite={retry}
         onDiscardWrite={discard}
-        toast={toast}
+        onCopyPath={onCopyPath}
+        themeMode={appearance.themeMode}
         sidebarCollapsed={sidebar.collapsed}
         onShowSidebar={toggleSidebar}
       />

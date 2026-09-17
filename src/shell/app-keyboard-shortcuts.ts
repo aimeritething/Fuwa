@@ -27,6 +27,7 @@ export type KeyboardActions = Pick<
   | 'onZoomReset'
   | 'onToggleSidebar'
   | 'onToggleRawEditor'
+  | 'onCopyPath'
   | 'onAppearanceSystem'
   | 'onAppearanceDark'
   | 'onAppearanceLight'

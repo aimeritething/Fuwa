@@ -16,8 +16,9 @@ on disk. Directory names follow the glossary in `CONTEXT.md`.
     `markdown/` (the round-trip: frontmatter, fences, wikilinks, per-block serializers),
     `resolve/` (the open-time pipeline: cache, preload, worker, swap), `raw/` (CodeMirror).
   - `editor/` — Fuwa's editing surface: `editor.tsx` (the floating card), the path row with its
-    Rich | Raw segments, Rich / Raw views and their find bars, Autosave, Write failure, Toast, an
-    Image file's Tab. All utility classes; the directory has no CSS file.
+    Copy path button and Rich | Raw segments, Rich / Raw views and their find bars, Autosave,
+    Write failure, the Sonner toasts, an Image file's Tab. All utility classes; the directory has
+    no CSS file.
   - `explorer/`, `folder/` (disk: `use-folder`, the watcher, asset scope, the Rust command
     wrappers; `explorer/` imports `folder/`, never the reverse), `tabs/`, `session/`,
     `command-menu/`, `shell/` (sidebar, theme, shortcuts, menu events, `app-command-manifest.json`,

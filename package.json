@@ -55,6 +55,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "safe-regex2": "5.1.1",
+    "sonner": "^2.0.8",
     "tailwind-merge": "^3.4.1",
     "tailwindcss": "^4.1.18",
     "tldraw": "^4.5.10",

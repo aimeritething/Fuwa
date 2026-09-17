@@ -127,7 +127,7 @@ test('a name the folder already holds refuses the move and says so', async ({ pa
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)
     .dragTo(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects`))
 
-  await expect(page.getByTestId('toast')).toHaveText('Projects already has Welcome.md')
+  await expect(page.locator('[data-sonner-toast]')).toHaveText('Projects already has Welcome.md')
   const paths = await folderPaths(page)
   expect(paths).toContain(`${MOCK_FOLDER}/Welcome.md`)
   expect(paths).toContain(`${MOCK_FOLDER}/Projects/Welcome.md`)

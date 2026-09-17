@@ -52,6 +52,7 @@ type SimpleHandlerKey =
   | 'onCommandPalette'
   | 'onToggleSidebar'
   | 'onToggleRawEditor'
+  | 'onCopyPath'
   | 'onAppearanceSystem'
   | 'onAppearanceDark'
   | 'onAppearanceLight'

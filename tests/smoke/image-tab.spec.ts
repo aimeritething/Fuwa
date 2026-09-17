@@ -75,6 +75,7 @@ test('Copy path puts the absolute path on the clipboard', async ({ page, context
   await page.getByRole('button', { name: 'Copy path' }).click()
 
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(LAKE)
+  await expect(page.locator('[data-sonner-toast]')).toHaveText('Copied path to clipboard')
 })
 
 test('a large picture is scaled down to fit and a small one is left at its own size, with nothing to scroll', async ({ page }) => {
