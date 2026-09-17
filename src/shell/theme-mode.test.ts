@@ -28,7 +28,7 @@ describe('themeMode', () => {
     expect(normalizeThemeMode('system')).toBe('system')
     expect(resolveThemeMode('system', makeMatchMedia(true))).toBe('dark')
     expect(resolveThemeMode('system', makeMatchMedia(false))).toBe('light')
-    expect(resolveThemeMode('sepia')).toBe('dark')
+    expect(resolveThemeMode('sepia')).toBe('light')
   })
 
   it('reads and writes the current storage key', () => {

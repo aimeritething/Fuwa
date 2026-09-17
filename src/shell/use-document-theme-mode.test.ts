@@ -8,10 +8,10 @@ describe('useDocumentThemeMode', () => {
     globalThis.document.documentElement.classList.remove('dark')
   })
 
-  it('defaults to dark when no document theme is applied', () => {
+  it('defaults to light when no document theme is applied', () => {
     const { result } = renderHook(() => useDocumentThemeMode())
 
-    expect(result.current).toBe('dark')
+    expect(result.current).toBe('light')
   })
 
   it('updates when the document theme changes', async () => {

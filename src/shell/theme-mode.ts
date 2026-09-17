@@ -1,7 +1,7 @@
 import { APP_STORAGE_KEYS } from '@/platform/storage'
 
 export const THEME_MODE_STORAGE_KEY = APP_STORAGE_KEYS.theme
-export const DEFAULT_THEME_MODE = 'dark'
+export const DEFAULT_THEME_MODE = 'light'
 export const SYSTEM_THEME_MODE = 'system'
 export const SYSTEM_THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)'
 

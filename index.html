@@ -72,7 +72,7 @@
           }
         }
         function resolveTheme(value) {
-          var mode = normalizeTheme(value) || 'dark';
+          var mode = normalizeTheme(value) || 'light';
           return mode === 'system' ? (prefersDarkTheme() ? 'dark' : 'light') : mode;
         }
         function applyTheme(value) {
@@ -83,7 +83,7 @@
         try {
           applyTheme(normalizeTheme(localStorage.getItem(key)));
         } catch {
-          applyTheme('dark');
+          applyTheme('light');
         }
       })();
     </script>

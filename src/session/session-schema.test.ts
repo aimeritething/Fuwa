@@ -52,7 +52,7 @@ describe('parseSession', () => {
       folder: null,
       openEditors: [{ path: A }, { path: B, mode: 'raw' }],
       activePath: null,
-      theme: 'dark',
+      theme: 'light',
       sidebar: { collapsed: false, width: 260 },
     })
   })

@@ -2,10 +2,10 @@ import { useCallback, useMemo, useState } from 'react'
 import { DEFAULT_THEME_MODE, type ThemeMode } from './theme-mode'
 
 /**
- * The View → Appearance choice: dark on first launch, light
+ * The View → Appearance choice: light on first launch, dark
  * and system selectable, the choice living in the Session's `theme`. The
  * shell paints it with `useThemeMode` once the Session has been restored, so
- * a launch never flashes the default over a saved light theme; before that
+ * a launch never flashes the default over a saved dark theme; before that
  * the pre-paint script in index.html has applied the localStorage mirror,
  * which the theme applier keeps in step.
  */

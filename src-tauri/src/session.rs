@@ -118,7 +118,7 @@ fn default_session() -> Value {
         "folder": null,
         "openEditors": [],
         "activePath": null,
-        "theme": "dark",
+        "theme": "light",
         "sidebar": { "collapsed": false, "width": 260 },
     })
 }
@@ -372,7 +372,7 @@ mod tests {
                 "folder": null,
                 "openEditors": [],
                 "activePath": null,
-                "theme": "dark",
+                "theme": "light",
                 "sidebar": { "collapsed": false, "width": 260 },
                 "window": { "x": 0, "y": 0, "width": 1200, "height": 800 },
             })

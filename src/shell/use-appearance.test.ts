@@ -35,26 +35,26 @@ describe('useAppearance', () => {
     document.documentElement.classList.remove('dark')
   })
 
-  it('is dark until the Session has been restored, then applies dark', () => {
+  it('is light until the Session has been restored, then applies light', () => {
     const { result, rerender } = renderHook(({ restored }) => useShellAppearance(restored), {
       initialProps: { restored: false },
     })
 
-    expect(result.current.themeMode).toBe('dark')
+    expect(result.current.themeMode).toBe('light')
     expect(document.documentElement).not.toHaveAttribute('data-theme')
 
     rerender({ restored: true })
 
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light')
   })
 
   it('applies the appearance the Session restores', () => {
     const { result } = renderHook(() => useShellAppearance(true))
 
-    act(() => result.current.restoreTheme('light'))
+    act(() => result.current.restoreTheme('dark'))
 
-    expect(result.current.themeMode).toBe('light')
-    expect(document.documentElement).toHaveAttribute('data-theme', 'light')
+    expect(result.current.themeMode).toBe('dark')
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
   })
 
   it('switches through the View → Appearance commands and mirrors the choice for the pre-paint script', () => {
