@@ -295,7 +295,9 @@ function useEditorChangeHandler(options: {
       tabs: tabsRef.current,
       cache: tabCacheRef.current,
     })
-    if (!previousContent) return
+    // Only a missing Tab stops the report. A freshly created Document is the
+    // empty string, and its first keystrokes must reach Autosave like any other.
+    if (previousContent === undefined) return
 
     const next = serializedEditorChange({
       editor,

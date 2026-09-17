@@ -564,6 +564,27 @@ describe('useEditorTabSwap raw mode sync', () => {
     )
   })
 
+  it('reports the first keystrokes of a freshly created, empty Document', async () => {
+    // The Explorer creates a Document as the empty string; an edit to it must
+    // reach Autosave, not be mistaken for a Tab that is not there.
+    const emptyTab = { ...makeTab('new.md', 'New'), content: '' }
+    const onContentChange = vi.fn()
+    const { docRef, mockEditor, result } = await createSwapHarness({
+      initialProps: { tabs: [emptyTab], activeTabPath: 'new.md', rawMode: false, vaultPath: '/vault' },
+      onContentChange,
+    })
+
+    docRef.current = [makeTextParagraphBlock('First words')]
+    mockEditor.blocksToMarkdownLossy.mockReturnValue('First words\n')
+
+    act(() => {
+      result.current.handleEditorChange()
+      result.current.flushPendingEditorChange()
+    })
+
+    expect(onContentChange).toHaveBeenCalledWith('new.md', 'First words\n')
+  })
+
   it('flushes pending rich-text edits before entering raw mode', async () => {
     const tabA = makeTab('a.md', 'Note A')
     const onContentChange = vi.fn()
