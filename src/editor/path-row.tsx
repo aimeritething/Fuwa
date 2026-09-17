@@ -17,12 +17,10 @@ const MODES: readonly EditorMode[] = ['rich', 'raw']
 /** A Document Tab's mode, as the path row shows and switches it. */
 export interface PathRowMode {
   value: EditorMode
-  /** Asked for the other segment, or the Frontmatter badge (which always asks for Raw). */
+  /** Asked for the other segment. */
   onChange: (mode: EditorMode) => void
   /** The tooltip that replaces the shortcut on the Rich segment while it is unavailable, or null when Rich can be used. */
   richDisabledReason: string | null
-  /** `frontmatter · N keys`, or null when the Document has no Frontmatter. */
-  frontmatterLabel: string | null
 }
 
 /** An Image Tab's right-hand slot: what the picture is, and the way to hand it to a real image app. */
@@ -39,7 +37,7 @@ interface PathRowProps {
   folder?: string | null
   /** Set on an Image Tab. */
   image?: PathRowImage | null
-  /** Set on a Document Tab: its Rich | Raw control and, when there is one, the Frontmatter badge. */
+  /** Set on a Document Tab: its Rich | Raw control. */
   mode?: PathRowMode | null
   /** Copy path, the app command (⌘⇧,), behind the round link button on every Tab. */
   onCopyPath?: () => void
@@ -47,9 +45,9 @@ interface PathRowProps {
 
 /**
  * The row under the tab bar: the Document's name on the left and, on the
- * right the mono `frontmatter · N keys` badge when the Document has
- * Frontmatter, the round Copy path button, then the `Rich | Raw` control. A
- * landed write shows nothing here. An Image Tab fills that slot instead with
+ * right, the round Copy path button, then the `Rich | Raw` control. A landed
+ * write shows nothing here, and neither does Frontmatter: Raw mode is where
+ * it is seen. An Image Tab fills that slot instead with
  * the picture's dimensions and size, Open ↗ and the same Copy path button; it
  * has no Frontmatter and no mode. Everything on the right is pill-shaped,
  * though icon buttons elsewhere in the app keep their small radius.
@@ -63,12 +61,11 @@ export function PathRow({ filename, path, folder, image, mode, onCopyPath }: Pat
         ))}
         <span className="truncate text-text-primary">{filename}</span>
       </div>
-      {/* Right-hand slot: the Frontmatter badge, Copy path and Rich | Raw, or an Image Tab's meta, Open ↗ and Copy path. */}
+      {/* Right-hand slot: Copy path and Rich | Raw, or an Image Tab's meta, Open ↗ and Copy path. */}
       <div className="ml-auto flex items-center gap-3">
         {image?.metadata && (
           <span className="cursor-default font-mono text-2xs tracking-normal whitespace-nowrap tabular-nums" data-testid="path-row-image-meta">{image.metadata}</span>
         )}
-        {mode && <FrontmatterBadge mode={mode} />}
         <div className={cn('flex flex-none items-center gap-1.5', image && '-ml-1')} data-testid="path-row-actions">
           {/* "Open ↗": the arrow is the label, not an icon beside it. */}
           {image && <Button type="button" variant="ghost" size="xs" className="rounded-full" onClick={image.onOpenExternal}>Open ↗</Button>}
@@ -77,25 +74,6 @@ export function PathRow({ filename, path, folder, image, mode, onCopyPath }: Pat
         </div>
       </div>
     </div>
-  )
-}
-
-/**
- * The badge says Frontmatter is there and hidden; clicking it goes to where it
- * can be seen. A mono hairline pill in the row's secondary text colour, a button and
- * not a Badge: hovering says it can be clicked, which lands in Raw mode.
- */
-function FrontmatterBadge({ mode }: { mode: PathRowMode }) {
-  if (!mode.frontmatterLabel) return null
-  return (
-    <button
-      type="button"
-      className="h-5 flex-none cursor-default rounded-full px-2 font-mono text-2xs leading-5 tracking-normal whitespace-nowrap tabular-nums text-text-secondary ring-(length:--hairline) ring-border-default hover:bg-control-tertiary-hover hover:text-text-primary focus-visible:focus-ring"
-      data-testid="path-row-frontmatter"
-      onClick={() => mode.onChange('raw')}
-    >
-      {mode.frontmatterLabel}
-    </button>
   )
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { documentFrontmatter, frontmatterBadgeLabel, frontmatterForcesRaw } from './frontmatter-status'
+import { documentFrontmatter, frontmatterForcesRaw } from './frontmatter-status'
 
 describe('documentFrontmatter', () => {
   it('reports no Frontmatter for a plain Document', () => {
@@ -7,22 +7,22 @@ describe('documentFrontmatter', () => {
     expect(documentFrontmatter('')).toEqual({ kind: 'none' })
   })
 
-  it('counts the top-level keys of a valid block, not the nested or list lines', () => {
+  it('reads a block with nested and list lines as valid', () => {
     const content = '---\ntitle: Fuwa\ntags:\n  - a\n  - b\nmeta:\n  nested: yes\n---\n# Fuwa\n'
-    expect(documentFrontmatter(content)).toEqual({ kind: 'valid', keyCount: 3 })
+    expect(documentFrontmatter(content)).toEqual({ kind: 'valid' })
   })
 
-  it('counts a single key and reads CRLF line endings', () => {
-    expect(documentFrontmatter('---\r\ntitle: Fuwa\r\n---\r\n# Fuwa\r\n')).toEqual({ kind: 'valid', keyCount: 1 })
+  it('reads CRLF line endings', () => {
+    expect(documentFrontmatter('---\r\ntitle: Fuwa\r\n---\r\n# Fuwa\r\n')).toEqual({ kind: 'valid' })
   })
 
   it('accepts quoted and non-ASCII keys, the shape the kernel parser reads', () => {
-    expect(documentFrontmatter('---\n"quoted key": 1\ntítulo: Fuwa\n1st: x\n---\n')).toEqual({ kind: 'valid', keyCount: 3 })
+    expect(documentFrontmatter('---\n"quoted key": 1\ntítulo: Fuwa\n1st: x\n---\n')).toEqual({ kind: 'valid' })
   })
 
-  it('treats an empty or comment-only block as valid with no keys', () => {
-    expect(documentFrontmatter('---\n---\n# Fuwa\n')).toEqual({ kind: 'valid', keyCount: 0 })
-    expect(documentFrontmatter('---\n# just a comment\n\n---\n# Fuwa\n')).toEqual({ kind: 'valid', keyCount: 0 })
+  it('treats an empty or comment-only block as valid', () => {
+    expect(documentFrontmatter('---\n---\n# Fuwa\n')).toEqual({ kind: 'valid' })
+    expect(documentFrontmatter('---\n# just a comment\n\n---\n# Fuwa\n')).toEqual({ kind: 'valid' })
   })
 
   it('is invalid when the block is never closed', () => {
@@ -47,15 +47,5 @@ describe('frontmatterForcesRaw', () => {
     expect(frontmatterForcesRaw('---\nnot yaml\n---\n')).toBe(true)
     expect(frontmatterForcesRaw('---\ntitle: x\n---\n')).toBe(false)
     expect(frontmatterForcesRaw('# no block\n')).toBe(false)
-  })
-})
-
-describe('frontmatterBadgeLabel', () => {
-  it('names the key count, singular and plural, and the invalid case', () => {
-    expect(frontmatterBadgeLabel({ kind: 'none' })).toBeNull()
-    expect(frontmatterBadgeLabel({ kind: 'valid', keyCount: 1 })).toBe('frontmatter · 1 key')
-    expect(frontmatterBadgeLabel({ kind: 'valid', keyCount: 3 })).toBe('frontmatter · 3 keys')
-    expect(frontmatterBadgeLabel({ kind: 'valid', keyCount: 0 })).toBe('frontmatter · 0 keys')
-    expect(frontmatterBadgeLabel({ kind: 'invalid', reason: 'unclosed' })).toBe('frontmatter · invalid')
   })
 })

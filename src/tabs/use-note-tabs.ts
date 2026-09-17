@@ -171,7 +171,7 @@ export function useNoteTabs(folder?: string | null, folderLists: (path: string) 
     [],
   )
 
-  /** ⌘\, the segmented control and the Frontmatter badge: the mode of one Document Tab. */
+  /** ⌘\ and the segmented control: the mode of one Document Tab. */
   const setTabMode = useCallback((path: string, mode: EditorMode) => {
     setState((prev) => tabsState.setTabMode(prev, path, mode))
   }, [])

@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/ui/tooltip'
 const imageSlot = { metadata: '1920 × 1080 · 240 KB', onOpenExternal: vi.fn() }
 
 function richMode(overrides: Partial<PathRowMode> = {}): PathRowMode {
-  return { value: 'rich', onChange: vi.fn(), richDisabledReason: null, frontmatterLabel: null, ...overrides }
+  return { value: 'rich', onChange: vi.fn(), richDisabledReason: null, ...overrides }
 }
 
 function renderWithTooltips(ui: React.ReactElement) {
@@ -93,7 +93,7 @@ describe('PathRow', () => {
         <PathRow
           filename="Welcome.md"
          
-          mode={richMode({ value: 'raw', onChange, richDisabledReason: 'Fix the frontmatter to use Rich mode', frontmatterLabel: 'frontmatter · invalid' })}
+          mode={richMode({ value: 'raw', onChange, richDisabledReason: 'Fix the frontmatter to use Rich mode' })}
         />,
       )
 
@@ -106,25 +106,17 @@ describe('PathRow', () => {
       expect(await screen.findByRole('tooltip')).toHaveTextContent('Fix the frontmatter to use Rich mode')
     })
 
-    it('shows the Frontmatter badge, then Copy path, then the control, and the badge switches to Raw on click', () => {
-      const onChange = vi.fn()
-      renderWithTooltips(
-        <PathRow filename="Fuwa.md" mode={richMode({ onChange, frontmatterLabel: 'frontmatter · 2 keys' })} onCopyPath={vi.fn()} />,
-      )
+    it('shows Copy path, then the control, on a Document Tab', () => {
+      renderWithTooltips(<PathRow filename="Fuwa.md" mode={richMode()} onCopyPath={vi.fn()} />)
 
-      const badge = screen.getByTestId('path-row-frontmatter')
-      expect(badge).toHaveTextContent('frontmatter · 2 keys')
-      const slot = badge.parentElement as HTMLElement
+      const slot = screen.getByTestId('path-row-actions')
       const order = Array.from(slot.querySelectorAll('[data-testid]')).map((child) => child.getAttribute('data-testid'))
-      expect(order).toEqual(['path-row-frontmatter', 'path-row-actions', 'path-row-copy-path', 'path-row-mode', 'path-row-mode-rich', 'path-row-mode-raw'])
-
-      fireEvent.click(badge)
-      expect(onChange).toHaveBeenCalledWith('raw')
+      expect(order).toEqual(['path-row-copy-path', 'path-row-mode', 'path-row-mode-rich', 'path-row-mode-raw'])
     })
 
-    it('shows no badge and no control on a Document without Frontmatter and an Image Tab', () => {
+    it('shows no control on an Image Tab', () => {
       const { rerender } = renderWithTooltips(<PathRow filename="Welcome.md" mode={richMode()} />)
-      expect(screen.queryByTestId('path-row-frontmatter')).toBeNull()
+      expect(screen.getByTestId('path-row-mode')).toBeInTheDocument()
 
       rerender(<TooltipProvider><PathRow filename="lake.png" image={imageSlot} /></TooltipProvider>)
       expect(screen.queryByTestId('path-row-mode')).toBeNull()

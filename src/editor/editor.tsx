@@ -8,7 +8,7 @@ import type { EditorMode, Tab } from '@/types'
 import type { ThemeMode } from '@/shell/theme-mode'
 import type { ListedFile } from '@/folder/explorer'
 import { documentRoot } from '@/folder/explorer'
-import { documentFrontmatter, frontmatterBadgeLabel } from '@/kernel/markdown/frontmatter-status'
+import { documentFrontmatter } from '@/kernel/markdown/frontmatter-status'
 import { activeTabPaths, imageFetchVersion, imageMetadataLabel, type ImageNaturalSize } from '@/tabs/image-file'
 import { noteRootForPath } from '@/folder/note-entry'
 import { notePathFilename } from '@/lib/note-path-identity'
@@ -222,8 +222,7 @@ function useRawModeRuntime(options: {
   const tabsForEditorSwap = useMemo(() => applyPendingRawExitContent(tabs, resolvedExit), [resolvedExit, tabs])
   const rawModeContent = resolveRawModeContent({ activeTab, rawModeContentOverride })
 
-  const frontmatter = useMemo(() => documentFrontmatter(activeTab?.content ?? ''), [activeTab?.content])
-  const richUnavailable = frontmatter.kind === 'invalid'
+  const richUnavailable = useMemo(() => documentFrontmatter(activeTab?.content ?? '').kind === 'invalid', [activeTab?.content])
   const toggleRaw = useCallback(() => {
     if (rawMode && richUnavailable) return
     void handleToggleRaw()
@@ -235,8 +234,7 @@ function useRawModeRuntime(options: {
       if ((mode === 'raw') !== rawMode) toggleRaw()
     },
     richDisabledReason: richUnavailable ? RICH_UNAVAILABLE_REASON : null,
-    frontmatterLabel: frontmatterBadgeLabel(frontmatter),
-  }), [frontmatter, rawMode, richUnavailable, toggleRaw])
+  }), [rawMode, richUnavailable, toggleRaw])
 
   return { rawMode, toggleRaw, rawLatestContentRef, rawModeContent, tabsForEditorSwap, pathRowMode }
 }
@@ -366,8 +364,8 @@ function EditorFindScope({
  * An Image Tab's path row and body. The Folder listing is
  * where the byte size comes from and what says the file has changed on disk,
  * so a picture overwritten in another app is fetched again the moment the
- * watcher refreshes the Folder. There is no save state, no Frontmatter badge,
- * no Rich/Raw and no error bar: an Image Tab is never written.
+ * watcher refreshes the Folder. There is no save state, no Rich/Raw and no
+ * error bar: an Image Tab is never written.
  */
 function ImageTab({ path, folder, imageFile, reloads, onCopyPath }: {
   path: string

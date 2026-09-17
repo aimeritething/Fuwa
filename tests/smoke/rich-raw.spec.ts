@@ -13,7 +13,7 @@ import {
 
 // The Rich/Raw round trip, each Tab's own
 // mode surviving a relaunch (a reload, with the fixture's Session file), the
-// Frontmatter badge and the bytes it protects, and invalid Frontmatter forcing
+// Frontmatter bytes a Rich save protects, and invalid Frontmatter forcing
 // Raw mode until it is fixed.
 
 const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
@@ -138,15 +138,13 @@ test('two Tabs keep different modes at once, and a relaunch restores each Tab\'s
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('a Document with Frontmatter renders none of it in Rich, badges the key count, and keeps the bytes through a save', async ({ page }) => {
+test('a Document with Frontmatter renders none of it in Rich and keeps the bytes through a save', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
   await openDocumentThroughDialog(page, FUWA_PATH)
   await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
 
   await expect(page.locator('.bn-editor')).not.toContainText('title')
-  const badge = page.getByTestId('path-row-frontmatter')
-  await expect(badge).toHaveText('frontmatter · 1 key')
 
   await typeAtEnd(page, ' Body edit.')
   await page.keyboard.press('Meta+s')
@@ -156,7 +154,7 @@ test('a Document with Frontmatter renders none of it in Rich, badges the key cou
   expect(saved.slice(0, FUWA_FRONTMATTER.length)).toBe(FUWA_FRONTMATTER)
   expect(saved.slice(FUWA_FRONTMATTER.length)).toMatch(/^# Fuwa\n\nA small desktop app for Markdown files\./)
 
-  await badge.click()
+  await rawSegment(page).click()
 
   await expect(rawEditor(page)).toBeVisible()
   await expect.poll(() => rawText(page)).toMatch(/^---\ntitle: Fuwa\n---\n/)
@@ -173,7 +171,6 @@ test('invalid Frontmatter opens in Raw with Rich disabled and its reason as the 
   await expect(rawEditor(page)).toBeVisible()
   await expect(rawSegment(page)).toBeChecked()
   await expect(richSegment(page)).toBeDisabled()
-  await expect(page.getByTestId('path-row-frontmatter')).toHaveText('frontmatter · invalid')
   await richSegment(page).hover()
   await expect(page.getByRole('tooltip')).toHaveText('Fix the frontmatter to use Rich mode')
   await page.keyboard.press('Meta+Backslash')
@@ -191,7 +188,6 @@ test('invalid Frontmatter opens in Raw with Rich disabled and its reason as the 
   await expect.poll(() => savedContent(page, BROKEN_PATH)).toMatch(/^---\ntitle: Fixed\n---\n/)
 
   await expect(richSegment(page)).toBeEnabled()
-  await expect(page.getByTestId('path-row-frontmatter')).toHaveText('frontmatter · 1 key')
   await expect(rawSegment(page)).toBeChecked()
   await richSegment(page).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Broken')
