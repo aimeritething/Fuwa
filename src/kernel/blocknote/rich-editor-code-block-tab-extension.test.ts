@@ -1,124 +1,174 @@
-import { describe, expect, it, vi } from 'vitest'
+import { BlockNoteEditor } from '@blocknote/core'
+import { TextSelection } from '@tiptap/pm/state'
+import { afterEach, describe, expect, it } from 'vitest'
+import { schema } from './editor-schema'
 import { createRichEditorCodeBlockTabExtension } from './rich-editor-code-block-tab-extension'
 
-type KeyListener = (event: KeyboardEvent) => void
+type TestEditor = ReturnType<typeof createMountedEditor>
 
-type MockTransaction = {
-  insertText: ReturnType<typeof vi.fn>
+const mounted: TestEditor[] = []
+
+function createMountedEditor() {
+  const editor = BlockNoteEditor.create({
+    schema,
+    extensions: [createRichEditorCodeBlockTabExtension()],
+  })
+  const host = document.createElement('div')
+  document.body.appendChild(host)
+  editor.mount(host)
+  mounted.push(editor)
+  return editor
 }
 
-function keyboardEvent(options: Partial<KeyboardEvent> = {}) {
-  return {
-    altKey: false,
-    ctrlKey: false,
-    isComposing: false,
-    key: 'Tab',
-    keyCode: 9,
-    metaKey: false,
-    preventDefault: vi.fn(),
-    shiftKey: false,
-    stopImmediatePropagation: vi.fn(),
-    stopPropagation: vi.fn(),
-    ...options,
-  } as unknown as KeyboardEvent & {
-    preventDefault: ReturnType<typeof vi.fn>
-    stopImmediatePropagation: ReturnType<typeof vi.fn>
-    stopPropagation: ReturnType<typeof vi.fn>
-  }
+/** An editor whose first block is a code block holding `code`, and the position of its first character. */
+function createCodeBlockEditor(code: string) {
+  const editor = createMountedEditor()
+  editor.replaceBlocks(editor.document, [
+    { type: 'codeBlock', content: code },
+    { type: 'paragraph', content: 'after' },
+  ])
+
+  let start = -1
+  editor._tiptapEditor.state.doc.descendants((node, pos) => {
+    if (start === -1 && node.type.name === 'codeBlock') start = pos + 1
+  })
+  if (start === -1) throw new Error('the code block did not load')
+  return { editor, start }
 }
 
-function createFixture({ blockType = 'codeBlock', editable = true, composing = false } = {}) {
-  let keydownListener: KeyListener | null = null
-  const transaction: MockTransaction = {
-    insertText: vi.fn(),
-  }
-  const view = { composing }
-  const editor = {
-    _tiptapEditor: { view },
-    getTextCursorPosition: vi.fn(() => ({
-      block: { id: 'block-1', type: blockType },
-    })),
-    isEditable: editable,
-    prosemirrorView: view,
-    transact: vi.fn((callback: (tr: MockTransaction) => boolean) => callback(transaction)),
-  }
-  const dom = {
-    addEventListener: vi.fn((type: string, listener: KeyListener) => {
-      if (type === 'keydown') keydownListener = listener
-    }),
-  }
-  const extension = createRichEditorCodeBlockTabExtension()({ editor: editor as never })
-
-  return {
-    dom,
-    editor,
-    fireKeydown(event = keyboardEvent()) {
-      if (!keydownListener) {
-        throw new Error('Rich code block Tab extension did not register keydown')
-      }
-      keydownListener(event)
-      return event
-    },
-    mount() {
-      const controller = new AbortController()
-      extension.mount?.({
-        dom: dom as never,
-        root: document,
-        signal: controller.signal,
-      })
-      return controller
-    },
-    transaction,
-  }
+function select(editor: TestEditor, anchor: number, head = anchor) {
+  const view = editor._tiptapEditor.view
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, anchor, head)))
 }
 
-describe('createRichEditorCodeBlockTabExtension', () => {
-  it('registers a capture-phase keydown listener when the editor mounts', () => {
-    const fixture = createFixture()
+function pressTab(editor: TestEditor, init: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true, ...init })
+  editor._tiptapEditor.view.dom.dispatchEvent(event)
+  return event
+}
 
-    fixture.mount()
+function codeOf(editor: TestEditor): string {
+  let code = ''
+  editor._tiptapEditor.state.doc.descendants((node) => {
+    if (node.type.name === 'codeBlock') code = node.textContent
+  })
+  return code
+}
 
-    expect(fixture.dom.addEventListener).toHaveBeenCalledWith(
-      'keydown',
-      expect.any(Function),
-      expect.objectContaining({
-        capture: true,
-        signal: expect.any(AbortSignal),
-      }),
-    )
+function selectedText(editor: TestEditor): string {
+  const { doc, selection } = editor._tiptapEditor.state
+  return doc.textBetween(selection.from, selection.to, '\n')
+}
+
+describe('Tab in a Rich code block', () => {
+  afterEach(() => {
+    for (const editor of mounted.splice(0)) editor._tiptapEditor.destroy()
   })
 
-  it('inserts code indentation and keeps focus inside source code blocks', () => {
-    const fixture = createFixture()
-    fixture.mount()
+  it('inserts an indent at the cursor', () => {
+    const { editor, start } = createCodeBlockEditor('ab')
+    select(editor, start + 1)
 
-    const event = fixture.fireKeydown()
+    const event = pressTab(editor)
 
-    expect(fixture.transaction.insertText).toHaveBeenCalledWith('  ')
-    expect(event.preventDefault).toHaveBeenCalled()
-    expect(event.stopImmediatePropagation).toHaveBeenCalled()
+    expect(codeOf(editor)).toBe('a  b')
+    expect(event.defaultPrevented).toBe(true)
   })
 
-  it('does not intercept Tab outside code blocks', () => {
-    const fixture = createFixture({ blockType: 'paragraph' })
-    fixture.mount()
+  it('indents every line a selection touches, and keeps the selection', () => {
+    const { editor, start } = createCodeBlockEditor('one\ntwo\nthree\nfour')
+    // From inside "two" to inside "three".
+    select(editor, start + 5, start + 10)
 
-    const event = fixture.fireKeydown()
+    pressTab(editor)
 
-    expect(fixture.transaction.insertText).not.toHaveBeenCalled()
-    expect(event.preventDefault).not.toHaveBeenCalled()
-    expect(event.stopImmediatePropagation).not.toHaveBeenCalled()
+    expect(codeOf(editor)).toBe('one\n  two\n  three\nfour')
+    expect(selectedText(editor)).toBe('wo\n  th')
   })
 
-  it('leaves composing and read-only editor states alone', () => {
-    const composingFixture = createFixture({ composing: true })
-    composingFixture.mount()
-    composingFixture.fireKeydown()
-    expect(composingFixture.transaction.insertText).not.toHaveBeenCalled()
+  it('does not indent a line the selection only reaches the start of', () => {
+    const { editor, start } = createCodeBlockEditor('one\ntwo\nthree')
+    select(editor, start, start + 4)
 
-    const readonlyFixture = createFixture({ editable: false })
-    readonlyFixture.mount()
-    readonlyFixture.fireKeydown()
-    expect(readonlyFixture.transaction.insertText).not.toHaveBeenCalled()
+    pressTab(editor)
+
+    expect(codeOf(editor)).toBe('  one\ntwo\nthree')
+  })
+
+  it('outdents every selected line by one level on Shift+Tab', () => {
+    const code = '    four\n  two\n one\n\ttab\nnone'
+    const { editor, start } = createCodeBlockEditor(code)
+    select(editor, start, start + code.length)
+
+    const event = pressTab(editor, { shiftKey: true })
+
+    expect(codeOf(editor)).toBe('  four\ntwo\none\ntab\nnone')
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('outdents the cursor\'s line on Shift+Tab', () => {
+    const { editor, start } = createCodeBlockEditor('one\n  two')
+    select(editor, start + 8)
+
+    pressTab(editor, { shiftKey: true })
+
+    expect(codeOf(editor)).toBe('one\ntwo')
+  })
+
+  it('keeps Shift+Tab inside the code block when there is nothing to outdent', () => {
+    const { editor, start } = createCodeBlockEditor('one')
+    select(editor, start + 1)
+
+    const event = pressTab(editor, { shiftKey: true })
+
+    expect(codeOf(editor)).toBe('one')
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('undoes a multi-line indent in one step', () => {
+    const { editor, start } = createCodeBlockEditor('one\ntwo\nthree')
+    select(editor, start, start + 13)
+
+    pressTab(editor)
+    expect(codeOf(editor)).toBe('  one\n  two\n  three')
+
+    editor.undo()
+    expect(codeOf(editor)).toBe('one\ntwo\nthree')
+  })
+
+  it('leaves Tab alone outside a code block', () => {
+    const editor = createMountedEditor()
+    editor.replaceBlocks(editor.document, [{ type: 'paragraph', content: 'text' }])
+    editor.setTextCursorPosition(editor.document[0], 'end')
+
+    pressTab(editor)
+
+    expect(editor._tiptapEditor.state.doc.textContent).toBe('text')
+  })
+
+  it('changes nothing when the selection runs out of the code block', () => {
+    const { editor, start } = createCodeBlockEditor('one\ntwo')
+    const docEnd = editor._tiptapEditor.state.doc.content.size
+    select(editor, start + 1, TextSelection.near(editor._tiptapEditor.state.doc.resolve(docEnd), -1).head)
+
+    const event = pressTab(editor)
+
+    expect(codeOf(editor)).toBe('one\ntwo')
+    expect(editor._tiptapEditor.state.doc.textContent).toBe('one\ntwoafter')
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('leaves composing and read-only editors alone', () => {
+    const composing = createCodeBlockEditor('ab')
+    select(composing.editor, composing.start + 1)
+    composing.editor._tiptapEditor.view.dom.dispatchEvent(new CompositionEvent('compositionstart'))
+    pressTab(composing.editor, { isComposing: true })
+    expect(codeOf(composing.editor)).toBe('ab')
+
+    const readOnly = createCodeBlockEditor('ab')
+    select(readOnly.editor, readOnly.start + 1)
+    readOnly.editor.isEditable = false
+    pressTab(readOnly.editor)
+    expect(codeOf(readOnly.editor)).toBe('ab')
   })
 })
