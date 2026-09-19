@@ -44,6 +44,7 @@
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.2",
     "@tauri-apps/plugin-opener": "^2.5.3",
+    "@tiptap/extension-link": "3.19.0",
     "@tiptap/pm": "3.22.5",
     "@tldraw/assets": "4.5.10",
     "class-variance-authority": "^0.7.1",

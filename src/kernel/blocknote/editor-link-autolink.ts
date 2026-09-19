@@ -11,21 +11,12 @@ export type LinkValue = {
   raw: string
 }
 
-export type LinkMarkCandidate = {
-  href: LinkValue
-  text: LinkValue
-}
-
 function withRaw(raw: string): LinkValue {
   return { raw }
 }
 
 function stripUrlDecorators(value: LinkValue) {
   return withRaw(value.raw.split(/[?#]/, 1)[0] ?? value.raw)
-}
-
-function stripProtocol(value: LinkValue) {
-  return withRaw(value.raw.replace(/^[a-z][a-z0-9+.-]*:\/\//i, ''))
 }
 
 function isExplicitProtocolUrl(value: LinkValue) {
@@ -131,18 +122,6 @@ export function shouldAutoLinkHref(url: LinkValue) {
   }
 
   return hostnameHasTld(hostname)
-}
-
-export function shouldStripAutoLinkedLocalFileMark(mark: LinkMarkCandidate) {
-  const normalizedText = normalizeInput(mark.text)
-  if (!looksLikeLocalFileReference(normalizedText)) {
-    return false
-  }
-
-  const normalizedHref = stripUrlDecorators(
-    stripProtocol(normalizeInput(mark.href)),
-  )
-  return normalizedHref.raw === normalizedText.raw
 }
 
 function hostnameFromUrlLikeValue(value: LinkValue) {
