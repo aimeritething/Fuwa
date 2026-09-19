@@ -555,7 +555,7 @@ export function serializeMathAwareBlocks(editor: MarkdownSerializer, blocks: unk
 
   const flushPending = () => {
     if (pending.length === 0) return
-    const markdown = serializeBlockNoteMarkdown(editor, restoreMathInBlocks(pending)).trimEnd()
+    const markdown = serializeBlockNoteMarkdown(editor, pending, restoreMathInBlocks).trimEnd()
     if (markdown) chunks.push(markdown)
     pending = []
   }

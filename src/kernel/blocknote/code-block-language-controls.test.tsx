@@ -25,14 +25,35 @@ function codeBlockDom() {
   blockContent.appendChild(controlHost)
   blockContainer.appendChild(blockContent)
   editorElement.appendChild(blockContainer)
-  document.body.appendChild(editorElement)
+  const container = document.createElement('div')
+  container.className = 'editor__blocknote-container'
+  container.appendChild(editorElement)
+  document.body.appendChild(container)
 
-  return { editorElement, nativeControl }
+  return { container, editorElement, nativeControl }
 }
 
 describe('CodeBlockLanguageControls', () => {
+  it('names the language of a fence written with an alias', async () => {
+    const { container } = codeBlockDom()
+    const editor = {
+      domElement: container,
+      getBlock: vi.fn(() => ({ id: 'code-block-1', type: 'codeBlock', props: { language: 'ts' } })),
+      isEditable: true,
+      onChange: vi.fn(() => vi.fn()),
+      updateBlock: vi.fn(),
+    }
+
+    render(<CodeBlockLanguageControls editor={editor as never} />)
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-slot="select-trigger"]')).toHaveTextContent('TypeScript')
+    })
+    container.remove()
+  })
+
   it('replaces a stale disabled native picker with a live shadcn language control', async () => {
-    const { editorElement, nativeControl } = codeBlockDom()
+    const { container, editorElement, nativeControl } = codeBlockDom()
     editorElement.remove()
     const editor = {
       domElement: editorElement.parentElement,
@@ -46,7 +67,7 @@ describe('CodeBlockLanguageControls', () => {
 
     await act(async () => {
       editor.domElement = editorElement
-      document.body.appendChild(editorElement)
+      container.appendChild(editorElement)
     })
 
     const trigger = await waitFor(() => {
@@ -55,6 +76,8 @@ describe('CodeBlockLanguageControls', () => {
       return control
     })
     expect(trigger.closest('[data-code-block-id]')).toHaveAttribute('data-code-block-id', 'code-block-1')
+    // Laid out inside the editor container, so it scrolls with its code block.
+    expect(container).toContainElement(trigger as HTMLElement)
     expect(trigger).toBeDisabled()
     expect(nativeControl).toBeDisabled()
 

@@ -5,6 +5,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 import {
+  BLOCK_CONTAINER_SELECTOR,
+  CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE,
   blockElementById,
   blockElementFromPoint,
   blockIdFromElement,
@@ -33,12 +35,11 @@ type PointerReorderState = {
   startY: number
 }
 type ReorderAffordances = {
-  draggedElement: HTMLElement
+  dimStyle: HTMLStyleElement
   dropIndicator: HTMLElement
   pointerOffsetX: number
   pointerOffsetY: number
   preview: HTMLElement
-  previousDraggedOpacity: string
 }
 type DropTarget = {
   blockId: string
@@ -65,21 +66,78 @@ function styleDragPreview(preview: HTMLElement, rect: DOMRect) {
   preview.style.boxShadow = '0 10px 26px rgba(15, 23, 42, 0.18)'
 }
 
-function createDragPreview(draggedElement: HTMLElement, ownerDocument: Document): HTMLElement {
+// A code block's language control is laid out over the block, not inside it,
+// so the dragged block's clone has to carry it along.
+function languageControlsOver(draggedElement: HTMLElement): HTMLElement[] {
+  const container = draggedElement.closest('.editor__blocknote-container')
+  if (!container) return []
+
+  const blockIds = new Set(
+    [draggedElement, ...draggedElement.querySelectorAll(BLOCK_CONTAINER_SELECTOR)]
+      .map((element) => element.getAttribute('data-id')),
+  )
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(`[${CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE}]`),
+  ).filter((control) => blockIds.has(control.getAttribute(CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE)))
+}
+
+function cloneLanguageControl(control: HTMLElement, draggedRect: DOMRect): Node {
+  const clone = control.cloneNode(true)
+  const rect = control.getBoundingClientRect()
+  if (clone instanceof HTMLElement) {
+    clone.style.opacity = '1'
+    clone.style.left = `${rect.left - draggedRect.left}px`
+    clone.style.top = `${rect.top - draggedRect.top}px`
+  }
+  return clone
+}
+
+function createDragPreview(
+  draggedElement: HTMLElement,
+  languageControls: HTMLElement[],
+  ownerDocument: Document,
+): HTMLElement {
   const preview = ownerDocument.createElement('div')
   const clone = draggedElement.cloneNode(true)
   const rect = draggedElement.getBoundingClientRect()
 
   if (clone instanceof HTMLElement) {
+    clone.style.opacity = '1'
     clone.style.margin = '0'
     clone.style.width = '100%'
     clone.style.pointerEvents = 'none'
     preview.appendChild(clone)
   }
+  languageControls.forEach((control) => preview.appendChild(cloneLanguageControl(control, rect)))
   styleDragPreview(preview, rect)
   ownerDocument.body.appendChild(preview)
 
   return preview
+}
+
+function cssString(value: string) {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+// ProseMirror redraws a block whose attributes change under it, so an inline
+// opacity on the dragged block never shows; a style rule dims it from outside.
+// The preview's clones match the same rule and opt out inline.
+function createDimStyle(
+  draggedBlockId: string,
+  languageControls: HTMLElement[],
+  ownerDocument: Document,
+): HTMLStyleElement {
+  const selectors = [
+    `[data-node-type="blockContainer"][data-id=${cssString(draggedBlockId)}]`,
+    ...languageControls.map((control) => (
+      `[${CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE}=${cssString(control.getAttribute(CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE) ?? '')}]`
+    )),
+  ]
+  const style = ownerDocument.createElement('style')
+  style.setAttribute('data-fuwa-block-reorder', 'true')
+  style.textContent = `${selectors.join(', ')} { opacity: 0.35; }`
+  ownerDocument.head.appendChild(style)
+  return style
 }
 
 function createDropIndicator(ownerDocument: Document): HTMLElement {
@@ -103,24 +161,22 @@ function createReorderAffordances(state: PointerReorderState): ReorderAffordance
   if (!draggedElement) return undefined
 
   const rect = draggedElement.getBoundingClientRect()
-  const previousDraggedOpacity = draggedElement.style.opacity
-  const preview = createDragPreview(draggedElement, state.ownerDocument)
-  draggedElement.style.opacity = '0.35'
+  const languageControls = languageControlsOver(draggedElement)
+  const preview = createDragPreview(draggedElement, languageControls, state.ownerDocument)
 
   return {
-    draggedElement,
+    dimStyle: createDimStyle(state.draggedBlockId, languageControls, state.ownerDocument),
     dropIndicator: createDropIndicator(state.ownerDocument),
     pointerOffsetX: state.startX - rect.left,
     pointerOffsetY: state.startY - rect.top,
     preview,
-    previousDraggedOpacity,
   }
 }
 
 function cleanupReorderAffordances(affordances: ReorderAffordances | undefined) {
   if (!affordances) return
 
-  affordances.draggedElement.style.opacity = affordances.previousDraggedOpacity
+  affordances.dimStyle.remove()
   affordances.preview.remove()
   affordances.dropIndicator.remove()
 }

@@ -15,6 +15,7 @@ import {
   mockSideMenu,
   mockSuggestionMenu,
   placeEditorInScrollArea,
+  rect,
   renderPointerReorderFixture,
   renderSideMenuAndCollapseControllerWithBlock,
   renderSideMenuWithBlock,
@@ -242,7 +243,36 @@ describe('SideMenu', () => {
 
     expect(screen.queryByTestId('editor-block-drag-preview')).not.toBeInTheDocument()
     expect(screen.queryByTestId('editor-block-drop-indicator')).not.toBeInTheDocument()
+    // Dimmed by a style rule: ProseMirror redraws a block whose inline style changes.
     expect(draggedElement.style.opacity).toBe('')
+    expect(draggedElement).not.toHaveStyle({ opacity: '0.35' })
+    expect(document.querySelector('style[data-fuwa-block-reorder]')).not.toBeInTheDocument()
+  })
+
+  it('carries a code block language control into the drag preview', () => {
+    const { draggedElement, dragHandle } = renderPointerReorderFixture()
+    const container = document.createElement('div')
+    container.className = 'editor__blocknote-container'
+    mockEditor.domElement.replaceWith(container)
+    container.appendChild(mockEditor.domElement)
+    const control = document.createElement('div')
+    control.setAttribute('data-code-block-id', draggedElement.dataset.id ?? '')
+    control.textContent = 'Shell'
+    control.getBoundingClientRect = () => rect({ left: 136, top: 88, width: 60, height: 28 })
+    const otherControl = document.createElement('div')
+    otherControl.setAttribute('data-code-block-id', 'target-block')
+    container.append(control, otherControl)
+
+    dispatchPointerEvent(requireParentElement(dragHandle), 'pointerdown', { button: 0, clientX: 140, clientY: 90 })
+    dispatchPointerEvent(document, 'pointermove', { clientX: 180, clientY: 122 })
+
+    const carried = screen.getByTestId('editor-block-drag-preview').querySelectorAll('[data-code-block-id]')
+    expect(carried).toHaveLength(1)
+    expect(carried[0]).toHaveTextContent('Shell')
+    expect(carried[0]).toHaveStyle({ left: '16px', top: '8px' })
+
+    dispatchPointerEvent(document, 'pointerup', { clientX: 180, clientY: 122 })
+    container.remove()
   })
 
   it('keeps click-to-open menu behavior when the handle does not move', () => {

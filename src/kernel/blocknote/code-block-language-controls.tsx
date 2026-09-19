@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { createCodeBlockOptions } from './code-block-options'
+import { EDITOR_CONTAINER_SELECTOR } from '@/kernel/resolve/editor-dom-selection'
 import { BLOCK_CONTAINER_SELECTOR } from './block-note-dom'
 import {
   Select,
@@ -17,6 +18,9 @@ type CodeBlockLanguageTarget = {
   blockId: string
   editable: boolean
   height: number
+  // The editor container the control is laid out in. It sits inside the scroll
+  // area, so the control scrolls with its code block rather than chasing it.
+  host: HTMLElement
   language: string
   left: number
   top: number
@@ -24,36 +28,56 @@ type CodeBlockLanguageTarget = {
 
 type LanguageSelectControl = Element & { value: string }
 
+// Scoped to the live editor: a block drag preview is a clone of the block, native select included.
 const NATIVE_LANGUAGE_CONTROL_SELECTOR =
-  '.bn-block-content[data-content-type="codeBlock"] > div > select'
+  '.bn-editor .bn-block-content[data-content-type="codeBlock"] > div > select'
 const ELEMENT_NODE = 1
 
-const LANGUAGE_OPTIONS = Object.entries(
-  createCodeBlockOptions().supportedLanguages ?? {},
-).map(([id, language]) => ({ id, name: language.name }))
+const SUPPORTED_LANGUAGES = Object.entries(createCodeBlockOptions().supportedLanguages ?? {})
 
-function liveCodeBlock(editor: CodeBlockLanguageEditor, blockId: string): boolean {
+const LANGUAGE_OPTIONS = SUPPORTED_LANGUAGES.map(([id, language]) => ({ id, name: language.name }))
+
+// A fence keeps the name it was written with (```ts), which the native select has no option for.
+const LANGUAGE_ID_BY_NAME = new Map<string, string>([
+  ...SUPPORTED_LANGUAGES.flatMap(([id, language]) => (
+    (language.aliases ?? []).map((alias): [string, string] => [alias.toLowerCase(), id])
+  )),
+  ...SUPPORTED_LANGUAGES.map(([id]): [string, string] => [id, id]),
+])
+
+function liveCodeBlockLanguage(editor: CodeBlockLanguageEditor, blockId: string): string | null {
   try {
-    return editor.getBlock(blockId)?.type === 'codeBlock'
+    const block = editor.getBlock(blockId)
+    if (block?.type !== 'codeBlock') return null
+    const language = (block.props as { language?: unknown } | undefined)?.language
+    return typeof language === 'string' ? language : ''
   } catch {
-    return false
+    return null
   }
+}
+
+function pickerLanguage(blockLanguage: string, nativeControl: LanguageSelectControl): string {
+  return LANGUAGE_ID_BY_NAME.get(blockLanguage.trim().toLowerCase()) ?? (nativeControl.value || 'text')
 }
 
 function languageControlTarget(
   editor: CodeBlockLanguageEditor,
   blockId: string,
+  blockLanguage: string,
   nativeControl: LanguageSelectControl,
+  host: HTMLElement,
 ): CodeBlockLanguageTarget {
   const rect = nativeControl.getBoundingClientRect()
+  const hostRect = host.getBoundingClientRect()
   return {
     blockId,
     editable: editor.isEditable
       && nativeControl.closest('.bn-editor')?.getAttribute('contenteditable') !== 'false',
     height: rect.height,
-    language: nativeControl.value || 'text',
-    left: rect.left,
-    top: rect.top,
+    host,
+    language: pickerLanguage(blockLanguage, nativeControl),
+    left: rect.left - hostRect.left + host.scrollLeft,
+    top: rect.top - hostRect.top + host.scrollTop,
   }
 }
 
@@ -65,8 +89,11 @@ function codeBlockLanguageTarget(
   const nativeControl = element as LanguageSelectControl
   const blockId = element.closest(BLOCK_CONTAINER_SELECTOR)?.getAttribute('data-id')
   if (!blockId) return null
-  if (!liveCodeBlock(editor, blockId)) return null
-  return languageControlTarget(editor, blockId, nativeControl)
+  const blockLanguage = liveCodeBlockLanguage(editor, blockId)
+  if (blockLanguage === null) return null
+  const host = element.closest<HTMLElement>(EDITOR_CONTAINER_SELECTOR)
+  if (!host) return null
+  return languageControlTarget(editor, blockId, blockLanguage, nativeControl, host)
 }
 
 function codeBlockLanguageTargets(editor: CodeBlockLanguageEditor): CodeBlockLanguageTarget[] {
@@ -75,8 +102,25 @@ function codeBlockLanguageTargets(editor: CodeBlockLanguageEditor): CodeBlockLan
     .filter((target): target is CodeBlockLanguageTarget => target !== null)
 }
 
+function sameTarget(current: CodeBlockLanguageTarget, next: CodeBlockLanguageTarget): boolean {
+  return current.blockId === next.blockId
+    && current.editable === next.editable
+    && current.height === next.height
+    && current.host === next.host
+    && current.language === next.language
+    && current.left === next.left
+    && current.top === next.top
+}
+
 function sameTargets(current: CodeBlockLanguageTarget[], next: CodeBlockLanguageTarget[]): boolean {
-  return JSON.stringify(current) === JSON.stringify(next)
+  return current.length === next.length
+    && current.every((target, index) => sameTarget(target, next[index]))
+}
+
+function observedEditorElements(): Element[] {
+  return Array.from(document.querySelectorAll(NATIVE_LANGUAGE_CONTROL_SELECTOR))
+    .map((element) => element.closest('.bn-editor'))
+    .filter((element): element is Element => element !== null)
 }
 
 function addedNodeTouchesEditor(node: Node): boolean {
@@ -96,11 +140,16 @@ function useCodeBlockLanguageTargets(editor: CodeBlockLanguageEditor) {
 
   useEffect(() => {
     let refreshFrame: number | null = null
+    // Reflow with no DOM change (an image loading, the sidebar resizing) moves code blocks too.
+    const resizeObserver = typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => refresh())
     const refresh = () => {
       if (refreshFrame !== null) return
       refreshFrame = requestAnimationFrame(() => {
         refreshFrame = null
         const nextTargets = codeBlockLanguageTargets(editor)
+        observedEditorElements().forEach((element) => resizeObserver?.observe(element))
         setTargets((current) => sameTargets(current, nextTargets) ? current : nextTargets)
       })
     }
@@ -115,15 +164,14 @@ function useCodeBlockLanguageTargets(editor: CodeBlockLanguageEditor) {
     })
     const unsubscribe = editor.onChange?.(refresh) ?? (() => {})
     window.addEventListener('resize', refresh)
-    document.addEventListener('scroll', refresh, true)
     refresh()
 
     return () => {
       if (refreshFrame !== null) cancelAnimationFrame(refreshFrame)
       observer.disconnect()
+      resizeObserver?.disconnect()
       unsubscribe()
       window.removeEventListener('resize', refresh)
-      document.removeEventListener('scroll', refresh, true)
     }
   }, [editor])
 
@@ -183,7 +231,8 @@ export function CodeBlockLanguageControls({ editor }: { editor: CodeBlockLanguag
 
   return targets.map((target) => createPortal(
     <div
-      className="fixed z-overlay"
+      className="absolute z-raised"
+      // CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE: a block drag finds the control by it.
       data-code-block-id={target.blockId}
       style={{ left: target.left, minHeight: target.height, top: target.top }}
     >
@@ -194,7 +243,7 @@ export function CodeBlockLanguageControls({ editor }: { editor: CodeBlockLanguag
         language={target.language}
       />
     </div>,
-    document.body,
+    target.host,
     target.blockId,
   ))
 }
