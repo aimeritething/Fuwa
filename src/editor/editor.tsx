@@ -31,7 +31,7 @@ import { RichEditorFindBar } from './rich-editor-find-bar'
 import { createRichEditorFindExtension } from '@/kernel/blocknote/rich-editor-find'
 import { EditorToaster } from './editor-toaster'
 import { TabBar } from '@/tabs/tab-bar'
-import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from '@/kernel/blocknote/rich-editor-block-note-options'
+import { RICH_EDITOR_BLOCKNOTE_OPTIONS } from '@/kernel/blocknote/rich-editor-block-note-options'
 import { createRichEditorBlockSelectionExtension } from '@/kernel/blocknote/rich-editor-block-selection-extension'
 import { createRichEditorCodeBlockArrowNavigationExtension } from '@/kernel/blocknote/rich-editor-code-block-arrow-navigation-extension'
 import { createRichEditorCodeBlockShortcutExtension } from '@/kernel/blocknote/rich-editor-code-block-shortcut-extension'
@@ -45,7 +45,6 @@ import { createRichEditorTextDirectionExtension } from '@/kernel/blocknote/rich-
 import { createRichEditorTransformErrorRecoveryExtension } from '@/kernel/blocknote/rich-editor-transform-error-recovery-extension'
 import { SingleEditorView } from './single-editor-view'
 import { createTodoBlockShortcutExtension } from '@/kernel/blocknote/todo-block-shortcut-extension'
-import { useFilenameAutolinkGuard } from '@/kernel/blocknote/use-filename-autolink-guard'
 import { useRawModeWithFlush } from './use-raw-mode-with-flush'
 import { WriteFailureBar } from './write-failure-bar'
 
@@ -140,7 +139,7 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
   const activeTabPathRef = useLatestRef(options.activeTabPath)
 
   const editor = useCreateBlockNote({
-    ...RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS,
+    ...RICH_EDITOR_BLOCKNOTE_OPTIONS,
     schema,
     domAttributes: RICH_EDITOR_BIDI_DOM_ATTRIBUTES,
     // A pasted image lands in `attachments/` beside the Document; the block
@@ -148,7 +147,7 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
     uploadFile: (file: File) => uploadEditorImage(file, activeTabPathRef.current ? noteRootForPath(activeTabPathRef.current) : vaultPathRef.current),
     pasteHandler: createRichEditorPasteHandler(),
     tabBehavior: 'prefer-indent',
-    _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
+    _tiptapOptions: { ...RICH_EDITOR_BLOCKNOTE_OPTIONS._tiptapOptions, injectNonce: RUNTIME_STYLE_NONCE },
     extensions: [
       createRichEditorTransformErrorRecoveryExtension(),
       createImeCompositionKeyGuardExtension(),
@@ -169,7 +168,6 @@ function useRichEditor(options: { activeTabPath: string | null; vaultPath?: stri
   useEffect(() => {
     installRichEditorDispatchPerformanceProbe(editor, () => activeTabPathRef.current)
   }, [activeTabPathRef, editor])
-  useFilenameAutolinkGuard(editor)
 
   return editor
 }

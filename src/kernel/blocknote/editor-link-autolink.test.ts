@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   looksLikeLocalFileReference,
-  shouldStripAutoLinkedLocalFileMark,
   shouldAutoLinkHref,
 } from './editor-link-autolink'
 
@@ -34,29 +33,5 @@ describe('shouldAutoLinkHref', () => {
     expect(shouldAutoLinkHref({ raw: 'https://example.com/docs' })).toBe(true)
     expect(shouldAutoLinkHref({ raw: 'example.com' })).toBe(true)
     expect(shouldAutoLinkHref({ raw: 'example.com/README.md' })).toBe(true)
-  })
-})
-
-describe('shouldStripAutoLinkedLocalFileMark', () => {
-  it('strips accidental link marks that mirror local file text', () => {
-    expect(shouldStripAutoLinkedLocalFileMark({
-      href: { raw: 'https://AGENTS.md' },
-      text: { raw: 'AGENTS.md' },
-    })).toBe(true)
-    expect(shouldStripAutoLinkedLocalFileMark({
-      href: { raw: 'https://docs/README.md' },
-      text: { raw: 'docs/README.md' },
-    })).toBe(true)
-  })
-
-  it('keeps intentional external links', () => {
-    expect(shouldStripAutoLinkedLocalFileMark({
-      href: { raw: 'https://example.com/docs' },
-      text: { raw: 'Example Docs' },
-    })).toBe(false)
-    expect(shouldStripAutoLinkedLocalFileMark({
-      href: { raw: 'https://example.com/agents' },
-      text: { raw: 'AGENTS.md' },
-    })).toBe(false)
   })
 })
