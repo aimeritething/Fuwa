@@ -53,3 +53,10 @@ export function SidebarRowIcon({ icon: Icon, className, ...props }: { icon: Comp
 export function SidebarRowName({ className, ...props }: ComponentProps<'span'>) {
   return <span className={cn('min-w-0 flex-1 truncate', className)} {...props} />
 }
+
+/**
+ * On a control whose click opens a Tab. That click adds a row to Open
+ * Editors, which moves everything below it, this control included. The sidebar
+ * drops the second click of a double-click that starts on one.
+ */
+export const OPENS_A_TAB_PROPS = { 'data-opens-tab': '' } as const

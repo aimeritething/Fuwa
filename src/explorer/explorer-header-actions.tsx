@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import { DotsThree, Plus } from '@phosphor-icons/react'
 import { cn } from '@/lib/cn'
+import { OPENS_A_TAB_PROPS } from '@/shell/sidebar-row'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +45,7 @@ export function ExplorerHeaderActions(props: ExplorerHeaderActionsProps) {
 
   return (
     <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover/explorer:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100">
-      <HeaderAction data-testid="explorer-new-document" title="New Document" aria-label="New Document" onClick={onNewDocument}>
+      <HeaderAction data-testid="explorer-new-document" title="New Document" aria-label="New Document" onClick={onNewDocument} {...OPENS_A_TAB_PROPS}>
         <Plus size={12} aria-hidden="true" />
       </HeaderAction>
       <DropdownMenu>
