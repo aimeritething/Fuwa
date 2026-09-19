@@ -20,6 +20,18 @@ const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
 const BROKEN_PATH = `${MOCK_FOLDER}/Broken.md`
 const BROKEN_CONTENT = '---\nthis is not yaml\n---\n# Broken\n\nBody\n'
 const FUWA_FRONTMATTER = '---\ntitle: Fuwa\n---\n'
+const TABLE_PATH = `${MOCK_FOLDER}/Table.md`
+const TABLE_CONTENT = [
+  '# Week',
+  '',
+  '| Day | Plan |',
+  '| --- | --- |',
+  '| Morning | Writing |',
+  '| Afternoon | Meetings |',
+  '',
+  '## After the table',
+  '',
+].join('\n')
 
 const rawEditor = (page: Page) => page.getByTestId('raw-editor-codemirror')
 const rawText = (page: Page) => page.evaluate(() => {
@@ -56,11 +68,10 @@ test('⌘\\ and the segmented control switch modes, the Markdown shows in Raw, a
   await expect.poll(() => rawText(page)).toContain('# Welcome')
   expect(await rawText(page)).toContain('Typed in Rich.')
   await expect(page.locator('.bn-editor')).toHaveCount(0)
-  // The caret was in the edited paragraph; in Raw it lands at the end of that
-  // paragraph's lines (the kernel maps a block to its line range).
+  // The caret was in the edited paragraph; in Raw it lands at the end of that paragraph's line.
   await expect.poll(async () => {
     const lines = await rawCaretLines(page, 'Typed in Rich.')
-    return lines && lines.target > 0 && (lines.caret === lines.target || lines.caret === lines.target + 1)
+    return lines && lines.target > 0 && lines.caret === lines.target
   }).toBe(true)
 
   // Move the caret to the heading line, then go back to Rich: it lands in the heading block.
@@ -75,6 +86,35 @@ test('⌘\\ and the segmented control switch modes, the Markdown shows in Raw, a
   await expect.poll(() => richCaretBlock(page)).toBe('Welcome')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
+})
+
+test('a cursor in a table cell is a cursor on that row in Raw, typing there replaces nothing, and Rich comes back to the row', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(([path, content]) => window.__fuwaMockVault?.writeNote(path, content), [TABLE_PATH, TABLE_CONTENT])
+  await openDocumentThroughDialog(page, TABLE_PATH)
+  await page.locator('.bn-editor td', { hasText: 'Meetings' }).click()
+
+  await page.keyboard.press('Meta+Backslash')
+
+  await expect(rawEditor(page)).toBeVisible()
+  await expect.poll(async () => {
+    const lines = await rawCaretLines(page, '| Afternoon')
+    return lines && lines.caret === lines.target
+  }).toBe(true)
+  // Typing right after the switch adds to the row: the table is not selected, so nothing is replaced.
+  await page.keyboard.type(' x')
+  expect(await rawText(page)).toContain('| Morning | Writing |\n| Afternoon | Meetings | x\n')
+
+  await page.keyboard.press('Meta+z')
+  await page.keyboard.press('Meta+z')
+  await page.keyboard.press('Meta+Backslash')
+
+  await expect(page.locator('.bn-editor table')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => {
+    const node = window.getSelection()?.anchorNode
+    const element = node instanceof Element ? node : node?.parentElement
+    return element?.closest('tr')?.textContent ?? null
+  })).toBe('AfternoonMeetings')
 })
 
 test('the control carries a tooltip naming the shortcut as a mono chip', async ({ page }) => {

@@ -88,45 +88,22 @@ describe('editorModePosition', () => {
     document.body.innerHTML = ''
   })
 
-  it('maps the current BlockNote block to a raw-editor restore selection', () => {
+  it('maps the current BlockNote block to a raw-editor cursor at the end of its line', () => {
     const editor = makeEditor(blocks)
     editor.getTextCursorPosition = () => ({ block: blocks[1] })
 
-    const snapshot = captureRichEditorPositionSnapshot(editor, document)
+    const snapshot = captureRichEditorPositionSnapshot(editor)
     expect(snapshot).toEqual({
       anchorBlockIndex: 1,
       headBlockIndex: 1,
-      scrollTop: 128,
+      cursorBlockId: 'details',
+      tableRowIndex: null,
     })
 
     const restoreState = buildCodeMirrorRestoreState(editor, content, snapshot!)
-    expect(restoreState?.scrollTop).toBe(128)
-    expect(content.slice(restoreState!.anchor, restoreState!.head).trim()).toBe('Paragraph one')
-  })
-
-  it('maps rich wikilink blocks through the shared Markdown serializer', () => {
-    const wikilinkContent = '---\ntitle: Demo\n---\n# Title\n\nSee [[Project Alpha]]'
-    const wikilinkBlocks = [
-      blocks[0],
-      {
-        id: 'link',
-        markdown: 'See Project Alpha',
-        content: [
-          { type: 'text', text: 'See ', styles: {} },
-          { type: 'wikilink', props: { target: 'Project Alpha' } },
-        ],
-      },
-    ]
-    const editor = makeEditor(wikilinkBlocks)
-    editor.getTextCursorPosition = () => ({ block: wikilinkBlocks[1] })
-
-    const restoreState = buildCodeMirrorRestoreState(editor, wikilinkContent, {
-      anchorBlockIndex: 1,
-      headBlockIndex: 1,
-      scrollTop: 24,
-    })
-
-    expect(wikilinkContent.slice(restoreState!.anchor, restoreState!.head)).toBe('See [[Project Alpha]]')
+    const lineEnd = content.indexOf('Paragraph one') + 'Paragraph one'.length
+    // A cursor, not the block selected: typing after the switch replaces nothing.
+    expect(restoreState).toEqual({ anchor: lineEnd, head: lineEnd })
   })
 
   it('ignores stale BlockNote cursor positions that no longer have a block', () => {
@@ -135,10 +112,10 @@ describe('editorModePosition', () => {
       { block: undefined } as unknown as ReturnType<NonNullable<BlockNotePositionEditor['getTextCursorPosition']>>
     )
 
-    expect(captureRichEditorPositionSnapshot(editor, document)).toBeNull()
+    expect(captureRichEditorPositionSnapshot(editor)).toBeNull()
   })
 
-  it('restores a raw-editor selection and scroll position through the DOM bridge', () => {
+  it('restores a raw-editor selection and the scroll position read off the same Raw view', () => {
     const dispatch = vi.fn()
     const focus = vi.fn()
     const view: CodeMirrorViewLike = {
@@ -162,6 +139,40 @@ describe('editorModePosition', () => {
     expect(dispatch).toHaveBeenCalledWith({ selection: { anchor: 10, head: 21 } })
     expect(view.scrollDOM.scrollTop).toBe(96)
     expect(focus).toHaveBeenCalled()
+  })
+
+  it('brings a raw-editor cursor that is out of sight to the middle of the view', () => {
+    const dispatch = vi.fn()
+    const view: CodeMirrorViewLike = {
+      state: { doc: { toString: () => content }, selection: { main: { anchor: 0, head: 0 } } },
+      scrollDOM: { scrollTop: 0, getBoundingClientRect: () => ({ top: 0, bottom: 400 }) },
+      // CodeMirror has not drawn a position this far down.
+      coordsAtPos: () => null,
+      dispatch,
+      focus: vi.fn(),
+    }
+    installRawView(view)
+
+    expect(restoreCodeMirrorView(document, { anchor: 30, head: 30 })).toBe(true)
+
+    expect(dispatch).toHaveBeenCalledWith({ selection: { anchor: 30, head: 30 }, effects: expect.anything() })
+    expect(view.scrollDOM.scrollTop).toBe(0)
+  })
+
+  it('leaves the Raw view where it is when the cursor is already in sight', () => {
+    const dispatch = vi.fn()
+    const view: CodeMirrorViewLike = {
+      state: { doc: { toString: () => content }, selection: { main: { anchor: 0, head: 0 } } },
+      scrollDOM: { scrollTop: 0, getBoundingClientRect: () => ({ top: 0, bottom: 400 }) },
+      coordsAtPos: () => ({ top: 120, bottom: 140 }),
+      dispatch,
+      focus: vi.fn(),
+    }
+    installRawView(view)
+
+    expect(restoreCodeMirrorView(document, { anchor: 30, head: 30 })).toBe(true)
+
+    expect(dispatch).toHaveBeenCalledWith({ selection: { anchor: 30, head: 30 } })
   })
 
   it('clamps stale raw-editor restore selections to the current document', () => {
@@ -208,6 +219,23 @@ describe('editorModePosition', () => {
     expect(restored).toBe(true)
     expect(editor.setTextCursorPosition).toHaveBeenCalledWith('details', 'end')
     expect(editor.focus).toHaveBeenCalled()
+  })
+
+  it.each([
+    ['above the view', { top: -300, bottom: -280 }, 1],
+    ['below the view', { top: 900, bottom: 920 }, 1],
+    ['in sight', { top: 100, bottom: 120 }, 0],
+  ])('scrolls the Rich view only when the cursor\'s block is out of sight: %s', (_, box, scrolls) => {
+    const scroller = document.querySelector('.editor-scroll-area')!
+    scroller.getBoundingClientRect = () => ({ top: 0, bottom: 600, height: 600 }) as DOMRect
+    const block = document.querySelector<HTMLElement>('[data-id="details"]')!
+    block.getBoundingClientRect = () => ({ ...box, height: box.bottom - box.top }) as DOMRect
+
+    const paragraphOffset = content.indexOf('Paragraph one') + 5
+    captureAndRestoreRawSelection({ anchor: paragraphOffset, head: paragraphOffset })
+
+    expect(block.scrollIntoView).toHaveBeenCalledTimes(scrolls)
+    if (scrolls) expect(block.scrollIntoView).toHaveBeenCalledWith({ block: 'center' })
   })
 
   it('restores a multi-block raw selection back into a BlockNote block range', () => {

@@ -66,7 +66,7 @@ function buildPendingRawRestore({
   const nextContent = syncedContent ?? activeTabContent
   if (!nextContent) return null
 
-  const richSnapshot = captureRichEditorPositionSnapshot(editor, document)
+  const richSnapshot = captureRichEditorPositionSnapshot(editor)
   return richSnapshot ? buildCodeMirrorRestoreState(editor, nextContent, richSnapshot) : null
 }
 
