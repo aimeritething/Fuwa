@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { installBlockNoteDirectMarkdown } from './block-note-direct-markdown'
 import {
   MATH_BLOCK_TYPE,
   MATH_INLINE_TYPE,
@@ -130,6 +131,27 @@ describe('math markdown round-trip', () => {
     expect(serializeMathAwareBlocks(editor, blocks)).toBe(
       'Inline $a^2+b^2=c^2$\n\n$$\n\\frac{1}{2}\n$$\n\nDone',
     )
+  })
+
+  it('keeps LaTeX underscores and backslashes unescaped when the direct serializer writes inline math', () => {
+    const editor = { blocksToMarkdownLossy: vi.fn(() => '') }
+    installBlockNoteDirectMarkdown(editor)
+    const blocks = [{
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Tall: ', styles: {} },
+        { type: MATH_INLINE_TYPE, props: { latex: '\\sum_{i=1}^{n} x_i' } },
+        { type: 'text', text: ' and ', styles: {} },
+        { type: MATH_INLINE_TYPE, props: { latex: '\\int_0^1 x^2\\,dx' } },
+        { type: 'text', text: ', next to snake_ case_ prose.', styles: {} },
+      ],
+      children: [],
+    }]
+
+    expect(serializeMathAwareBlocks(editor, blocks)).toBe(
+      'Tall: $\\sum_{i=1}^{n} x_i$ and $\\int_0^1 x^2\\,dx$, next to snake\\_ case\\_ prose.',
+    )
+    expect(editor.blocksToMarkdownLossy).not.toHaveBeenCalled()
   })
 
   it('round-trips inline math inside table cells', () => {

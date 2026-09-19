@@ -548,12 +548,18 @@ export function installBlockNoteDirectMarkdown(editor: DirectMarkdownCapableSeri
   }
 }
 
+/**
+ * `prepareForLossy` rewrites the blocks for BlockNote's own serializer only:
+ * inline content it has no node for has to reach it as plain text, while the
+ * direct serializer writes those nodes itself and would escape the text form.
+ */
 export function serializeBlockNoteMarkdown(
   editor: DirectMarkdownCapableSerializer,
   blocks: unknown[],
+  prepareForLossy: (blocks: unknown[]) => unknown[] = (unchanged) => unchanged,
 ): string {
   const direct = editor.blocksToMarkdownDirect?.(blocks)
   if (direct?.supported) return direct.markdown
-  const safeBlocks = normalizeUnsafeTableCardinalities(blocks)
+  const safeBlocks = normalizeUnsafeTableCardinalities(prepareForLossy(blocks))
   return editor.blocksToMarkdownLossy(restoreWikilinksInBlocks(safeBlocks))
 }
