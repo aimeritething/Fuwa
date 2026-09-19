@@ -1,4 +1,4 @@
-import { useCallback, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { clampSidebarWidth } from '@/session/session-schema'
 import { SidebarToggle } from './sidebar-toggle'
 
@@ -20,6 +20,7 @@ interface SidebarProps {
  */
 export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarProps) {
   const { liveWidth, resizerProps } = useEdgeResize(width, onWidthChange)
+  const onClickCapture = useOneOpenPerDoubleClick()
 
   return (
     <aside
@@ -27,6 +28,7 @@ export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarPro
       data-testid="sidebar"
       data-resizing={liveWidth !== null || undefined}
       style={{ width: liveWidth ?? width }}
+      onClickCapture={onClickCapture}
     >
       {/* The traffic lights' row; the whole row drags the window, the icon at its end does not. */}
       <div className="-mx-2 mb-0.5 flex h-11 flex-none items-center justify-end pr-2" data-testid="sidebar-top" data-tauri-drag-region>
@@ -45,6 +47,24 @@ export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarPro
       />
     </aside>
   )
+}
+
+/**
+ * A double-click that opens a Tab is one open. By the second click the
+ * sidebar has moved under the pointer, so that click would land on another
+ * row, or on the Explorer's "+". It is dropped, wherever it lands. A second
+ * click after anything else (a folder's arrow, a close button) goes through.
+ */
+function useOneOpenPerDoubleClick() {
+  const openedTab = useRef(false)
+
+  return useCallback((event: MouseEvent<HTMLElement>) => {
+    if (event.detail <= 1) {
+      openedTab.current = event.target instanceof Element && event.target.closest('[data-opens-tab]') !== null
+      return
+    }
+    if (openedTab.current) event.stopPropagation()
+  }, [])
 }
 
 /**

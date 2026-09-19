@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { Sidebar } from './sidebar'
+import { OPENS_A_TAB_PROPS } from './sidebar-row'
 import { TooltipProvider } from '@/ui/tooltip'
 
 function renderSidebar(width: number, onWidthChange = vi.fn(), onToggle = vi.fn()) {
@@ -52,5 +53,54 @@ describe('Sidebar', () => {
     expect(onWidthChange).toHaveBeenCalledWith(276)
     fireEvent.keyDown(edge, { key: 'ArrowLeft' })
     expect(onWidthChange).toHaveBeenCalledWith(244)
+  })
+
+  describe('a double-click that opens a Tab', () => {
+    function renderRows() {
+      const onOpen = vi.fn()
+      const onOther = vi.fn()
+      render(
+        <TooltipProvider>
+          <Sidebar width={260} onWidthChange={vi.fn()} onToggle={vi.fn()}>
+            <button type="button" onClick={onOpen} {...OPENS_A_TAB_PROPS}>opens a Tab</button>
+            <button type="button" onClick={onOther}>other</button>
+          </Sidebar>
+        </TooltipProvider>,
+      )
+      return { onOpen, onOther, opens: screen.getByText('opens a Tab'), other: screen.getByText('other') }
+    }
+
+    it('drops the second click, wherever the moved sidebar puts it', () => {
+      const { onOpen, onOther, opens, other } = renderRows()
+
+      fireEvent.click(opens, { detail: 1 })
+      fireEvent.click(other, { detail: 2 })
+      fireEvent.click(opens, { detail: 3 })
+
+      expect(onOpen).toHaveBeenCalledTimes(1)
+      expect(onOther).not.toHaveBeenCalled()
+    })
+
+    it('lets a second click through after a click on anything else', () => {
+      const { onOther, other } = renderRows()
+
+      fireEvent.click(other, { detail: 1 })
+      fireEvent.click(other, { detail: 2 })
+
+      expect(onOther).toHaveBeenCalledTimes(2)
+    })
+
+    it('takes the next single click as usual', () => {
+      const { onOpen, onOther, opens, other } = renderRows()
+
+      fireEvent.click(opens, { detail: 1 })
+      fireEvent.click(other, { detail: 2 })
+      fireEvent.click(other, { detail: 1 })
+      // A click from the keyboard has no count.
+      fireEvent.click(opens, { detail: 0 })
+
+      expect(onOther).toHaveBeenCalledTimes(1)
+      expect(onOpen).toHaveBeenCalledTimes(2)
+    })
   })
 })
