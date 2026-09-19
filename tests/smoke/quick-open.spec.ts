@@ -30,8 +30,9 @@ test('Quick Open finds a Document by name, shows files only, and ↵ opens it', 
 
   await expect(palette(page)).toHaveAttribute('data-mode', 'files')
   await expect(input(page)).toBeFocused()
-  // Every file in the Folder, by name, and not one command.
-  await expect(rowNames(page)).toHaveText(['Fuwa.md', 'lake.png', 'Reading list.md', 'Welcome.md'])
+  // Every file in the Folder, by name, and not one command. The style catalog's
+  // files are listed too; what they are called is not this spec's business.
+  await expect(rowNames(page).filter({ hasText: /^(Fuwa\.md|lake\.png|Reading list\.md|Welcome\.md)$/ })).toHaveCount(4)
   await expect(page.getByTestId('command-menu-row-type').filter({ hasText: 'Command' })).toHaveCount(0)
 
   await page.keyboard.type('fuw')

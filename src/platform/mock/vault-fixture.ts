@@ -1,5 +1,6 @@
 import { lockedExtension } from '@/folder/explorer-names'
 import { notePathFilename } from '@/lib/note-path-identity'
+import { styleCatalogEntries, type StyleCatalogEntry } from './style-catalog'
 
 /**
  * In-memory Folder fixture: the stand-in for the Rust side when Fuwa runs in a
@@ -7,6 +8,11 @@ import { notePathFilename } from '@/lib/note-path-identity'
  * commands the shell needs to boot, list and edit from memory and rejects
  * everything else with the same message the kernel's mock used, so a spec that
  * reaches an unanswered command fails loudly rather than silently.
+ *
+ * The default seed is a handful of small files the specs lean on, plus the style
+ * catalog under `Style catalog/` (see `./style-catalog`): the Documents a person
+ * reads while tuning styles. The catalog changes often, so a spec never asserts
+ * on what is inside it.
  *
  * Extending it for a later spec: seed files through `createMockVault(seed)` or
  * `reset(seed)`, stand in for Finder with `seedPendingOpen` (the path a launch by
@@ -148,6 +154,7 @@ export const DEFAULT_MOCK_VAULT_FILES: MockVaultFile[] = [
   file('Projects/Fuwa.md', 'note', '---\ntitle: Fuwa\n---\n# Fuwa\n\nA small desktop app for Markdown files.\n', 1_757_500_300),
   file('Attachments', 'folder', undefined, 1_757_500_400),
   image('Attachments/lake.png', { width: 1920, height: 1080, fileSize: 245_760 }, 1_757_500_500),
+  ...styleCatalogEntries().map(catalogFile),
 ]
 
 function file(
@@ -174,6 +181,13 @@ function image(relativePath: string, picture: MockVaultImage, modifiedAt: number
     modifiedAt,
     fileSize: picture.fileSize,
   }
+}
+
+function catalogFile({ relativePath, content, dataUrl, fileSize }: StyleCatalogEntry): MockVaultFile {
+  const path = `${MOCK_VAULT_PATH}/${relativePath}`
+  return dataUrl === undefined
+    ? { path, kind: 'note', content, modifiedAt: 1_757_600_000, fileSize }
+    : { path, kind: 'image', dataUrl, modifiedAt: 1_757_600_000, fileSize }
 }
 
 function nowInSeconds(): number {

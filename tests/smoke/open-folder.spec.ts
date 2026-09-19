@@ -13,7 +13,7 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   await openFolder(page, MOCK_FOLDER)
   const explorer = page.getByTestId('explorer')
   const rows = explorer.locator('[data-testid^="explorer-row:"]')
-  await expect(rows).toHaveText(['Notes', 'Attachments', 'Projects', 'Reading list.md', 'Welcome.md'])
+  await expect(rows).toHaveText(['Notes', 'Attachments', 'Projects', 'Style catalog', 'Reading list.md', 'Welcome.md'])
   await explorer.getByRole('button', { name: 'Expand Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')

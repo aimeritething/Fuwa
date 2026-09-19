@@ -85,7 +85,7 @@ test('a committed rename re-sorts the row and moves the Tab with it', async ({ p
 
   const explorer = page.getByTestId('explorer')
   await expect(explorer.locator('[data-testid^="explorer-row:"]'))
-    .toHaveText(['Notes', 'Attachments', 'Projects', 'Aardvark.md', 'Reading list.md'])
+    .toHaveText(['Notes', 'Attachments', 'Projects', 'Style catalog', 'Aardvark.md', 'Reading list.md'])
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('aria-label', 'Aardvark.md')
   await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Aardvark.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')

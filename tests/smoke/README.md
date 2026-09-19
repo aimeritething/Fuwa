@@ -17,6 +17,16 @@ Finder-open buffer (`take_pending_open`), the Session (`read_session`, `update_s
 rejects anything else. Argument and result shapes follow the Rust commands. Add a case to the
 fixture's `answer` switch when a spec needs a command it does not answer yet.
 
+The default seed is a few small files the specs lean on (`Welcome.md`, `Reading list.md`,
+`Projects/Fuwa.md`, `Attachments/lake.png`) plus the style catalog under `Style catalog/`:
+the Documents and pictures in `src/platform/mock/style-catalog/`, there for a person to read
+while tuning styles. Dropping a file into that directory adds it to the seed. The catalog
+changes often, so a spec never asserts on what is inside it, and a new catalog file should
+not share a name fragment with the files the Quick Open specs search for (`fuw`, `lake`,
+`welcome`). The dev server answers a catalog Document's `../images/<name>` at
+`/images/<name>` (`styleCatalogImages` in `vite.config.ts`), since nothing resolves a
+Document's pictures outside Tauri.
+
 A spec reaches the fixture as `window.__fuwaMockVault`:
 
 - `reset(seed)` restores the seed (or a new one) and clears the watcher, the pending opens,

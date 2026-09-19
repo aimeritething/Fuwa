@@ -9,6 +9,8 @@ export type RichEditor = BlockNoteEditor<BlockSchema, InlineContentSchema, Style
 export type DropPlacement = 'before' | 'after'
 
 export const BLOCK_CONTAINER_SELECTOR = '[data-node-type="blockContainer"][data-id]'
+// The kernel's code block language control (code-block-language-controls.tsx), keyed by block id.
+export const CODE_BLOCK_LANGUAGE_CONTROL_ATTRIBUTE = 'data-code-block-id'
 export const BLOCK_OUTER_SELECTOR = '[data-node-type="blockOuter"][data-id], .bn-block-outer[data-id]'
 
 function clamp(value: number, min: number, max: number) {
