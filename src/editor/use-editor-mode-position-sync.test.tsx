@@ -103,16 +103,16 @@ describe('useEditorModePositionSync', () => {
     )
 
     act(() => {
-      const snapshot = captureRichEditorPositionSnapshot(editor, document)
+      const snapshot = captureRichEditorPositionSnapshot(editor)
       result.current.restoreTransitionRef.current.rawRestore = snapshot
         ? buildCodeMirrorRestoreState(editor, content, snapshot)
         : null
     })
     rerender({ rawMode: true })
 
-    const selectionCall = dispatch.mock.calls[0]?.[0]
-    expect(selectionCall?.selection?.anchor).toBe(content.indexOf('Paragraph one'))
-    expect(content.slice(selectionCall.selection.anchor, selectionCall.selection.head).trim()).toBe('Paragraph one')
+    // A cursor at the end of the block's line, not the block selected.
+    const lineEnd = content.indexOf('Paragraph one') + 'Paragraph one'.length
+    expect(dispatch.mock.calls[0]?.[0]?.selection).toEqual({ anchor: lineEnd, head: lineEnd })
     expect(focus).toHaveBeenCalled()
   })
 

@@ -1,13 +1,30 @@
 import { splitFrontmatter } from '@/kernel/markdown/wikilinks'
-import {
-  serializeRichEditorBlocksToMarkdown,
-  serializeRichEditorBodyToMarkdown,
-} from '@/kernel/markdown/rich-editor-markdown'
+import { serializeRichEditorBlocksToMarkdown } from '@/kernel/markdown/rich-editor-markdown'
+import { EditorView } from '@codemirror/view'
+import { TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
 import { findNearestTextCursorBlockById } from '@/kernel/blocknote/block-note-cursor-target'
+
+// Where the cursor is, carried across a Rich ↔ Raw switch. The mapping is by
+// block, and by row inside a table: a cursor in Rich becomes a cursor at the
+// end of its block's last Raw line, and the other way round. Never a
+// selection the writer did not make, so typing right after a switch replaces
+// nothing. The view follows the cursor: it scrolls only if the cursor's block
+// is out of sight.
 
 interface BlockLike {
   id: string
+  type?: string
   content?: unknown
+  children?: BlockLike[]
+}
+
+/** The ProseMirror side of the editor, for what BlockNote's API cannot say: the row of a table. */
+interface ProseMirrorLike {
+  state: EditorState
+  view: {
+    dispatch: (transaction: Transaction) => void
+    nodeDOM: (pos: number) => Node | null
+  }
 }
 
 interface BlockSelectionLike {
@@ -26,6 +43,7 @@ export interface BlockNotePositionEditor {
   setSelection: (startBlock: string, endBlock: string) => void
   setTextCursorPosition: (targetBlock: string, placement: 'start' | 'end') => void
   focus: () => void
+  _tiptapEditor?: ProseMirrorLike
 }
 
 export interface CodeMirrorViewLike {
@@ -40,8 +58,10 @@ export interface CodeMirrorViewLike {
   }
   scrollDOM: {
     scrollTop: number
+    getBoundingClientRect?: () => { top: number; bottom: number }
   }
-  dispatch: (spec: { selection: { anchor: number; head: number } }) => void
+  coordsAtPos?: (pos: number) => { top: number; bottom: number } | null
+  dispatch: (spec: { selection: { anchor: number; head: number }; effects?: unknown }) => void
   focus: () => void
 }
 
@@ -50,25 +70,30 @@ interface RawEditorHost extends Element {
 }
 
 export interface RichEditorPositionSnapshot {
+  /** Indexes into the top-level blocks; equal for a cursor, and for a selection inside one block. */
   anchorBlockIndex: number
   headBlockIndex: number
-  scrollTop: number
+  /** The block the cursor is in, when that is a child of the top-level block. */
+  cursorBlockId: string | null
+  /** The row the cursor is in, when its block is a table. */
+  tableRowIndex: number | null
 }
 
 export interface RawEditorPositionSnapshot {
-  anchorLineRatio: number
-  headLineRatio: number
+  /** The Raw body, Frontmatter left out: the lines below count into it. */
+  body: string
+  anchorLine: number
+  headLine: number
 }
 
 export interface CodeMirrorRestoreState {
   anchor: number
   head: number
-  scrollTop: number
-}
-
-interface BlockNoteRestoreState {
-  startBlockId: string
-  endBlockId: string
+  /**
+   * Set only when the state was read off a Raw view of this same Document, so
+   * the pixels mean the same thing. Without it the view follows the cursor.
+   */
+  scrollTop?: number
 }
 
 interface BlockLineRange {
@@ -122,24 +147,8 @@ function getLineIndexForOffset({ text, offset }: { text: string; offset: number 
   return countLineBreaks({ text: text.slice(0, clampedOffset) })
 }
 
-function getLineRatio({ text, offset }: { text: string; offset: number }): number {
-  const totalLines = countLines({ text })
-  if (totalLines <= 1) return 0
-  const lineIndex = getLineIndexForOffset({ text, offset })
-  return lineIndex / (totalLines - 1)
-}
-
-function getLineIndexFromRatio({ totalLines, ratio }: { totalLines: number; ratio: number }): number {
-  if (totalLines <= 1) return 0
-  return Math.round(clamp(ratio, 0, 1) * (totalLines - 1))
-}
-
 function serializeBlock(editor: BlockNotePositionEditor, block: BlockLike): string {
   return serializeRichEditorBlocksToMarkdown({ blocks: [block], editor })
-}
-
-function serializeEditorBody(editor: BlockNotePositionEditor): string {
-  return serializeRichEditorBodyToMarkdown(editor)
 }
 
 function buildBlockLineRanges({
@@ -153,7 +162,8 @@ function buildBlockLineRanges({
   let fallbackStartLine = 0
 
   return editor.document.map((block) => {
-    const serializedBlock = serializeBlock(editor, block)
+    // Without the serializer's trailing line break, which would count the next line into this block.
+    const serializedBlock = serializeBlock(editor, block).trim()
     if (!serializedBlock) {
       return { startLine: fallbackStartLine, endLine: fallbackStartLine }
     }
@@ -206,8 +216,10 @@ function findNearestBlockIndex({
   return nearestIndex
 }
 
-function documentBlockIndex(editor: BlockNotePositionEditor, blockId: string): number | null {
-  const index = editor.document.findIndex(block => block.id === blockId)
+/** The index of the top-level block that is `blockId`, or holds it among its children. */
+function topLevelBlockIndex(editor: BlockNotePositionEditor, blockId: string): number | null {
+  const holds = (block: BlockLike): boolean => block.id === blockId || (block.children ?? []).some(holds)
+  const index = editor.document.findIndex(holds)
   return index === -1 ? null : index
 }
 
@@ -222,84 +234,113 @@ function getSelectionIndexes(editor: BlockNotePositionEditor): [number, number] 
   const endBlock = selectedBlocks.at(-1)
   if (!startBlock || !endBlock) return null
 
-  const startIndex = documentBlockIndex(editor, startBlock.id)
-  const endIndex = documentBlockIndex(editor, endBlock.id)
+  const startIndex = topLevelBlockIndex(editor, startBlock.id)
+  const endIndex = topLevelBlockIndex(editor, endBlock.id)
   if (startIndex === null || endIndex === null) return null
 
   return [startIndex, endIndex]
 }
 
-function getCursorIndex(editor: BlockNotePositionEditor): number | null {
+function getCursorBlockId(editor: BlockNotePositionEditor): string | null {
   if (typeof editor.getTextCursorPosition !== 'function') return null
 
-  let cursorBlockId: string | undefined
   try {
-    cursorBlockId = editor.getTextCursorPosition()?.block?.id
+    return editor.getTextCursorPosition()?.block?.id ?? null
   } catch {
     return null
   }
-  if (!cursorBlockId) return null
-
-  const cursorIndex = editor.document.findIndex(block => block.id === cursorBlockId)
-  return cursorIndex === -1 ? null : cursorIndex
 }
 
-function buildBlockNoteRestoreState(
-  editor: BlockNotePositionEditor,
-  snapshot: RawEditorPositionSnapshot,
-): BlockNoteRestoreState | null {
-  if (editor.document.length === 0) return null
+/** The row of the table the cursor is in, counted from the header row; null outside a table. */
+function getCursorTableRowIndex(editor: BlockNotePositionEditor): number | null {
+  const $head = editor._tiptapEditor?.state.selection.$head
+  if (!$head) return null
 
-  const body = serializeEditorBody(editor)
-  const ranges = buildBlockLineRanges({ body, editor })
-  const totalLines = countLines({ text: body })
-  const anchorLine = getLineIndexFromRatio({ totalLines, ratio: snapshot.anchorLineRatio })
-  const headLine = getLineIndexFromRatio({ totalLines, ratio: snapshot.headLineRatio })
-  const anchorIndex = findNearestBlockIndex({ ranges, targetLine: anchorLine })
-  const headIndex = findNearestBlockIndex({ ranges, targetLine: headLine })
-  const startIndex = Math.min(anchorIndex, headIndex)
-  const endIndex = Math.max(anchorIndex, headIndex)
-  const startBlock = editor.document.at(startIndex)
-  const endBlock = editor.document.at(endIndex)
-  if (!startBlock || !endBlock) return null
-
-  const startBlockId = findNearestTextCursorBlockById(
-    editor.document,
-    startBlock.id,
-  )?.id
-  const endBlockId = findNearestTextCursorBlockById(
-    editor.document,
-    endBlock.id,
-  )?.id
-  if (!startBlockId || !endBlockId) return null
-
-  return {
-    startBlockId,
-    endBlockId,
+  for (let depth = $head.depth; depth > 0; depth -= 1) {
+    if ($head.node(depth).type.name === 'tableRow') return $head.index(depth - 1)
   }
-}
-
-export function readBlockNoteScrollTop(documentObject: Document): number {
-  const scrollElement = documentObject.querySelector<HTMLElement>(BLOCKNOTE_SCROLL_SELECTOR)
-  return scrollElement?.scrollTop ?? 0
+  return null
 }
 
 export function captureRichEditorPositionSnapshot(
   editor: BlockNotePositionEditor,
-  documentObject: Document,
 ): RichEditorPositionSnapshot | null {
   if (editor.document.length === 0) return null
 
-  const selectionIndexes = getSelectionIndexes(editor)
-  const cursorIndex = selectionIndexes ? null : getCursorIndex(editor)
-  const [anchorBlockIndex, headBlockIndex] = selectionIndexes ?? [cursorIndex, cursorIndex]
+  const cursorBlockId = getCursorBlockId(editor)
+  const cursorIndex = cursorBlockId ? topLevelBlockIndex(editor, cursorBlockId) : null
+  const [anchorBlockIndex, headBlockIndex] = getSelectionIndexes(editor) ?? [cursorIndex, cursorIndex]
   if (anchorBlockIndex === null || headBlockIndex === null) return null
 
   return {
     anchorBlockIndex,
     headBlockIndex,
-    scrollTop: readBlockNoteScrollTop(documentObject),
+    cursorBlockId,
+    tableRowIndex: getCursorTableRowIndex(editor),
   }
+}
+
+const CODE_FENCE_PATTERN = /^\s*(?:`{3,}|~{3,})\s*$/
+const TABLE_LINE_PATTERN = /^\s*\|/
+
+/** A table's first line is its header row, its second the delimiter; row n ≥ 1 is on line n + 1. */
+function tableRowToLine(rowIndex: number): number {
+  return rowIndex === 0 ? 0 : rowIndex + 1
+}
+
+function tableLineToRow(line: number): number {
+  return line <= 1 ? 0 : line - 1
+}
+
+function findBlockById(blocks: BlockLike[], blockId: string): BlockLike | null {
+  for (const block of blocks) {
+    if (block.id === blockId) return block
+    const child = findBlockById(block.children ?? [], blockId)
+    if (child) return child
+  }
+  return null
+}
+
+/** The lines `block` writes by itself, without its children, as they read once any indent is gone. */
+function ownLines(editor: BlockNotePositionEditor, block: BlockLike): string[] {
+  return serializeBlock(editor, { ...block, children: [] }).trim().split('\n').map(line => line.trim())
+}
+
+/**
+ * The Raw line a Rich cursor goes to the end of: the last line of its block.
+ * In a table that is the cursor's row. In a code block it is the last line of
+ * code, not the closing fence, where typing would break the block. A block
+ * with children ends with them, so the cursor's own block is looked up among
+ * the lines.
+ */
+function cursorLine({
+  editor,
+  lines,
+  range,
+  snapshot,
+}: {
+  editor: BlockNotePositionEditor
+  lines: string[]
+  range: BlockLineRange
+  snapshot: RichEditorPositionSnapshot
+}): number {
+  if (snapshot.tableRowIndex !== null && TABLE_LINE_PATTERN.test(lines[range.startLine] ?? '')) {
+    return Math.min(range.startLine + tableRowToLine(snapshot.tableRowIndex), range.endLine)
+  }
+
+  let lastLine = range.endLine
+  const cursorBlock = snapshot.cursorBlockId ? findBlockById(editor.document, snapshot.cursorBlockId) : null
+  if (cursorBlock && range.endLine > range.startLine) {
+    const own = ownLines(editor, cursorBlock)
+    for (let line = range.startLine; line <= range.endLine; line += 1) {
+      if ((lines[line] ?? '').trim() !== own[0]) continue
+      lastLine = Math.min(line + own.length - 1, range.endLine)
+      break
+    }
+  }
+
+  const endsWithFence = lastLine > range.startLine && CODE_FENCE_PATTERN.test(lines[lastLine] ?? '')
+  return endsWithFence ? lastLine - 1 : lastLine
 }
 
 export function buildCodeMirrorRestoreState(
@@ -316,13 +357,18 @@ export function buildCodeMirrorRestoreState(
   const anchorRange = ranges.at(clamp(snapshot.anchorBlockIndex, 0, ranges.length - 1))
   const headRange = ranges.at(clamp(snapshot.headBlockIndex, 0, ranges.length - 1))
   if (!anchorRange || !headRange) return null
-  const anchorBodyOffset = getLineStartOffset({ text: body, lineIndex: anchorRange.startLine })
-  const headBodyOffset = getLineEndOffset({ text: body, lineIndex: headRange.endLine })
+
+  // Only a selection over several blocks stays one: inside one block it would
+  // become the whole block, which is not what the writer selected.
+  if (anchorRange === headRange) {
+    const line = cursorLine({ editor, lines: body.split('\n'), range: headRange, snapshot })
+    const offset = frontmatter.length + getLineEndOffset({ text: body, lineIndex: line })
+    return { anchor: offset, head: offset }
+  }
 
   return {
-    anchor: frontmatter.length + anchorBodyOffset,
-    head: frontmatter.length + headBodyOffset,
-    scrollTop: snapshot.scrollTop,
+    anchor: frontmatter.length + getLineStartOffset({ text: body, lineIndex: anchorRange.startLine }),
+    head: frontmatter.length + getLineEndOffset({ text: body, lineIndex: headRange.endLine }),
   }
 }
 
@@ -341,8 +387,9 @@ export function captureRawEditorPositionSnapshot(documentObject: Document): RawE
   const anchorOffset = clamp(view.state.selection.main.anchor - frontmatter.length, 0, bodyLength)
   const headOffset = clamp(view.state.selection.main.head - frontmatter.length, 0, bodyLength)
   return {
-    anchorLineRatio: getLineRatio({ text: body, offset: anchorOffset }),
-    headLineRatio: getLineRatio({ text: body, offset: headOffset }),
+    body,
+    anchorLine: getLineIndexForOffset({ text: body, offset: anchorOffset }),
+    headLine: getLineIndexForOffset({ text: body, offset: headOffset }),
   }
 }
 
@@ -357,6 +404,14 @@ export function captureRawCodeMirrorRestoreState(documentObject: Document): Code
   }
 }
 
+/** True when the Raw cursor is drawn inside the scroller; a position CodeMirror has not drawn is not. */
+function isRawCursorInView(view: CodeMirrorViewLike, head: number): boolean {
+  const cursor = view.coordsAtPos?.(head)
+  const scroller = view.scrollDOM.getBoundingClientRect?.()
+  if (!cursor || !scroller) return false
+  return cursor.top >= scroller.top && cursor.bottom <= scroller.bottom
+}
+
 export function restoreCodeMirrorView(
   documentObject: Document,
   state: CodeMirrorRestoreState,
@@ -369,15 +424,115 @@ export function restoreCodeMirrorView(
     anchor: clampSelectionOffset(state.anchor, maxOffset),
     head: clampSelectionOffset(state.head, maxOffset),
   }
+  const followCursor = state.scrollTop === undefined && !isRawCursorInView(view, selection.head)
 
   try {
-    view.dispatch({ selection })
+    view.dispatch(followCursor
+      ? { selection, effects: EditorView.scrollIntoView(selection.head, { y: 'center' }) }
+      : { selection })
   } catch {
     return false
   }
-  view.scrollDOM.scrollTop = state.scrollTop
+  if (state.scrollTop !== undefined) view.scrollDOM.scrollTop = state.scrollTop
   view.focus()
   return true
+}
+
+/** The block the Raw line belongs to: the top-level block, or the child of it that wrote the line. */
+function findBlockForLine(editor: BlockNotePositionEditor, block: BlockLike, line: string): BlockLike {
+  const wroteLine = (candidate: BlockLike): BlockLike | null => {
+    if (ownLines(editor, candidate).includes(line.trim())) return candidate
+    for (const child of candidate.children ?? []) {
+      const found = wroteLine(child)
+      if (found) return found
+    }
+    return null
+  }
+  return (block.children?.length ? wroteLine(block) : null) ?? block
+}
+
+/**
+ * Puts the cursor at the end of a table's row, in its last cell, and answers
+ * with the row's element. BlockNote's own cursor API knows a table only as a
+ * whole, so this goes through ProseMirror.
+ */
+function setCursorInTableRow(editor: BlockNotePositionEditor, blockId: string, rowIndex: number): Element | null {
+  const proseMirror = editor._tiptapEditor
+  if (!proseMirror) return null
+
+  let rowPos = -1
+  let rowEnd = -1
+  proseMirror.state.doc.descendants((node, pos) => {
+    if (rowPos !== -1) return false
+    if (node.attrs.id !== blockId) return true
+
+    node.descendants((table, tableOffset) => {
+      if (table.type.name !== 'table' || table.childCount === 0) return true
+      const targetRow = clamp(rowIndex, 0, table.childCount - 1)
+      let offset = pos + 1 + tableOffset + 1
+      for (let row = 0; row < targetRow; row += 1) offset += table.child(row).nodeSize
+      rowPos = offset
+      rowEnd = offset + table.child(targetRow).nodeSize
+      return false
+    })
+    return false
+  })
+  if (rowPos === -1) return null
+
+  const { state, view } = proseMirror
+  view.dispatch(state.tr.setSelection(TextSelection.near(state.doc.resolve(rowEnd - 1), -1)))
+  const rowElement = view.nodeDOM(rowPos)
+  return rowElement instanceof Element ? rowElement : null
+}
+
+/** Puts the Rich cursor or selection where the Raw one was, and answers with the element it is in. */
+function restoreBlockNoteSelection(
+  editor: BlockNotePositionEditor,
+  snapshot: RawEditorPositionSnapshot,
+  documentObject: Document,
+): Element | null {
+  const ranges = buildBlockLineRanges({ body: snapshot.body, editor })
+  const anchorIndex = findNearestBlockIndex({ ranges, targetLine: snapshot.anchorLine })
+  const headIndex = findNearestBlockIndex({ ranges, targetLine: snapshot.headLine })
+  const blockElement = (blockId: string) => documentObject.querySelector(`[data-id="${blockId}"]`)
+
+  if (anchorIndex !== headIndex) {
+    const startBlockId = findNearestTextCursorBlockById(editor.document, editor.document[Math.min(anchorIndex, headIndex)].id)?.id
+    const endBlockId = findNearestTextCursorBlockById(editor.document, editor.document[Math.max(anchorIndex, headIndex)].id)?.id
+    if (!startBlockId || !endBlockId) return null
+    editor.setSelection(startBlockId, endBlockId)
+    return blockElement(endBlockId)
+  }
+
+  const block = editor.document[headIndex]
+  const range = ranges[headIndex]
+  if (block.type === 'table') {
+    const rowElement = setCursorInTableRow(editor, block.id, tableLineToRow(snapshot.headLine - range.startLine))
+    if (rowElement) return rowElement
+  }
+
+  const lineBlock = findBlockForLine(editor, block, snapshot.body.split('\n')[snapshot.headLine] ?? '')
+  const cursorBlockId = block.type === 'table'
+    ? block.id
+    : findNearestTextCursorBlockById([lineBlock], lineBlock.id)?.id ?? findNearestTextCursorBlockById(editor.document, block.id)?.id
+  if (!cursorBlockId) return null
+  editor.setTextCursorPosition(cursorBlockId, 'end')
+  return blockElement(cursorBlockId)
+}
+
+/**
+ * Scrolls `element` to the middle of the Rich scroller, but only when the
+ * cursor in it is out of sight: a switch that lands on a visible block leaves
+ * the view where it was. The cursor is at the element's end, so an element
+ * taller than the scroller shows its end.
+ */
+function scrollIntoViewIfHidden(element: Element, documentObject: Document): void {
+  const scroller = documentObject.querySelector(BLOCKNOTE_SCROLL_SELECTOR)?.getBoundingClientRect()
+  const box = element.getBoundingClientRect()
+  const taller = scroller !== undefined && box.height > scroller.height
+  if (scroller && box.bottom <= scroller.bottom && box.bottom > scroller.top && (taller || box.top >= scroller.top)) return
+
+  element.scrollIntoView({ block: taller ? 'end' : 'center' })
 }
 
 export function restoreBlockNoteView(
@@ -385,21 +540,15 @@ export function restoreBlockNoteView(
   snapshot: RawEditorPositionSnapshot,
   documentObject: Document,
 ): boolean {
-  const state = buildBlockNoteRestoreState(editor, snapshot)
-  if (!state) return false
+  if (editor.document.length === 0) return false
 
+  let element: Element | null
   try {
-    if (state.startBlockId === state.endBlockId) {
-      editor.setTextCursorPosition(state.endBlockId, 'end')
-    } else {
-      editor.setSelection(state.startBlockId, state.endBlockId)
-    }
+    element = restoreBlockNoteSelection(editor, snapshot, documentObject)
   } catch {
     return false
   }
   editor.focus()
-  documentObject
-    .querySelector<HTMLElement>(`[data-id="${state.endBlockId}"]`)
-    ?.scrollIntoView({ block: 'center' })
+  if (element) scrollIntoViewIfHidden(element, documentObject)
   return true
 }
