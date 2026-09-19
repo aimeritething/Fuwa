@@ -122,7 +122,7 @@
 
   .bn-block-outer {
     line-height: var(--editor-line-height);
-    /* The bullet marker sizes: a 6px dot at the 15px editor size, scaling
+    /* The bullet marker sizes: 0.4 of the editor size across, scaling
        with it. On the outer, so a block's drag preview keeps them too. */
     --_lists-marker-inner-radius: calc(var(--editor-font-size) * 0.133333);
     --_lists-marker-radius: calc(var(--editor-font-size) * 0.2);
@@ -235,6 +235,27 @@
     margin-bottom: var(--editor-paragraph-spacing);
   }
 
+  /* Block rhythm. A block that is not a line of text (code, table, media,
+     callout…) closes with the paragraph gap, and so does the last of a
+     top-level run of list items or of quote lines, so every block ends the
+     way a paragraph does and a heading's top margin always adds to the same
+     gap. Headings and the divider keep their own margins. BlockNote's blocks
+     do not collapse margins: two that meet add. */
+  .bn-block-content:not(:is(
+    [data-content-type="paragraph"],
+    [data-content-type="heading"],
+    [data-content-type$="ListItem"],
+    [data-content-type="quote"],
+    [data-content-type="divider"]
+  )) {
+    margin-bottom: var(--editor-paragraph-spacing);
+  }
+
+  .bn-editor > .bn-block-group > .bn-block-outer:has(> .bn-block > [data-content-type$="ListItem"]):not(:has(+ .bn-block-outer > .bn-block > [data-content-type$="ListItem"])),
+  .bn-editor > .bn-block-group > .bn-block-outer:has(> .bn-block > [data-content-type="quote"]):not(:has(+ .bn-block-outer > .bn-block > [data-content-type="quote"])) {
+    margin-bottom: var(--editor-paragraph-spacing);
+  }
+
   /* Headings. Spacing goes on .bn-block-outer, where BlockNote measures
      for the side menu; the inner elements carry no margin. BlockNote renders
      H1 without data-level, hence :has(h1) and :not([data-level]). */
@@ -288,12 +309,13 @@
     letter-spacing: var(--headings-h3-letter-spacing);
   }
 
-  .bn-block-outer:has(> .bn-block > [data-content-type="heading"][data-level="4"]) {
+  /* H5 and H6 have no scale of their own: they take H4's. */
+  .bn-block-outer:has(> .bn-block > [data-content-type="heading"]:is([data-level="4"], [data-level="5"], [data-level="6"])) {
     margin-top: var(--headings-h4-margin-top);
     margin-bottom: var(--headings-h4-margin-bottom);
   }
 
-  [data-content-type="heading"][data-level="4"] .bn-inline-content {
+  [data-content-type="heading"]:is([data-level="4"], [data-level="5"], [data-level="6"]) .bn-inline-content {
     font-size: var(--headings-h4-font-size);
     font-weight: var(--headings-h4-font-weight);
     line-height: var(--headings-h4-line-height);

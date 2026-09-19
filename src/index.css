@@ -46,45 +46,45 @@
 
   /* editor */
   --editor-font-family: 'Inter Variable', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --editor-font-size: 15px;
-  --editor-font-weight: 450;
-  --editor-line-height: 1.6;
-  --editor-letter-spacing: -0.0067em;
-  --editor-max-width: 792px;
+  --editor-font-size: 16px;
+  --editor-font-weight: 400;
+  --editor-line-height: 1.75;
+  --editor-letter-spacing: 0;
+  --editor-max-width: 760px;
   --editor-padding-horizontal: 56px;
-  --editor-padding-vertical: 20px;
-  --editor-paragraph-spacing: 16px;
-  --editor-divider-followed-by-heading-margin-top: 8px;
+  --editor-padding-vertical: 36px;
+  --editor-paragraph-spacing: 12px;
+  --editor-divider-followed-by-heading-margin-top: 12px;
 
   /* headings */
-  --headings-h1-font-size: 22px;
-  --headings-h1-font-weight: 600;
-  --headings-h1-line-height: 29.6px;
-  --headings-h1-margin-top: 48px;
-  --headings-h1-margin-bottom: 16px;
-  --headings-h1-letter-spacing: -0.07px;
-  --headings-h2-font-size: 19px;
+  --headings-h1-font-size: 28px;
+  --headings-h1-font-weight: 650;
+  --headings-h1-line-height: 1.3;
+  --headings-h1-margin-top: 28px;
+  --headings-h1-margin-bottom: 12px;
+  --headings-h1-letter-spacing: -0.015em;
+  --headings-h2-font-size: 22px;
   --headings-h2-font-weight: 600;
-  --headings-h2-line-height: 28px;
-  --headings-h2-margin-top: 32px;
-  --headings-h2-margin-bottom: 16px;
-  --headings-h2-letter-spacing: 0.05px;
-  --headings-h3-font-size: 17px;
+  --headings-h2-line-height: 1.35;
+  --headings-h2-margin-top: 20px;
+  --headings-h2-margin-bottom: 6px;
+  --headings-h2-letter-spacing: -0.01em;
+  --headings-h3-font-size: 18px;
   --headings-h3-font-weight: 600;
-  --headings-h3-line-height: 24px;
-  --headings-h3-margin-top: 24px;
-  --headings-h3-margin-bottom: 6px;
-  --headings-h3-letter-spacing: 0.1px;
-  --headings-h4-font-size: 15px;
+  --headings-h3-line-height: 1.45;
+  --headings-h3-margin-top: 12px;
+  --headings-h3-margin-bottom: 4px;
+  --headings-h3-letter-spacing: 0;
+  --headings-h4-font-size: 16px;
   --headings-h4-font-weight: 600;
-  --headings-h4-line-height: 24px;
-  --headings-h4-margin-top: 22px;
-  --headings-h4-margin-bottom: 6px;
+  --headings-h4-line-height: 1.6;
+  --headings-h4-margin-top: 8px;
+  --headings-h4-margin-bottom: 2px;
   --headings-h4-letter-spacing: 0;
 
   /* lists, checkboxes */
   --lists-indent-size: 24px;
-  --lists-item-spacing: 2px;
+  --lists-item-spacing: 0px;
   --lists-padding-left: 0px;
   --lists-bullet-gap: 0px;
   --checkboxes-size: 14px;
@@ -93,9 +93,9 @@
 
   /* inline code, bold */
   --inline-code-font-family: var(--font-mono);
-  --inline-code-font-size: 0.9375em;
-  --inline-code-padding-horizontal: 0.25em;
-  --inline-code-padding-vertical: 0.5px;
+  --inline-code-font-size: 0.875em;
+  --inline-code-padding-horizontal: 0.3em;
+  --inline-code-padding-vertical: 1px;
   --inline-code-border-radius: 0.2em;
   --inline-bold-font-weight: 600;
 
@@ -103,10 +103,10 @@
   --blockquote-border-left-width: 4px;
   --blockquote-padding-left: 16px;
   --blockquote-margin-vertical: 0px;
-  --table-cell-padding-horizontal: 10px;
-  --table-cell-padding-vertical: 6px;
+  --table-cell-padding-horizontal: 12px;
+  --table-cell-padding-vertical: 8px;
   --table-font-size: 15px;
-  --hr-margin-vertical: 22px;
+  --hr-margin-vertical: 28px;
   --hr-thickness: 1px;
 }
 
