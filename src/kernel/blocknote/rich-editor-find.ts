@@ -1,7 +1,9 @@
 import { createExtension } from '@blocknote/core'
 import type { Node as ProsemirrorNode } from '@tiptap/pm/model'
-import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@tiptap/pm/state'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
+import type { RichEditor } from './block-note-dom'
+import { expandSectionsHidingBlock } from './collapsed-sections'
 import { clampEditorFindIndex, findEditorMatches, type EditorFindOptions } from './editor-find'
 
 /**
@@ -106,6 +108,43 @@ export function setRichFindState(tr: Transaction, request: RichFindQuery): Trans
 
 export function richFindDecorations(state: EditorState): DecorationSet {
   return richFindPluginKey.getState(state)?.decorations ?? DecorationSet.empty
+}
+
+/** Whether a find is live in this state: a query is set, whatever it matches. */
+export function isRichFindActive(state: EditorState): boolean {
+  return (richFindPluginKey.getState(state)?.query.length ?? 0) > 0
+}
+
+/** The BlockNote block a position is in: the nearest node above it that carries an id. */
+function blockIdAt(doc: ProsemirrorNode, pos: number): string | null {
+  const $pos = doc.resolve(pos)
+  for (let depth = $pos.depth; depth > 0; depth -= 1) {
+    const id: unknown = $pos.node(depth).attrs.id
+    if (typeof id === 'string') return id
+  }
+  return null
+}
+
+/**
+ * Put a match in front of the reader: open the collapsed sections it sits
+ * under (a match counted but under `display: none` cannot be scrolled to),
+ * select it, and bring it to the middle of the view. The middle, because the
+ * find bar is sticky over the top of the scroll area and ProseMirror's own
+ * scrollIntoView stops at the edge, under the bar.
+ */
+export function revealRichFindMatch(editor: unknown, view: EditorView, match: RichFindMatch) {
+  const blockId = blockIdAt(view.state.doc, match.from)
+  if (blockId && isBlockEditor(editor)) expandSectionsHidingBlock(editor, blockId)
+
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, match.from, match.to)))
+
+  const { node } = view.domAtPos(match.from)
+  const element = node instanceof Element ? node : node.parentElement
+  element?.scrollIntoView({ block: 'center' })
+}
+
+function isBlockEditor(editor: unknown): editor is RichEditor {
+  return typeof editor === 'object' && editor !== null && Array.isArray((editor as { document?: unknown }).document)
 }
 
 /**
