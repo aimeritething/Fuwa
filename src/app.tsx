@@ -6,6 +6,7 @@ import { OpenEditors } from '@/tabs/open-editors'
 import { Explorer } from '@/explorer/explorer'
 import { useFolder, pickFolderToOpen } from '@/folder/use-folder'
 import { useExplorerActions } from '@/explorer/use-explorer-actions'
+import { useExplorerMemory } from '@/explorer/use-explorer-memory'
 import { useDocumentWatcher } from '@/folder/use-document-watcher'
 import { buildExplorerTree, documentRoot } from '@/folder/explorer'
 import { activeTabPaths } from '@/tabs/image-file'
@@ -268,6 +269,9 @@ export default function App() {
     showToast: showRefusalToast,
   })
 
+  // Held here, above the sidebar, because collapsing the sidebar unmounts the Explorer.
+  const explorerMemory = useExplorerMemory(folder)
+
   const settleAndCloseAll = useCallback(async () => {
     try {
       await settleAndRecord()
@@ -443,6 +447,7 @@ export default function App() {
           activeTabPath={activeTabPath}
           onOpenFile={openExplorerFile}
           actions={explorerActions}
+          memory={explorerMemory}
           onCloseFolder={onCloseFolder}
           onOpenFolder={onOpenFolder}
           error={folderState.error}

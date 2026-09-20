@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type RefObject } from 'react'
 import { ContextMenu, ContextMenuTrigger } from '@/ui/context-menu'
 import type { SidebarSelection } from '@/types'
 import { holdsDocument, type ExplorerNode } from '@/folder/explorer'
@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn'
 import { clearDraggedNotePath, readDraggedNotePath, writeNoteDragData } from './note-drag-drop'
 import { ancestorTreePaths } from './folder-tree-utils'
 import { useFolderTreeDisclosure } from './use-folder-tree-disclosure'
+import type { ExplorerMemory } from './use-explorer-memory'
 import { ExplorerContextMenu } from './explorer-context-menu'
 import { ExplorerHeaderActions } from './explorer-header-actions'
 import { ExplorerNameInput } from './explorer-name-input'
@@ -29,6 +30,8 @@ interface ExplorerProps {
   /** A Document or an Image file row was activated; both open a real Tab. */
   onOpenFile: (path: string) => void
   actions: ExplorerActions
+  /** What outlives the Explorer while the sidebar is collapsed: the folders opened by hand, the scroll position. */
+  memory: ExplorerMemory
   onCloseFolder: () => void
   /** The Open Folder button's click, the same as ⌘O. */
   onOpenFolder: () => void
@@ -94,13 +97,71 @@ function folderKeys(node: ExplorerNode, folder: string, keys: string[] = []): st
   return keys
 }
 
-/** Open every folder above a path, so the row it names is on screen. */
-function useRevealedInTree(path: string | null | undefined, folder: string, expandFolder: (key: string) => void) {
+const SCROLL_VIEWPORT_SELECTOR = '[data-slot="scroll-area-viewport"]'
+
+/** The tree's scroll position, put back when the sidebar is expanded again. */
+function useRememberedScroll(treeRef: RefObject<HTMLDivElement | null>, view: ExplorerMemory['view']) {
+  useLayoutEffect(() => {
+    const viewport = treeRef.current?.querySelector<HTMLElement>(SCROLL_VIEWPORT_SELECTOR)
+    if (!viewport) return
+    viewport.scrollTop = view().scrollTop
+    const remember = () => { view().scrollTop = viewport.scrollTop }
+    viewport.addEventListener('scroll', remember, { passive: true })
+    return () => {
+      // Once more on the way out, while the viewport is still in the document.
+      if (viewport.isConnected) remember()
+      viewport.removeEventListener('scroll', remember)
+    }
+  }, [treeRef, view])
+}
+
+interface RowIntoViewOptions {
+  treeRef: RefObject<HTMLDivElement | null>
+  folder: string
+  tree: ExplorerNode
+  selected: string | null
+  editingPath: string | null
+  expanded: Record<string, boolean>
+  expandFolder: (key: string) => void
+  view: ExplorerMemory['view']
+}
+
+/**
+ * A row that has just been selected (a click, the active Tab) or has just
+ * entered rename is brought into view: the folders above it open, and the tree
+ * scrolls to it once, when its row is there. That can be a render later (the
+ * folders have to open first) or a refresh later (a new file is selected
+ * before it is listed). Nothing else scrolls the tree: not a folder opening or
+ * shutting, not a refresh from the watcher, not a rename ending, and not the
+ * sidebar coming back with the same rows it left with.
+ */
+function useRowBroughtIntoView({ treeRef, folder, tree, selected, editingPath, expanded, expandFolder, view }: RowIntoViewOptions) {
+  const pendingRef = useRef<'selected' | 'editing' | null>(null)
+
   useEffect(() => {
+    const seen = view()
+    const pending = editingPath && editingPath !== seen.revealedEditing ? 'editing'
+      : selected && selected !== seen.revealedSelected ? 'selected'
+        : null
+    seen.revealedEditing = editingPath
+    seen.revealedSelected = selected
+    if (!pending) return
+
+    pendingRef.current = pending
+    const path = pending === 'editing' ? editingPath : selected
     if (!path || !isPathInsideVaultRoot(path, folder)) return
     expandFolder('')
     for (const ancestor of ancestorTreePaths(path.slice(folder.length + 1))) expandFolder(ancestor)
-  }, [expandFolder, folder, path])
+  }, [editingPath, expandFolder, folder, selected, view])
+
+  useEffect(() => {
+    const pending = pendingRef.current
+    if (!pending) return
+    const row = treeRef.current?.querySelector(pending === 'editing' ? '[data-testid="explorer-rename-input"]' : '[aria-selected="true"]')
+    if (!row) return
+    pendingRef.current = null
+    row.scrollIntoView?.({ block: 'nearest' })
+  }, [editingPath, expanded, selected, tree, treeRef])
 }
 
 /**
@@ -109,20 +170,22 @@ function useRevealedInTree(path: string | null | undefined, folder: string, expa
  * inside a `ScrollArea`; the section shrinks to give it the room.
  */
 function ExplorerBody(props: LoadedProps) {
-  const { folder, tree, activeTabPath, actions, onCloseFolder } = props
-  const { collapseAll, expanded, expandFolder, toggleFolder } = useFolderTreeDisclosure({ selection: NO_FOLDER_SELECTION })
+  const { folder, tree, actions, memory, onCloseFolder } = props
+  const { collapseAll, expanded, expandFolder, toggleFolder } = useFolderTreeDisclosure({
+    selection: NO_FOLDER_SELECTION,
+    expandedState: [memory.manualExpanded, memory.setManualExpanded],
+  })
   const treeRef = useRef<HTMLDivElement>(null)
   const keys = useMemo(() => folderKeys(tree, folder), [folder, tree])
   const handleCollapseAll = useCallback(() => collapseAll(keys), [collapseAll, keys])
 
-  useRevealedInTree(activeTabPath, folder, expandFolder)
-  useRevealedInTree(actions.editing?.path, folder, expandFolder)
-
-  // A row that has just been created, renamed or opened is brought into view.
-  useEffect(() => {
-    const row = treeRef.current?.querySelector('[aria-selected="true"]')
-    row?.scrollIntoView?.({ block: 'nearest' })
-  }, [actions.selected, activeTabPath, expanded, tree])
+  useRememberedScroll(treeRef, memory.view)
+  useRowBroughtIntoView({
+    treeRef, folder, tree, expanded, expandFolder,
+    selected: actions.selected,
+    editingPath: actions.editing?.path ?? null,
+    view: memory.view,
+  })
 
   return (
     <>
