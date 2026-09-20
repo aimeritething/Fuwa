@@ -4,7 +4,7 @@ import type { Transaction } from '@tiptap/pm/state'
 import { trackEvent } from '@/lib/telemetry'
 import { classifyRichEditorRecoveryError } from '@/kernel/blocknote/rich-editor-recovery-classifier'
 import { blankParagraphBlocks } from './editor-tab-content'
-import { EDITOR_CONTAINER_SELECTOR } from './editor-dom-selection'
+import { editorScrollArea } from './editor-dom-selection'
 import { resetTextSelectionBeforeContentSwap } from './editor-tiptap-selection'
 import { repairMalformedEditorBlocks } from './editor-block-repair'
 import { logEditorBlockApplyTrace } from './editor-performance-trace'
@@ -355,7 +355,7 @@ function commitAppliedEditorContent(
       return
     }
     editorContentPathRef.current = targetPath
-    const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
+    const scrollEl = editorScrollArea()
     if (scrollEl) scrollEl.scrollTop = scrollTop
     onCommitted?.()
     suppressChangeRef.current = false

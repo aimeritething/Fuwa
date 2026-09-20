@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, onTestFinished } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { RICH_EDITOR_CHANGE_DEBOUNCE_MS, useEditorTabSwap } from './use-editor-tab-swap'
 import { cacheParsedNoteBlocks, clearParsedNoteBlockCache } from './editor-parsed-block-cache'
@@ -8,7 +8,6 @@ import {
   createSwapHarness,
   flushEditorTick,
   flushQueuedFrames,
-  installEditorDomSpies,
   makeBlankBodyTab,
   makeLongNoteBlocks,
   makeMockEditor,
@@ -1082,8 +1081,18 @@ describe('useEditorTabSwap scroll position', () => {
 
   afterEach(() => { vi.restoreAllMocks() })
 
+  // Real elements, so the test fails when the hook reads the wrong one: the
+  // Rich surface scrolls in `.editor-scroll-area`; the BlockNote container
+  // inside it has no overflow and its scrollTop stays 0.
   it('restores each note scroll position when switching tabs', async () => {
-    const { scrollEl } = installEditorDomSpies()
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const scrollEl = document.createElement('div')
+    scrollEl.className = 'editor-scroll-area'
+    const container = document.createElement('div')
+    container.className = 'editor__blocknote-container'
+    scrollEl.appendChild(container)
+    document.body.appendChild(scrollEl)
+    onTestFinished(() => scrollEl.remove())
     const docRef = { current: blocksA as unknown[] }
     const mockEditor = makeMockEditor(docRef)
 
@@ -1113,6 +1122,7 @@ describe('useEditorTabSwap scroll position', () => {
     rendered.rerender({ tabs: [tabA, tabB], activeTabPath: 'b.md' })
     await flushEditorTick()
     expect(scrollEl.scrollTop).toBe(75)
+    expect(container.scrollTop).toBe(0)
   })
 
   it('defaults to scroll top 0 for newly opened note', async () => {

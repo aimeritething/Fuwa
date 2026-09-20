@@ -31,7 +31,7 @@ import {
   pathStem,
   slugifyPathStem,
 } from './editor-tab-content'
-import { clearEditorDomSelection, EDITOR_CONTAINER_SELECTOR } from './editor-dom-selection'
+import { clearEditorDomSelection, editorScrollArea } from './editor-dom-selection'
 import { editorDocumentSignature, isBlankEditorDocument } from './editor-document-state'
 import {
   cacheEditorState,
@@ -132,8 +132,7 @@ function signalEditorTabSwapped(path: string): void {
 }
 
 function readEditorScrollTop(): number {
-  const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
-  return scrollEl?.scrollTop ?? 0
+  return editorScrollArea()?.scrollTop ?? 0
 }
 
 function findActiveTab(options: {
