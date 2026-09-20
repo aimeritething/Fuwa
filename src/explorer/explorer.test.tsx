@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Explorer } from './explorer'
+import { useExplorerMemory } from './use-explorer-memory'
 import { buildExplorerTree, type ListedFile } from '@/folder/explorer'
 import type { ExplorerActions } from './use-explorer-actions'
 
@@ -38,28 +39,50 @@ function stubActions(overrides: Partial<ExplorerActions> = {}): ExplorerActions 
   }
 }
 
-function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn()) {
-  render(
+interface HarnessProps {
+  actions: ExplorerActions
+  onOpenFile?: (path: string) => void
+  folder?: string
+  tree?: ReturnType<typeof buildExplorerTree>
+  /** False stands in for the collapsed sidebar: the Explorer is unmounted, what holds its memory is not. */
+  shown?: boolean
+}
+
+/** The Explorer under what App gives it: its memory, held above the sidebar. */
+function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree = TREE, shown = true }: HarnessProps) {
+  const memory = useExplorerMemory(folder)
+  if (!shown) return null
+  return (
     <Explorer
-      folder={FOLDER}
-      tree={TREE}
+      folder={folder}
+      tree={tree}
       activeTabPath={null}
       onOpenFile={onOpenFile}
       actions={actions}
+      memory={memory}
       onCloseFolder={vi.fn()}
       onOpenFolder={vi.fn()}
-    />,
+    />
   )
-  return { onOpenFile }
+}
+
+function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn()) {
+  const view = render(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} />)
+  const rerender = (props: Partial<HarnessProps>) => view.rerender(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} {...props} />)
+  return { onOpenFile, rerender }
 }
 
 describe('the empty states', () => {
   function renderWithoutFolder(error: string | null = null) {
     const onOpenFolder = vi.fn()
-    render(
-      <Explorer folder={null} tree={null} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
-        onCloseFolder={vi.fn()} onOpenFolder={onOpenFolder} error={error} />,
-    )
+    function NoFolderHarness() {
+      const memory = useExplorerMemory(null)
+      return (
+        <Explorer folder={null} tree={null} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
+          memory={memory} onCloseFolder={vi.fn()} onOpenFolder={onOpenFolder} error={error} />
+      )
+    }
+    render(<NoFolderHarness />)
     return { onOpenFolder }
   }
 
@@ -89,19 +112,14 @@ describe('the empty states', () => {
 
   it('shows one muted line in the tree area while the Folder holds no Document, and nothing once it does', () => {
     const emptyTree = buildExplorerTree(FOLDER, [listed('Attachments', 'folder'), listed('Attachments/lake.png', 'image')])
-    const { rerender } = render(
-      <Explorer folder={FOLDER} tree={emptyTree} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
-        onCloseFolder={vi.fn()} onOpenFolder={vi.fn()} />,
-    )
+    const { rerender } = renderExplorer(stubActions())
+    rerender({ tree: emptyTree })
 
     expect(screen.getByRole('tree')).toContainElement(screen.getByTestId('explorer-no-documents'))
     expect(screen.getByTestId('explorer-no-documents')).toHaveTextContent('No documents yet · ⌘N')
     expect(screen.queryByRole('button', { name: /Open Folder/ })).toBeNull()
 
-    rerender(
-      <Explorer folder={FOLDER} tree={TREE} activeTabPath={null} onOpenFile={vi.fn()} actions={stubActions()}
-        onCloseFolder={vi.fn()} onOpenFolder={vi.fn()} />,
-    )
+    rerender({ tree: TREE })
     expect(screen.queryByTestId('explorer-no-documents')).toBeNull()
   })
 })
@@ -432,5 +450,121 @@ describe('drag-and-drop', () => {
     expect(target).not.toHaveAttribute('data-drop-target')
     fireEvent.drop(target, { dataTransfer: dataTransfer(false) })
     expect(moveInto).not.toHaveBeenCalled()
+  })
+})
+
+const viewport = () => screen.getByRole('tree').querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement
+const isExpanded = (name: string) => screen.getByRole('treeitem', { name }).getAttribute('aria-expanded') === 'true'
+
+describe('collapsing and expanding the sidebar', () => {
+  it('keeps the folders that were opened and the scroll position', () => {
+    const { rerender } = renderExplorer(stubActions())
+    fireEvent.click(screen.getByLabelText('Expand Projects'))
+    viewport().scrollTop = 120
+    fireEvent.scroll(viewport())
+
+    rerender({ shown: false })
+    expect(screen.queryByRole('tree')).toBeNull()
+    rerender({ shown: true })
+
+    expect(isExpanded('Projects')).toBe(true)
+    expect(viewport().scrollTop).toBe(120)
+  })
+
+  it('keeps a folder shut that holds the selected Document', () => {
+    const actions = stubActions({ selected: `${FOLDER}/Projects/Fuwa.md` })
+    const { rerender } = renderExplorer(actions)
+    expect(isExpanded('Projects')).toBe(true)
+    fireEvent.click(screen.getByLabelText('Collapse Projects'))
+
+    rerender({ shown: false })
+    rerender({ shown: true })
+
+    expect(isExpanded('Projects')).toBe(false)
+  })
+
+  it('starts fresh in another Folder', () => {
+    const { rerender } = renderExplorer(stubActions())
+    fireEvent.click(screen.getByLabelText('Expand Projects'))
+    viewport().scrollTop = 120
+    fireEvent.scroll(viewport())
+
+    const other = '/Other'
+    const otherTree = buildExplorerTree(other, [
+      { path: `${other}/Projects`, kind: 'folder', modifiedAt: null, fileSize: 0 },
+      { path: `${other}/Projects/Plan.md`, kind: 'note', modifiedAt: null, fileSize: 0 },
+    ])
+    rerender({ folder: other, tree: otherTree })
+
+    expect(isExpanded('Projects')).toBe(false)
+    expect(viewport().scrollTop).toBe(0)
+  })
+})
+
+describe('bringing a row into view', () => {
+  const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView)
+  beforeEach(() => scrollIntoView.mockClear())
+
+  it('opens the folders above a newly selected Document and scrolls to its row, once', () => {
+    const view = render(<ExplorerHarness actions={stubActions()} />)
+    scrollIntoView.mockClear()
+
+    view.rerender(<ExplorerHarness actions={stubActions({ selected: `${FOLDER}/Projects/Fuwa.md` })} />)
+
+    expect(isExpanded('Projects')).toBe(true)
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('treeitem', { name: 'Fuwa.md' }))
+  })
+
+  it('waits for a row that is not listed yet', () => {
+    const actions = stubActions({ selected: `${FOLDER}/Later.md` })
+    const { rerender } = renderExplorer(actions)
+    expect(scrollIntoView).not.toHaveBeenCalled()
+
+    rerender({ tree: buildExplorerTree(FOLDER, [listed('Welcome.md', 'note'), listed('Later.md', 'note')]) })
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+  })
+
+  it('stays put when a folder is opened or shut', () => {
+    renderExplorer(stubActions({ selected: `${FOLDER}/Welcome.md` }))
+    scrollIntoView.mockClear()
+
+    fireEvent.click(screen.getByLabelText('Expand Projects'))
+    fireEvent.click(screen.getByLabelText('Collapse Projects'))
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('stays put when the watcher hands over a new tree', () => {
+    const { rerender } = renderExplorer(stubActions({ selected: `${FOLDER}/Welcome.md` }))
+    scrollIntoView.mockClear()
+
+    rerender({ tree: buildExplorerTree(FOLDER, [listed('Welcome.md', 'note'), listed('Added elsewhere.md', 'note')]) })
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('stays put when the sidebar comes back with the same row selected', () => {
+    const { rerender } = renderExplorer(stubActions({ selected: `${FOLDER}/Welcome.md` }))
+    scrollIntoView.mockClear()
+
+    rerender({ shown: false })
+    rerender({ shown: true })
+
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('scrolls to the row that enters rename, and not back to the selected row when the rename ends', () => {
+    const selected = `${FOLDER}/Welcome.md`
+    const view = render(<ExplorerHarness actions={stubActions({ selected })} />)
+    scrollIntoView.mockClear()
+
+    const editing = { path: `${FOLDER}/Projects/Fuwa.md`, kind: 'note' as const, stem: 'Fuwa', extension: '.md' }
+    view.rerender(<ExplorerHarness actions={stubActions({ selected, editing })} />)
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+
+    view.rerender(<ExplorerHarness actions={stubActions({ selected })} />)
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
   })
 })

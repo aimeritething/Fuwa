@@ -1,16 +1,22 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import type { SidebarSelection } from '@/types'
 import { ancestorTreePaths, expandedTreePaths, folderNodeKey, mergeExpandedPaths, scopedFolderKeys } from './folder-tree-utils'
 
+type ExpandedFolders = Record<string, boolean>
+/** The folders opened and shut by hand, when something outside the tree holds them. */
+type ExpandedFoldersState = readonly [ExpandedFolders, Dispatch<SetStateAction<ExpandedFolders>>]
+
 interface UseFolderTreeDisclosureInput {
   collapsed?: boolean
+  expandedState?: ExpandedFoldersState
   onToggle?: () => void
   renamingFolderPath?: string | null
   selection: SidebarSelection
 }
 
-function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: string | null) {
-  const [manualExpanded, setManualExpanded] = useState<Record<string, boolean>>({})
+function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: string | null, expandedState?: ExpandedFoldersState) {
+  const ownState = useState<ExpandedFolders>({})
+  const [manualExpanded, setManualExpanded] = expandedState ?? ownState
   const requiredExpandedPaths = useMemo(() => {
     const nextPaths: string[] = []
     if (selection.kind === 'folder') {
@@ -33,14 +39,14 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
       Reflect.set(next, key, !((Reflect.get(current, key) as boolean | undefined) ?? defaultExpanded))
       return next
     })
-  }, [])
+  }, [setManualExpanded])
 
   const expandFolder = useCallback((key: string) => {
     setManualExpanded((current) => {
       if (Reflect.get(current, key) === true) return current
       return { ...current, [key]: true }
     })
-  }, [])
+  }, [setManualExpanded])
 
   /**
    * Shut every folder, including the ones that were never touched and so are
@@ -49,7 +55,7 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
    */
   const collapseAll = useCallback((keys: readonly string[]) => {
     setManualExpanded(Object.fromEntries(keys.map((key) => [key, false])))
-  }, [])
+  }, [setManualExpanded])
 
   return {
     collapseAll,
@@ -99,11 +105,12 @@ function useFolderSectionState(
 
 export function useFolderTreeDisclosure({
   collapsed: externalCollapsed,
+  expandedState,
   onToggle,
   renamingFolderPath,
   selection,
 }: UseFolderTreeDisclosureInput) {
-  const { collapseAll, expanded, expandFolder, toggleFolder } = useExpandedFolders(selection, renamingFolderPath)
+  const { collapseAll, expanded, expandFolder, toggleFolder } = useExpandedFolders(selection, renamingFolderPath, expandedState)
   const {
     closeCreateForm,
     handleToggleSection,
