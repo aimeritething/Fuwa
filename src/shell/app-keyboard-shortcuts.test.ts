@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetAppCommandDispatchStateForTests } from './app-command-dispatcher'
+import { APP_COMMAND_IDS, executeAppCommand, resetAppCommandDispatchStateForTests } from './app-command-dispatcher'
 import { handleAppKeyboardEvent, type KeyboardActions } from './app-keyboard-shortcuts'
 
 function actions(overrides: Partial<KeyboardActions> = {}): KeyboardActions {
@@ -140,5 +140,110 @@ describe('handleAppKeyboardEvent', () => {
     handleAppKeyboardEvent(handlers, event)
     expect(handlers.onFindInNote).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(false)
+  })
+  describe('a held key', () => {
+    it('runs a command once: the repeats of ⌘W, ⌘N, ⌘[ and ⌘K do nothing', () => {
+      const handlers = actions({ onCloseTab: vi.fn(), onToggleSidebar: vi.fn() })
+
+      for (const key of ['w', 'n', '[', 'k']) {
+        handleAppKeyboardEvent(handlers, press(key))
+        const repeat = press(key, { repeat: true })
+        handleAppKeyboardEvent(handlers, repeat)
+        handleAppKeyboardEvent(handlers, press(key, { repeat: true }))
+        // Still claimed, so the key does not fall through to the browser or to the native menu.
+        expect(repeat.defaultPrevented).toBe(true)
+      }
+
+      expect(handlers.onCloseTab).toHaveBeenCalledTimes(1)
+      expect(handlers.onCreateNote).toHaveBeenCalledTimes(1)
+      expect(handlers.onToggleSidebar).toHaveBeenCalledTimes(1)
+      expect(handlers.onCommandPalette).toHaveBeenCalledTimes(1)
+    })
+
+    it('drops the native menu\'s echo of a repeat as well', () => {
+      const handlers = actions({ onCloseTab: vi.fn() })
+      handleAppKeyboardEvent(handlers, press('w'))
+      handleAppKeyboardEvent(handlers, press('w', { repeat: true }))
+
+      expect(executeAppCommand(APP_COMMAND_IDS.fileCloseTab, handlers, 'native-menu')).toBe(false)
+      expect(handlers.onCloseTab).toHaveBeenCalledTimes(1)
+    })
+
+    it('keeps walking the Tabs: ⌘⇧] and ⌘⇧[ repeat', () => {
+      const handlers = actions({ onNextTab: vi.fn(), onPreviousTab: vi.fn() })
+
+      handleAppKeyboardEvent(handlers, press(']', { shiftKey: true }))
+      handleAppKeyboardEvent(handlers, press(']', { shiftKey: true, repeat: true }))
+      handleAppKeyboardEvent(handlers, press('[', { shiftKey: true, repeat: true }))
+
+      expect(handlers.onNextTab).toHaveBeenCalledTimes(2)
+      expect(handlers.onPreviousTab).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves ⌘Z to a focused text field, repeats included', () => {
+      document.body.innerHTML = '<input type="text" />'
+      document.querySelector('input')!.focus()
+      const repeat = press('z', { repeat: true })
+
+      handleAppKeyboardEvent(actions({ onUndo: vi.fn() }), repeat)
+
+      expect(repeat.defaultPrevented).toBe(false)
+    })
+  })
+
+  describe('a modal layer', () => {
+    const layers = [
+      { name: 'a dialog (Write failure, the lightbox)', slot: 'dialog-content' },
+      { name: 'a context menu', slot: 'context-menu-content' },
+      { name: 'a dropdown menu', slot: 'dropdown-menu-content' },
+    ]
+
+    it.each(layers)('$name keeps ⌘W, ⌘N and ⌘K off the window behind it, and lets ⌘Q through', ({ slot }) => {
+      document.body.innerHTML = `<div data-slot="${slot}" data-state="open"></div>`
+      const handlers = actions({ onCloseTab: vi.fn(), onQuit: vi.fn() })
+
+      for (const key of ['w', 'n', 'k']) {
+        const event = press(key)
+        handleAppKeyboardEvent(handlers, event)
+        expect(event.defaultPrevented).toBe(true)
+      }
+      handleAppKeyboardEvent(handlers, press('q'))
+
+      expect(handlers.onCloseTab).not.toHaveBeenCalled()
+      expect(handlers.onCreateNote).not.toHaveBeenCalled()
+      expect(handlers.onCommandPalette).not.toHaveBeenCalled()
+      expect(handlers.onQuit).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves the Command Menu, a dialog itself, to its own rule: ⌘K and ⌘P still switch it', () => {
+      document.body.innerHTML = '<div data-slot="dialog-content" data-state="open" data-command-palette="true"><input type="text" /></div>'
+      document.querySelector('input')!.focus()
+      const handlers = actions()
+
+      handleAppKeyboardEvent(handlers, press('k'))
+      handleAppKeyboardEvent(handlers, press('p'))
+
+      expect(handlers.onCommandPalette).toHaveBeenCalledTimes(1)
+      expect(handlers.onQuickOpen).toHaveBeenCalledTimes(1)
+    })
+
+    it('stops counting once it is closing', () => {
+      document.body.innerHTML = '<div data-slot="dialog-content" data-state="closed"></div>'
+      const handlers = actions({ onCloseTab: vi.fn() })
+
+      handleAppKeyboardEvent(handlers, press('w'))
+
+      expect(handlers.onCloseTab).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves ⌘Z to a text field inside it', () => {
+      document.body.innerHTML = '<div data-slot="dialog-content" data-state="open"><input type="text" /></div>'
+      document.querySelector('input')!.focus()
+      const event = press('z')
+
+      handleAppKeyboardEvent(actions({ onUndo: vi.fn() }), event)
+
+      expect(event.defaultPrevented).toBe(false)
+    })
   })
 })
