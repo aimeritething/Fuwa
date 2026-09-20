@@ -147,9 +147,9 @@ function useRowBroughtIntoView({ treeRef, folder, tree, selected, editingPath, e
     seen.revealedSelected = selected
     if (!pending) return
 
-    pendingRef.current = pending
     const path = pending === 'editing' ? editingPath : selected
     if (!path || !isPathInsideVaultRoot(path, folder)) return
+    pendingRef.current = pending
     expandFolder('')
     for (const ancestor of ancestorTreePaths(path.slice(folder.length + 1))) expandFolder(ancestor)
   }, [editingPath, expandFolder, folder, selected, view])

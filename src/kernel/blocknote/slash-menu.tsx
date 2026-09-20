@@ -1,6 +1,7 @@
 import { useBlockNoteEditor, useComponentsContext, useDictionary, type SuggestionMenuProps } from '@blocknote/react'
 import { useCallback, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
+import { isImeKeyEvent } from '@/lib/ime-key-event'
 import { Button } from '@/ui/button'
 import type { SlashMenuItem } from './slash-menu-items'
 
@@ -158,6 +159,8 @@ export function SlashMenu({
     const element = editor.domElement
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!(event.target instanceof Node) || !element?.contains(event.target)) return
+      // `/callout` typed through an input method: its Enter confirms the letters.
+      if (isImeKeyEvent(event)) return
       const selectedItem = selectedIndex === undefined ? undefined : items.at(selectedIndex)
       const action = submenuKeyboardAction({
         canOpen: Boolean(selectedItem?.submenuItems?.length),
