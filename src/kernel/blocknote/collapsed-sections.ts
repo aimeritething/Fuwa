@@ -835,6 +835,53 @@ export function toggleCollapsedHeading(
   store.emit()
 }
 
+/** The collapsed heading or list item that keeps `targetId` out of sight, if one does. */
+function collapsedBlockHiding(
+  blocks: readonly CollapsibleBlock[],
+  collapsedHeadingIds: ReadonlySet<string>,
+  targetId: string,
+): string | null {
+  let active: { id: string; level: number } | null = null
+
+  for (const block of flattenBlocks(blocks)) {
+    const blockId = typeof block.id === 'string' ? block.id : undefined
+    const headingLevel = blockHeadingLevel(block)
+    if (active && isClosingHeading(headingLevel, active.level)) active = null
+
+    if (active) {
+      if (blockId === targetId) return active.id
+      continue
+    }
+    if (!blockId || !collapsedHeadingIds.has(blockId)) continue
+
+    if (headingLevel !== null) {
+      active = { id: blockId, level: headingLevel }
+    } else if (isCollapsibleListItemBlock(block)) {
+      const hidden = new Set<string>()
+      addDescendantBlockIds(block, hidden)
+      if (hidden.has(targetId)) return blockId
+    }
+  }
+
+  return null
+}
+
+/**
+ * Open whatever keeps a block out of sight, level by level: a collapsed
+ * subsection inside a collapsed section takes two. Collapsing is view state,
+ * held here and not in the Document, so this writes nothing to disk. For what
+ * has to show a block it did not pick itself (find walking onto a match).
+ */
+export function expandSectionsHidingBlock(editor: RichEditor, blockId: string) {
+  const store = collapsedHeadingStore(editor)
+  // Each pass opens one level; the bound is only a guard against a Document that changes underneath.
+  for (let pass = 0; pass < store.collapsedHeadingIds.size + 1; pass += 1) {
+    const hider = collapsedBlockHiding(editor.document as readonly CollapsibleBlock[], store.collapsedHeadingIds, blockId)
+    if (!hider) return
+    toggleCollapsedHeading(editor, hider)
+  }
+}
+
 export function useCollapsedHeadingRendering(editor: RichEditor) {
   useLayoutEffect(() => {
     const store = collapsedHeadingStore(editor)

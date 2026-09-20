@@ -38,6 +38,7 @@ import {
   type ToolbarMenuKey,
   type ToolbarMenuState,
 } from './toolbar-menu-state'
+import { isRichFindActive } from './rich-editor-find'
 import { useEditorComposing } from './use-editor-composing'
 
 // Fuwa's controller for the floating formatting toolbar, in place of
@@ -438,8 +439,17 @@ export function FormattingToolbarController(props: FormattingToolbarControllerPr
     isComposing,
     show,
   })
+  // Find selects each match so that closing the bar leaves the caret on it, and
+  // BlockNote shows the toolbar for any selection, focused or not. While the
+  // selection is find's (a query is live and the focus is in the bar, not in
+  // the editor) there is nothing to format; a click into the text brings the
+  // toolbar back with the bar still open.
+  const selectionIsFinds = useEditorState({
+    editor,
+    selector: ({ editor }) => isRichFindActive(editor.prosemirrorState) && !editor.prosemirrorView?.hasFocus(),
+  })
   const hasFloatingToolbarAnchor = getFormattingToolbarAnchorElement(editor) !== null
-  const shouldRenderFloatingToolbar = isOpen && hasFloatingToolbarAnchor
+  const shouldRenderFloatingToolbar = isOpen && !selectionIsFinds && hasFloatingToolbarAnchor
   const currentBridgeBlockId = useEditorState({
     editor,
     selector: ({ editor }) => getFormattingToolbarBridgeBlockId(editor),

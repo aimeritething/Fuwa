@@ -22,10 +22,14 @@ function fakeEditor(text: string) {
   })
   const listeners = new Set<() => void>()
   const focus = vi.fn()
+  // Where the view says a position is drawn: one element, so a test can see the match being scrolled to.
+  const matchElement = document.createElement('span')
+  matchElement.scrollIntoView = vi.fn()
   const view = {
     get state() { return state },
     isDestroyed: false,
     focus,
+    domAtPos: () => ({ node: matchElement, offset: 0 }),
     dispatch(tr: Transaction) {
       state = state.apply(tr)
       if (tr.docChanged) listeners.forEach((listener) => listener())
@@ -42,6 +46,7 @@ function fakeEditor(text: string) {
     editor,
     focus,
     state: () => state,
+    scrolledTo: vi.mocked(matchElement.scrollIntoView),
     decorations: () => richFindDecorations(state).find(),
     type: (value: string) => view.dispatch(state.tr.insertText(value, 1)),
   }
@@ -83,6 +88,45 @@ describe('RichEditorFindBar', () => {
     expect(count()).toHaveTextContent('1 / 3')
     fireEvent.keyDown(input(), { key: 'Enter', shiftKey: true })
     expect(count()).toHaveTextContent('3 / 3')
+  })
+
+  // Typing used to highlight only: with every match below the fold the bar said
+  // "1 / 7" over a page that showed none, and the first ↵ went to the second.
+  it('shows the first match as the query is typed: selected, and scrolled to the middle of the view', () => {
+    const fake = fakeEditor('Welcome to Fuwa. Welcome back.')
+    render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
+
+    fireEvent.change(input(), { target: { value: 'welcome' } })
+
+    const { from, to } = fake.state().selection
+    expect([from, to]).toEqual([1, 8])
+    expect(fake.scrolledTo).toHaveBeenLastCalledWith({ block: 'center' })
+
+    fireEvent.change(input(), { target: { value: 'back' } })
+    expect(fake.state().doc.textBetween(fake.state().selection.from, fake.state().selection.to)).toBe('back')
+  })
+
+  it('shows the first match again when an option changes what matches', () => {
+    const fake = fakeEditor('welcome, Welcome.')
+    render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
+    fireEvent.change(input(), { target: { value: 'Welcome' } })
+    expect(fake.state().selection.from).toBe(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /case/i }))
+
+    expect(fake.state().selection.from).toBe(10)
+  })
+
+  it('leaves the selection alone when an edit changes the matches', () => {
+    const fake = fakeEditor('Welcome.')
+    render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
+    fireEvent.change(input(), { target: { value: 'welcome' } })
+    fake.scrolledTo.mockClear()
+
+    act(() => fake.type('Welcome again. '))
+
+    expect(count()).toHaveTextContent('1 / 2')
+    expect(fake.scrolledTo).not.toHaveBeenCalled()
   })
 
   it('follows an edit to the Document', () => {

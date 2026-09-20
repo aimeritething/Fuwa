@@ -1,5 +1,4 @@
 import { CaretDown as ChevronDown, CaretUp as ChevronUp, X } from '@phosphor-icons/react'
-import { TextSelection } from '@tiptap/pm/state'
 import type { EditorView } from '@tiptap/pm/view'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '@/ui/button'
@@ -9,7 +8,7 @@ import { translate, type AppLocale } from '@/lib/i18n'
 import { isImeKeyEvent } from '@/lib/ime-key-event'
 import { clampEditorFindIndex, nextEditorFindIndex, type EditorFindOptions } from '@/kernel/blocknote/editor-find'
 import type { RawEditorFindRequest } from './raw-editor-find-types'
-import { collectRichFindMatches, setRichFindState, type RichFindResult } from '@/kernel/blocknote/rich-editor-find'
+import { collectRichFindMatches, revealRichFindMatch, setRichFindState, type RichFindResult } from '@/kernel/blocknote/rich-editor-find'
 
 /** What the bar needs of the BlockNote editor: its ProseMirror view and a way to hear edits. */
 export interface RichFindEditor {
@@ -92,6 +91,24 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
     view?.dispatch(setRichFindState(view.state.tr, { query: '', options: DEFAULT_OPTIONS, activeIndex: 0 }))
   }, [editor])
 
+  // A new query, or an option that changes what it matches, shows its first
+  // match at once, as the Raw bar does. Asked for by the change and handled
+  // once: an edit to the Document also changes the matches, and must not move
+  // the selection out from under the person typing.
+  const [firstMatchRequest, setFirstMatchRequest] = useState(0)
+  const shownFirstMatchRequestRef = useRef(0)
+  const firstMatch = result.matches[0]
+  useEffect(() => {
+    if (shownFirstMatchRequestRef.current === firstMatchRequest) return
+    shownFirstMatchRequestRef.current = firstMatchRequest
+    const view = viewOf(editor)
+    if (view && firstMatch) revealRichFindMatch(editor, view, firstMatch)
+  }, [editor, firstMatch, firstMatchRequest])
+  const searchAgain = () => {
+    setActiveIndex(0)
+    setFirstMatchRequest((value) => value + 1)
+  }
+
   const requestId = open ? request.id : null
   useEffect(() => {
     if (requestId === null) return
@@ -108,8 +125,7 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
     setActiveIndex(index)
     const view = viewOf(editor)
     const match = result.matches[index]
-    if (!view || !match) return
-    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, match.from, match.to)).scrollIntoView())
+    if (view && match) revealRichFindMatch(editor, view, match)
   }
   const moveNext = () => revealMatch(nextEditorFindIndex(currentIndex, matchCount, 1))
   const movePrevious = () => revealMatch(nextEditorFindIndex(currentIndex, matchCount, -1))
@@ -145,7 +161,7 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
         value={query}
         onChange={(event) => {
           setQuery(event.target.value)
-          setActiveIndex(0)
+          searchAgain()
         }}
         onKeyDown={onInputKeyDown}
         className="h-7 min-w-[12rem] flex-1 rounded px-2 text-xs"
@@ -160,10 +176,10 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
       <Button type="button" variant="ghost" size="icon-xs" aria-label={translate(locale, 'editor.find.nextMatch')} title={translate(locale, 'editor.find.nextMatch')} disabled={matchCount === 0} onClick={moveNext}>
         <ChevronDown />
       </Button>
-      <Toggle pressed={regex} onPressedChange={setRegex} aria-label={translate(locale, 'editor.find.regex')} title={translate(locale, 'editor.find.regex')}>
+      <Toggle pressed={regex} onPressedChange={(pressed) => { setRegex(pressed); searchAgain() }} aria-label={translate(locale, 'editor.find.regex')} title={translate(locale, 'editor.find.regex')}>
         .*
       </Toggle>
-      <Toggle pressed={caseSensitive} onPressedChange={setCaseSensitive} aria-label={translate(locale, 'editor.find.matchCase')} title={translate(locale, 'editor.find.matchCase')}>
+      <Toggle pressed={caseSensitive} onPressedChange={(pressed) => { setCaseSensitive(pressed); searchAgain() }} aria-label={translate(locale, 'editor.find.matchCase')} title={translate(locale, 'editor.find.matchCase')}>
         Aa
       </Toggle>
       <Button type="button" variant="ghost" size="icon-xs" aria-label={translate(locale, 'editor.find.close')} title={translate(locale, 'editor.find.close')} onClick={close}>
