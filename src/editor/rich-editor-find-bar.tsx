@@ -6,6 +6,7 @@ import { Button } from '@/ui/button'
 import { Input } from '@/ui/input'
 import { Toggle } from '@/ui/toggle'
 import { translate, type AppLocale } from '@/lib/i18n'
+import { isImeKeyEvent } from '@/lib/ime-key-event'
 import { clampEditorFindIndex, nextEditorFindIndex, type EditorFindOptions } from '@/kernel/blocknote/editor-find'
 import type { RawEditorFindRequest } from './raw-editor-find-types'
 import { collectRichFindMatches, setRichFindState, type RichFindResult } from '@/kernel/blocknote/rich-editor-find'
@@ -117,14 +118,15 @@ export function RichEditorFindBar({ editor, path, request, locale = 'en' }: Rich
     viewOf(editor)?.focus()
   }
 
+  // ↵ confirming a candidate and esc cancelling one are the input method's.
   const onInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== 'Enter') return
+    if (event.key !== 'Enter' || isImeKeyEvent(event.nativeEvent)) return
     event.preventDefault()
     if (event.shiftKey) movePrevious()
     else moveNext()
   }
   const onBarKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Escape') return
+    if (event.key !== 'Escape' || isImeKeyEvent(event.nativeEvent)) return
     event.preventDefault()
     close()
   }

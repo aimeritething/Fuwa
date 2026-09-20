@@ -122,6 +122,25 @@ describe('RawEditorFindBar', () => {
     })
   })
 
+  it.each([
+    { name: 'while composing', init: { isComposing: true } },
+    { name: 'ending a composition (keyCode 229)', init: { keyCode: 229 } },
+  ])('leaves Enter and Escape to the input method $name', async ({ init }) => {
+    const onClose = vi.fn()
+    const { view } = renderFindBar({ onClose })
+    const input = screen.getByTestId('raw-editor-find-input')
+    fireEvent.change(input, { target: { value: 'Alpha' } })
+    await waitFor(() => expect(screen.getByTestId('raw-editor-find-count')).toHaveTextContent('1 / 2'))
+    vi.mocked(view.dispatch).mockClear()
+
+    expect(fireEvent.keyDown(input, { key: 'Enter', ...init })).toBe(true)
+    expect(fireEvent.keyDown(input, { key: 'Escape', ...init })).toBe(true)
+
+    expect(screen.getByTestId('raw-editor-find-count')).toHaveTextContent('1 / 2')
+    expect(view.dispatch).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('closes on Escape', () => {
     const onClose = vi.fn()
     renderFindBar({ onClose })

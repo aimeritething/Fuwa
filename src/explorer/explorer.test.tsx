@@ -232,6 +232,23 @@ describe('the inline rename input', () => {
     await waitFor(() => expect(actions.commitRename).toHaveBeenCalledWith('Readme'))
   })
 
+  it.each([
+    { name: 'while composing', init: { isComposing: true } },
+    { name: 'ending a composition (keyCode 229)', init: { keyCode: 229 } },
+  ])('leaves Enter and Escape to the input method $name', async ({ init }) => {
+    const actions = stubActions({ editing })
+    renderExplorer(actions)
+
+    const input = screen.getByTestId('explorer-rename-input')
+    fireEvent.change(input, { target: { value: 'wendang' } })
+    expect(fireEvent.keyDown(input, { key: 'Enter', ...init })).toBe(true)
+    expect(fireEvent.keyDown(input, { key: 'Escape', ...init })).toBe(true)
+
+    await Promise.resolve()
+    expect(actions.commitRename).not.toHaveBeenCalled()
+    expect(actions.cancelRename).not.toHaveBeenCalled()
+  })
+
   it('cancels on Escape', () => {
     const actions = stubActions({ editing })
     renderExplorer(actions)
