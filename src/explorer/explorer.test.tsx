@@ -169,6 +169,23 @@ describe('the context menu', () => {
     expect(onOpenFile).not.toHaveBeenCalled()
   })
 
+  // Right-click leaves the selection where it was, so the row the menu acts on
+  // has to say so itself: it keeps the hover look, not the selected one.
+  it('marks the row its menu is open on, and only while it is open', async () => {
+    renderExplorer(stubActions({ selected: `${FOLDER}/Welcome.md` }))
+    const row = screen.getByTestId(`explorer-row:${FOLDER}/Projects`)
+    expect(row).toHaveClass('data-[state=open]:bg-sidebar-row-hover')
+    expect(row).not.toHaveAttribute('data-state', 'open')
+
+    rightClick(row)
+    const menu = await screen.findByTestId('explorer-menu:folder')
+    expect(row).toHaveAttribute('data-state', 'open')
+    expect(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`)).not.toHaveAttribute('data-state', 'open')
+
+    fireEvent.keyDown(menu, { key: 'Escape' })
+    await waitFor(() => expect(row).not.toHaveAttribute('data-state', 'open'))
+  })
+
   it('starts the rename on the row under the cursor', async () => {
     const actions = stubActions()
     renderExplorer(actions)

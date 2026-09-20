@@ -21,13 +21,20 @@ export function SidebarLabel({ className, ...props }: ComponentProps<'div'>) {
   )
 }
 
-/** A row: hover and selection from the sidebar link tokens, a focus ring from the keyboard. */
+/**
+ * A row: hover and selection from the sidebar link tokens, a focus ring from
+ * the keyboard. A row whose context menu is open (`data-state="open"`, from the
+ * menu's trigger) keeps the hover look while the pointer is in the menu: a
+ * right-click does not select, so this is the only mark on the row the menu
+ * acts on, and it must not look like the selected row.
+ */
 export function SidebarRow({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
         'group flex h-7 cursor-default items-center gap-1.5 rounded-lg pr-1.5 pl-2 whitespace-nowrap text-text-secondary outline-none',
         'hover:bg-sidebar-row-hover hover:text-text-heading',
+        'data-[state=open]:bg-sidebar-row-hover data-[state=open]:text-text-heading',
         'aria-selected:bg-sidebar-row-active aria-selected:text-text-heading',
         'focus-visible:focus-ring',
         className,
@@ -43,7 +50,7 @@ export function SidebarRowIcon({ icon: Icon, className, ...props }: { icon: Comp
     <Icon
       size={14}
       aria-hidden="true"
-      className={cn('flex-none text-text-secondary group-hover:text-text-primary group-aria-selected:text-text-primary', className)}
+      className={cn('flex-none text-text-secondary group-hover:text-text-primary group-data-[state=open]:text-text-primary group-aria-selected:text-text-primary', className)}
       {...props}
     />
   )
