@@ -1,4 +1,15 @@
 export const EDITOR_CONTAINER_SELECTOR = '.editor__blocknote-container'
+/**
+ * What scrolls the Rich surface. The BlockNote container above has no overflow
+ * of its own, so a Tab's scroll position is read from and written to this one.
+ * In Raw mode the same element only clips (CodeMirror scrolls itself), and its
+ * scrollTop stays 0.
+ */
+const EDITOR_SCROLL_AREA_SELECTOR = '.editor-scroll-area'
+
+export function editorScrollArea(): Element | null {
+  return document.querySelector(EDITOR_SCROLL_AREA_SELECTOR)
+}
 
 const EDITOR_EDITABLE_SELECTOR = `${EDITOR_CONTAINER_SELECTOR} [contenteditable="true"]`
 
