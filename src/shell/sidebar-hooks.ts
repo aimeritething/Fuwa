@@ -3,6 +3,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type RefObject,
 } from 'react'
+import { isImeKeyEvent } from '@/lib/ime-key-event'
 
 export interface SidebarMenuPosition {
   x: number
@@ -117,6 +118,8 @@ export function useSidebarInlineRenameInput({
   }, [onSubmit, value])
 
   const handleKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
+    // Enter confirming a candidate is not Enter committing the name.
+    if (isImeKeyEvent(event.nativeEvent)) return
     if (event.key === 'Enter') {
       event.preventDefault()
       event.stopPropagation()

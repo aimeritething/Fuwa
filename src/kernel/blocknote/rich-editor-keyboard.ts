@@ -1,4 +1,5 @@
 import type { EditorView } from '@tiptap/pm/view'
+import { isImeKeyEvent } from '@/lib/ime-key-event'
 
 export type RichEditorView = EditorView
 
@@ -30,7 +31,7 @@ export function isComposingKeyboardEvent(
   event: ComposingKeyboardEvent,
   view?: ComposingEditorView | null,
 ): boolean {
-  return event.isComposing || event.keyCode === 229 || Boolean(view?.composing)
+  return isImeKeyEvent(event) || Boolean(view?.composing)
 }
 
 export function consumeKeyboardEvent(

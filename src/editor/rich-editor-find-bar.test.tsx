@@ -110,6 +110,20 @@ describe('RichEditorFindBar', () => {
     expect(count()).toHaveTextContent('Invalid regex')
   })
 
+  it.each([
+    { name: 'while composing', init: { isComposing: true } },
+    { name: 'ending a composition (keyCode 229)', init: { keyCode: 229 } },
+  ])('leaves ↵ and esc to the input method $name', ({ init }) => {
+    const fake = fakeEditor('Welcome to Fuwa. Welcome back.')
+    render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
+    fireEvent.change(input(), { target: { value: 'welcome' } })
+
+    expect(fireEvent.keyDown(input(), { key: 'Enter', ...init })).toBe(true)
+    expect(count()).toHaveTextContent('1 / 2')
+    expect(fireEvent.keyDown(input(), { key: 'Escape', ...init })).toBe(true)
+    expect(screen.getByTestId('rich-editor-find-bar')).toBeInTheDocument()
+  })
+
   it('esc closes the bar, clears the highlights and hands focus back to the editor; a new request reopens it', () => {
     const fake = fakeEditor('Welcome.')
     const view = render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)

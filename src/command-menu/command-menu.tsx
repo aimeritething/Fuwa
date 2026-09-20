@@ -1,6 +1,7 @@
 import { Command as CommandIcon, FileText, Image as ImageIcon, type Icon } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { cn } from '@/lib/cn'
+import { isImeKeyEvent } from '@/lib/ime-key-event'
 import { Dialog, DialogContent, DialogTitle } from '@/ui/dialog'
 import { ScrollArea } from '@/ui/scroll-area'
 import {
@@ -152,6 +153,8 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePic
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // While a candidate window is open, ↵ and the arrows are the input method's.
+    if (isImeKeyEvent(event.nativeEvent)) return
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       if (matches.length === 0) return
@@ -236,6 +239,8 @@ export function CommandMenu({ open, mode, entries, onClose, onRunCommand, onOpen
         data-mode={mode}
         data-command-palette="true"
         aria-describedby={undefined}
+        // Esc cancelling a candidate does not close the palette.
+        onEscapeKeyDown={(event) => { if (isImeKeyEvent(event)) event.preventDefault() }}
         onCloseAutoFocus={(event) => {
           if (pickedRef.current) event.preventDefault()
           pickedRef.current = false

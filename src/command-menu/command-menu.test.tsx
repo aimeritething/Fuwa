@@ -97,6 +97,22 @@ describe('CommandMenu', () => {
     expect(props.onOpenFile).not.toHaveBeenCalled()
   })
 
+  it.each([
+    { name: 'while composing', init: { isComposing: true } },
+    { name: 'ending a composition (keyCode 229)', init: { keyCode: 229 } },
+  ])('leaves ↵, the arrows and Esc to the input method $name', ({ init }) => {
+    const { props } = renderMenu()
+    fireEvent.keyDown(input(), { key: 'ArrowDown' })
+    expect(activeRow()).toHaveTextContent('Toggle Sidebar')
+
+    expect(fireEvent.keyDown(input(), { key: 'ArrowDown', ...init })).toBe(true)
+    expect(activeRow()).toHaveTextContent('Toggle Sidebar')
+    expect(fireEvent.keyDown(input(), { key: 'Enter', ...init })).toBe(true)
+    expect(props.onRunCommand).not.toHaveBeenCalled()
+    fireEvent.keyDown(input(), { key: 'Escape', ...init })
+    expect(props.onClose).not.toHaveBeenCalled()
+  })
+
   it('↵ on a greyed command does nothing', () => {
     const { props } = renderMenu()
     fireEvent.keyDown(input(), { key: 'Enter' })

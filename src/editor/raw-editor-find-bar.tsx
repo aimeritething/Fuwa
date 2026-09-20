@@ -6,6 +6,7 @@ import { Input } from '@/ui/input'
 import { Toggle } from '@/ui/toggle'
 import { cn } from '@/lib/cn'
 import { translate, type AppLocale } from '@/lib/i18n'
+import { isImeKeyEvent } from '@/lib/ime-key-event'
 import type { FindControlsProps, ReplaceControlsProps } from './raw-editor-find-control-types'
 import type { ActiveEditorFindMatchSelection, RawEditorFindBarProps, RawEditorFindController, RawEditorFindRequest } from './raw-editor-find-types'
 import {
@@ -73,6 +74,8 @@ function handleRawEditorFindKeyDown(
   close: () => void,
   moveMatch: (direction: 1 | -1) => void,
 ): void {
+  // Enter confirming a candidate and Escape cancelling one are the input method's.
+  if (isImeKeyEvent(event.nativeEvent)) return
   if (event.key === 'Escape') {
     event.preventDefault()
     close()
@@ -464,7 +467,7 @@ export function RawEditorFindBar(props: RawEditorFindBarProps) {
     if (!bar) return
 
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || isImeKeyEvent(event)) return
       event.preventDefault()
       close()
     }
