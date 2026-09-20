@@ -138,6 +138,53 @@ function handleCommandMenuModalCommand(event: KeyboardEvent, commandId: AppComma
   return true
 }
 
+/**
+ * What counts as a modal layer: Fuwa's dialogs (Write failure, the lightbox,
+ * a diagram opened large) and its menus (a context menu, a dropdown), by the
+ * `data-slot` their `ui/` primitives carry, while they are open and not
+ * during the exit animation. A popover or a tooltip is not one.
+ */
+const MODAL_LAYER_SELECTOR = ['dialog-content', 'context-menu-content', 'dropdown-menu-content', 'select-content']
+  .map((slot) => `[data-slot="${slot}"][data-state="open"]`)
+  .join(',')
+
+/** What a modal layer lets through: Quit, which settles unsaved work itself. */
+const MODAL_LAYER_PASSTHROUGH = new Set<AppCommandId>([APP_COMMAND_IDS.appQuit])
+
+/**
+ * A dialog or a menu owns the keyboard while it is open, as a native one
+ * would: ⌘W must not close the Tab behind a Write failure, ⌘N must not create
+ * a Document behind a context menu. The key is claimed and recorded as
+ * yielded, so the native menu's echo of it is dropped too.
+ */
+function handleModalLayerCommand(event: KeyboardEvent, commandId: AppCommandId): boolean {
+  // The Command Menu is a dialog too, with a rule of its own just above: its two chords switch or close it.
+  if (isCommandMenuFocused() || MODAL_LAYER_PASSTHROUGH.has(commandId)) return false
+  if (document.querySelector(MODAL_LAYER_SELECTOR) === null) return false
+  event.preventDefault()
+  recordSuppressedShortcutCommand(commandId, 'renderer-keyboard')
+  return true
+}
+
+/** The commands a held key may repeat: walking the Tabs. Every other command runs once per press. */
+const REPEATABLE_COMMANDS = new Set<AppCommandId>([
+  APP_COMMAND_IDS.windowPreviousTab,
+  APP_COMMAND_IDS.windowNextTab,
+])
+
+/**
+ * A key held a moment too long is still one press: ⌘W held would close every
+ * Tab and then the window, ⌘N would create a row of Untitled Documents, ⌘[ and
+ * ⌘K would flicker. The repeat is claimed, so it goes nowhere else, and
+ * recorded as yielded, so the native menu's echo of it is dropped.
+ */
+function handleRepeatedCommand(event: KeyboardEvent, commandId: AppCommandId): boolean {
+  if (!event.repeat || REPEATABLE_COMMANDS.has(commandId)) return false
+  event.preventDefault()
+  recordSuppressedShortcutCommand(commandId, 'renderer-keyboard')
+  return true
+}
+
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
   const commandId = findShortcutCommandIdForEvent(event)
   if (commandId === null) return
@@ -151,7 +198,10 @@ export function handleAppKeyboardEvent(actions: KeyboardActions, event: Keyboard
   ) return
 
   if (handleCommandMenuModalCommand(event, commandId)) return
+  // A focused text field keeps its own ⌘Z and ⌘⌫, held or not, inside a dialog or not.
   if (handleFocusedTextCommand(event, commandId)) return
+  if (handleModalLayerCommand(event, commandId)) return
+  if (handleRepeatedCommand(event, commandId)) return
 
   event.preventDefault()
   executeAppCommand(commandId, actions, 'renderer-keyboard')
