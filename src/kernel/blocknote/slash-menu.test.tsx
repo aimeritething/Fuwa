@@ -143,6 +143,33 @@ describe('SlashMenu', () => {
 
     expect(fireEvent.keyDown(editorElement, { key: 'Enter' })).toBe(true)
   })
+
+  // `/callout` typed through a pinyin input method: the Enter that confirms the
+  // letters is the input method's, and so is an arrow in its candidate window.
+  it.each([
+    { name: 'while composing', init: { isComposing: true } },
+    { name: 'ending a composition (keyCode 229)', init: { keyCode: 229 } },
+  ])('leaves a key of the input method alone, $name', ({ init }) => {
+    const onItemClick = vi.fn()
+    render(<SlashMenu
+      items={[calloutItem()]}
+      loadingState="loaded"
+      selectedIndex={0}
+      onItemClick={onItemClick}
+    />)
+
+    expect(fireEvent.keyDown(editorElement, { key: 'Enter', ...init })).toBe(true)
+    expect(screen.queryByRole('menu', { name: 'Callout' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(editorElement, { key: 'ArrowRight' })
+    expect(fireEvent.keyDown(editorElement, { key: 'ArrowDown', ...init })).toBe(true)
+    expect(fireEvent.keyDown(editorElement, { key: 'Enter', ...init })).toBe(true)
+    expect(onItemClick).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(editorElement, { key: 'Enter' })
+    expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ key: 'callout_note' }))
+  })
+
   // BlockNote's own keyboard navigation listens on the editor element too, in
   // the same capture phase, and runs Enter as "execute the selected row". Which
   // of the two listeners ran first used to depend on which registered last.
