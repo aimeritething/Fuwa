@@ -270,7 +270,8 @@ export function createCalloutSlashMenuItem(
 ): SlashMenuItem {
   const blockEditor = editor as unknown as SlashInsertEditor
   const submenuItems = OBSIDIAN_CALLOUT_DEFINITIONS.map(({ aliases, type }) => ({
-    aliases: [...aliases],
+    // The type's own name first: it is what `> [!tip]` says, whatever the title is translated to.
+    aliases: [type, ...aliases],
     icon: createElement(calloutIconForType(type), {
       'aria-hidden': true,
       className: 'size-4.5',
@@ -297,6 +298,36 @@ export function createCalloutSlashMenuItem(
     submenuItems,
     title: labels.calloutTitle,
   } as SlashMenuItem
+}
+
+const CALLOUT_STYLE_QUERY_MIN_LENGTH = 2
+
+/**
+ * The callout styles a typed query names, as rows of their own: `/tip` and
+ * `/warning` insert that callout without a trip through the submenu. A style
+ * is found by the start of its name, of an Obsidian alias (`tldr`, `caution`)
+ * or of its title. They stay out of the list otherwise: an empty query shows
+ * the one Callout row, a single letter would bring in half the catalog, and
+ * `/callout` is the parent row's. The title names the block, because a Quote
+ * callout beside the Quote block would read as the same row twice.
+ */
+export function calloutStyleItemsForQuery(calloutItem: SlashMenuItem, query: string): SlashMenuItem[] {
+  const needle = query.trim().toLowerCase()
+  if (needle.length < CALLOUT_STYLE_QUERY_MIN_LENGTH) return []
+
+  return (calloutItem.submenuItems ?? [])
+    .filter((item) => [...(item.aliases ?? []), item.title].some((term) => term.toLowerCase().startsWith(needle)))
+    .map((item) => ({ ...item, group: calloutItem.group, title: `${calloutItem.title}: ${item.title}` }))
+}
+
+/** The style rows go under the Callout row, or where it would be: with their group, so the group's label is not repeated. */
+export function withCalloutStyleItems(matches: SlashMenuItem[], styleItems: SlashMenuItem[]): SlashMenuItem[] {
+  if (styleItems.length === 0) return matches
+  const group = styleItems[0].group
+  const parentIndex = matches.findIndex((item) => item.key === 'callout')
+  const lastInGroup = matches.map((item) => item.group).lastIndexOf(group)
+  const at = parentIndex !== -1 ? parentIndex + 1 : lastInGroup + 1
+  return [...matches.slice(0, at), ...styleItems, ...matches.slice(at)]
 }
 
 function createBlockSlashMenuItem(
@@ -431,10 +462,11 @@ export function getSlashMenuItems(
     dateTimeItems,
   )
 
-  return filterSuggestionItems(
+  const matches = filterSuggestionItems(
     filterSlashMenuItems(
       items,
     ),
     query,
   )
+  return withCalloutStyleItems(matches, calloutStyleItemsForQuery(calloutItem, query))
 }

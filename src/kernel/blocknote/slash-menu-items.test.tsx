@@ -8,7 +8,10 @@ vi.mock('@/lib/telemetry', () => ({
 import {
   addItemsToGroup,
   addItemsToMediaGroup,
+  calloutStyleItemsForQuery,
   createCalloutSlashMenuItem,
+  withCalloutStyleItems,
+  type SlashMenuItem,
   createDateTimeSlashMenuItems,
   createSandboxBlockSlashMenuItem,
   createMathSlashMenuItem,
@@ -290,6 +293,49 @@ describe('slash menu items', () => {
     }])
     expect(trackEvent).toHaveBeenCalledWith('editor_callout_slash_command_used', {
       type: 'tip',
+    })
+  })
+
+  describe('callout styles in the top-level search', () => {
+    const { editor, replaceBlocks } = createSlashCommandEditorFixture()
+    const keysFor = (query: string) => calloutStyleItemsForQuery(createCalloutSlashMenuItem(editor), query).map(item => item.key)
+
+    it('finds a style by its name, by the start of it, and by an alias', () => {
+      expect(keysFor('tip')).toEqual(['callout_tip'])
+      expect(keysFor('warn')).toEqual(['callout_warning'])
+      expect(keysFor('TLDR')).toEqual(['callout_abstract'])
+    })
+
+    it('stays out of the way: nothing for an empty query, one letter, or the word callout itself', () => {
+      expect(keysFor('')).toEqual([])
+      expect(keysFor('t')).toEqual([])
+      expect(keysFor('callout')).toEqual([])
+    })
+
+    it('names the block, so the Quote callout does not read like the Quote block', () => {
+      const [item] = calloutStyleItemsForQuery(createCalloutSlashMenuItem(editor), 'quote')
+      expect(item.title).toBe('Callout: Quote')
+    })
+
+    it('sits under the Callout row, or at the end of its group when that row is not a match', () => {
+      const row = (key: string, group: string): SlashMenuItem => ({ key, group, title: key, onItemClick: () => {} })
+      const tip = row('callout_tip', 'Basic blocks')
+
+      expect(withCalloutStyleItems([row('quote', 'Basic blocks'), row('callout', 'Basic blocks'), row('table', 'Advanced')], [tip]).map(item => item.key))
+        .toEqual(['quote', 'callout', 'callout_tip', 'table'])
+      expect(withCalloutStyleItems([row('toggle', 'Basic blocks'), row('table', 'Advanced')], [tip]).map(item => item.key))
+        .toEqual(['toggle', 'callout_tip', 'table'])
+      expect(withCalloutStyleItems([row('table', 'Advanced')], [tip]).map(item => item.key))
+        .toEqual(['callout_tip', 'table'])
+    })
+
+    it('inserts the style it names', () => {
+      const [item] = calloutStyleItemsForQuery(createCalloutSlashMenuItem(editor), 'tip')
+      item.onItemClick()
+      expect(replaceBlocks).toHaveBeenCalledWith(expect.anything(), [{
+        type: CALLOUT_BLOCK_TYPE,
+        props: { calloutType: 'tip', title: '' },
+      }])
     })
   })
 

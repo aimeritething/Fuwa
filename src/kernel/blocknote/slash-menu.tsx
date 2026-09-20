@@ -31,8 +31,14 @@ function nextWrappedIndex(index: number, delta: number, length: number): number 
   return (index + delta + length) % length
 }
 
-function openSubmenuAction(key: string, canOpen: boolean): SubmenuKeyboardAction | null {
-  return key === 'ArrowRight' && canOpen ? { kind: 'open' } : null
+/**
+ * → opens a row's submenu, and so does Enter while it is shut. A row with a
+ * submenu has nothing to run itself: left to BlockNote, Enter would close the
+ * menu, clear the typed query and insert nothing.
+ */
+function openSubmenuAction({ canOpen, isOpen, key }: { canOpen: boolean; isOpen: boolean; key: string }): SubmenuKeyboardAction | null {
+  if (!canOpen) return null
+  return key === 'ArrowRight' || (key === 'Enter' && !isOpen) ? { kind: 'open' } : null
 }
 
 function closeSubmenuAction(key: string): SubmenuKeyboardAction | null {
@@ -61,7 +67,7 @@ function submenuKeyboardAction({
   isOpen: boolean
   key: string
 }): SubmenuKeyboardAction | null {
-  const openAction = openSubmenuAction(key, canOpen)
+  const openAction = openSubmenuAction({ canOpen, isOpen, key })
   if (openAction) return openAction
   if (!isOpen) return null
   return (
@@ -142,9 +148,16 @@ export function SlashMenu({
     setOpenSubmenu({ key: item.key, left: bounds.right + 4, top: bounds.top })
   }, [])
 
+  // On the document, not on the editor element: BlockNote's own keyboard
+  // navigation is a capture listener on the editor element, where Enter means
+  // "run the selected row". Two capture listeners on one element run in the
+  // order they registered, and this one re-registers whenever the submenu
+  // opens, which put it last exactly when Enter had to pick a style. Capture on
+  // the document comes first whatever the order.
   useLayoutEffect(() => {
     const element = editor.domElement
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.target instanceof Node) || !element?.contains(event.target)) return
       const selectedItem = selectedIndex === undefined ? undefined : items.at(selectedIndex)
       const action = submenuKeyboardAction({
         canOpen: Boolean(selectedItem?.submenuItems?.length),
@@ -166,8 +179,9 @@ export function SlashMenu({
       })
     }
 
-    element?.addEventListener('keydown', handleKeyDown, true)
-    return () => element?.removeEventListener('keydown', handleKeyDown, true)
+    const root = element?.ownerDocument
+    root?.addEventListener('keydown', handleKeyDown, true)
+    return () => root?.removeEventListener('keydown', handleKeyDown, true)
   }, [editor.domElement, items, onItemClick, openItemSubmenu, openSubmenu, selectedIndex, submenuIndex, submenuItems])
 
   if (!Components) return null
