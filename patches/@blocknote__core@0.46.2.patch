@@ -439,7 +439,7 @@ index 0f97dc48ddedfb9661b81c7469ce504dc974e284..950a02e40a54f725ee79890444d744f1
    })
  );
 -let fe = !1;
-+const bnLinkifyProtocolFlag = "__fuwaBlockNoteLinkifyProtocolsRegistered";
++const bnLinkifyProtocolFlag = "__plumoBlockNoteLinkifyProtocolsRegistered";
 +const bnGlobalObject = typeof globalThis > "u" ? void 0 : globalThis;
 +let fe = Boolean(bnGlobalObject && bnGlobalObject[bnLinkifyProtocolFlag]);
  function mn(o, e) {
@@ -450,9 +450,9 @@ index 0f97dc48ddedfb9661b81c7469ce504dc974e284..950a02e40a54f725ee79890444d744f1
        defaultProtocol: Ct,
        // only call this once if we have multiple editors installed. Or fix https://github.com/ueberdosis/tiptap/issues/5450
 -      protocols: fe ? [] : Bt
-+      // Fuwa routes editor link clicks through its guarded native opener.
++      // Plumo routes editor link clicks through its guarded native opener.
 +      openOnClick: !1,
-+      // Fuwa pre-registers BlockNote's non-native protocols before linkify initializes.
++      // Plumo pre-registers BlockNote's non-native protocols before linkify initializes.
 +      protocols: []
      }),
      ...Object.values(o.schema.styleSpecs).map((n) => n.implementation.mark.configure({
@@ -677,9 +677,9 @@ index 45f0acf8e5d869eb13a3c3d70e6f67059f86c598..e18a208f2f714bf7cfb56088497b65c4
        defaultProtocol: DEFAULT_LINK_PROTOCOL,
        // only call this once if we have multiple editors installed. Or fix https://github.com/ueberdosis/tiptap/issues/5450
 -      protocols: LINKIFY_INITIALIZED ? [] : VALID_LINK_PROTOCOLS,
-+      // Fuwa routes editor link clicks through its guarded native opener.
++      // Plumo routes editor link clicks through its guarded native opener.
 +      openOnClick: false,
-+      // Fuwa pre-registers BlockNote's non-native protocols before linkify initializes.
++      // Plumo pre-registers BlockNote's non-native protocols before linkify initializes.
 +      protocols: [],
      }),
      ...(Object.values(editor.schema.styleSpecs).map((styleSpec) => {

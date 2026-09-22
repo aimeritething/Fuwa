@@ -23,10 +23,10 @@ describe('allowVaultAssets', () => {
   })
 
   it('puts a boundary root into the asset scope so its Attachments can be shown', async () => {
-    await allowVaultAssets('/Users/fuwa/Notes')
+    await allowVaultAssets('/Users/plumo/Notes')
 
     expect(runtime.invoke).toHaveBeenCalledWith('sync_vault_asset_scope_for_window', {
-      vaultPath: '/Users/fuwa/Notes',
+      vaultPath: '/Users/plumo/Notes',
     })
   })
 
@@ -48,7 +48,7 @@ describe('allowVaultAssets', () => {
   it('has nothing to allow outside Tauri, where there is no asset protocol', async () => {
     tauriMode = false
 
-    await allowVaultAssets('/Users/fuwa/Notes')
+    await allowVaultAssets('/Users/plumo/Notes')
 
     expect(runtime.invoke).not.toHaveBeenCalled()
   })

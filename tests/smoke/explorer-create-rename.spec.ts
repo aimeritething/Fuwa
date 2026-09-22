@@ -8,7 +8,7 @@ import { MOCK_FOLDER, watchForErrors } from './harness'
 async function openFolder(page: Page, path = MOCK_FOLDER) {
   await page.goto('/')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
-  await page.evaluate((chosen) => window.__fuwaMockVault?.queueDialogSelection([chosen]), path)
+  await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), path)
   await page.keyboard.press('Meta+o')
   await expect(page.getByTestId(`explorer-row:${path}`)).toBeVisible()
 }
@@ -18,7 +18,7 @@ function renameInput(page: Page) {
 }
 
 function folderPaths(page: Page): Promise<string[]> {
-  return page.evaluate(() => window.__fuwaMockVault?.files().map((file) => file.path) ?? [])
+  return page.evaluate(() => window.__plumoMockVault?.files().map((file) => file.path) ?? [])
 }
 
 test('⌘N creates a Document where the selection points and opens it in rename', async ({ page }) => {
@@ -133,17 +133,17 @@ test('a slash never enters a name and a trailing dot is refused on commit', asyn
 test('renaming a folder retargets every Tab beneath it', async ({ page }) => {
   await openFolder(page)
   await page.getByRole('button', { name: 'Expand Projects' }).click()
-  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).click()
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
 
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects`).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Rename…' }).click()
   await renameInput(page).fill('Work')
   await page.keyboard.press('Enter')
 
-  await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Fuwa.md`)).toBeVisible()
-  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Work › Fuwa.md')
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Plumo.md`)).toBeVisible()
+  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Work › Plumo.md')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   // The folder is what was renamed, so the folder row keeps the selection —
   // not the Document that moved with it.
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Work`).locator('..')).toHaveAttribute('aria-selected', 'true')
@@ -166,12 +166,12 @@ test('Reveal in Finder and Copy Path hand off the row they were opened on', asyn
 
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Copy Path' }).click()
-  await expect.poll(() => page.evaluate(() => window.__fuwaMockVault?.clipboardText()))
+  await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.clipboardText()))
     .toBe(`${MOCK_FOLDER}/Welcome.md`)
 
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`).click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Reveal in Finder' }).click()
-  await expect.poll(() => page.evaluate(() => window.__fuwaMockVault?.revealedPath()))
+  await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.revealedPath()))
     .toBe(`${MOCK_FOLDER}/Welcome.md`)
 })
 

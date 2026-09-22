@@ -41,7 +41,7 @@ import {
 import { isRichFindActive } from './rich-editor-find'
 import { useEditorComposing } from './use-editor-composing'
 
-// Fuwa's controller for the floating formatting toolbar, in place of
+// Plumo's controller for the floating formatting toolbar, in place of
 // BlockNote's: the toolbar stays open while it is hovered or focused, while
 // one of its menus (block type, highlight colour) is open, and for a short
 // grace after the selection collapses; it hides during IME composition; it is

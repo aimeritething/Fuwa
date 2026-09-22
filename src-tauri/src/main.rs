@@ -1,3 +1,3 @@
 fn main() {
-    fuwa_lib::run();
+    plumo_lib::run();
 }

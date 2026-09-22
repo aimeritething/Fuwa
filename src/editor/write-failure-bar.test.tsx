@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { WriteFailureBar } from './write-failure-bar'
 
-const PATH = '/Users/fuwa/Documents/Notes/Welcome.md'
+const PATH = '/Users/plumo/Documents/Notes/Welcome.md'
 
 describe('WriteFailureBar', () => {
   it('names the path that could not be written and shows what the boundary said', () => {

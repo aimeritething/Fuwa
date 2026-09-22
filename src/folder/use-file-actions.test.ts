@@ -3,7 +3,7 @@ import { translate, type TranslationKey, type TranslationValues } from '@/lib/i1
 import { fileActionErrorMessage } from './use-file-actions'
 
 function localizedErrorPayload(key: TranslationKey, values: TranslationValues): string {
-  return `fuwa:i18n-error:${JSON.stringify({ key, values })}`
+  return `plumo:i18n-error:${JSON.stringify({ key, values })}`
 }
 
 describe('file action error messages', () => {

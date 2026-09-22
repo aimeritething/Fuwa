@@ -9,7 +9,7 @@ import { notePathFilename } from '@/lib/note-path-identity'
  * The Tab rules, as pure transitions over the open Tabs in
  * the kernel's `Tab` shape. A Document has at most one Tab; closing the
  * active Tab activates the one to its right, else the left; navigation is
- * positional. New Fuwa code: the kernel persists neither tabs nor their order.
+ * positional. New Plumo code: the kernel persists neither tabs nor their order.
  *
  * A Document Tab also carries its mode: Rich for any freshly opened
  * Document, remembered per Tab, and Raw whenever the Document's Frontmatter is

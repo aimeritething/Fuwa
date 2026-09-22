@@ -26,10 +26,10 @@ const paragraph = (...content: ProsemirrorNode[]) => schema.node('paragraph', nu
 const text = (value: string) => schema.text(value)
 const strong = (value: string) => schema.text(value, [schema.mark('strong')])
 
-// Paragraph 1: "Welcome to Fuwa. Welcome back." (30 chars, positions 1..31, node 0..32).
-// Paragraph 2 opens at 32; "A picture " 33..43, the image at 43, " and welcome." from 44.
+// Paragraph 1: "Welcome to Plumo. Welcome back." (31 chars, positions 1..32, node 0..33).
+// Paragraph 2 opens at 33; "A picture " 34..44, the image at 44, " and welcome." from 45.
 const doc = schema.node('doc', null, [
-  paragraph(text('Welcome to '), strong('Fuwa'), text('. Welcome back.')),
+  paragraph(text('Welcome to '), strong('Plumo'), text('. Welcome back.')),
   paragraph(text('A picture '), schema.node('image'), text(' and welcome.')),
 ])
 
@@ -39,14 +39,14 @@ describe('collectRichFindMatches', () => {
   it('finds every occurrence across marks and blocks, as document positions', () => {
     const { matches, error } = collectRichFindMatches(doc, 'welcome', CASE_INSENSITIVE)
     expect(error).toBeNull()
-    expect(matches).toEqual([{ from: 1, to: 8 }, { from: 18, to: 25 }, { from: 49, to: 56 }])
+    expect(matches).toEqual([{ from: 1, to: 8 }, { from: 19, to: 26 }, { from: 50, to: 57 }])
     for (const match of matches) expect(doc.textBetween(match.from, match.to).toLowerCase()).toBe('welcome')
   })
 
   it('matches text that spans a mark boundary', () => {
-    const { matches } = collectRichFindMatches(doc, 'to Fuwa.', CASE_INSENSITIVE)
-    expect(matches).toEqual([{ from: 9, to: 17 }])
-    expect(doc.textBetween(9, 17)).toBe('to Fuwa.')
+    const { matches } = collectRichFindMatches(doc, 'to Plumo.', CASE_INSENSITIVE)
+    expect(matches).toEqual([{ from: 9, to: 18 }])
+    expect(doc.textBetween(9, 18)).toBe('to Plumo.')
   })
 
   it('never matches across an inline leaf or across blocks', () => {
@@ -55,7 +55,7 @@ describe('collectRichFindMatches', () => {
   })
 
   it('honours case sensitivity and regex, and reports a bad regex', () => {
-    expect(collectRichFindMatches(doc, 'welcome', { caseSensitive: true, regex: false }).matches).toEqual([{ from: 49, to: 56 }])
+    expect(collectRichFindMatches(doc, 'welcome', { caseSensitive: true, regex: false }).matches).toEqual([{ from: 50, to: 57 }])
     expect(collectRichFindMatches(doc, 'w.lcome', { caseSensitive: false, regex: true }).matches).toHaveLength(3)
     expect(collectRichFindMatches(doc, '(', { caseSensitive: false, regex: true })).toMatchObject({ error: 'Invalid regex', matches: [] })
   })
@@ -73,12 +73,12 @@ describe('the find plugin', () => {
 
     state = state.apply(setRichFindState(state.tr, { query: 'welcome', options: CASE_INSENSITIVE, activeIndex: 1 }))
     const decorations = richFindDecorations(state).find()
-    expect(decorations.map((decoration) => [decoration.from, decoration.to])).toEqual([[1, 8], [18, 25], [49, 56]])
+    expect(decorations.map((decoration) => [decoration.from, decoration.to])).toEqual([[1, 8], [19, 26], [50, 57]])
     expect(decorations.map((decoration) => decoration.spec.active)).toEqual([false, true, false])
 
     // Typing before the first match moves every match along.
     state = state.apply(state.tr.insertText('Hi. ', 1))
-    expect(richFindDecorations(state).find().map((decoration) => [decoration.from, decoration.to])).toEqual([[5, 12], [22, 29], [53, 60]])
+    expect(richFindDecorations(state).find().map((decoration) => [decoration.from, decoration.to])).toEqual([[5, 12], [23, 30], [54, 61]])
     expect(richFindPluginKey.getState(state)?.matches).toHaveLength(3)
 
     // Clearing the query clears the decorations.

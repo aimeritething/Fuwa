@@ -20,9 +20,9 @@ use tauri::{AppHandle, Emitter, Manager, State, Url};
 
 /// The renderer's poke. The payload is the paths just accepted, for logging;
 /// the renderer drains the buffer rather than reading the payload.
-pub const OPEN_FILES_EVENT: &str = "fuwa://open-files";
+pub const OPEN_FILES_EVENT: &str = "plumo://open-files";
 
-/// Only `.md` is associated; Image files are not openable from outside Fuwa
+/// Only `.md` is associated; Image files are not openable from outside Plumo
 /// in v0.1, and anything else Launch Services hands over is dropped here.
 const DOCUMENT_EXTENSION: &str = "md";
 
@@ -172,18 +172,18 @@ mod tests {
     #[test]
     fn document_paths_keeps_md_only_in_the_requested_order() {
         let urls = [
-            url("/Users/fuwa/Notes/B.md"),
-            url("/Users/fuwa/Notes/lake.png"),
-            url("/Users/fuwa/Notes/A.MD"),
-            url("/Users/fuwa/Notes/README.markdown"),
-            url("/Users/fuwa/Notes/notes.txt"),
+            url("/Users/plumo/Notes/B.md"),
+            url("/Users/plumo/Notes/lake.png"),
+            url("/Users/plumo/Notes/A.MD"),
+            url("/Users/plumo/Notes/README.markdown"),
+            url("/Users/plumo/Notes/notes.txt"),
         ];
 
         assert_eq!(
             document_paths(&urls),
             vec![
-                PathBuf::from("/Users/fuwa/Notes/B.md"),
-                PathBuf::from("/Users/fuwa/Notes/A.MD"),
+                PathBuf::from("/Users/plumo/Notes/B.md"),
+                PathBuf::from("/Users/plumo/Notes/A.MD"),
             ]
         );
     }

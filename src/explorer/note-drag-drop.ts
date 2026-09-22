@@ -1,4 +1,4 @@
-export const NOTE_DRAG_MIME_TYPE = 'application/x-fuwa-note-path'
+export const NOTE_DRAG_MIME_TYPE = 'application/x-plumo-note-path'
 
 let activeDraggedNotePath: string | null = null
 

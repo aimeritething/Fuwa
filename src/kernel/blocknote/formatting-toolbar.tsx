@@ -9,8 +9,8 @@ import { BlockTypeSelect } from './block-type-select'
 import { FileDownloadButton } from './file-download-button'
 import { TextStyleToggle } from './text-style-toggle'
 
-// Fuwa's formatting toolbar: BlockNote's item list with the controls that have
-// no Markdown (underline, alignment, colour) removed, Fuwa's own block type
+// Plumo's formatting toolbar: BlockNote's item list with the controls that have
+// no Markdown (underline, alignment, colour) removed, Plumo's own block type
 // select, text style toggles and file open button in place of BlockNote's, and
 // the inline code and highlight toggles added after strikethrough. Nesting and
 // the link button stay BlockNote's, rendered through the shadcn components

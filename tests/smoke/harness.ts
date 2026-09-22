@@ -3,12 +3,12 @@ import type { MockVault, MockVaultCall } from '../../src/platform/mock/vault-fix
 
 // Shared helpers for the smoke specs: the error watcher with the harness's own
 // noise filtered out, and the fixture calls the specs make through
-// `window.__fuwaMockVault` (see src/platform/mock/vault-fixture.ts).
+// `window.__plumoMockVault` (see src/platform/mock/vault-fixture.ts).
 
-export const MOCK_FOLDER = '/Users/fuwa/Documents/Notes'
+export const MOCK_FOLDER = '/Users/plumo/Documents/Notes'
 export const WELCOME_PATH = `${MOCK_FOLDER}/Welcome.md`
 
-// Fuwa ships no favicon; a headed Chromium asks for one and Vite answers 404.
+// Plumo ships no favicon; a headed Chromium asks for one and Vite answers 404.
 // Playwright's tracing (on for every run so it can be kept on failure)
 // injects a script into each frame; the HTML block's sandboxed srcdoc frame
 // refuses it and Chromium logs that refusal. Both are the harness, not the app.
@@ -30,12 +30,12 @@ export function watchForErrors(page: Page) {
 
 /** The Session file as the fixture holds it. */
 export function storedSession(page: Page): Promise<unknown> {
-  return page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+  return page.evaluate(() => window.__plumoMockVault?.invoke('read_session'))
 }
 
 /** Queue `path` as the directory dialog's answer, so the next ⌘O or Open Folder click opens it. */
 export async function queueFolderSelection(page: Page, path: string) {
-  await page.evaluate((chosen) => window.__fuwaMockVault?.queueDialogSelection([chosen]), path)
+  await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), path)
 }
 
 /** Queue `path` as the directory dialog's answer, press ⌘O and wait for the Explorer tree. */
@@ -48,7 +48,7 @@ export async function openFolderThroughDialog(page: Page, path: string) {
 /** Queue `path` as the dialog's answer and press ⌘⇧O. */
 export async function openDocumentThroughDialog(page: Page, path: string) {
   await page.evaluate((selected) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
+    const vault: MockVault | undefined = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     vault.queueDialogSelection([selected])
   }, path)
@@ -62,12 +62,12 @@ export async function openWelcome(page: Page) {
 }
 
 export function saveCalls(page: Page): Promise<MockVaultCall[]> {
-  return page.evaluate(() => window.__fuwaMockVault?.calls.filter((call) => call.command === 'save_note_content') ?? [])
+  return page.evaluate(() => window.__plumoMockVault?.calls.filter((call) => call.command === 'save_note_content') ?? [])
 }
 
 export function savedContent(page: Page, path: string): Promise<string | undefined> {
   return page.evaluate(
-    (target) => window.__fuwaMockVault?.files().find((file) => file.path === target)?.content,
+    (target) => window.__plumoMockVault?.files().find((file) => file.path === target)?.content,
     path,
   )
 }

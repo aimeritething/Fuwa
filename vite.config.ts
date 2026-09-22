@@ -18,7 +18,7 @@ const IMAGE_TYPES: Record<string, string> = {
 // `../images/<name>` as `/images/<name>`. Dev server only; a build has no catalog.
 function styleCatalogImages(): Plugin {
   return {
-    name: 'fuwa:style-catalog-images',
+    name: 'plumo:style-catalog-images',
     apply: 'serve',
     configureServer(server) {
       server.middlewares.use('/images', (request, response, next) => {

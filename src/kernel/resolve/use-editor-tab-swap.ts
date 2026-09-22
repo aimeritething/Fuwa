@@ -125,7 +125,7 @@ function now(): number {
 }
 
 function signalEditorTabSwapped(path: string): void {
-  window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', {
+  window.dispatchEvent(new CustomEvent('plumo:editor-tab-swapped', {
     detail: { path },
   }))
   finishNoteOpenTrace(path)

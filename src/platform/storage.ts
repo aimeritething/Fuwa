@@ -1,3 +1,3 @@
 export const APP_STORAGE_KEYS = {
-  theme: 'fuwa:theme',
+  theme: 'plumo:theme',
 } as const

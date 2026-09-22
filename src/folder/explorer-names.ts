@@ -78,7 +78,7 @@ export function siblingNames(
 
 /**
  * The first free name in Finder's shape: `Untitled.md`, then `Untitled 2.md`,
- * `Untitled 3.md`. Case-insensitive, because the filesystem under Fuwa is.
+ * `Untitled 3.md`. Case-insensitive, because the filesystem under Plumo is.
  */
 export function nextAvailableName(taken: Iterable<string>, base: string, extension: string): string {
   const held = new Set(Array.from(taken, (name) => name.toLocaleLowerCase()))
@@ -108,7 +108,7 @@ function hasControlCharacter(value: string): boolean {
   return /[\u0000-\u001f\u007f]/u.test(value)
 }
 
-/** Whether a folder already holds a name. The filesystem under Fuwa is case-insensitive, so the check is too. */
+/** Whether a folder already holds a name. The filesystem under Plumo is case-insensitive, so the check is too. */
 export function isNameTaken(siblings: readonly string[], name: string): boolean {
   return siblings.some((sibling) => sibling.toLocaleLowerCase() === name.toLocaleLowerCase())
 }

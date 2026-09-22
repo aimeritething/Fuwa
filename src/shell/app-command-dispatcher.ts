@@ -4,7 +4,7 @@ import {
   type AppCommandDefinition,
 } from './app-command-catalog'
 
-export const APP_COMMAND_EVENT_NAME = 'fuwa:dispatch-command'
+export const APP_COMMAND_EVENT_NAME = 'plumo:dispatch-command'
 
 export {
   APP_COMMAND_IDS,

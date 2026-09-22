@@ -7,7 +7,7 @@ index b7357fa4c6e559fdad26bb04eed205af9e5b524b..67429538251259be01637ac64369587f
  var import_linkifyjs = require("linkifyjs");
  
 +var PRE_REGISTERED_PROTOCOLS = ["tel", "callto", "sms", "cid", "xmpp"];
-+var linkifyProtocolFlag = "__fuwaTiptapLinkifyProtocolsRegistered";
++var linkifyProtocolFlag = "__plumoTiptapLinkifyProtocolsRegistered";
 +var linkifyGlobalObject = typeof globalThis === "undefined" ? void 0 : globalThis;
 +if (linkifyGlobalObject && !linkifyGlobalObject[linkifyProtocolFlag]) {
 +  PRE_REGISTERED_PROTOCOLS.forEach((protocol) => {
@@ -24,7 +24,7 @@ index b7357fa4c6e559fdad26bb04eed205af9e5b524b..67429538251259be01637ac64369587f
    },
    onDestroy() {
 -    (0, import_linkifyjs3.reset)();
-+    // Fuwa keeps a single editor shell alive across note swaps, so linkify's
++    // Plumo keeps a single editor shell alive across note swaps, so linkify's
 +    // protocol registry must survive editor teardown and remount cycles.
    },
    inclusive() {
@@ -38,7 +38,7 @@ index d486894eafb44a29737eaf24ca8521f134a57d77..3f8c68ada219144c5a070d82d4a9e5c7
  var UNICODE_WHITESPACE_REGEX_GLOBAL = new RegExp(UNICODE_WHITESPACE_PATTERN, "g");
  
 +var PRE_REGISTERED_PROTOCOLS = ["tel", "callto", "sms", "cid", "xmpp"];
-+var linkifyProtocolFlag = "__fuwaTiptapLinkifyProtocolsRegistered";
++var linkifyProtocolFlag = "__plumoTiptapLinkifyProtocolsRegistered";
 +var linkifyGlobalObject = typeof globalThis === "undefined" ? void 0 : globalThis;
 +if (linkifyGlobalObject && !linkifyGlobalObject[linkifyProtocolFlag]) {
 +  PRE_REGISTERED_PROTOCOLS.forEach((protocol) => {
@@ -55,7 +55,7 @@ index d486894eafb44a29737eaf24ca8521f134a57d77..3f8c68ada219144c5a070d82d4a9e5c7
    },
    onDestroy() {
 -    reset();
-+    // Fuwa keeps a single editor shell alive across note swaps, so linkify's
++    // Plumo keeps a single editor shell alive across note swaps, so linkify's
 +    // protocol registry must survive editor teardown and remount cycles.
    },
    inclusive() {
@@ -69,7 +69,7 @@ index 839a57524b630b50797c4d896369153734e39fed..2e59e6c7fbd5128fd6cde493a06b329c
  import { UNICODE_WHITESPACE_REGEX_GLOBAL } from './helpers/whitespace.js'
  
 +const PRE_REGISTERED_PROTOCOLS = ['tel', 'callto', 'sms', 'cid', 'xmpp'] as const
-+const linkifyProtocolFlag = '__fuwaTiptapLinkifyProtocolsRegistered'
++const linkifyProtocolFlag = '__plumoTiptapLinkifyProtocolsRegistered'
 +const linkifyGlobalObject = typeof globalThis === 'undefined'
 +  ? undefined
 +  : (globalThis as Record<string, boolean | undefined>)

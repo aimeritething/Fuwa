@@ -93,7 +93,7 @@ func main() {
 
 ```json
 {
-  "name": "fuwa",
+  "name": "plumo",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -169,7 +169,7 @@ LIMIT 10;
 
 ```toml
 [package]
-name = "fuwa"
+name = "plumo"
 version = "0.1.0"
 edition = "2021"
 

@@ -260,7 +260,7 @@ describe('useEditorSave', () => {
     })
   })
 
-  describe('the boundary root (Fuwa: every write names its root)', () => {
+  describe('the boundary root (Plumo: every write names its root)', () => {
     it('sends the persistence scope that contains the path as vaultPath', async () => {
       const { result } = renderHook(() =>
         useEditorSave({ setTabs, persistenceScope: ['/vault-a', '/vault-b'] })
@@ -334,7 +334,7 @@ describe('useEditorSave', () => {
   })
 })
 
-describe('the Write failure paths (Fuwa: the error bar)', () => {
+describe('the Write failure paths (Plumo: the error bar)', () => {
   let setTabs: Mock
   let consoleSpy: ReturnType<typeof vi.spyOn>
 

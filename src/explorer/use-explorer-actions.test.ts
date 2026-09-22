@@ -35,7 +35,7 @@ function listed(relativePath: string, kind: ListedFile['kind']): ListedFile {
 const FILES = [
   listed('Welcome.md', 'note'),
   listed('Projects', 'folder'),
-  listed('Projects/Fuwa.md', 'note'),
+  listed('Projects/Plumo.md', 'note'),
   listed('Projects/Notes.md', 'note'),
   listed('Projects/lake.png', 'image'),
 ]
@@ -113,7 +113,7 @@ describe('creating a Document', () => {
   it('lands it in the parent of a selected Document', async () => {
     const { result } = setup()
 
-    act(() => { result.current.select(`${FOLDER}/Projects/Fuwa.md`) })
+    act(() => { result.current.select(`${FOLDER}/Projects/Plumo.md`) })
     act(() => { result.current.createDocument() })
 
     await waitFor(() => expect(createDocumentFile).toHaveBeenCalledWith({
@@ -192,21 +192,21 @@ describe('creating a folder', () => {
 
 describe('renaming', () => {
   it('renames a Document, retargets its Tab and keeps the row selected', async () => {
-    renameFile.mockResolvedValue(`${FOLDER}/Projects/Fuwa v2.md`)
+    renameFile.mockResolvedValue(`${FOLDER}/Projects/Plumo v2.md`)
     const { result, retargetTabs, refresh, settleActiveDocument } = setup()
 
-    act(() => { result.current.startRename(`${FOLDER}/Projects/Fuwa.md`, 'note') })
-    await act(async () => { await result.current.commitRename('Fuwa v2') })
+    act(() => { result.current.startRename(`${FOLDER}/Projects/Plumo.md`, 'note') })
+    await act(async () => { await result.current.commitRename('Plumo v2') })
 
     expect(renameFile).toHaveBeenCalledWith({
       folder: FOLDER,
-      path: `${FOLDER}/Projects/Fuwa.md`,
-      stem: 'Fuwa v2',
+      path: `${FOLDER}/Projects/Plumo.md`,
+      stem: 'Plumo v2',
     })
-    expect(retargetTabs).toHaveBeenCalledWith(`${FOLDER}/Projects/Fuwa.md`, `${FOLDER}/Projects/Fuwa v2.md`)
+    expect(retargetTabs).toHaveBeenCalledWith(`${FOLDER}/Projects/Plumo.md`, `${FOLDER}/Projects/Plumo v2.md`)
     expect(settleActiveDocument).toHaveBeenCalled()
     expect(refresh).toHaveBeenCalled()
-    expect(result.current.selected).toBe(`${FOLDER}/Projects/Fuwa v2.md`)
+    expect(result.current.selected).toBe(`${FOLDER}/Projects/Plumo v2.md`)
     expect(result.current.editing).toBeNull()
   })
 
@@ -236,7 +236,7 @@ describe('renaming', () => {
   it('reports a collision inline and leaves the file alone', async () => {
     const { result } = setup()
 
-    act(() => { result.current.startRename(`${FOLDER}/Projects/Fuwa.md`, 'note') })
+    act(() => { result.current.startRename(`${FOLDER}/Projects/Plumo.md`, 'note') })
     let committed = true
     await act(async () => { committed = await result.current.commitRename('Notes') })
 
@@ -250,7 +250,7 @@ describe('renaming', () => {
   // Tab's path; the folder row is what the user renamed, so it stays selected.
   it('keeps the renamed folder selected when a Document under it is the active Tab', async () => {
     renameFolderDirectory.mockResolvedValue(`${FOLDER}/Work`)
-    const { result } = setup(FILES, `${FOLDER}/Projects/Fuwa.md`)
+    const { result } = setup(FILES, `${FOLDER}/Projects/Plumo.md`)
 
     act(() => { result.current.startRename(`${FOLDER}/Projects`, 'folder') })
     await act(async () => { await result.current.commitRename('Work') })
@@ -357,7 +357,7 @@ describe('Move to Trash', () => {
 
   it('drops the selection when the trashed row held it', async () => {
     const { result } = setup()
-    act(() => { result.current.select(`${FOLDER}/Projects/Fuwa.md`) })
+    act(() => { result.current.select(`${FOLDER}/Projects/Plumo.md`) })
 
     await act(async () => { result.current.trash(`${FOLDER}/Projects`, 'folder') })
 
@@ -418,7 +418,7 @@ describe('a drag-and-drop move', () => {
   it('says nothing and does nothing when the file is dropped on the folder it is already in', async () => {
     const { result, showToast } = setup()
 
-    await act(async () => { result.current.moveInto(`${FOLDER}/Projects/Fuwa.md`, `${FOLDER}/Projects`) })
+    await act(async () => { result.current.moveInto(`${FOLDER}/Projects/Plumo.md`, `${FOLDER}/Projects`) })
 
     expect(moveFileToFolder).not.toHaveBeenCalled()
     expect(showToast).not.toHaveBeenCalled()

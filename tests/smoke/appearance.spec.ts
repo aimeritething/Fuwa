@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+// Type-only: brings the fixture's `window.__plumoMockVault` declaration into the spec program.
 import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, openWelcome, watchForErrors } from './harness'
 
@@ -8,9 +8,9 @@ import { MOCK_FOLDER, openDocumentThroughDialog, openWelcome, watchForErrors } f
 // Rust side's; here the manifest command arrives as the app-command event the
 // renderer also listens for, and is dispatched to the same handler.
 
-const APP_COMMAND_EVENT_NAME = 'fuwa:dispatch-command' // src/shell/app-command-dispatcher.ts
+const APP_COMMAND_EVENT_NAME = 'plumo:dispatch-command' // src/shell/app-command-dispatcher.ts
 
-const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+const storedSession = (page: Page) => page.evaluate(() => window.__plumoMockVault?.invoke('read_session'))
 const documentTheme = (page: Page) => page.locator('html').getAttribute('data-theme')
 
 async function chooseAppearance(page: Page, mode: 'system' | 'dark' | 'light') {
@@ -30,7 +30,7 @@ const SAMPLE = [
 async function openSample(page: Page) {
   await page.goto('/')
   await page.evaluate(([path, content]) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
+    const vault: MockVault | undefined = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     vault.writeNote(path, content)
   }, [SAMPLE_PATH, SAMPLE] as const)

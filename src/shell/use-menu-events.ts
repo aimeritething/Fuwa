@@ -18,13 +18,13 @@ export interface MenuEventHandlers extends AppCommandHandlers {
 }
 
 declare global {
-  /** The `window.__fuwaTest` hooks the unit and smoke specs drive the app through. */
+  /** The `window.__plumoTest` hooks the unit and smoke specs drive the app through. */
   interface TestBridge {
     dispatchBrowserMenuCommand?: (id: string) => void
   }
 
   interface Window {
-    __fuwaTest?: TestBridge
+    __plumoTest?: TestBridge
   }
 }
 
@@ -110,14 +110,14 @@ function useTestMenuCommandBridge(handlersRef: { current: MenuEventHandlers }) {
       dispatchMenuEvent(id, handlersRef.current)
     }
 
-    window.__fuwaTest = {
-      ...window.__fuwaTest,
+    window.__plumoTest = {
+      ...window.__plumoTest,
       dispatchBrowserMenuCommand: bridge,
     }
 
     return () => {
-      if (window.__fuwaTest?.dispatchBrowserMenuCommand === bridge) {
-        delete window.__fuwaTest.dispatchBrowserMenuCommand
+      if (window.__plumoTest?.dispatchBrowserMenuCommand === bridge) {
+        delete window.__plumoTest.dispatchBrowserMenuCommand
       }
     }
   }, [handlersRef])

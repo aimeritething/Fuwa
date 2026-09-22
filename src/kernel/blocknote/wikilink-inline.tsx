@@ -9,7 +9,7 @@ export const WIKILINK_INLINE_CONFIG = {
 } as const
 
 /** Inert wikilink renderer: `[[target]]` / `[[target|alias]]` text round-trips losslessly
- *  through the schema, but Fuwa has no wikilink UI, so it renders as plain text. */
+ *  through the schema, but Plumo has no wikilink UI, so it renders as plain text. */
 function wikilinkDisplayText(target: string): string {
   const pipeIdx = target.indexOf('|')
   return pipeIdx === -1 ? target : target.slice(pipeIdx + 1)

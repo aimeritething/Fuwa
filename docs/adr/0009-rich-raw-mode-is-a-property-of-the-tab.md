@@ -17,7 +17,7 @@ The mode is a field on the `Tab` (`mode: 'rich' | 'raw'`, absent on an Image Tab
 Rejected:
 
 - **One mode for the whole app or the whole Folder**: switching to Raw to fix one Document's Frontmatter would turn every other Tab Raw as well, and a Document whose Frontmatter must stay Raw would pin every Document.
-- **A mode remembered per path beyond the Session**: a Document closed and reopened is a fresh open and defaults to Rich; nothing else in Fuwa remembers a closed Document.
+- **A mode remembered per path beyond the Session**: a Document closed and reopened is a fresh open and defaults to Rich; nothing else in Plumo remembers a closed Document.
 - **The mode as editor state rather than Tab data**: the Session is written from the Tabs, so a mode held by the editor would need a second channel to be restored.
 
 The Tab rules also carry one invariant: **a Document whose Frontmatter is invalid is always in Raw mode.** Every path that changes a Tab's content (open, restore, save buffer, reload from disk) passes through `applyModeRule`, and `setTabMode` refuses Rich while the rule holds. This is a Tab rule rather than an editor concern because the editor must never mount Rich for such a Document, not even for a frame: BlockNote would render an unclosed `---` as a rule and the next save would rewrite bytes the user never touched.

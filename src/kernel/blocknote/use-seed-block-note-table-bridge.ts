@@ -52,16 +52,16 @@ async function seedEditorWithTestTable(
 }
 
 function unregisterSeedBlockNoteTableBridge(
-  seedBlockNoteTable: NonNullable<Window['__fuwaTest']>['seedBlockNoteTable'],
+  seedBlockNoteTable: NonNullable<Window['__plumoTest']>['seedBlockNoteTable'],
 ) {
-  const testBridge = window.__fuwaTest
+  const testBridge = window.__plumoTest
   if (!testBridge || testBridge.seedBlockNoteTable !== seedBlockNoteTable) return
   delete testBridge.seedBlockNoteTable
 }
 
 function registerSeedBlockNoteTableBridge(editor: ReturnType<typeof useCreateBlockNote>) {
   const seedBlockNoteTable = seedEditorWithTestTable.bind(null, editor)
-  window.__fuwaTest = { ...window.__fuwaTest, seedBlockNoteTable }
+  window.__plumoTest = { ...window.__plumoTest, seedBlockNoteTable }
   return unregisterSeedBlockNoteTableBridge.bind(null, seedBlockNoteTable)
 }
 

@@ -4,7 +4,7 @@ import { isTauri, mockInvoke, updateMockContent } from '@/platform/tauri'
 import { cacheNoteContent } from '@/kernel/resolve/note-content-cache'
 
 /**
- * Fuwa's Rust boundary confines every write to the root the caller names, so
+ * Plumo's Rust boundary confines every write to the root the caller names, so
  * `vaultPath` travels with the content whenever the save hook knows it.
  */
 export async function persistContent(path: string, content: string, vaultPath?: string): Promise<void> {

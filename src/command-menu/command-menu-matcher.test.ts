@@ -20,7 +20,7 @@ const COMMANDS = [
 const FILES = [
   document('/Notes/Welcome.md'),
   document('/Notes/Reading list.md'),
-  document('/Notes/Projects/Fuwa.md', 'Notes › Projects'),
+  document('/Notes/Projects/Plumo.md', 'Notes › Projects'),
   image('/Notes/Attachments/lake.png'),
 ]
 const ENTRIES = [...COMMANDS, ...FILES]
@@ -37,7 +37,7 @@ describe('fuzzyMatch', () => {
 
   it('matches a scattered subsequence and merges adjacent ranges', () => {
     expect(fuzzyMatch('tsb', 'Toggle Sidebar')).toMatchObject({ ranges: [[0, 1], [7, 8], [11, 12]] })
-    expect(fuzzyMatch('fwmd', 'Fuwa.md')).toMatchObject({ ranges: [[0, 1], [2, 3], [5, 7]] })
+    expect(fuzzyMatch('pomd', 'Plumo.md')).toMatchObject({ ranges: [[0, 1], [4, 5], [6, 8]] })
   })
 
   it('returns null when a character of the query is not in the text', () => {
@@ -70,7 +70,7 @@ describe('matchCommandMenu', () => {
 
   it('matches commands, Document names and Image file names together once the user types', () => {
     expect(names(ENTRIES, 'tog', 'commands')).toEqual(['Toggle Sidebar', 'Toggle Rich/Raw'])
-    expect(names(ENTRIES, 'fuwa', 'commands')).toEqual(['Fuwa.md'])
+    expect(names(ENTRIES, 'plumo', 'commands')).toEqual(['Plumo.md'])
     expect(names(ENTRIES, 'lake', 'commands')).toEqual(['lake.png'])
     // `sa` is a prefix of Save and a scattered match in Sidebar: both show, the prefix first.
     expect(names(ENTRIES, 'sa', 'commands')).toEqual(['Save', 'Toggle Sidebar'])
@@ -90,13 +90,13 @@ describe('matchCommandMenu', () => {
   })
 
   it('shows every file, sorted by name, and no command while the Quick Open query is empty', () => {
-    expect(names(ENTRIES, '', 'files')).toEqual(['Fuwa.md', 'lake.png', 'Reading list.md', 'Welcome.md'])
+    expect(names(ENTRIES, '', 'files')).toEqual(['lake.png', 'Plumo.md', 'Reading list.md', 'Welcome.md'])
   })
 
   it('never returns a command in Quick Open mode', () => {
     expect(names(ENTRIES, 'tog', 'files')).toEqual([])
     // Every Document ends in `.md`; the shorter name ranks first among equal matches.
-    expect(names(ENTRIES, 'md', 'files')).toEqual(['Fuwa.md', 'Welcome.md', 'Reading list.md'])
+    expect(names(ENTRIES, 'md', 'files')).toEqual(['Plumo.md', 'Welcome.md', 'Reading list.md'])
   })
 
   it('carries the highlight ranges on each match', () => {

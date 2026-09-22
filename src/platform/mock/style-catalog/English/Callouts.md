@@ -38,7 +38,7 @@ Look at the icon, the title row, the background and border colour of each visual
 > The smoke spec failed: the Explorer showed four rows where five were expected.
 
 > [!danger] Danger
-> Deleting a folder moves everything inside it to the Trash, including files Fuwa does not show.
+> Deleting a folder moves everything inside it to the Trash, including files Plumo does not show.
 
 > [!bug] Bug
 > The line numbers drift by one pixel per ten lines in WebKit. Tracked, not yet fixed.
@@ -80,7 +80,7 @@ Look at the icon, the title row, the background and border colour of each visual
 
 ## Unknown type
 
-> [!custom] A type Fuwa does not know
+> [!custom] A type Plumo does not know
 > The type keeps its name and takes the look of a note.
 
 ## Long body

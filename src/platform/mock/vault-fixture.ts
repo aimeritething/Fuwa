@@ -3,7 +3,7 @@ import { notePathFilename } from '@/lib/note-path-identity'
 import { styleCatalogEntries, type StyleCatalogEntry } from './style-catalog'
 
 /**
- * In-memory Folder fixture: the stand-in for the Rust side when Fuwa runs in a
+ * In-memory Folder fixture: the stand-in for the Rust side when Plumo runs in a
  * plain browser (`pnpm dev`, the Playwright smoke specs). It answers the
  * commands the shell needs to boot, list and edit from memory and rejects
  * everything else with the same message the kernel's mock used, so a spec that
@@ -18,24 +18,24 @@ import { styleCatalogEntries, type StyleCatalogEntry } from './style-catalog'
  * `reset(seed)`, stand in for Finder with `seedPendingOpen` (the path a launch by
  * document finds buffered; kept in localStorage so the next page load, like a
  * relaunch, drains it), `queuePendingOpen` (buffer only) and `openFromFinder`
- * (buffer and poke, an open while Fuwa is running), and assert on `calls`
+ * (buffer and poke, an open while Plumo is running), and assert on `calls`
  * (every invocation in order). Add a case to the `answer` switch when a
  * spec needs a command the fixture does not answer yet. The system file dialog
  * has no command behind it, so the fixture stands in for that too: a spec
  * queues the path the user "chooses" with `queueDialogSelection` and the shell
  * takes it with `takeDialogSelection`. What another app does to the Folder
- * behind Fuwa's back is `writeNote`, `removeFile` and `movePath`, each followed
+ * behind Plumo's back is `writeNote`, `removeFile` and `movePath`, each followed
  * by `emitExternalChange` with the paths a watcher would have reported.
  *
  * Like a real directory tree, every ancestor folder of a seeded or saved path
  * exists implicitly. Shapes follow the Rust commands: absolute paths in,
  * Folder-relative `/`-separated paths for the folder commands, `modifiedAt` in
  * seconds, errors as the Rust boundary's strings. `list_files` is shared with
- * the Fuwa-owned Rust scanner; `take_pending_open` with the Rust side's
+ * the Plumo-owned Rust scanner; `take_pending_open` with the Rust side's
  * `PendingOpen` buffer.
  */
 
-export const MOCK_VAULT_PATH = '/Users/fuwa/Documents/Notes'
+export const MOCK_VAULT_PATH = '/Users/plumo/Documents/Notes'
 
 export type MockVaultFileKind = 'note' | 'folder' | 'image'
 
@@ -111,7 +111,7 @@ export interface MockVault {
   watchedPath(): string | null
   /** Buffer paths for the next `take_pending_open`, without a poke. */
   queuePendingOpen(paths: string[]): void
-  /** Buffer paths and poke the renderer, as the Rust side does for an open while Fuwa is running. */
+  /** Buffer paths and poke the renderer, as the Rust side does for an open while Plumo is running. */
   openFromFinder(paths: string[]): void
   /** Plant the Finder open the next launch (page load) finds buffered, as a launch by document does. */
   seedPendingOpen(paths: string[]): void
@@ -130,7 +130,7 @@ export interface MockVault {
 declare global {
   interface Window {
     /** The fixture, installed by `installMockVault` in `./index` so specs can seed and inspect it. */
-    __fuwaMockVault?: MockVault
+    __plumoMockVault?: MockVault
   }
 }
 
@@ -142,16 +142,16 @@ const NOT_AN_IMAGE_ERROR = 'Path is not an Image file'
 const FILE_EXISTS_ERROR = 'File already exists'
 const NAME_TAKEN_ERROR = 'A file with that name already exists'
 const READ_ONLY_ERROR = 'Failed to write file: Permission denied (os error 13)'
-const SESSION_STORAGE_KEY = 'fuwa:mock-session'
-const PENDING_OPEN_STORAGE_KEY = 'fuwa:mock-pending-open'
+const SESSION_STORAGE_KEY = 'plumo:mock-session'
+const PENDING_OPEN_STORAGE_KEY = 'plumo:mock-pending-open'
 /** The stand-in for the Rust side's poke; `listenForOpenRequests` hears it outside Tauri. */
-const OPEN_FILES_EVENT = 'fuwa:open-files'
+const OPEN_FILES_EVENT = 'plumo:open-files'
 
 export const DEFAULT_MOCK_VAULT_FILES: MockVaultFile[] = [
   file('Welcome.md', 'note', '# Welcome\n\nThis Folder lives in memory. Edits stay for the life of the page.\n', 1_757_500_000),
   file('Reading list.md', 'note', '# Reading list\n\n- [ ] A Philosophy of Software Design\n- [x] Practical Vim\n', 1_757_500_100),
   file('Projects', 'folder', undefined, 1_757_500_200),
-  file('Projects/Fuwa.md', 'note', '---\ntitle: Fuwa\n---\n# Fuwa\n\nA small desktop app for Markdown files.\n', 1_757_500_300),
+  file('Projects/Plumo.md', 'note', '---\ntitle: Plumo\n---\n# Plumo\n\nA small desktop app for Markdown files.\n', 1_757_500_300),
   file('Attachments', 'folder', undefined, 1_757_500_400),
   image('Attachments/lake.png', { width: 1920, height: 1080, fileSize: 245_760 }, 1_757_500_500),
   ...styleCatalogEntries().map(catalogFile),
@@ -482,7 +482,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     removeFile: (path) => { files.delete(requireInsideVault(path)) },
     movePath: (path, newPath) => movePrefix(requireInsideVault(path), requireInsideVault(newPath)),
     emitExternalChange: (paths) => {
-      window.dispatchEvent(new CustomEvent('fuwa:external-change', { detail: paths }))
+      window.dispatchEvent(new CustomEvent('plumo:external-change', { detail: paths }))
     },
     watchedPath: () => watched,
     revealedPath: () => revealed,

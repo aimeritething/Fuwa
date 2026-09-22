@@ -455,7 +455,7 @@
     }
   ],
   "appMenu": [
-    { "kind": "command", "command": "appQuit", "label": { "macos": "Quit Fuwa", "default": "Quit" } }
+    { "kind": "command", "command": "appQuit", "label": { "macos": "Quit Plumo", "default": "Quit" } }
   ],
   "menuStateGroups": {
     "noteDependent": [

@@ -1,4 +1,11 @@
-# Fuwa
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/plumo-mark-white.svg">
+    <img src="docs/brand/plumo-mark.svg" width="88" alt="">
+  </picture>
+</p>
+
+# Plumo
 
 A small desktop app for reading and editing Markdown Documents in a Folder on your disk.
 

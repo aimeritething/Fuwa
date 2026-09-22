@@ -51,7 +51,7 @@ describe('useFinderOpen', () => {
   })
 
   it('registers the listener before the first drain, then opens what was buffered', async () => {
-    pending(['/Users/fuwa/Notes/Plan.md'])
+    pending(['/Users/plumo/Notes/Plan.md'])
     const { openNote, result } = renderFinderOpen()
 
     await waitFor(() => expect(listenForOpenRequests).toHaveBeenCalledTimes(1))
@@ -60,13 +60,13 @@ describe('useFinderOpen', () => {
 
     registerListener()
 
-    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/fuwa/Notes/Plan.md'))
+    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/plumo/Notes/Plan.md'))
     expect(takePendingOpen).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(result.current.settled).toBe(true))
   })
 
   it('waits for the Session before draining, so the Folder is known and the Finder Document ends up active', async () => {
-    pending(['/Users/fuwa/Notes/Plan.md'])
+    pending(['/Users/plumo/Notes/Plan.md'])
     const { openNote, rerender, result } = renderFinderOpen({ ready: false })
     registerListener()
 
@@ -77,7 +77,7 @@ describe('useFinderOpen', () => {
 
     rerender({ ready: true })
 
-    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/fuwa/Notes/Plan.md'))
+    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/plumo/Notes/Plan.md'))
     await waitFor(() => expect(result.current.settled).toBe(true))
   })
 
@@ -95,15 +95,15 @@ describe('useFinderOpen', () => {
     registerListener()
     await waitFor(() => expect(takePendingOpen).toHaveBeenCalledTimes(1))
 
-    pending(['/Users/fuwa/Notes/Later.md'])
+    pending(['/Users/plumo/Notes/Later.md'])
     poke?.()
 
-    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/fuwa/Notes/Later.md'))
+    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/plumo/Notes/Later.md'))
     expect(takePendingOpen).toHaveBeenCalledTimes(2)
   })
 
   it('a poke before the Session is back needs no bookkeeping: the first drain finds the paths', async () => {
-    pending(['/Users/fuwa/Notes/Early.md'])
+    pending(['/Users/plumo/Notes/Early.md'])
     const { openNote, rerender } = renderFinderOpen({ ready: false })
     registerListener()
     await waitFor(() => expect(listenForOpenRequests).toHaveBeenCalledTimes(1))
@@ -114,12 +114,12 @@ describe('useFinderOpen', () => {
 
     rerender({ ready: true })
 
-    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/fuwa/Notes/Early.md'))
+    await waitFor(() => expect(openNote).toHaveBeenCalledWith('/Users/plumo/Notes/Early.md'))
     expect(takePendingOpen).toHaveBeenCalledTimes(1)
   })
 
   it('writes the active Document\'s pending edits first and opens every path in order, skipping non-Documents', async () => {
-    pending(['/Users/fuwa/Notes/A.md', '/Users/fuwa/Desktop/shot.png', '/Users/fuwa/Notes/B.md'])
+    pending(['/Users/plumo/Notes/A.md', '/Users/plumo/Desktop/shot.png', '/Users/plumo/Notes/B.md'])
     const order: string[] = []
     const settleActiveNote = vi.fn(async () => {
       order.push('settle')
@@ -130,7 +130,7 @@ describe('useFinderOpen', () => {
     renderFinderOpen({ openNote, settleActiveNote })
     registerListener()
 
-    await waitFor(() => expect(order).toEqual(['settle', '/Users/fuwa/Notes/A.md', '/Users/fuwa/Notes/B.md']))
+    await waitFor(() => expect(order).toEqual(['settle', '/Users/plumo/Notes/A.md', '/Users/plumo/Notes/B.md']))
   })
 
   it('a drain that fails is logged and still settles', async () => {

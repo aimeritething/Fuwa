@@ -45,7 +45,7 @@ describe('useEditorTabSwap raw mode sync', () => {
 
   it('signals when the target tab content has been applied', async () => {
     const swapListener = vi.fn()
-    window.addEventListener('fuwa:editor-tab-swapped', swapListener)
+    window.addEventListener('plumo:editor-tab-swapped', swapListener)
 
     const tabA = makeTab('a.md', 'Note A')
     const tabB = makeTab('b.md', 'March 2024')
@@ -61,7 +61,7 @@ describe('useEditorTabSwap raw mode sync', () => {
     const event = swapListener.mock.calls[0][0] as CustomEvent
     expect(event.detail.path).toBe('b.md')
 
-    window.removeEventListener('fuwa:editor-tab-swapped', swapListener)
+    window.removeEventListener('plumo:editor-tab-swapped', swapListener)
   })
 
   it('hard-resets the editor when the target note body is blank', async () => {
@@ -979,7 +979,7 @@ describe('useEditorTabSwap raw mode sync', () => {
       initialProps: { tabs: [makeTab('a.md', 'Formula')], activeTabPath: 'a.md', rawMode: false },
       setupEditor: (editor) => {
         editor.tryParseMarkdownToBlocks.mockImplementation((markdown: string) => {
-          if (markdown.includes('@@FUWA_MATH_BLOCK:')) throw parseError
+          if (markdown.includes('@@PLUMO_MATH_BLOCK:')) throw parseError
           return blocksA
         })
       },

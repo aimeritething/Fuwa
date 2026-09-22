@@ -54,14 +54,14 @@ describe('useNoteTabs', () => {
     const { result } = renderHook(() => useNoteTabs())
 
     await act(async () => {
-      await result.current.openNote('/Users/fuwa/Documents/Notes/Welcome.md')
+      await result.current.openNote('/Users/plumo/Documents/Notes/Welcome.md')
     })
 
     expect(runtime.invoke).toHaveBeenCalledWith('get_note_content', {
-      path: '/Users/fuwa/Documents/Notes/Welcome.md',
-      vaultPath: '/Users/fuwa/Documents/Notes',
+      path: '/Users/plumo/Documents/Notes/Welcome.md',
+      vaultPath: '/Users/plumo/Documents/Notes',
     })
-    expect(result.current.activeTabPath).toBe('/Users/fuwa/Documents/Notes/Welcome.md')
+    expect(result.current.activeTabPath).toBe('/Users/plumo/Documents/Notes/Welcome.md')
     expect(result.current.activeTab?.entry.filename).toBe('Welcome.md')
     expect(result.current.activeTab?.content).toBe('# Welcome\n')
     expect(result.current.tabs).toHaveLength(1)

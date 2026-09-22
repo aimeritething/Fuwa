@@ -300,7 +300,7 @@ function useSyncRawModeContentOverride({
   }, [activeTabContent, activeTabPath, rawSourceContentRef, setRawModeContentOverride])
 }
 
-/** Where the mode lives in Fuwa: the active Tab, read here and written back through the Tab state. */
+/** Where the mode lives in Plumo: the active Tab, read here and written back through the Tab state. */
 export interface TabModeState {
   mode: EditorMode | null
   setMode: (path: string, mode: EditorMode) => void

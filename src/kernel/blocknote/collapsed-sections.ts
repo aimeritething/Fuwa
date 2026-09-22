@@ -193,8 +193,8 @@ function collapsedSectionStyleScope(editorElement: HTMLElement) {
   const container = collapsedSectionContainer(editorElement)
   if (!container) return ''
 
-  container.dataset.fuwaCollapseScope ??= String(++collapsedSectionScopeSequence)
-  return `[data-fuwa-collapse-scope=${cssString(container.dataset.fuwaCollapseScope)}]`
+  container.dataset.plumoCollapseScope ??= String(++collapsedSectionScopeSequence)
+  return `[data-plumo-collapse-scope=${cssString(container.dataset.plumoCollapseScope)}]`
 }
 
 function collapsedSectionStyleElement(editorElement: HTMLElement) {
@@ -202,7 +202,7 @@ function collapsedSectionStyleElement(editorElement: HTMLElement) {
   if (existingStyle) return existingStyle
 
   const styleElement = editorElement.ownerDocument.createElement('style')
-  styleElement.setAttribute('data-fuwa-collapsed-sections', 'true')
+  styleElement.setAttribute('data-plumo-collapsed-sections', 'true')
   editorElement.ownerDocument.head.appendChild(styleElement)
   collapsedSectionStyleElements.set(editorElement, styleElement)
   return styleElement
@@ -297,7 +297,7 @@ function collapsedHeadingHoverRuleSelectors(
     .flatMap((blockId) => headingDotsSelectorsForStyle(
       editorElement,
       blockId,
-      `${scope}[data-fuwa-collapse-hover-id=${cssString(blockId)}]`,
+      `${scope}[data-plumo-collapse-hover-id=${cssString(blockId)}]`,
     ))
 }
 
@@ -663,8 +663,8 @@ function ensureCollapsedHeadingRenderer(
 
     const container = collapsedSectionContainer(editorElement)
     if (container) {
-      if (hit) container.dataset.fuwaCollapseHoverId = hit.blockId
-      else delete container.dataset.fuwaCollapseHoverId
+      if (hit) container.dataset.plumoCollapseHoverId = hit.blockId
+      else delete container.dataset.plumoCollapseHoverId
     }
 
     hoveredDotsElement = hit?.inlineContent ?? null

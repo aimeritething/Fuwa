@@ -38,7 +38,7 @@ The paragraph after the square drawing.
 
 A small SVG, 96 by 96, with a transparent background. It should not be stretched to the column width, and the page background should show through it in both themes.
 
-![The Fuwa mark, a small transparent icon](../images/mark-transparent.svg)
+![The Plumo mark, a small transparent icon](../images/mark-transparent.svg)
 
 The paragraph after the icon.
 

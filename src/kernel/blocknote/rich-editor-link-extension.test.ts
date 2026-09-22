@@ -50,7 +50,7 @@ describe('the Rich editor link mark', () => {
     for (const editor of mounted.splice(0)) editor._tiptapEditor.destroy()
   })
 
-  it('installs one link mark: Fuwa\'s, in place of BlockNote\'s', () => {
+  it('installs one link mark: Plumo\'s, in place of BlockNote\'s', () => {
     const editor = createMountedEditor()
     const names = editor._tiptapEditor.extensionManager.extensions.map((extension) => extension.name)
 

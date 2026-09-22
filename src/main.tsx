@@ -47,14 +47,14 @@ if (isTauri()) {
 applyStoredThemeMode(document, window.localStorage)
 
 // Outside Tauri the in-memory Folder fixture stands in for the Rust side; the
-// smoke specs reach it through window.__fuwaMockVault.
+// smoke specs reach it through window.__plumoMockVault.
 if (import.meta.env.DEV && !isTauri()) {
   installMockVault()
 }
 
 function getRequiredRootElement(): HTMLElement {
   const root = document.getElementById('root')
-  if (!root) throw new Error('Fuwa root element is missing')
+  if (!root) throw new Error('Plumo root element is missing')
   return root
 }
 

@@ -5,7 +5,7 @@ date: 2026-09-11
 
 # The Folder listing is an Image Tab's content
 
-A Tab in the kernel is `{ entry, content }`, and every machine around it assumes the content is the file's bytes: the save buffer writes them back, the watcher reads them again after an external change, the error bar retries them. An Image file has none of that. Fuwa shows it and never edits it, and its picture reaches the webview through the asset protocol rather than through the renderer at all.
+A Tab in the kernel is `{ entry, content }`, and every machine around it assumes the content is the file's bytes: the save buffer writes them back, the watcher reads them again after an external change, the error bar retries them. An Image file has none of that. Plumo shows it and never edits it, and its picture reaches the webview through the asset protocol rather than through the renderer at all.
 
 ## Decision
 

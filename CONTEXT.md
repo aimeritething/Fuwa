@@ -1,4 +1,4 @@
-# Fuwa
+# Plumo
 
 A small desktop app for viewing and editing Markdown files. Open a `.md` directly, or open a folder and browse it from the sidebar. The visual language follows Linear.
 
@@ -7,12 +7,12 @@ A small desktop app for viewing and editing Markdown files. Open a `.md` directl
 ### Content
 
 **Document**:
-A single `.md` file opened in Fuwa. Fuwa reads and writes the file on disk; it never owns a copy that outlives the session.
+A single `.md` file opened in Plumo. Plumo reads and writes the file on disk; it never owns a copy that outlives the session.
 _Avoid_: Note, page, file (when you mean the Markdown content)
 _In code_: `note`, the word the code uses. Code says note; people and UI say Document.
 
 **Folder**:
-The one directory the sidebar is currently rooted at. Fuwa never writes configuration into a Folder; only Documents and their attachments live there.
+The one directory the sidebar is currently rooted at. Plumo never writes configuration into a Folder; only Documents and their attachments live there.
 _Avoid_: Vault, workspace, project, root
 _In code_: `vault`, the word the code uses. Code says vault; people and UI say Folder.
 
@@ -24,13 +24,13 @@ _Avoid_: Asset, upload
 The YAML block at the top of a Document. Preserved byte-for-byte across saves; visible and editable only in Raw mode.
 
 **Image file**:
-A file in the Folder whose extension is one of apng, avif, bmp, gif, ico, jpeg, jpg, png, svg, tif, tiff, webp. Fuwa shows it and never edits it. An Attachment is an Image file that a Document links to; an Image file need not be an Attachment.
+A file in the Folder whose extension is one of apng, avif, bmp, gif, ico, jpeg, jpg, png, svg, tif, tiff, webp. Plumo shows it and never edits it. An Attachment is an Image file that a Document links to; an Image file need not be an Attachment.
 _Avoid_: Image (alone, when you mean the file rather than the picture inside a Document), asset, media
 
 ### Editing
 
 **Kernel**:
-The part of the code built on ProseMirror, BlockNote and CodeMirror, together with the Markdown round-trip. Fuwa's editing surface sits on top of it. A Kernel block may dispatch one of Fuwa's commands (`fuwa:dispatch-command`) but never implements one. Originally copied from Tolaria under AGPL-3.0 (see `NOTICE.md`).
+The part of the code built on ProseMirror, BlockNote and CodeMirror, together with the Markdown round-trip. Plumo's editing surface sits on top of it. A Kernel block may dispatch one of Plumo's commands but never implements one. Originally copied from Tolaria under AGPL-3.0 (see `NOTICE.md`).
 _Avoid_: Engine, core, editor internals
 
 **Rich mode**:
@@ -61,7 +61,7 @@ The sidebar section listing every Document and Image file currently open, includ
 One entry in the tab bar above the editor; one Tab per open Document or Image file. Clicking a Document or an Image file in the Explorer always opens a real Tab (there are no preview tabs). An Image file's Tab shows the picture, fitted to the card; it has no Rich or Raw mode.
 
 **Command Menu**:
-The Cmd+K palette that lists Fuwa's commands and, as you type, fuzzy-matches commands, Document names, and Image file names. Every command in the native menu bar appears here and nothing else does.
+The Cmd+K palette that lists Plumo's commands and, as you type, fuzzy-matches commands, Document names, and Image file names. Every command in the native menu bar appears here and nothing else does.
 _Avoid_: Command palette, palette
 
 **Quick Open**:
@@ -69,4 +69,4 @@ The Command Menu's search-only mode, opened with Cmd+P: it fuzzy-matches Documen
 _Avoid_: Search, file picker
 
 **Session**:
-The state Fuwa restores on launch: the Folder, the Open Editors (each Document with its Rich or Raw mode), the active Tab, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.
+The state Plumo restores on launch: the Folder, the Open Editors (each Document with its Rich or Raw mode), the active Tab, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.

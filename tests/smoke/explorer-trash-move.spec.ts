@@ -9,18 +9,18 @@ import { MOCK_FOLDER, typeAtEnd, watchForErrors } from './harness'
 async function openFolder(page: Page) {
   await page.goto('/')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
-  await page.evaluate((chosen) => window.__fuwaMockVault?.queueDialogSelection([chosen]), MOCK_FOLDER)
+  await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), MOCK_FOLDER)
   await page.keyboard.press('Meta+o')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}`)).toBeVisible()
 }
 
 function folderPaths(page: Page): Promise<string[]> {
-  return page.evaluate(() => window.__fuwaMockVault?.files().map((file) => file.path) ?? [])
+  return page.evaluate(() => window.__plumoMockVault?.files().map((file) => file.path) ?? [])
 }
 
 function noteContent(page: Page, path: string): Promise<string | undefined> {
   return page.evaluate(
-    (target) => window.__fuwaMockVault?.files().find((file) => file.path === target)?.content,
+    (target) => window.__plumoMockVault?.files().find((file) => file.path === target)?.content,
     path,
   )
 }
@@ -33,7 +33,7 @@ type ExternalEdit =
 
 async function externalChange(page: Page, edit: ExternalEdit, announced: string[]) {
   await page.evaluate(([change, paths]) => {
-    const vault = window.__fuwaMockVault
+    const vault = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     if ('remove' in change) vault.removeFile(change.remove)
     else if ('write' in change) vault.writeNote(change.write[0], change.write[1])
@@ -72,7 +72,7 @@ test('an unsaved edit reaches disk before the Document is trashed', async ({ pag
   await trashRow(page, `${MOCK_FOLDER}/Welcome.md`)
 
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Welcome.md`)).toHaveCount(0)
-  const written = await page.evaluate(() => window.__fuwaMockVault?.calls
+  const written = await page.evaluate(() => window.__plumoMockVault?.calls
     .filter((call) => call.command === 'save_note_content')
     .map((call) => String(call.args?.content ?? '')) ?? [])
   expect(written.at(-1)).toContain('Trashed with this.')
@@ -82,14 +82,14 @@ test('trashing a folder closes every Tab inside it', async ({ page }) => {
   await openFolder(page)
   await externalChange(page, { write: [`${MOCK_FOLDER}/Projects/Plan.md`, '# Plan\n'] }, [`${MOCK_FOLDER}/Projects/Plan.md`])
   await page.getByRole('button', { name: 'Expand Projects' }).click()
-  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).click()
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plan.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Plan')
 
   await trashRow(page, `${MOCK_FOLDER}/Projects`)
 
-  await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Projects/Fuwa.md`)).toHaveCount(0)
+  await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Projects/Plumo.md`)).toHaveCount(0)
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Projects/Plan.md`)).toHaveCount(0)
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   expect(await folderPaths(page)).not.toContain(`${MOCK_FOLDER}/Projects`)
@@ -178,8 +178,8 @@ test('renaming a folder in Finder retargets every Tab under it', async ({ page }
   await openFolder(page)
   await externalChange(page, { write: [`${MOCK_FOLDER}/Projects/Plan.md`, '# Plan\n'] }, [`${MOCK_FOLDER}/Projects/Plan.md`])
   await page.getByRole('button', { name: 'Expand Projects' }).click()
-  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).click()
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plan.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Plan')
 
@@ -189,7 +189,7 @@ test('renaming a folder in Finder retargets every Tab under it', async ({ page }
     [`${MOCK_FOLDER}/Projects`, `${MOCK_FOLDER}/Work`],
   )
 
-  await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Fuwa.md`)).toBeVisible()
+  await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Plumo.md`)).toBeVisible()
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Plan.md`)).toBeVisible()
   await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Work › Plan.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Plan')

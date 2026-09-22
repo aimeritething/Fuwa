@@ -26,9 +26,9 @@ describe('pickNoteToOpen', () => {
   })
 
   it('outside Tauri answers from the fixture\'s queued dialog selections', async () => {
-    runtime.dialogSelections = ['/Users/fuwa/Documents/Notes/Welcome.md']
+    runtime.dialogSelections = ['/Users/plumo/Documents/Notes/Welcome.md']
 
-    await expect(pickNoteToOpen()).resolves.toBe('/Users/fuwa/Documents/Notes/Welcome.md')
+    await expect(pickNoteToOpen()).resolves.toBe('/Users/plumo/Documents/Notes/Welcome.md')
     await expect(pickNoteToOpen()).resolves.toBeNull()
     expect(runtime.open).not.toHaveBeenCalled()
   })

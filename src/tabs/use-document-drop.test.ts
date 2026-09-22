@@ -57,10 +57,10 @@ describe('useDocumentDrop', () => {
   it('opens a dropped Document', async () => {
     const { openNote } = await renderDocumentDrop()
 
-    emit(dropPayload(['/Users/fuwa/Notes/Plan.md']))
+    emit(dropPayload(['/Users/plumo/Notes/Plan.md']))
 
     await waitFor(() => {
-      expect(openNote).toHaveBeenCalledWith('/Users/fuwa/Notes/Plan.md')
+      expect(openNote).toHaveBeenCalledWith('/Users/plumo/Notes/Plan.md')
     })
   })
 
@@ -74,7 +74,7 @@ describe('useDocumentDrop', () => {
     })
     await renderDocumentDrop({ openNote, settleActiveNote })
 
-    emit(dropPayload(['/Users/fuwa/Notes/Plan.md']))
+    emit(dropPayload(['/Users/plumo/Notes/Plan.md']))
 
     await waitFor(() => {
       expect(order).toEqual(['settle', 'open'])
@@ -87,17 +87,17 @@ describe('useDocumentDrop', () => {
     })
     const { openNote } = await renderDocumentDrop({ settleActiveNote })
 
-    emit(dropPayload(['/Users/fuwa/Notes/Plan.md']))
+    emit(dropPayload(['/Users/plumo/Notes/Plan.md']))
 
     await waitFor(() => {
-      expect(openNote).toHaveBeenCalledWith('/Users/fuwa/Notes/Plan.md')
+      expect(openNote).toHaveBeenCalledWith('/Users/plumo/Notes/Plan.md')
     })
   })
 
   it('ignores a dropped file that is not a Document', async () => {
     const { openNote, settleActiveNote } = await renderDocumentDrop()
 
-    emit(dropPayload(['/Users/fuwa/Desktop/notes.txt', '/Users/fuwa/Desktop/shot.png']))
+    emit(dropPayload(['/Users/plumo/Desktop/notes.txt', '/Users/plumo/Desktop/shot.png']))
 
     await Promise.resolve()
     expect(openNote).not.toHaveBeenCalled()
@@ -111,10 +111,10 @@ describe('useDocumentDrop', () => {
     })
     await renderDocumentDrop({ openNote })
 
-    emit(dropPayload(['/Users/fuwa/Notes/A.md', '/Users/fuwa/Desktop/shot.png', '/Users/fuwa/Notes/B.md']))
+    emit(dropPayload(['/Users/plumo/Notes/A.md', '/Users/plumo/Desktop/shot.png', '/Users/plumo/Notes/B.md']))
 
     await waitFor(() => {
-      expect(opened).toEqual(['/Users/fuwa/Notes/A.md', '/Users/fuwa/Notes/B.md'])
+      expect(opened).toEqual(['/Users/plumo/Notes/A.md', '/Users/plumo/Notes/B.md'])
     })
   })
 
@@ -128,10 +128,10 @@ describe('useDocumentDrop', () => {
     await renderDocumentDrop({ openNote })
 
     try {
-      emit(dropPayload(['/Users/fuwa/Notes/A.md', '/Users/fuwa/Notes/B.md']))
+      emit(dropPayload(['/Users/plumo/Notes/A.md', '/Users/plumo/Notes/B.md']))
 
       await waitFor(() => {
-        expect(opened).toEqual(['/Users/fuwa/Notes/B.md'])
+        expect(opened).toEqual(['/Users/plumo/Notes/B.md'])
       })
     } finally {
       error.mockRestore()
@@ -141,7 +141,7 @@ describe('useDocumentDrop', () => {
   it('ignores the drag events that carry no drop', async () => {
     const { openNote } = await renderDocumentDrop()
 
-    emit({ type: 'enter', paths: ['/Users/fuwa/Notes/Plan.md'], position: { x: 1, y: 2 } })
+    emit({ type: 'enter', paths: ['/Users/plumo/Notes/Plan.md'], position: { x: 1, y: 2 } })
     emit({ type: 'leave' })
 
     await Promise.resolve()

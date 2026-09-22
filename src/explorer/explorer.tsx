@@ -70,7 +70,7 @@ function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder
       <SidebarLabel className="justify-between">Explorer</SidebarLabel>
       <div className="flex cursor-default flex-col gap-2 px-2 pt-2.5 pb-2" data-testid="explorer-no-folder">
         <h4 className="text-sm leading-normal font-medium text-text-primary">No folder open</h4>
-        <p className="mb-0.5 text-xs leading-normal font-normal text-text-secondary">Fuwa reads Markdown from one folder at a time. Open one to browse it here.</p>
+        <p className="mb-0.5 text-xs leading-normal font-normal text-text-secondary">Plumo reads Markdown from one folder at a time. Open one to browse it here.</p>
         {error && (
           <p className="mb-0.5 font-mono text-2xs leading-normal font-normal text-chroma-red-text wrap-anywhere" role="status" data-testid="explorer-folder-missing">
             {error}

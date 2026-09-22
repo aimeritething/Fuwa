@@ -3,7 +3,7 @@ import { noteEntryForPath, noteRootForPath } from './note-entry'
 
 describe('noteRootForPath', () => {
   it('uses the Document\'s own directory as the boundary root', () => {
-    expect(noteRootForPath('/Users/fuwa/Documents/Notes/Welcome.md')).toBe('/Users/fuwa/Documents/Notes')
+    expect(noteRootForPath('/Users/plumo/Documents/Notes/Welcome.md')).toBe('/Users/plumo/Documents/Notes')
   })
 
   it('keeps a Windows-style parent directory', () => {
@@ -13,9 +13,9 @@ describe('noteRootForPath', () => {
 
 describe('noteEntryForPath', () => {
   it('describes an opened Markdown file by its filename and stem', () => {
-    const entry = noteEntryForPath('/Users/fuwa/Documents/Notes/Reading list.md', '# Reading list\n')
+    const entry = noteEntryForPath('/Users/plumo/Documents/Notes/Reading list.md', '# Reading list\n')
 
-    expect(entry.path).toBe('/Users/fuwa/Documents/Notes/Reading list.md')
+    expect(entry.path).toBe('/Users/plumo/Documents/Notes/Reading list.md')
     expect(entry.filename).toBe('Reading list.md')
     expect(entry.title).toBe('Reading list')
     expect(entry.fileKind).toBe('markdown')

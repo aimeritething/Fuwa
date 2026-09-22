@@ -4,7 +4,7 @@ import { isTauri, mockAssetUrl } from './tauri'
 /**
  * An Image file reaches its Tab through the asset protocol, which the Folder's
  * root is already allowed into (`vaultAssetScope`). The URL carries a version
- * so an image overwritten outside Fuwa is fetched again instead of being
+ * so an image overwritten outside Plumo is fetched again instead of being
  * served from the webview's cache; the asset handler reads the path and
  * ignores the query. Outside Tauri there is no protocol to serve it, so the
  * browser fixture stands in.

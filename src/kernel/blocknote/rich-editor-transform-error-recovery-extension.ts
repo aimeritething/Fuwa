@@ -10,7 +10,7 @@ import { createMalformedBlockClipboardRecoveryPlugin } from './rich-editor-malfo
 import type { RichEditorPropRunner, RichEditorSomeProp } from './rich-editor-transform-recovery-types'
 export { isStaleBlockReferenceError } from './rich-editor-recovery-classifier'
 
-const DISPATCH_RECOVERY_STATE_KEY = '__fuwaRichEditorTransformErrorRecovery'
+const DISPATCH_RECOVERY_STATE_KEY = '__plumoRichEditorTransformErrorRecovery'
 const RECOVERABLE_EDITOR_HANDLER_PROPS = new Set([
   'handleDOMEvents',
   'handleDrop',

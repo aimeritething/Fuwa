@@ -13,7 +13,7 @@ export const RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS = {
 } satisfies RichEditorBlockNotePerformanceOptions
 
 /**
- * What every Rich editor is created with: the performance options, and Fuwa's
+ * What every Rich editor is created with: the performance options, and Plumo's
  * link mark in place of BlockNote's (a `disableExtensions` name also drops one
  * of BlockNote's own tiptap extensions).
  */

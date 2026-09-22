@@ -1,5 +1,5 @@
 //! The Session file: one `session.json` in the app's config
-//! directory, `~/Library/Application Support/com.aimerite.fuwa/` on macOS.
+//! directory, `~/Library/Application Support/com.aimerite.plumo/` on macOS.
 //!
 //! The Rust side owns the file. The renderer hands over its part of the
 //! Session (`update_session`) whenever it changes and reads the file back once

@@ -7,7 +7,7 @@ import { cn } from '@/lib/cn'
 import { Button } from '@/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 
-/** Toggle Rich/Raw's shortcut as the manifest writes it (`⌘\\`): Fuwa v0.1 is a macOS app, like the sidebar toggle's `⌘[`. */
+/** Toggle Rich/Raw's shortcut as the manifest writes it (`⌘\\`): Plumo v0.1 is a macOS app, like the sidebar toggle's `⌘[`. */
 const TOGGLE_SHORTCUT = APP_COMMAND_DEFINITIONS[APP_COMMAND_IDS.editToggleRawEditor].shortcut?.display ?? ''
 const COPY_PATH_SHORTCUT = APP_COMMAND_DEFINITIONS[APP_COMMAND_IDS.editCopyPath].shortcut?.display ?? ''
 const MODE_LABELS: Record<EditorMode, string> = { rich: 'Rich', raw: 'Raw' }

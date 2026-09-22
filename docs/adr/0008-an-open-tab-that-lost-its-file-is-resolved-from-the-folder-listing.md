@@ -5,7 +5,7 @@ date: 2026-09-11
 
 # An open Tab that lost its file is resolved from the Folder listing
 
-Fuwa has five rules for a Document that is deleted, renamed or moved while it is open. Four of them need an answer to a question the watcher never asks: is the file still there, and if not, where did it go? The watcher reports changed paths and nothing else — no "renamed from", no "deleted" — because that is all `notify` gives it, and on macOS a renamed folder arrives as the folder's own two paths with nothing about the files inside.
+Plumo has five rules for a Document that is deleted, renamed or moved while it is open. Four of them need an answer to a question the watcher never asks: is the file still there, and if not, where did it go? The watcher reports changed paths and nothing else — no "renamed from", no "deleted" — because that is all `notify` gives it, and on macOS a renamed folder arrives as the folder's own two paths with nothing about the files inside.
 
 ## Decision
 
@@ -24,7 +24,7 @@ Cancelling the Autosave is what makes a close stick. A Tab that goes away takes 
 
 ## Consequences
 
-- A pending Autosave stops a reload but never a close. A Document deleted in Finder mid-sentence loses that sentence, which is deliberate: Fuwa never recreates a removed file.
+- A pending Autosave stops a reload but never a close. A Document deleted in Finder mid-sentence loses that sentence, which is deliberate: Plumo never recreates a removed file.
 - The listing has to be current the instant the watcher asks, before React has the new state, so `useFolder` answers `listedPaths()` from a ref — the same trick `listsFile` already uses for the Session restore.
 - A rename in Finder closes the Tab and the new name appears as a fresh file, while a move to another folder is followed. An ambiguity the prefix cannot settle — two files of the same name appearing in one event — resolves as a close, which is the safe half of it.
 - Trash and delete are the same path through the shell: `dropTabsUnder` cancels and closes, whether the Explorer asked for it or the watcher did.

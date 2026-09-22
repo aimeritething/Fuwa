@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors } from './harness'
 
 async function openFolder(page: import('@playwright/test').Page, path: string) {
-  await page.evaluate((chosen) => window.__fuwaMockVault?.queueDialogSelection([chosen]), path)
+  await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), path)
   await page.keyboard.press('Meta+o')
 }
 
@@ -15,19 +15,19 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   const rows = explorer.locator('[data-testid^="explorer-row:"]')
   await expect(rows).toHaveText(['Notes', 'Attachments', 'Projects', 'Style catalog', 'Reading list.md', 'Welcome.md'])
   await explorer.getByRole('button', { name: 'Expand Projects' }).click()
-  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
-  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Projects › Fuwa.md')
+  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).click()
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
+  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Projects › Plumo.md')
   await explorer.getByRole('button', { name: 'Collapse Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
-  await page.getByTestId(`open-editor:${MOCK_FOLDER}/Projects/Fuwa.md`).click()
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`).locator('..')).toHaveAttribute('aria-selected', 'true')
+  await page.getByTestId(`open-editor:${MOCK_FOLDER}/Projects/Plumo.md`).click()
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).locator('..')).toHaveAttribute('aria-selected', 'true')
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Attachments`).click()
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await page.reload()
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Fuwa.md`)).toBeVisible()
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`)).toBeVisible()
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
@@ -43,11 +43,11 @@ test('switching and closing Folder flushes edits and closes every Tab', async ({
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects`)).toBeVisible()
   await expect(page.getByTestId('open-editors')).toHaveCount(0)
-  const saved = await page.evaluate((path) => window.__fuwaMockVault?.files().find((file) => file.path === path)?.content, `${MOCK_FOLDER}/Welcome.md`)
+  const saved = await page.evaluate((path) => window.__plumoMockVault?.files().find((file) => file.path === path)?.content, `${MOCK_FOLDER}/Welcome.md`)
   expect(saved).toContain('Folder switch keeps this edit.')
-  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
+  await page.evaluate(() => window.__plumoTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
   await expect(page.getByRole('tree')).toHaveCount(0)
-  const session = await page.evaluate(() => JSON.parse(localStorage.getItem('fuwa:mock-session') ?? '{}'))
+  const session = await page.evaluate(() => JSON.parse(localStorage.getItem('plumo:mock-session') ?? '{}'))
   expect(session.folder).toBeNull()
 })
 
@@ -58,7 +58,7 @@ test('external changes reload clean Documents, preserve pending edits, and refre
   await openFolder(page, MOCK_FOLDER)
   await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Welcome.md`)
   await page.evaluate((root) => {
-    const vault = window.__fuwaMockVault!
+    const vault = window.__plumoMockVault!
     vault.writeNote(`${root}/Welcome.md`, '# Updated externally\n\nClean changes arrive.\n')
     vault.writeNote(`${root}/Added.md`, '# Added\n')
     vault.removeFile(`${root}/Reading list.md`)
@@ -71,13 +71,13 @@ test('external changes reload clean Documents, preserve pending edits, and refre
   await page.keyboard.press('End')
   await page.keyboard.type(' Pending local edit.')
   await page.evaluate((root) => {
-    const vault = window.__fuwaMockVault!
+    const vault = window.__plumoMockVault!
     vault.writeNote(`${root}/Welcome.md`, '# Must not replace pending edits\n')
     vault.emitExternalChange([`${root}/Welcome.md`])
   }, MOCK_FOLDER)
   await expect(page.locator('.bn-editor')).toContainText('Pending local edit.')
   await page.keyboard.press('Meta+s')
-  await expect.poll(() => page.evaluate((root) => window.__fuwaMockVault?.files().find((file) => file.path === `${root}/Welcome.md`)?.content, MOCK_FOLDER)).toContain('Pending local edit.')
+  await expect.poll(() => page.evaluate((root) => window.__plumoMockVault?.files().find((file) => file.path === `${root}/Welcome.md`)?.content, MOCK_FOLDER)).toContain('Pending local edit.')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
@@ -91,8 +91,8 @@ test('outside Documents show their dimmed parent, stay out of Explorer, and relo
   await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).getByTestId('open-editor-parent')).toHaveText('Notes')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toHaveCount(0)
   await page.evaluate((path) => {
-    window.__fuwaMockVault?.writeNote(path, '# Outside changed\n')
-    window.__fuwaMockVault?.emitExternalChange([path])
+    window.__plumoMockVault?.writeNote(path, '# Outside changed\n')
+    window.__plumoMockVault?.emitExternalChange([path])
   }, `${MOCK_FOLDER}/Welcome.md`)
   await expect(page.locator('.bn-editor h1')).toHaveText('Outside changed')
 })

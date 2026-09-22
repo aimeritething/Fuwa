@@ -18,8 +18,8 @@ export function useEditorContentPathSignal(): EditorContentPathSignal {
       }
     }
 
-    window.addEventListener('fuwa:editor-tab-swapped', handleTabSwapped)
-    return () => { window.removeEventListener('fuwa:editor-tab-swapped', handleTabSwapped); }
+    window.addEventListener('plumo:editor-tab-swapped', handleTabSwapped)
+    return () => { window.removeEventListener('plumo:editor-tab-swapped', handleTabSwapped); }
   }, [])
 
   return contentSignal

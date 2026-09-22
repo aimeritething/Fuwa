@@ -28,7 +28,7 @@ interface Options {
  *
  * A pending Autosave stops a reload from overwriting what is still being
  * typed, but never stops a close: a file deleted in Finder takes its Tab with
- * it, and cancelling that Tab's Autosave is what keeps Fuwa from writing the
+ * it, and cancelling that Tab's Autosave is what keeps Plumo from writing the
  * file back.
  */
 export function useDocumentWatcher({
@@ -74,7 +74,7 @@ export function useDocumentWatcher({
   useEffect(() => {
     if (isTauri()) return
     const handle = (event: Event) => { void onVaultChanged((event as CustomEvent<string[]>).detail) }
-    window.addEventListener('fuwa:external-change', handle)
-    return () => window.removeEventListener('fuwa:external-change', handle)
+    window.addEventListener('plumo:external-change', handle)
+    return () => window.removeEventListener('plumo:external-change', handle)
   }, [onVaultChanged])
 }

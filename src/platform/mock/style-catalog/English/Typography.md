@@ -40,7 +40,7 @@ Two headings in a row should not stack their margins into a large gap.
 
 A short paragraph.
 
-A long paragraph shows line height, measure and the colour of body text better than anything else on this page. Most of what people read in Fuwa is plain prose, so this is the block that has to feel right before any of the others matter. Read it at the narrowest and the widest window size, and watch where the lines break. A comfortable measure sits somewhere between sixty and eighty characters, and the line height should leave enough air that the eye finds the start of the next line without effort. If the text looks grey and tight, the line height is too small. If it looks like a list of separate sentences, the line height is too large.
+A long paragraph shows line height, measure and the colour of body text better than anything else on this page. Most of what people read in Plumo is plain prose, so this is the block that has to feel right before any of the others matter. Read it at the narrowest and the widest window size, and watch where the lines break. A comfortable measure sits somewhere between sixty and eighty characters, and the line height should leave enough air that the eye finds the start of the next line without effort. If the text looks grey and tight, the line height is too small. If it looks like a list of separate sentences, the line height is too large.
 
 The first of two consecutive paragraphs. The gap between this paragraph and the next one is the paragraph spacing, and it should be clearly smaller than the gap above a heading.
 
@@ -80,7 +80,7 @@ A link with a code label: [`createMockVault`](https://example.com/docs/create-mo
 
 A wikilink: [[Reading list]].
 
-A wikilink with an alias: [[Projects/Fuwa|the Fuwa project note]].
+A wikilink with an alias: [[Projects/Plumo|the Plumo project note]].
 
 Inline math: $E=mc^2$ and $\frac{a}{b}$ sit on the text baseline.
 
@@ -90,7 +90,7 @@ Escaped characters: \*not italic\*, \[not a link\], \~not struck\~, and a price 
 
 ### Inline styles in a real paragraph
 
-The watcher reports **every change** inside the Folder, including the ones Fuwa made itself, so the first thing `handleExternalChange` does is *drop the paths it just wrote*. What is left is ==real outside work==: a file saved from another editor, a ~~rename~~ move in Finder, or a `git checkout` that rewrote half the tree. The [design note](https://example.com/notes/watcher) explains why the debounce is $2x$ the Autosave idle wait, and [[Session|the Session note]] covers what happens to a Tab when its file goes away → it stays open, marked as missing, until the file comes back.
+The watcher reports **every change** inside the Folder, including the ones Plumo made itself, so the first thing `handleExternalChange` does is *drop the paths it just wrote*. What is left is ==real outside work==: a file saved from another editor, a ~~rename~~ move in Finder, or a `git checkout` that rewrote half the tree. The [design note](https://example.com/notes/watcher) explains why the debounce is $2x$ the Autosave idle wait, and [[Session|the Session note]] covers what happens to a Tab when its file goes away → it stays open, marked as missing, until the file comes back.
 
 ---
 

@@ -151,7 +151,7 @@ describe('useEditorModePositionSync', () => {
       await Promise.resolve()
     })
     act(() => {
-      window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', {
+      window.dispatchEvent(new CustomEvent('plumo:editor-tab-swapped', {
         detail: { path: 'note.md' },
       }))
     })
@@ -193,7 +193,7 @@ describe('useEditorModePositionSync', () => {
     rerender({ activeTabPath: 'note.md', rawMode: false })
 
     act(() => {
-      window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', {
+      window.dispatchEvent(new CustomEvent('plumo:editor-tab-swapped', {
         detail: { path: 'other-note.md' },
       }))
     })
@@ -202,7 +202,7 @@ describe('useEditorModePositionSync', () => {
     expect(result.current.restoreTransitionRef.current.richRestore).not.toBeNull()
 
     act(() => {
-      window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', {
+      window.dispatchEvent(new CustomEvent('plumo:editor-tab-swapped', {
         detail: { path: 'note.md' },
       }))
     })
@@ -251,7 +251,7 @@ describe('useEditorModePositionSync', () => {
     })
     rerender({ rawMode: false })
     act(() => {
-      window.dispatchEvent(new CustomEvent('fuwa:editor-tab-swapped', {
+      window.dispatchEvent(new CustomEvent('plumo:editor-tab-swapped', {
         detail: { path: 'note.md' },
       }))
     })

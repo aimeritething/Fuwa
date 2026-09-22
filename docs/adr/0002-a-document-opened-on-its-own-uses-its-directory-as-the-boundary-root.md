@@ -6,7 +6,7 @@ amended: 2026-09-12 (review)
 
 # A Document opened on its own uses its directory as the boundary root
 
-Fuwa's Rust boundary confines every file command to one root that the caller names on each call; there is no registry or "active Folder" behind it, and a call without a root is refused.
+Plumo's Rust boundary confines every file command to one root that the caller names on each call; there is no registry or "active Folder" behind it, and a call without a root is refused.
 
 A Document can be opened without a Folder, or from outside the open Folder (File → Open Document…, Finder, a drop). Such a Document has no Folder to name, but it must still be read and written through the same commands, and an image pasted into it must still land in an `attachments/` directory beside it (the glossary's definition of an Attachment).
 
@@ -18,12 +18,12 @@ The root has to satisfy two containment checks: the Document's own path must be 
 
 - **A "current Folder" registry on the Rust side** (the original alternative): reintroduces the registry the boundary was built to remove, and a Document outside every Folder still needs a root.
 - **The user's home directory**: contains both, but is wider than the parent for no gain.
-- **A directory of Fuwa's own** (a temporary root under the app's config directory): does not contain the Document, so the boundary would refuse the Document itself.
+- **A directory of Plumo's own** (a temporary root under the app's config directory): does not contain the Document, so the boundary would refuse the Document itself.
 - **The Document's file as the root**: does not contain `attachments/`, so Attachments would need a second root and a Rust-side special case.
 
 The Rust side is unchanged: the parent directory is an ordinary root, so the containment and symlink checks apply to it as to a Folder.
 
-For comparison, a survey of how other editors treat a lone file found this: VS Code, Zed and MarkText derive no root from the parent at all and confine nothing; a sandboxed macOS app is granted the file alone; Typora loads the parent folder into its sidebar. Fuwa's position sits between the unconfined editors and the sandbox. Every surveyed editor that copies pasted images puts them beside the file, or in a subfolder beside it, with a relative link, which is what the Attachment rule does.
+For comparison, a survey of how other editors treat a lone file found this: VS Code, Zed and MarkText derive no root from the parent at all and confine nothing; a sandboxed macOS app is granted the file alone; Typora loads the parent folder into its sidebar. Plumo's position sits between the unconfined editors and the sandbox. Every surveyed editor that copies pasted images puts them beside the file, or in a subfolder beside it, with a relative link, which is what the Attachment rule does.
 
 ## Consequences
 

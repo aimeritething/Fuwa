@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+// Type-only: brings the fixture's `window.__plumoMockVault` declaration into the spec program.
 import type { MockVault, MockVaultImage } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, watchForErrors } from './harness'
 
@@ -15,13 +15,13 @@ const SMALL = `${MOCK_FOLDER}/Attachments/small.png`
 const SCRIPTED = `${MOCK_FOLDER}/Attachments/scripted.svg`
 const WELCOME = `${MOCK_FOLDER}/Welcome.md`
 
-const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+const storedSession = (page: Page) => page.evaluate(() => window.__plumoMockVault?.invoke('read_session'))
 const activeTab = (page: Page) => page.getByRole('tab', { selected: true })
 const imageInTab = (page: Page) => page.getByTestId('image-file-preview')
 
 async function openFolder(page: Page) {
   await page.goto('/')
-  await page.evaluate((chosen) => window.__fuwaMockVault?.queueDialogSelection([chosen]), MOCK_FOLDER)
+  await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), MOCK_FOLDER)
   await page.keyboard.press('Meta+o')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Attachments`)).toBeVisible()
 }
@@ -29,7 +29,7 @@ async function openFolder(page: Page) {
 /** Write an Image file into the Folder and let the watcher bring it into the Explorer. */
 async function addImage(page: Page, path: string, picture: MockVaultImage) {
   await page.evaluate(([target, image]) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
+    const vault: MockVault | undefined = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     vault.writeImage(target as string, image as MockVaultImage)
     vault.emitExternalChange([target as string])
@@ -123,7 +123,7 @@ test('an Image Tab is never written: ⌘S does nothing and ⌘W closes it under 
   await expect(activeTab(page)).toHaveText('lake.png')
 
   await page.keyboard.press('Meta+s')
-  await expect.poll(() => page.evaluate(() => window.__fuwaMockVault?.calls.filter((call) => call.command === 'save_note_content').length)).toBe(0)
+  await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.calls.filter((call) => call.command === 'save_note_content').length)).toBe(0)
   await expect(page.getByTestId('write-failure-bar')).toHaveCount(0)
 
   await page.keyboard.press('Meta+w')
@@ -170,7 +170,7 @@ test('relaunch restores an Image Tab from an entry with no mode, and tolerates a
   await expect(page.getByTestId('path-row-image-meta')).toHaveText('1920 × 1080 · 240 KB')
   await expect(page.getByTestId(`explorer-row:${LAKE}`).locator('..')).toHaveAttribute('aria-selected', 'true')
 
-  await page.evaluate((seed) => window.__fuwaMockVault?.seedSession(seed), {
+  await page.evaluate((seed) => window.__plumoMockVault?.seedSession(seed), {
     version: 1,
     folder: MOCK_FOLDER,
     openEditors: [{ path: LAKE, mode: 'raw' }],
@@ -189,7 +189,7 @@ test('relaunch restores an Image Tab from an entry with no mode, and tolerates a
 
 test('an Image file in the Session that is no longer in the Folder is dropped', async ({ page }) => {
   await page.goto('/')
-  await page.evaluate((seed) => window.__fuwaMockVault?.seedSession(seed), {
+  await page.evaluate((seed) => window.__plumoMockVault?.seedSession(seed), {
     version: 1,
     folder: MOCK_FOLDER,
     openEditors: [{ path: `${MOCK_FOLDER}/Attachments/gone.png` }, { path: WELCOME, mode: 'rich' }],

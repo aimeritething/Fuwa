@@ -16,10 +16,10 @@ import {
 // Frontmatter bytes a Rich save protects, and invalid Frontmatter forcing
 // Raw mode until it is fixed.
 
-const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
+const PLUMO_PATH = `${MOCK_FOLDER}/Projects/Plumo.md`
 const BROKEN_PATH = `${MOCK_FOLDER}/Broken.md`
 const BROKEN_CONTENT = '---\nthis is not yaml\n---\n# Broken\n\nBody\n'
-const FUWA_FRONTMATTER = '---\ntitle: Fuwa\n---\n'
+const PLUMO_FRONTMATTER = '---\ntitle: Plumo\n---\n'
 const TABLE_PATH = `${MOCK_FOLDER}/Table.md`
 const TABLE_CONTENT = [
   '# Week',
@@ -90,7 +90,7 @@ test('⌘\\ and the segmented control switch modes, the Markdown shows in Raw, a
 
 test('a cursor in a table cell is a cursor on that row in Raw, typing there replaces nothing, and Rich comes back to the row', async ({ page }) => {
   await page.goto('/')
-  await page.evaluate(([path, content]) => window.__fuwaMockVault?.writeNote(path, content), [TABLE_PATH, TABLE_CONTENT])
+  await page.evaluate(([path, content]) => window.__plumoMockVault?.writeNote(path, content), [TABLE_PATH, TABLE_CONTENT])
   await openDocumentThroughDialog(page, TABLE_PATH)
   await page.locator('.bn-editor td', { hasText: 'Meetings' }).click()
 
@@ -154,15 +154,15 @@ test('two Tabs keep different modes at once, and a relaunch restores each Tab\'s
   await page.keyboard.press('Meta+Backslash')
   await expect(rawEditor(page)).toBeVisible()
 
-  await openDocumentThroughDialog(page, FUWA_PATH)
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await openDocumentThroughDialog(page, PLUMO_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await expect(richSegment(page)).toBeChecked()
 
   await page.keyboard.press('Meta+1')
   await expect(rawEditor(page)).toBeVisible()
   await expect(rawSegment(page)).toBeChecked()
   await expect.poll(() => storedSession(page)).toMatchObject({
-    openEditors: [{ path: WELCOME_PATH, mode: 'raw' }, { path: FUWA_PATH, mode: 'rich' }],
+    openEditors: [{ path: WELCOME_PATH, mode: 'raw' }, { path: PLUMO_PATH, mode: 'rich' }],
     activePath: WELCOME_PATH,
   })
 
@@ -172,7 +172,7 @@ test('two Tabs keep different modes at once, and a relaunch restores each Tab\'s
   await expect(rawEditor(page)).toBeVisible()
   await expect.poll(() => rawText(page)).toContain('# Welcome')
   await page.keyboard.press('Meta+2')
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await expect(richSegment(page)).toBeChecked()
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -181,23 +181,23 @@ test('two Tabs keep different modes at once, and a relaunch restores each Tab\'s
 test('a Document with Frontmatter renders none of it in Rich and keeps the bytes through a save', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
-  await openDocumentThroughDialog(page, FUWA_PATH)
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await openDocumentThroughDialog(page, PLUMO_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
 
   await expect(page.locator('.bn-editor')).not.toContainText('title')
 
   await typeAtEnd(page, ' Body edit.')
   await page.keyboard.press('Meta+s')
-  await expect.poll(() => savedContent(page, FUWA_PATH)).toContain('Body edit.')
+  await expect.poll(() => savedContent(page, PLUMO_PATH)).toContain('Body edit.')
   // The diff is body-only: the Frontmatter bytes are the same and the original body is still there.
-  const saved = String(await savedContent(page, FUWA_PATH))
-  expect(saved.slice(0, FUWA_FRONTMATTER.length)).toBe(FUWA_FRONTMATTER)
-  expect(saved.slice(FUWA_FRONTMATTER.length)).toMatch(/^# Fuwa\n\nA small desktop app for Markdown files\./)
+  const saved = String(await savedContent(page, PLUMO_PATH))
+  expect(saved.slice(0, PLUMO_FRONTMATTER.length)).toBe(PLUMO_FRONTMATTER)
+  expect(saved.slice(PLUMO_FRONTMATTER.length)).toMatch(/^# Plumo\n\nA small desktop app for Markdown files\./)
 
   await rawSegment(page).click()
 
   await expect(rawEditor(page)).toBeVisible()
-  await expect.poll(() => rawText(page)).toMatch(/^---\ntitle: Fuwa\n---\n/)
+  await expect.poll(() => rawText(page)).toMatch(/^---\ntitle: Plumo\n---\n/)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
@@ -205,7 +205,7 @@ test('a Document with Frontmatter renders none of it in Rich and keeps the bytes
 test('invalid Frontmatter opens in Raw with Rich disabled and its reason as the tooltip; fixing it re-enables Rich', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
-  await page.evaluate(([path, content]) => window.__fuwaMockVault?.writeNote(path, content), [BROKEN_PATH, BROKEN_CONTENT])
+  await page.evaluate(([path, content]) => window.__plumoMockVault?.writeNote(path, content), [BROKEN_PATH, BROKEN_CONTENT])
   await openDocumentThroughDialog(page, BROKEN_PATH)
 
   await expect(rawEditor(page)).toBeVisible()
@@ -241,7 +241,7 @@ test('Toggle Rich/Raw does nothing with no Document open', async ({ page }) => {
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
 
   await page.keyboard.press('Meta+Backslash')
-  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('edit-toggle-raw-editor'))
+  await page.evaluate(() => window.__plumoTest?.dispatchBrowserMenuCommand?.('edit-toggle-raw-editor'))
 
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await expect(rawEditor(page)).toHaveCount(0)

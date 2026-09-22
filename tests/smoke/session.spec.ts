@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+// Type-only: brings the fixture's `window.__plumoMockVault` declaration into the spec program.
 import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
@@ -8,17 +8,17 @@ import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } 
 // for quit and relaunch. The window frame is the Rust side's part of the file
 // and does not appear here.
 
-const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
+const PLUMO_PATH = `${MOCK_FOLDER}/Projects/Plumo.md`
 const GONE_PATH = `${MOCK_FOLDER}/Gone.md`
 
-const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+const storedSession = (page: Page) => page.evaluate(() => window.__plumoMockVault?.invoke('read_session'))
 const tabNames = (page: Page) => page.getByRole('tab').allTextContents()
 const activeTab = (page: Page) => page.getByRole('tab', { selected: true })
 
 async function seedSession(page: Page, session: unknown) {
   await page.goto('/')
   await page.evaluate((seed) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
+    const vault: MockVault | undefined = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     vault.seedSession(seed)
   }, session)
@@ -28,14 +28,14 @@ test('quit and relaunch restores the Tabs in order and the active Tab, and the f
   const errors = watchForErrors(page)
   await page.goto('/')
   await openDocumentThroughDialog(page, WELCOME_PATH)
-  await openDocumentThroughDialog(page, FUWA_PATH)
+  await openDocumentThroughDialog(page, PLUMO_PATH)
   await page.keyboard.press('Meta+1')
   await expect(activeTab(page)).toHaveText('Welcome.md')
 
   await expect.poll(() => storedSession(page)).toEqual({
     version: 1,
     folder: null,
-    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
+    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: PLUMO_PATH, mode: 'rich' }],
     activePath: WELCOME_PATH,
     theme: 'dark',
     // A Document opened with no Folder collapses the sidebar.
@@ -45,7 +45,7 @@ test('quit and relaunch restores the Tabs in order and the active Tab, and the f
   await page.reload()
 
   await expect(page.getByRole('tab')).toHaveCount(2)
-  expect(await tabNames(page)).toEqual(['Welcome.md', 'Fuwa.md'])
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Plumo.md'])
   await expect(activeTab(page)).toHaveText('Welcome.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
   expect(errors.pageErrors).toEqual([])
@@ -60,7 +60,7 @@ test('a Tab whose file is gone is dropped on relaunch, and its successor takes o
     openEditors: [
       { path: WELCOME_PATH, mode: 'rich' },
       { path: GONE_PATH, mode: 'rich' },
-      { path: FUWA_PATH, mode: 'rich' },
+      { path: PLUMO_PATH, mode: 'rich' },
     ],
     activePath: GONE_PATH,
     theme: 'dark',
@@ -70,12 +70,12 @@ test('a Tab whose file is gone is dropped on relaunch, and its successor takes o
   await page.reload()
 
   await expect(page.getByRole('tab')).toHaveCount(2)
-  expect(await tabNames(page)).toEqual(['Welcome.md', 'Fuwa.md'])
-  await expect(activeTab(page)).toHaveText('Fuwa.md')
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Plumo.md'])
+  await expect(activeTab(page)).toHaveText('Plumo.md')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await expect.poll(() => storedSession(page)).toMatchObject({
-    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
-    activePath: FUWA_PATH,
+    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: PLUMO_PATH, mode: 'rich' }],
+    activePath: PLUMO_PATH,
   })
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])

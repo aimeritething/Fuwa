@@ -326,9 +326,9 @@ describe('useEditorTabSwap Explorer rename continuity', () => {
   it('follows a renamed Tab without re-parsing its content', async () => {
     setupMountedEditorMocks()
 
-    const editor = makeMockEditor('# Fuwa\n\nA small desktop app.')
-    const before = makeContentTab('Fuwa.md', '# Fuwa\n\nA small desktop app.')
-    const after = makeContentTab('Fuwa v2.md', before.content)
+    const editor = makeMockEditor('# Plumo\n\nA small desktop app.')
+    const before = makeContentTab('Plumo.md', '# Plumo\n\nA small desktop app.')
+    const after = makeContentTab('Plumo v2.md', before.content)
 
     const { rerender } = renderHook(
       ({ tabs, activeTabPath }) => useEditorTabSwap({
@@ -353,8 +353,8 @@ describe('useEditorTabSwap Explorer rename continuity', () => {
   it('still swaps when the Tab that took over holds different content', async () => {
     setupMountedEditorMocks()
 
-    const editor = makeMockEditor('# Fuwa\n\nA small desktop app.')
-    const before = makeContentTab('Fuwa.md', '# Fuwa\n\nA small desktop app.')
+    const editor = makeMockEditor('# Plumo\n\nA small desktop app.')
+    const before = makeContentTab('Plumo.md', '# Plumo\n\nA small desktop app.')
     const other = makeContentTab('Reading list.md', '# Reading list\n\n- Practical Vim')
 
     const { rerender } = renderHook(

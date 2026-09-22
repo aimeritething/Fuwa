@@ -1,7 +1,7 @@
 /* ==============================================================
    blocknote.css — the Kernel's stylesheet: every `.bn-*` / ProseMirror
    override and the KaTeX and tldraw rules. Every selector lands on DOM a
-   third party renders; Fuwa's own elements carry utility classes in their
+   third party renders; Plumo's own elements carry utility classes in their
    tsx. index.css imports it right after the vendor stylesheets; nothing
    else does.
 
@@ -50,8 +50,8 @@
      --------------------------------------------------------------- */
   /* No motion inside the editor: BlockNote's own CSS animates indentation,
      a heading's size and the table widgets, and none of it belongs on
-     Fuwa's surface. The caret blink and the selection are neither a
-     transition nor an animation and stay. Fuwa's own controls inside the
+     Plumo's surface. The caret blink and the selection are neither a
+     transition nor an animation and stay. Plumo's own controls inside the
      container keep their `transition-colors`: a utility wins over this. */
   .bn-container *,
   .bn-container *::before,
@@ -66,7 +66,7 @@
     background: var(--surface-card);
     color: var(--text-primary);
     font-size: var(--editor-font-size);
-    /* BlockNote's colour variables, pointed at Fuwa's tokens. */
+    /* BlockNote's colour variables, pointed at Plumo's tokens. */
     --bn-colors-editor-background: var(--surface-card);
     --bn-colors-editor-text: var(--text-primary);
     --bn-colors-menu-background: var(--surface-popover);
@@ -142,14 +142,14 @@
     text-align: start;
   }
 
-  .fuwa-rich-editor-text-direction-rtl,
-  [data-fuwa-text-direction="rtl"],
-  [data-fuwa-text-direction="rtl"] :is(blockquote, .bn-inline-content) {
+  .plumo-rich-editor-text-direction-rtl,
+  [data-plumo-text-direction="rtl"],
+  [data-plumo-text-direction="rtl"] :is(blockquote, .bn-inline-content) {
     direction: rtl;
   }
 
-  [data-fuwa-text-direction="rtl"]:is(blockquote),
-  [data-fuwa-text-direction="rtl"] blockquote {
+  [data-plumo-text-direction="rtl"]:is(blockquote),
+  [data-plumo-text-direction="rtl"] blockquote {
     border-left-width: 0;
     border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
     padding-inline-start: var(--blockquote-padding-left);
@@ -158,7 +158,7 @@
   /* ---------------------------------------------------------------
      Block selection (rich-editor-block-selection-extension.ts)
      --------------------------------------------------------------- */
-  .bn-block-outer.fuwa-rich-editor-block-selected {
+  .bn-block-outer.plumo-rich-editor-block-selected {
     --_block-selection-right-outset: 10px;
     --_block-selection-top-outset: 2px;
 
@@ -168,13 +168,13 @@
     position: relative;
   }
 
-  .bn-block-outer.fuwa-rich-editor-block-selected *,
-  .bn-block.fuwa-rich-editor-block-selected,
-  .bn-block.fuwa-rich-editor-block-selected * {
+  .bn-block-outer.plumo-rich-editor-block-selected *,
+  .bn-block.plumo-rich-editor-block-selected,
+  .bn-block.plumo-rich-editor-block-selected * {
     caret-color: transparent;
   }
 
-  .bn-block-outer.fuwa-rich-editor-block-selected::after {
+  .bn-block-outer.plumo-rich-editor-block-selected::after {
     background: color-mix(in srgb, var(--state-selection) var(--_block-selection-mix), transparent);
     border-radius: var(--radius-md);
     content: "";
@@ -188,26 +188,26 @@
     z-index: 0;
   }
 
-  .bn-block-outer.fuwa-rich-editor-block-selected:has(> .bn-block > [data-content-type="paragraph"])::after {
+  .bn-block-outer.plumo-rich-editor-block-selected:has(> .bn-block > [data-content-type="paragraph"])::after {
     bottom: calc(var(--editor-paragraph-spacing) - var(--_block-selection-top-outset));
   }
 
-  .bn-block-outer.fuwa-rich-editor-block-selected:has(hr)::after {
+  .bn-block-outer.plumo-rich-editor-block-selected:has(hr)::after {
     content: none;
   }
 
-  .bn-block-outer.fuwa-rich-editor-block-selected > .bn-block {
+  .bn-block-outer.plumo-rich-editor-block-selected > .bn-block {
     position: relative;
     z-index: 1;
   }
 
-  .bn-block.fuwa-rich-editor-block-selected {
+  .bn-block.plumo-rich-editor-block-selected {
     background: color-mix(in srgb, var(--state-selection) var(--_block-selection-mix), transparent);
     border-radius: var(--radius-md);
     box-decoration-break: clone;
   }
 
-  .bn-block.fuwa-rich-editor-block-selected:has(hr) {
+  .bn-block.plumo-rich-editor-block-selected:has(hr) {
     background: transparent;
   }
 
@@ -706,13 +706,13 @@
   }
 
   /* Find in Rich mode: every match tinted, the current one stronger. */
-  .bn-editor .fuwa-rich-find-match {
+  .bn-editor .plumo-rich-find-match {
     border-radius: var(--radius-sm);
     background: var(--chroma-yellow-bg);
     box-shadow: 0 0 0 1px var(--chroma-yellow-bg);
   }
 
-  .bn-editor .fuwa-rich-find-match--active {
+  .bn-editor .plumo-rich-find-match--active {
     background: color-mix(in srgb, var(--chroma-orange) var(--_find-match-active-mix), transparent);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--chroma-orange) var(--_find-match-active-mix), transparent);
   }
@@ -758,13 +758,13 @@
    The elements the BlockNote shadcn adapters dress themselves. The
    adapters' Toolbar and SuggestionMenu roots and the suggestion rows carry
    Tailwind classes of their own (rounded-lg / rounded-md, shadow-md, the
-   1px border, px-2 py-1.5 on a row), which Fuwa's build generates from
+   1px border, px-2 py-1.5 on a row), which Plumo's build generates from
    the `@source` line in index.css into the `utilities` layer, and which no
    `shadCNComponents` entry reaches. A rule in `components` cannot beat
    them whatever its specificity, so the few rules that must sit in that
    layer too, after Tailwind's (index.css imports this file after
    tailwindcss), and win on specificity or, at equal specificity, on order.
-   The primitives inside (buttons, toggles, menus, inputs) are Fuwa's own
+   The primitives inside (buttons, toggles, menus, inputs) are Plumo's own
    ui/ components, handed over in shadcn-components.tsx, and need nothing
    here.
    ============================================================== */
@@ -797,7 +797,7 @@
     padding: var(--spacing);
   }
 
-  /* BlockNote's table handles: its own icons inside Fuwa's Button. The drag
+  /* BlockNote's table handles: its own icons inside Plumo's Button. The drag
      handle keeps its 24px glyph against the Button's 16px svg rule; the cell
      handle keeps the package's 12px height (its own correction sits in
      vendor and loses to the Button's classes). */
@@ -844,7 +844,7 @@
     justify-content: center;
   }
 
-  /* Fuwa hands the adapter no subtext; the empty subtitle still renders. */
+  /* Plumo hands the adapter no subtext; the empty subtitle still renders. */
   .bn-suggestion-menu-item[role="option"] .bn-suggestion-menu-item:empty {
     display: none;
   }

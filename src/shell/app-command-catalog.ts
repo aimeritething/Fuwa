@@ -265,7 +265,7 @@ export function getAppCommandMenuSections() {
 
 export const APP_COMMAND_MENU_SECTIONS = getAppCommandMenuSections()
 
-/** The Fuwa menu's manifest items (Quit); About, Services and Hide are the platform's own. */
+/** The Plumo menu's manifest items (Quit); About, Services and Hide are the platform's own. */
 export const APP_COMMAND_APP_MENU_ITEMS = APP_COMMAND_MANIFEST_APP_MENU.map(item => toMenuItem(item))
 
 export const APP_COMMAND_MENU_STATE_GROUPS = Object.fromEntries(

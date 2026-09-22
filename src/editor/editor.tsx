@@ -49,7 +49,7 @@ import { useRawModeWithFlush } from './use-raw-mode-with-flush'
 import { WriteFailureBar } from './write-failure-bar'
 
 /**
- * Fuwa's editor shell (rewritten, not copied). It creates the
+ * Plumo's editor shell (rewritten, not copied). It creates the
  * BlockNote editor with the kernel's schema and extensions, hands the open
  * Document to the kernel's tab-swap machinery, and draws the floating card
  * around it. Everything it mounts comes from the kernel.
@@ -187,7 +187,7 @@ function useRegisteredRef<T>(ref: MutableRefObject<T | null> | undefined, value:
  * Rich/Raw switching: the kernel's hook
  * serializes the rich editor into the raw buffer on the way in, maps the
  * caret both ways, and remembers raw edits the Tab state has not caught up
- * with on the way out. Fuwa's deviation is where the mode lives: the active
+ * with on the way out. Plumo's deviation is where the mode lives: the active
  * Tab's `mode`, set through the Tab rules, so two Tabs can differ and the
  * Session restores each. A Document whose Frontmatter is invalid cannot
  * leave Raw; the toggle is a no-op there and the Rich segment says why.

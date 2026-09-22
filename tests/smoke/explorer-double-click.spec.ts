@@ -60,5 +60,5 @@ test('a quick second click on a folder\'s arrow still folds it back', async ({ p
 
   await page.getByTestId('explorer').getByRole('button', { name: 'Expand Projects' }).dblclick()
 
-  await expect(explorerRow(page, `${MOCK_FOLDER}/Projects/Fuwa.md`)).toHaveCount(0)
+  await expect(explorerRow(page, `${MOCK_FOLDER}/Projects/Plumo.md`)).toHaveCount(0)
 })

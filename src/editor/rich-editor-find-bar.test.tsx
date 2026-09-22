@@ -68,7 +68,7 @@ describe('RichEditorFindBar', () => {
   })
 
   it('opens on a request, counts and highlights the matches, and walks them with ↵ and ⇧↵', () => {
-    const fake = fakeEditor('Welcome to Fuwa. Welcome back, and welcome again.')
+    const fake = fakeEditor('Welcome to Plumo. Welcome back, and welcome again.')
     render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
     expect(count()).toHaveTextContent('No matches')
 
@@ -82,7 +82,7 @@ describe('RichEditorFindBar', () => {
     // The editor's selection moved onto the current match.
     const { from, to } = fake.state().selection
     expect(fake.state().doc.textBetween(from, to)).toBe('Welcome')
-    expect(from).toBe(18)
+    expect(from).toBe(19)
 
     fireEvent.keyDown(input(), { key: 'Enter', shiftKey: true })
     expect(count()).toHaveTextContent('1 / 3')
@@ -93,7 +93,7 @@ describe('RichEditorFindBar', () => {
   // Typing used to highlight only: with every match below the fold the bar said
   // "1 / 7" over a page that showed none, and the first ↵ went to the second.
   it('shows the first match as the query is typed: selected, and scrolled to the middle of the view', () => {
-    const fake = fakeEditor('Welcome to Fuwa. Welcome back.')
+    const fake = fakeEditor('Welcome to Plumo. Welcome back.')
     render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
 
     fireEvent.change(input(), { target: { value: 'welcome' } })
@@ -158,7 +158,7 @@ describe('RichEditorFindBar', () => {
     { name: 'while composing', init: { isComposing: true } },
     { name: 'ending a composition (keyCode 229)', init: { keyCode: 229 } },
   ])('leaves ↵ and esc to the input method $name', ({ init }) => {
-    const fake = fakeEditor('Welcome to Fuwa. Welcome back.')
+    const fake = fakeEditor('Welcome to Plumo. Welcome back.')
     render(<RichEditorFindBar editor={fake.editor} path={PATH} request={request(1)} />)
     fireEvent.change(input(), { target: { value: 'welcome' } })
 

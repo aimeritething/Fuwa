@@ -256,9 +256,9 @@ describe('rich editor block selection extension', () => {
 
     dispatchEditorKey(mounted.editor, 'Escape')
 
-    const selectedBlocks = mounted.mount.querySelectorAll('.fuwa-rich-editor-block-selected')
+    const selectedBlocks = mounted.mount.querySelectorAll('.plumo-rich-editor-block-selected')
     expect(selectedBlocks).toHaveLength(1)
-    expect(selectedBlocks[0].getAttribute('data-fuwa-block-selection')).toBe('single')
+    expect(selectedBlocks[0].getAttribute('data-plumo-block-selection')).toBe('single')
   })
 
   it('lets a second Escape fall through to app-level note-list navigation', () => {

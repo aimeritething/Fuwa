@@ -70,7 +70,7 @@ const SVG_CLASS = '[&_svg]:block [&_svg]:h-auto [&_svg]:max-w-none [&_svg]:min-w
 
 function renderIdFromReactId(reactId: string): string {
   const safeId = reactId.replace(/[^a-zA-Z0-9_-]/g, '')
-  return `fuwa-mermaid-${safeId || 'diagram'}`
+  return `plumo-mermaid-${safeId || 'diagram'}`
 }
 
 function initializeMermaid(mermaid: MermaidApi) {
@@ -119,7 +119,7 @@ function normalizeTimelinePeriodLabelsForRender(diagram: string): string {
 
 function appendMermaidRenderHost(): HTMLDivElement {
   const host = document.createElement('div')
-  host.setAttribute('data-fuwa-mermaid-render-host', '')
+  host.setAttribute('data-plumo-mermaid-render-host', '')
   host.style.cssText = MERMAID_RENDER_HOST_STYLE
   document.body.appendChild(host)
   return host

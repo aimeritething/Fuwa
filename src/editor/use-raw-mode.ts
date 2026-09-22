@@ -17,8 +17,8 @@ interface UseRawModeParams {
 
 /**
  * Manages raw editor mode state.
- * Fuwa: the mode is the active Tab's, not the vault's. The kernel read
- * and wrote `editor_mode` in the vault config here; Fuwa reads the Tab and
+ * Plumo: the mode is the active Tab's, not the vault's. The kernel read
+ * and wrote `editor_mode` in the vault config here; Plumo reads the Tab and
  * hands the change back to the Tab state, which the Session file follows.
  * The flush-before-raw and before-raw-end sequence is unchanged.
  */

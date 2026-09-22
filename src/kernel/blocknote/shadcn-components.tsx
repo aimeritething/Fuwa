@@ -33,7 +33,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/ui/t
 // from ui/ (BlockNoteView merges by group, so a group is given whole). This is
 // the one place that knows the groups' shape; single-editor-view.tsx hands the
 // map to BlockNoteView. Avatar and Skeleton stay the package's: only the
-// comments UI, which Fuwa does not mount, reads them.
+// comments UI, which Plumo does not mount, reads them.
 
 // BlockNote's link form is a react-hook-form FormProvider fed `useForm()`; no
 // adapter reads the form state, so the shim drops the methods and renders the

@@ -93,7 +93,7 @@ interface Options {
   settleTabsUnder: (prefix: string) => Promise<void>
   /**
    * Cancel the pending Autosave of every Tab at or under a path and close
-   * them. Fuwa never recreates a removed file, so the cancellation is the
+   * them. Plumo never recreates a removed file, so the cancellation is the
    * point: the Tab's buffered edits go with it.
    */
   dropTabsUnder: (prefix: string) => void
@@ -274,7 +274,7 @@ export function useExplorerActions(options: Options): ExplorerActions {
 
   /**
    * Move to Trash: no confirmation, and no going back through
-   * Fuwa. The order is what the rules ask for — the open Documents write their
+   * Plumo. The order is what the rules ask for — the open Documents write their
    * pending edits while the file is still there, the file leaves, and only
    * then do the Tabs close with their Autosave cancelled. A refusal leaves
    * every Tab where it was.

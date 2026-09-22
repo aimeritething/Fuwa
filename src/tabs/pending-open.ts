@@ -11,8 +11,8 @@ import type { TauriUnlisten } from '@/platform/tauri-event-cleanup'
  */
 
 /** The Rust side's poke, and the fixture's stand-in for it. */
-export const OPEN_FILES_EVENT = 'fuwa://open-files'
-export const MOCK_OPEN_FILES_EVENT = 'fuwa:open-files'
+export const OPEN_FILES_EVENT = 'plumo://open-files'
+export const MOCK_OPEN_FILES_EVENT = 'plumo:open-files'
 
 /** Drain the buffered paths; a second call answers empty. */
 export function takePendingOpen(): Promise<string[]> {

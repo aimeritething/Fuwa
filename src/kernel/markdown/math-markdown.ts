@@ -7,10 +7,10 @@ import {
 export const MATH_INLINE_TYPE = 'mathInline'
 export const MATH_BLOCK_TYPE = 'mathBlock'
 
-const INLINE_TOKEN_PREFIX = '@@FUWA_MATH_INLINE:'
-const BLOCK_TOKEN_PREFIX = '@@FUWA_MATH_BLOCK:'
+const INLINE_TOKEN_PREFIX = '@@PLUMO_MATH_INLINE:'
+const BLOCK_TOKEN_PREFIX = '@@PLUMO_MATH_BLOCK:'
 const TOKEN_SUFFIX = '@@'
-const INLINE_TOKEN_RE = /@@FUWA_MATH_INLINE:([^@]+)@@/g
+const INLINE_TOKEN_RE = /@@PLUMO_MATH_INLINE:([^@]+)@@/g
 const CODE_FENCE_PREFIXES = ['```', '~~~']
 
 interface InlineItem {
@@ -586,7 +586,7 @@ export function renderMathToHtml({ latex, displayMode }: MathRenderRequest): str
     return katex.renderToString(latex, {
       displayMode,
       // KaTeX writes this colour inline on its error span, where no stylesheet
-      // rule reaches it; the token keeps it Fuwa's red in both themes.
+      // rule reaches it; the token keeps it Plumo's red in both themes.
       errorColor: 'var(--chroma-red)',
       throwOnError: false,
       trust: false,

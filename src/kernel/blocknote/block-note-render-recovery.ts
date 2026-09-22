@@ -5,7 +5,7 @@ import {
 
 const BLOCKNOTE_RECOVERY_BOUNDARY_NAME = 'BlockNoteRenderRecoveryBoundary'
 const BLOCKNOTE_VIEW_COMPONENT_NAME = 'BlockNoteView'
-const RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK = '__fuwaRecoveredBlockNoteRenderError'
+const RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK = '__plumoRecoveredBlockNoteRenderError'
 const BLOCKNOTE_RENDER_UPDATE_DEPTH_REASON: BlockNoteRenderRecoveryReason = 'react_update_depth_exceeded'
 export type { BlockNoteRenderRecoveryReason } from './rich-editor-recovery-classifier'
 

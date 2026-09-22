@@ -14,7 +14,7 @@ function listed(relativePath: string, kind: ListedFile['kind']): ListedFile {
 const TREE = buildExplorerTree(FOLDER, [
   listed('Welcome.md', 'note'),
   listed('Projects', 'folder'),
-  listed('Projects/Fuwa.md', 'note'),
+  listed('Projects/Plumo.md', 'note'),
   listed('Projects/lake.png', 'image'),
 ])
 
@@ -417,10 +417,10 @@ describe('drag-and-drop', () => {
     expandProjects()
     const transfer = dataTransfer()
 
-    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Fuwa.md`), { dataTransfer: transfer })
+    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Plumo.md`), { dataTransfer: transfer })
     fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}`), { dataTransfer: transfer })
 
-    expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Projects/Fuwa.md`, FOLDER)
+    expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Projects/Plumo.md`, FOLDER)
   })
 
   it('reads the dragged path from the drag in progress when the browser hides the data', () => {
@@ -441,7 +441,7 @@ describe('drag-and-drop', () => {
     const transfer = dataTransfer()
 
     fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`), { dataTransfer: transfer })
-    fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Fuwa.md`), { dataTransfer: transfer })
+    fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Plumo.md`), { dataTransfer: transfer })
     expect(moveInto).not.toHaveBeenCalled()
 
     fireEvent.dragEnd(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`), { dataTransfer: transfer })
@@ -472,7 +472,7 @@ describe('collapsing and expanding the sidebar', () => {
   })
 
   it('keeps a folder shut that holds the selected Document', () => {
-    const actions = stubActions({ selected: `${FOLDER}/Projects/Fuwa.md` })
+    const actions = stubActions({ selected: `${FOLDER}/Projects/Plumo.md` })
     const { rerender } = renderExplorer(actions)
     expect(isExpanded('Projects')).toBe(true)
     fireEvent.click(screen.getByLabelText('Collapse Projects'))
@@ -509,11 +509,11 @@ describe('bringing a row into view', () => {
     const view = render(<ExplorerHarness actions={stubActions()} />)
     scrollIntoView.mockClear()
 
-    view.rerender(<ExplorerHarness actions={stubActions({ selected: `${FOLDER}/Projects/Fuwa.md` })} />)
+    view.rerender(<ExplorerHarness actions={stubActions({ selected: `${FOLDER}/Projects/Plumo.md` })} />)
 
     expect(isExpanded('Projects')).toBe(true)
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
-    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('treeitem', { name: 'Fuwa.md' }))
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('treeitem', { name: 'Plumo.md' }))
   })
 
   it('waits for a row that is not listed yet', () => {
@@ -560,7 +560,7 @@ describe('bringing a row into view', () => {
     const view = render(<ExplorerHarness actions={stubActions({ selected })} />)
     scrollIntoView.mockClear()
 
-    const editing = { path: `${FOLDER}/Projects/Fuwa.md`, kind: 'note' as const, stem: 'Fuwa', extension: '.md' }
+    const editing = { path: `${FOLDER}/Projects/Plumo.md`, kind: 'note' as const, stem: 'Plumo', extension: '.md' }
     view.rerender(<ExplorerHarness actions={stubActions({ selected, editing })} />)
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
 

@@ -5,7 +5,7 @@ import {
   logPerf,
 } from './performance-logging'
 
-const HARNESS_KEY = '__FUWA_PERFORMANCE_HARNESS__'
+const HARNESS_KEY = '__PLUMO_PERFORMANCE_HARNESS__'
 const HARNESS_DESCRIPTOR = Object.getOwnPropertyDescriptor(globalThis, HARNESS_KEY)
 const VITEST_WORKER_DESCRIPTOR = Object.getOwnPropertyDescriptor(globalThis, '__vitest_worker__')
 

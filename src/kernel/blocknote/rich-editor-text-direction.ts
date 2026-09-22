@@ -7,7 +7,7 @@ const CALLOUT_MARKER_PATTERN = /^\s*\[![^\]\s]+\](?![+-])[ \t]*/u
 const LATIN_CHARACTER_PATTERN = /[A-Za-z\u00C0-\u024F]/u
 const QUOTE_NODE_TYPE = 'quote'
 const RTL_CHARACTER_PATTERN = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/u
-export const RICH_EDITOR_RTL_DIRECTION_CLASS = 'fuwa-rich-editor-text-direction-rtl'
+export const RICH_EDITOR_RTL_DIRECTION_CLASS = 'plumo-rich-editor-text-direction-rtl'
 
 type RichEditorDirection = 'auto' | 'rtl'
 
@@ -40,7 +40,7 @@ function buildTextDirectionDecorations(doc: ProsemirrorNode): ProsemirrorDecorat
 
     decorations.push(Decoration.node(position, position + node.nodeSize, {
       class: RICH_EDITOR_RTL_DIRECTION_CLASS,
-      'data-fuwa-text-direction': 'rtl',
+      'data-plumo-text-direction': 'rtl',
       style: 'direction: rtl;',
     }))
     return false

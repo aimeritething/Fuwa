@@ -246,7 +246,7 @@ describe('SideMenu', () => {
     // Dimmed by a style rule: ProseMirror redraws a block whose inline style changes.
     expect(draggedElement.style.opacity).toBe('')
     expect(draggedElement).not.toHaveStyle({ opacity: '0.35' })
-    expect(document.querySelector('style[data-fuwa-block-reorder]')).not.toBeInTheDocument()
+    expect(document.querySelector('style[data-plumo-block-reorder]')).not.toBeInTheDocument()
   })
 
   it('carries a code block language control into the drag preview', () => {

@@ -9,7 +9,7 @@ use super::filename_rules::validate_filename_stem;
 pub struct RenameResult {
     /// New absolute file path after rename
     pub new_path: String,
-    /// Number of other files updated. Fuwa never rewrites links in other
+    /// Number of other files updated. Plumo never rewrites links in other
     /// notes, so this is always 0; the field is kept for the frontend type.
     pub updated_files: usize,
     /// Number of linked-note rewrites that failed. Always 0 (see `updated_files`).

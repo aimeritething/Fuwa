@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/cn"
 import { Slot } from "radix-ui"
 
-// shadcn's names, Fuwa's values: 28px controls, 13px, `rounded-sm`, the 1px
+// shadcn's names, Plumo's values: 28px controls, 13px, `rounded-sm`, the 1px
 // focus ring. default is Linear's primary, secondary its filled secondary,
 // outline the same with a hairline edge, ghost the tertiary / icon button.
 const buttonVariants = cva(

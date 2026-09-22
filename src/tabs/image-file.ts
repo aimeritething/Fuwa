@@ -3,7 +3,7 @@ import { IMAGE_FILE_EXTENSIONS } from '@/folder/file-preview'
 import { noteEntryForPath } from '@/folder/note-entry'
 
 /**
- * What an Image file is to the shell (CONTEXT.md): a file Fuwa shows and never
+ * What an Image file is to the shell (CONTEXT.md): a file Plumo shows and never
  * edits. `@/folder/file-preview.ts` holds the extension list the Explorer, the drop
  * intake and the Rust scanner all share; this module is the Tab's side of it —
  * the entry an Image Tab carries and the two strings its path row shows.

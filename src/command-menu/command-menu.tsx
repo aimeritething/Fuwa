@@ -53,10 +53,10 @@ const TITLES: Record<CommandMenuMode, string> = {
 }
 
 const FOOTER = '↵ open · ⌘↵ open in Raw · esc close'
-const LIST_ID = 'fuwa-command-menu-list'
+const LIST_ID = 'plumo-command-menu-list'
 
 function rowId(index: number): string {
-  return `fuwa-command-menu-row-${index}`
+  return `plumo-command-menu-row-${index}`
 }
 
 /** The name with the matched characters emphasised: bold, no highlight box. */
@@ -220,7 +220,7 @@ function CommandMenuPanel({ mode, entries, onRunCommand, onOpenFile, onBeforePic
  * The Command Menu and Quick Open: one palette, two
  * modes, over the whole window. The `palette` dialog gives it the backdrop,
  * the focus trap, esc and its place a quarter of the way down; the rows and
- * the matcher are Fuwa's own. New Fuwa code on the shared command manifest.
+ * the matcher are Plumo's own. New Plumo code on the shared command manifest.
  */
 export function CommandMenu({ open, mode, entries, onClose, onRunCommand, onOpenFile }: CommandMenuProps) {
   // Esc and a click outside hand focus back to where it was (the editor); a

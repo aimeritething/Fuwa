@@ -4,9 +4,9 @@
 
 ## 间距 Spacing
 
-有空格：Fuwa 是一个 macOS 上的 Markdown 编辑器，基于 React 和 Tauri 构建。
+有空格：Plumo 是一个 macOS 上的 Markdown 编辑器，基于 React 和 Tauri 构建。
 
-无空格：Fuwa是一个macOS上的Markdown编辑器，基于React和Tauri构建。
+无空格：Plumo是一个macOS上的Markdown编辑器，基于React和Tauri构建。
 
 数字：这个 Folder 里有 128 个 Document，总共 3.6 MB，最早的一篇写于 2019 年 4 月 7 日。
 
@@ -26,7 +26,7 @@
 
 链接：请阅读 [BlockNote 的文档](https://www.blocknotejs.org/docs)，或者查看 [`prosemirror-tables`](https://github.com/ProseMirror/prosemirror-tables) 的源码。
 
-Wikilink：参见 [[Reading list]] 和 [[Projects/Fuwa|Fuwa 项目笔记]]。
+Wikilink：参见 [[Reading list]] 和 [[Projects/Plumo|Plumo 项目笔记]]。
 
 行内公式：当 $n \to \infty$ 时，级数 $\sum_{k=1}^{n} \frac{1}{k^2}$ 收敛到 $\frac{\pi^2}{6}$，这就是 Basel 问题。
 

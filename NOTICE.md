@@ -1,15 +1,15 @@
 # Notice
 
-Fuwa's editing kernel is copied from [Tolaria](https://github.com/refactoringhq/tolaria)
+Plumo's editing kernel is copied from [Tolaria](https://github.com/refactoringhq/tolaria)
 at commit `ee768ac1471b9506b52310c5b063b7a8119def13`.
 
 Copyright (c) Luca Rossi and contributors.
 
 Tolaria is licensed under the GNU Affero General Public License, version 3
-or (at your option) any later version (AGPL-3.0-or-later). Fuwa is
+or (at your option) any later version (AGPL-3.0-or-later). Plumo is
 distributed under the same license; see `LICENSE`.
 
-The copied files have been modified by Fuwa from 2026-09 onwards. The
+The copied files have been modified by Plumo from 2026-09 onwards. The
 original of any copied file is at commit
 `ee768ac1471b9506b52310c5b063b7a8119def13` of
 https://github.com/refactoringhq/tolaria. Ported files carry no per-file

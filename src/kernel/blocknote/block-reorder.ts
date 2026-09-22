@@ -134,7 +134,7 @@ function createDimStyle(
     )),
   ]
   const style = ownerDocument.createElement('style')
-  style.setAttribute('data-fuwa-block-reorder', 'true')
+  style.setAttribute('data-plumo-block-reorder', 'true')
   style.textContent = `${selectors.join(', ')} { opacity: 0.35; }`
   ownerDocument.head.appendChild(style)
   return style

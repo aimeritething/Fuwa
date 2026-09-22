@@ -73,7 +73,7 @@ test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows th
   // a keyboard shortcut ran within the last 150 ms, as it would a native
   // accelerator's echo; the wait keeps this one outside that window.
   await page.waitForTimeout(200)
-  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('view-toggle-sidebar'))
+  await page.evaluate(() => window.__plumoTest?.dispatchBrowserMenuCommand?.('view-toggle-sidebar'))
   await expectExpanded(page)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -100,7 +100,7 @@ test('⌘⇧O with no Folder collapses the sidebar; with a Folder open it leaves
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
   await expectExpanded(page)
 
-  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
+  await page.evaluate(() => window.__plumoTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
   await expect(page.getByRole('tree')).toHaveCount(0)
   await expectExpanded(page)
   await openDocumentThroughDialog(page, WELCOME_PATH)

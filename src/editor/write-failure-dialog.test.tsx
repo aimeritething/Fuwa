@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { WriteFailureDialog } from './write-failure-dialog'
 
-const PATH = '/Users/fuwa/Documents/Notes/Welcome.md'
+const PATH = '/Users/plumo/Documents/Notes/Welcome.md'
 
 describe('WriteFailureDialog', () => {
   it('is absent without a prompt', () => {

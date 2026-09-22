@@ -10,7 +10,7 @@ import {
  * itself becomes an Attachment beside the Document, and the image block points
  * at its asset URL.
  *
- * Fuwa has no toasts, so a format the kernel cannot import is logged and the
+ * Plumo has no toasts, so a format the kernel cannot import is logged and the
  * block is left empty rather than announced.
  */
 export async function uploadEditorImage(

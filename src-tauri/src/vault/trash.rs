@@ -2,7 +2,7 @@ use std::path::Path;
 
 /// Move `path` (a file or a whole folder) to the user's Trash.
 ///
-/// Fuwa never destroys a user's file: every delete in the app is a move to the
+/// Plumo never destroys a user's file: every delete in the app is a move to the
 /// macOS Trash. The `NSFileManager` route is used instead of the crate's
 /// default Finder AppleScript route, so deleting never triggers a "wants to
 /// control Finder" automation prompt.

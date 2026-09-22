@@ -1,5 +1,5 @@
 /**
- * Fuwa ships no telemetry. This module keeps the kernel's path and `trackEvent`
+ * Plumo ships no telemetry. This module keeps the kernel's path and `trackEvent`
  * signature so call sites and the kernel's `vi.mock('./telemetry')` calls
  * resolve; every event is dropped on the floor.
  */

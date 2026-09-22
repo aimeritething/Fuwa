@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// Type-only: brings the browser menu bridge's `window.__fuwaTest` declaration into the spec program.
+// Type-only: brings the browser menu bridge's `window.__plumoTest` declaration into the spec program.
 import type {} from '../../src/shell/use-menu-events'
 import {
   MOCK_FOLDER,
@@ -19,19 +19,19 @@ import {
 // app-quit menu command, which the browser bridge dispatches here.
 
 const AUTOSAVE_IDLE_MS = 1_500
-const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
+const PLUMO_PATH = `${MOCK_FOLDER}/Projects/Plumo.md`
 
 const errorBar = (page: Page) => page.getByTestId('write-failure-bar')
 const dialog = (page: Page) => page.getByRole('dialog')
 const buttonNames = (scope: ReturnType<Page['getByRole']>) => scope.getByRole('button').allTextContents()
 
 const quitCalls = (page: Page) =>
-  page.evaluate(() => window.__fuwaMockVault?.calls.filter((call) => call.command === 'quit_app').length ?? 0)
+  page.evaluate(() => window.__plumoMockVault?.calls.filter((call) => call.command === 'quit_app').length ?? 0)
 
-const storedSession = (page: Page) => page.evaluate(() => window.__fuwaMockVault?.invoke('read_session'))
+const storedSession = (page: Page) => page.evaluate(() => window.__plumoMockVault?.invoke('read_session'))
 
 async function pressQuit(page: Page) {
-  await page.evaluate(() => window.__fuwaTest?.dispatchBrowserMenuCommand?.('app-quit'))
+  await page.evaluate(() => window.__plumoTest?.dispatchBrowserMenuCommand?.('app-quit'))
 }
 
 /** Land one edit, make the Document read-only, then type again so the next write is refused. */
@@ -39,7 +39,7 @@ async function editThenRefuse(page: Page, path: string) {
   await typeAtEnd(page, ' First.')
   await page.keyboard.press('Meta+s')
   await expect.poll(() => savedContent(page, path)).toContain('First.')
-  await page.evaluate((target) => window.__fuwaMockVault?.markReadOnly([target]), path)
+  await page.evaluate((target) => window.__plumoMockVault?.markReadOnly([target]), path)
   await page.waitForTimeout(AUTOSAVE_IDLE_MS)
   await typeAtEnd(page, ' Blocked.')
   await expect(errorBar(page)).toBeVisible({ timeout: AUTOSAVE_IDLE_MS + 3_000 })
@@ -72,7 +72,7 @@ test('Retry writes the file once it is writable again and the bar disappears', a
   await expect(errorBar(page)).toBeVisible()
   expect(await savedContent(page, WELCOME_PATH)).not.toContain('Blocked.')
 
-  await page.evaluate(() => window.__fuwaMockVault?.markReadOnly([]))
+  await page.evaluate(() => window.__plumoMockVault?.markReadOnly([]))
   await errorBar(page).getByRole('button', { name: 'Retry' }).click()
 
   await expect(errorBar(page)).toHaveCount(0)
@@ -132,8 +132,8 @@ test('⌘Q writes the clean Document, asks about the refused one, and Discard an
   await editThenRefuse(page, WELCOME_PATH)
 
   // A second, clean Document with edits younger than the idle wait.
-  await openDocumentThroughDialog(page, FUWA_PATH)
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await openDocumentThroughDialog(page, PLUMO_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await expect(errorBar(page)).toHaveCount(0)
   await typeAtEnd(page, ' Pending at quit.')
   await pressQuit(page)
@@ -141,7 +141,7 @@ test('⌘Q writes the clean Document, asks about the refused one, and Discard an
   await expect(dialog(page)).toBeVisible()
   await expect(dialog(page)).toContainText(`Couldn't save to ${WELCOME_PATH}`)
   expect(await buttonNames(dialog(page))).toEqual(['Retry', 'Discard changes', 'Discard and quit'])
-  expect(await savedContent(page, FUWA_PATH)).toContain('Pending at quit.')
+  expect(await savedContent(page, PLUMO_PATH)).toContain('Pending at quit.')
   expect(await savedContent(page, WELCOME_PATH)).not.toContain('Blocked.')
   expect(await quitCalls(page)).toBe(0)
 
@@ -150,8 +150,8 @@ test('⌘Q writes the clean Document, asks about the refused one, and Discard an
   await expect.poll(() => quitCalls(page)).toBe(1)
   await expect(dialog(page)).toHaveCount(0)
   expect(await storedSession(page)).toMatchObject({
-    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: FUWA_PATH, mode: 'rich' }],
-    activePath: FUWA_PATH,
+    openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: PLUMO_PATH, mode: 'rich' }],
+    activePath: PLUMO_PATH,
   })
   expect(errors.pageErrors).toEqual([])
 })

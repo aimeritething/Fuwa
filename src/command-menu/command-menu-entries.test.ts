@@ -16,7 +16,7 @@ describe('commandMenuCommandEntries', () => {
       'Toggle Sidebar', 'Toggle Rich/Raw', 'Appearance: System', 'Appearance: Dark', 'Appearance: Light',
       'Zoom In', 'Zoom Out', 'Actual Size',
       'Previous Tab', 'Next Tab',
-      // The platform label: `Quit Fuwa` on macOS, `Quit` elsewhere (jsdom is elsewhere).
+      // The platform label: `Quit Plumo` on macOS, `Quit` elsewhere (jsdom is elsewhere).
       expect.stringMatching(/^Quit/),
     ])
     expect(entries.every((entry) => entry.kind === 'command')).toBe(true)
@@ -31,7 +31,7 @@ describe('commandMenuCommandEntries', () => {
     const entries = byId(EVERYTHING)
     expect(entries.get('file-save')).toMatchObject({ detail: 'File', shortcut: expect.stringMatching(/S$/) })
     expect(entries.get('view-appearance-dark')).toMatchObject({ detail: 'View', shortcut: undefined })
-    expect(entries.get('app-quit')).toMatchObject({ detail: 'Fuwa', shortcut: expect.stringMatching(/Q$/) })
+    expect(entries.get('app-quit')).toMatchObject({ detail: 'Plumo', shortcut: expect.stringMatching(/Q$/) })
     expect(entries.get('file-close-vault')?.shortcut).toBeUndefined()
   })
 
@@ -55,18 +55,18 @@ describe('commandMenuCommandEntries', () => {
 })
 
 describe('commandMenuFileEntries', () => {
-  const FOLDER = '/Users/fuwa/Documents/Notes'
+  const FOLDER = '/Users/plumo/Documents/Notes'
   const listing: ListedFile[] = [
     { path: `${FOLDER}/Welcome.md`, kind: 'note', modifiedAt: 1, fileSize: 10 },
     { path: `${FOLDER}/Projects`, kind: 'folder', modifiedAt: 1, fileSize: 0 },
-    { path: `${FOLDER}/Projects/Fuwa.md`, kind: 'note', modifiedAt: 1, fileSize: 10 },
+    { path: `${FOLDER}/Projects/Plumo.md`, kind: 'note', modifiedAt: 1, fileSize: 10 },
     { path: `${FOLDER}/Attachments/lake.png`, kind: 'image', modifiedAt: 1, fileSize: 10 },
   ]
 
   it('turns Documents and Image files into rows, and skips folders', () => {
     expect(commandMenuFileEntries(listing, FOLDER)).toEqual([
       { kind: 'document', id: `${FOLDER}/Welcome.md`, name: 'Welcome.md', detail: 'Notes' },
-      { kind: 'document', id: `${FOLDER}/Projects/Fuwa.md`, name: 'Fuwa.md', detail: 'Notes › Projects' },
+      { kind: 'document', id: `${FOLDER}/Projects/Plumo.md`, name: 'Plumo.md', detail: 'Notes › Projects' },
       { kind: 'image', id: `${FOLDER}/Attachments/lake.png`, name: 'lake.png', detail: 'Notes › Attachments' },
     ])
   })

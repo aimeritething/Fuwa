@@ -37,9 +37,9 @@ export function createRichEditorLinkExtension() {
     inclusive: false,
   }).configure({
     defaultProtocol: 'https',
-    // Fuwa routes editor link clicks through its guarded native opener.
+    // Plumo routes editor link clicks through its guarded native opener.
     openOnClick: false,
-    // Fuwa pre-registers BlockNote's non-native protocols before linkify initializes.
+    // Plumo pre-registers BlockNote's non-native protocols before linkify initializes.
     protocols: [],
     isAllowedUri: (href, { defaultValidate }) => isAllowedLinkHref(href, defaultValidate),
     shouldAutoLink: (url) => shouldAutoLinkHref({ raw: url }),

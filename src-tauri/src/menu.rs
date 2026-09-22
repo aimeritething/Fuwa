@@ -14,7 +14,7 @@ use tauri::{
 };
 
 const APP_COMMAND_MANIFEST_JSON: &str = include_str!("../../src/shell/app-command-manifest.json");
-const APP_NAME: &str = "Fuwa";
+const APP_NAME: &str = "Plumo";
 const NOTE_DEPENDENT_GROUP: &str = "noteDependent";
 const TAB_DEPENDENT_GROUP: &str = "tabDependent";
 const VAULT_DEPENDENT_GROUP: &str = "vaultDependent";
@@ -541,7 +541,7 @@ mod tests {
             items,
             [(
                 Some("app-quit"),
-                Some("Quit Fuwa"),
+                Some("Quit Plumo"),
                 Some("Quit"),
                 Some("CmdOrCtrl+Q")
             )]

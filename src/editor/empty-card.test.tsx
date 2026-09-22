@@ -8,7 +8,7 @@ describe('EmptyCard', () => {
     render(<EmptyCard hasFolder={false} sidebarCollapsed={false} onShowSidebar={vi.fn()} />)
 
     const card = screen.getByTestId('editor-empty-state')
-    expect(card).toHaveTextContent('Fuwa')
+    expect(card).toHaveTextContent('Plumo')
     expect(screen.getAllByTestId('empty-hint').map((hint) => hint.textContent)).toEqual(['⌘Oopen folder'])
   })
 

@@ -2,8 +2,8 @@ import { useEffect } from 'react'
 import { focusEditorWithRetries, type FocusableEditor } from './editor-focus-utils'
 import { resumeEditorFocus } from './editor-focus-ownership'
 
-const TAB_SWAP_EVENT_NAME = 'fuwa:editor-tab-swapped'
-const FOCUS_EVENT_NAME = 'fuwa:focus-editor'
+const TAB_SWAP_EVENT_NAME = 'plumo:editor-tab-swapped'
+const FOCUS_EVENT_NAME = 'plumo:focus-editor'
 const SWAP_WAIT_FALLBACK_MS = 250
 const FOCUS_STABILITY_CHECK_DELAYS_MS = [160, 500, 1_000, 2_000, 4_000] as const
 

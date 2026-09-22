@@ -74,12 +74,12 @@ describe('createMockVault', () => {
     const vault = createMockVault(seed)
     const pokes: unknown[] = []
     const handle = (event: Event) => pokes.push((event as CustomEvent).detail)
-    window.addEventListener('fuwa:open-files', handle)
+    window.addEventListener('plumo:open-files', handle)
 
     try {
       vault.openFromFinder([`${MOCK_VAULT_PATH}/Projects/Plan.md`])
     } finally {
-      window.removeEventListener('fuwa:open-files', handle)
+      window.removeEventListener('plumo:open-files', handle)
     }
 
     expect(pokes).toEqual([[`${MOCK_VAULT_PATH}/Projects/Plan.md`]])

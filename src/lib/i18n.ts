@@ -1,5 +1,5 @@
 /**
- * Fuwa ships one locale. This module keeps the kernel's i18n module path and
+ * Plumo ships one locale. This module keeps the kernel's i18n module path and
  * export names so every call site (and the kernel's tests) resolve unchanged,
  * but the catalog is a single flat English map instead of 22 JSON locales.
  */
@@ -89,7 +89,7 @@ export const EN_TRANSLATIONS = {
   "editor.toolbar.rawOpen": "Open the raw editor",
   "editor.whiteboard.enterFullscreen": "Expand whiteboard",
   "editor.whiteboard.exitFullscreen": "Exit fullscreen whiteboard",
-  "editor.whiteboard.permissionDeniedBody": "Fuwa could not use a desktop capability that this whiteboard needs. Allow the permission in your system settings, then reopen the Document.",
+  "editor.whiteboard.permissionDeniedBody": "Plumo could not use a desktop capability that this whiteboard needs. Allow the permission in your system settings, then reopen the Document.",
   "editor.whiteboard.permissionDeniedTitle": "Whiteboard permission blocked",
   "fileActions.copied.filePath": "File path copied",
   "fileActions.copied.folderPath": "Folder path copied",

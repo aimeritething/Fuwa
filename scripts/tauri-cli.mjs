@@ -1,5 +1,5 @@
 // Thin wrapper around the Tauri CLI: `pnpm tauri dev` runs with the dev
-// overlay config (identifier com.aimerite.fuwa.dev) unless a --config flag
+// overlay config (identifier com.aimerite.plumo.dev) unless a --config flag
 // is passed explicitly. Every other subcommand is forwarded untouched.
 import { spawn } from 'node:child_process'
 import console from 'node:console'

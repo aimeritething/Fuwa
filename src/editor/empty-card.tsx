@@ -24,7 +24,7 @@ export function EmptyCard({ hasFolder, sidebarCollapsed, onShowSidebar }: EmptyC
         {sidebarCollapsed && <CollapsedChrome onShowSidebar={onShowSidebar} />}
       </div>
       <div className="flex flex-1 flex-col items-center justify-center gap-2.5 text-text-muted" data-testid="editor-empty-state">
-        <span className="text-sm font-medium tracking-[-0.01em]">Fuwa</span>
+        <span className="text-sm font-medium tracking-[-0.01em]">Plumo</span>
         <div className="flex gap-5.5 font-mono text-xs tracking-normal">
           {hints.map(([keys, action], index) => (
             <span key={keys} className="flex gap-5.5">

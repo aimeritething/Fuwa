@@ -9,7 +9,7 @@ import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } 
 // ⌘[ brings it back.
 
 const READING_LIST_PATH = `${MOCK_FOLDER}/Reading list.md`
-const FUWA_PATH = `${MOCK_FOLDER}/Projects/Fuwa.md`
+const PLUMO_PATH = `${MOCK_FOLDER}/Projects/Plumo.md`
 
 const tabNames = (page: Page) => page.getByRole('tab').allTextContents()
 const rowNames = (page: Page) => page.getByRole('option').getByTestId('open-editor-name').allTextContents()
@@ -22,8 +22,8 @@ async function openThree(page: Page) {
   await expect(page.getByTestId('open-editors')).toHaveCount(0)
   await openDocumentThroughDialog(page, WELCOME_PATH)
   await openDocumentThroughDialog(page, READING_LIST_PATH)
-  await openDocumentThroughDialog(page, FUWA_PATH)
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await openDocumentThroughDialog(page, PLUMO_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await page.keyboard.press('Meta+BracketLeft')
   await expect(page.getByTestId('sidebar')).toBeVisible()
 }
@@ -32,11 +32,11 @@ test('three Documents give three Tabs and three Open Editors rows, with the acti
   const errors = watchForErrors(page)
   await openThree(page)
 
-  expect(await tabNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Fuwa.md'])
-  expect(await rowNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Fuwa.md'])
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Plumo.md'])
+  expect(await rowNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Plumo.md'])
   expect(await rowParents(page)).toEqual(['Notes', 'Notes', 'Projects'])
-  await expect(activeTab(page)).toHaveText('Fuwa.md')
-  await expect(activeRow(page)).toHaveText('Fuwa.md')
+  await expect(activeTab(page)).toHaveText('Plumo.md')
+  await expect(activeRow(page)).toHaveText('Plumo.md')
   await expect(page.getByTestId('tab-bar')).toHaveCSS('height', '44px')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -49,7 +49,7 @@ test('opening an already-open Document activates its Tab instead of adding one',
 
   await expect(activeTab(page)).toHaveText('Welcome.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
-  expect(await tabNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Fuwa.md'])
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Plumo.md'])
 })
 
 test('closing the middle Tab activates the one to its right, closing the last the one to its left', async ({ page }) => {
@@ -60,12 +60,12 @@ test('closing the middle Tab activates the one to its right, closing the last th
   await page.getByRole('tab', { name: 'Reading list.md' }).hover()
   await page.getByRole('tab', { name: 'Reading list.md' }).getByRole('button', { name: 'Close Reading list.md' }).click()
 
-  expect(await tabNames(page)).toEqual(['Welcome.md', 'Fuwa.md'])
-  await expect(activeTab(page)).toHaveText('Fuwa.md')
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  expect(await tabNames(page)).toEqual(['Welcome.md', 'Plumo.md'])
+  await expect(activeTab(page)).toHaveText('Plumo.md')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
 
-  await page.getByRole('option', { name: 'Fuwa.md' }).hover()
-  await page.getByRole('option', { name: 'Fuwa.md' }).getByRole('button', { name: 'Close Fuwa.md' }).click()
+  await page.getByRole('option', { name: 'Plumo.md' }).hover()
+  await page.getByRole('option', { name: 'Plumo.md' }).getByRole('button', { name: 'Close Plumo.md' }).click()
 
   expect(await tabNames(page)).toEqual(['Welcome.md'])
   await expect(activeTab(page)).toHaveText('Welcome.md')
@@ -80,7 +80,7 @@ test('⌘⇧[ and ⌘⇧] cycle positionally and ⌘2 activates the second Tab',
   await page.keyboard.press('Meta+Shift+[')
   await expect(activeTab(page)).toHaveText('Welcome.md')
   await page.keyboard.press('Meta+Shift+[')
-  await expect(activeTab(page)).toHaveText('Fuwa.md')
+  await expect(activeTab(page)).toHaveText('Plumo.md')
 
   await page.keyboard.press('Meta+Shift+]')
   await expect(activeTab(page)).toHaveText('Welcome.md')

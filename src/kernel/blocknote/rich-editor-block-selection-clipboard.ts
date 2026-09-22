@@ -6,7 +6,7 @@ import {
   type RichEditorBlockSelectionEditor,
 } from './rich-editor-block-selection-types'
 
-export const BLOCK_CLIPBOARD_MIME = 'application/x-fuwa-blocknote-blocks+json'
+export const BLOCK_CLIPBOARD_MIME = 'application/x-plumo-blocknote-blocks+json'
 
 function sanitizeMarkup(markup: string): string {
   return DOMPurify.sanitize(markup)

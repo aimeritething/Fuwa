@@ -59,8 +59,8 @@ export interface BlockNoteDirectMarkdownResult {
 export interface DirectMarkdownCapableSerializer {
   blocksToMarkdownLossy: (blocks: unknown[]) => string
   blocksToMarkdownDirect?: (blocks: unknown[]) => BlockNoteDirectMarkdownResult
-  __fuwaDirectMarkdownCache?: WeakMap<object, Map<string, string>>
-  __fuwaLastDirectMarkdownMetrics?: BlockNoteDirectMarkdownMetrics
+  __plumoDirectMarkdownCache?: WeakMap<object, Map<string, string>>
+  __plumoLastDirectMarkdownMetrics?: BlockNoteDirectMarkdownMetrics
 }
 
 type MarkdownLinePrefix = {
@@ -540,10 +540,10 @@ export function installBlockNoteDirectMarkdown(editor: DirectMarkdownCapableSeri
   if (typeof editor.blocksToMarkdownDirect === 'function') return
 
   const cache = new WeakMap<object, Map<string, string>>()
-  editor.__fuwaDirectMarkdownCache = cache
+  editor.__plumoDirectMarkdownCache = cache
   editor.blocksToMarkdownDirect = (blocks: unknown[]) => {
     const result = blocksToMarkdownDirect(blocks, cache)
-    editor.__fuwaLastDirectMarkdownMetrics = result.metrics
+    editor.__plumoLastDirectMarkdownMetrics = result.metrics
     return result
   }
 }

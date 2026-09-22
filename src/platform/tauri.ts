@@ -28,7 +28,7 @@ export function getMockVault(): MockVault {
 /** Expose the fixture on `window` for the smoke specs. Dev-only, never in Tauri. */
 export function installMockVault(): MockVault {
   const vault = getMockVault()
-  if (typeof window !== 'undefined') window.__fuwaMockVault = vault
+  if (typeof window !== 'undefined') window.__plumoMockVault = vault
   return vault
 }
 

@@ -1,4 +1,4 @@
-export const EDITOR_FIND_AVAILABILITY_EVENT = 'fuwa:editor-find-availability'
+export const EDITOR_FIND_AVAILABILITY_EVENT = 'plumo:editor-find-availability'
 
 interface EditorFindAvailabilityDetail {
   enabled: boolean

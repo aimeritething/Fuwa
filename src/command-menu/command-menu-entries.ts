@@ -27,7 +27,7 @@ export interface CommandMenuState {
   hasTab: boolean
 }
 
-const APP_MENU_LABEL = 'Fuwa'
+const APP_MENU_LABEL = 'Plumo'
 /** Running the Command Menu from inside the Command Menu is noise. */
 const EXCLUDED_COMMAND_IDS = new Set<string>([APP_COMMAND_IDS.viewCommandPalette])
 
@@ -61,7 +61,7 @@ function entriesForMenu(menuLabel: string, items: readonly AppCommandMenuItem[],
   return entries
 }
 
-/** Every menu-bar command as a palette row, in menu order, File through Window and then the Fuwa menu's Quit. */
+/** Every menu-bar command as a palette row, in menu order, File through Window and then the Plumo menu's Quit. */
 export function commandMenuCommandEntries(state: CommandMenuState): CommandMenuEntry[] {
   return [
     ...APP_COMMAND_MENU_SECTIONS.flatMap((section) => entriesForMenu(section.label, section.items, state)),

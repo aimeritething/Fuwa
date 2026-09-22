@@ -33,7 +33,7 @@ import {
   type RichEditorBlockSelectionEditor,
 } from './rich-editor-block-selection-types'
 
-export const RICH_EDITOR_BLOCK_SELECTION_CLASS = 'fuwa-rich-editor-block-selected'
+export const RICH_EDITOR_BLOCK_SELECTION_CLASS = 'plumo-rich-editor-block-selected'
 const RICH_EDITOR_BLOCK_SELECTION_META = 'richEditorBlockSelection'
 
 export const richEditorBlockSelectionPluginKey = new PluginKey<BlockSelectionState | null>(
@@ -556,7 +556,7 @@ function blockSelectionDecorations(state: EditorState): DecorationSet {
 
     decorations.push(Decoration.node(pos, pos + node.nodeSize, {
       class: RICH_EDITOR_BLOCK_SELECTION_CLASS,
-      'data-fuwa-block-selection': mode,
+      'data-plumo-block-selection': mode,
     }))
     return true
   })

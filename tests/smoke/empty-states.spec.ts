@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+// Type-only: brings the fixture's `window.__plumoMockVault` declaration into the spec program.
 import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import {
   MOCK_FOLDER, openDocumentThroughDialog, openFolderThroughDialog, queueFolderSelection, storedSession, watchForErrors, WELCOME_PATH,
@@ -8,7 +8,7 @@ import {
 // An empty window always says what to do next: the four empty states, and
 // the restore that lost its Folder.
 
-const GONE_FOLDER = '/Users/fuwa/Documents/Gone'
+const GONE_FOLDER = '/Users/plumo/Documents/Gone'
 
 const hints = (page: Page) => page.getByTestId('empty-hint').allTextContents()
 
@@ -23,7 +23,7 @@ test('a fresh install shows the No-Folder state: the indigo button, the one hint
   await expect(button).toBeVisible()
   await expect(button).toHaveCSS('background-color', 'rgb(94, 105, 209)')
   await expect(page.getByTestId('explorer-folder-missing')).toHaveCount(0)
-  await expect(page.getByTestId('editor-empty-state')).toContainText('Fuwa')
+  await expect(page.getByTestId('editor-empty-state')).toContainText('Plumo')
   expect(await hints(page)).toEqual(['⌘Oopen folder'])
   await expect(page.getByTestId('empty-hint')).toHaveCSS('font-family', /JetBrains Mono/)
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
@@ -72,7 +72,7 @@ test('a relaunch whose Folder is gone says so above the button, writes folder: n
   const errors = watchForErrors(page)
   await page.goto('/')
   await page.evaluate(([folder, welcome]) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
+    const vault: MockVault | undefined = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     vault.seedSession({
       version: 1,

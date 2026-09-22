@@ -107,7 +107,7 @@ describe('PathRow', () => {
     })
 
     it('shows Copy path, then the control, on a Document Tab', () => {
-      renderWithTooltips(<PathRow filename="Fuwa.md" mode={richMode()} onCopyPath={vi.fn()} />)
+      renderWithTooltips(<PathRow filename="Plumo.md" mode={richMode()} onCopyPath={vi.fn()} />)
 
       const slot = screen.getByTestId('path-row-actions')
       const order = Array.from(slot.querySelectorAll('[data-testid]')).map((child) => child.getAttribute('data-testid'))

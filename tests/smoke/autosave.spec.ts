@@ -70,7 +70,7 @@ test('a refused write is reported, keeps the buffer and leaves the file alone', 
   await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('First.')
   const written = await savedContent(page, WELCOME_PATH)
 
-  await page.evaluate((path) => window.__fuwaMockVault?.markReadOnly([path]), WELCOME_PATH)
+  await page.evaluate((path) => window.__plumoMockVault?.markReadOnly([path]), WELCOME_PATH)
   await page.waitForTimeout(AUTOSAVE_IDLE_MS)
   await typeAtEnd(page, ' Blocked.')
   await expect.poll(() => saveCalls(page), { timeout: AUTOSAVE_IDLE_MS + 3_000 }).toHaveLength(2)
@@ -79,7 +79,7 @@ test('a refused write is reported, keeps the buffer and leaves the file alone', 
   expect(errors.consoleErrors.some((text) => text.includes('Could not save'))).toBe(true)
 
   // The buffer survived: once the path is writable again, ⌘S lands it.
-  await page.evaluate(() => window.__fuwaMockVault?.markReadOnly([]))
+  await page.evaluate(() => window.__plumoMockVault?.markReadOnly([]))
   await page.keyboard.press('Meta+s')
   await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('Blocked.')
   expect(await savedContent(page, WELCOME_PATH)).toContain('First.')
@@ -93,10 +93,10 @@ test('opening another Document first writes the pending edits of the current one
 
   // Within the idle wait, before anything has been written, switch Documents.
   expect(await saveCalls(page)).toEqual([])
-  await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Projects/Fuwa.md`)
+  await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Projects/Plumo.md`)
 
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
-  await expect(page.getByTestId('path-row')).toContainText('Fuwa.md')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
+  await expect(page.getByTestId('path-row')).toContainText('Plumo.md')
   await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('Pending.')
   const [call] = await saveCalls(page)
   expect(call.args).toMatchObject({ path: WELCOME_PATH, vaultPath: MOCK_FOLDER })

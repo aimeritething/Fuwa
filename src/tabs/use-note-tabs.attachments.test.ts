@@ -29,12 +29,12 @@ describe('useNoteTabs Attachments', () => {
     const { result } = renderHook(() => useNoteTabs())
 
     await act(async () => {
-      await result.current.openNote('/Users/fuwa/Notes/Plan.md')
+      await result.current.openNote('/Users/plumo/Notes/Plan.md')
     })
 
     expect(commands).toEqual(['sync_vault_asset_scope_for_window', 'get_note_content'])
     expect(runtime.invoke).toHaveBeenCalledWith('sync_vault_asset_scope_for_window', {
-      vaultPath: '/Users/fuwa/Notes',
+      vaultPath: '/Users/plumo/Notes',
     })
   })
 
@@ -49,7 +49,7 @@ describe('useNoteTabs Attachments', () => {
       const { result } = renderHook(() => useNoteTabs())
 
       await act(async () => {
-        await result.current.openNote('/Users/fuwa/Notes/Plan.md')
+        await result.current.openNote('/Users/plumo/Notes/Plan.md')
       })
 
       expect(result.current.activeTab?.content).toBe('# Plan\n')

@@ -1,4 +1,4 @@
-export const RICH_EDITOR_EXTERNAL_CHANGE_EVENT = 'fuwa:rich-editor-external-change'
+export const RICH_EDITOR_EXTERNAL_CHANGE_EVENT = 'plumo:rich-editor-external-change'
 
 export type RichEditorExternalChangeSource = object
 

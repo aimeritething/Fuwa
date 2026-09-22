@@ -9,7 +9,7 @@ import {
 } from './rich-editor-keyboard'
 
 const COMPOSITION_SETTLE_WINDOW_MS = 500
-const SAFARI_IME_DOM_PRESERVER_ATTRIBUTE = 'data-fuwa-ime-dom-preserver'
+const SAFARI_IME_DOM_PRESERVER_ATTRIBUTE = 'data-plumo-ime-dom-preserver'
 
 function isEnterKey(event: KeyboardEvent): boolean {
   return event.key === 'Enter'

@@ -28,7 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/ui/tooltip'
 import { installTldrawTextMeasurementGuard } from './tldraw-text-measurement-guard'
 
 const EMPTY_TLDRAW_TRANSLATION_URL = 'data:application/json;base64,e30K'
-const TLDRAW_USER_ID = 'fuwa-whiteboard'
+const TLDRAW_USER_ID = 'plumo-whiteboard'
 
 // The three resize handles: bare buttons at the board's edges, gone in fullscreen.
 const RESIZE_HANDLE_CLASS = 'absolute z-raised touch-none border-0 bg-transparent p-0 group-data-fullscreen:hidden'

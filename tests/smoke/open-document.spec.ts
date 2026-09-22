@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-// Type-only: brings the fixture's `window.__fuwaMockVault` declaration into the spec program.
+// Type-only: brings the fixture's `window.__plumoMockVault` declaration into the spec program.
 import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
@@ -22,7 +22,7 @@ test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ p
   await expect(page.getByTestId('editor-empty-state')).toHaveCount(0)
 
   const readCalls = await page.evaluate(() =>
-    window.__fuwaMockVault?.calls.filter((call) => call.command === 'get_note_content') ?? [],
+    window.__plumoMockVault?.calls.filter((call) => call.command === 'get_note_content') ?? [],
   )
   expect(readCalls).toEqual([
     { command: 'get_note_content', args: { path: WELCOME_PATH, vaultPath: MOCK_FOLDER } },
@@ -92,7 +92,7 @@ test('a Document using every dialect feature renders in Rich mode without consol
   const errors = watchForErrors(page)
   await page.goto('/')
   await page.evaluate(([path, content]) => {
-    const vault: MockVault | undefined = window.__fuwaMockVault
+    const vault: MockVault | undefined = window.__plumoMockVault
     if (!vault) throw new Error('The Folder fixture is not installed')
     vault.writeNote(path, content)
     vault.queueDialogSelection([path])

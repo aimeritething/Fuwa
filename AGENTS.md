@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Fuwa is a small macOS desktop app (React + Tauri) for reading and editing Markdown
+Plumo is a small macOS desktop app (React + Tauri) for reading and editing Markdown
 Documents in a Folder on disk. Names follow the glossary in `CONTEXT.md`; read the
 `docs/adr/` entries that touch the area you change. Issues: `docs/agents/issue-tracker.md`.
 
@@ -17,7 +17,7 @@ Documents in a Folder on disk. Names follow the glossary in `CONTEXT.md`; read t
   imports `folder/`, never the reverse.
 - `shell/` — sidebar, theme, shortcuts, menu events. `app-command-manifest.json` is also
   read by `src-tauri/src/menu.rs`.
-- `ui/` — shadcn primitives regenerated from the templates with Fuwa's values.
+- `ui/` — shadcn primitives regenerated from the templates with Plumo's values.
 - `platform/` — `tauri.ts` and `mock/`, the in-memory Folder fixture that stands in for
   Rust outside Tauri (so `pnpm dev` and the smoke specs run without it).
 - `src-tauri/` — the Rust side: commands, the Folder watcher, the Session file, the menu.
@@ -32,7 +32,7 @@ Playwright specs (`pnpm smoke`, manual; its `README.md` describes the fixture).
 ## Commands
 
 Scripts are in `package.json`. `pnpm tauri dev` runs the full app under a dev identifier
-so it never collides with an installed Fuwa; `pnpm dev` runs the frontend alone against the
+so it never collides with an installed Plumo; `pnpm dev` runs the frontend alone against the
 mock fixture.
 
 Before calling work done, run what CI runs: `pnpm tsc`, `pnpm lint`, `pnpm test`, and in

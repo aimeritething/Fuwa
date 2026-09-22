@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { copyLocalPath } from '@/platform/url'
 
 /**
- * What Fuwa says through Sonner: a refused Explorer operation, and Copy
+ * What Plumo says through Sonner: a refused Explorer operation, and Copy
  * path landing or failing. Each says what happened and goes away on its own;
  * nothing here is ever answered, which is why a Write failure is a different
  * thing entirely. A toast's id names the event, so the same event again

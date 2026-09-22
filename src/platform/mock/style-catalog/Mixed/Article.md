@@ -59,7 +59,7 @@ Map 的初始内容叫 seed。默认的 seed 只有几个很小的文件，够�
 
 ```ts
 await page.evaluate((path) => {
-  window.__fuwaMockVault?.reset([
+  window.__plumoMockVault?.reset([
     { path, kind: 'note', content: '# Draft\n', modifiedAt: 1_757_500_000, fileSize: 8 },
   ])
 }, `${MOCK_FOLDER}/Draft.md`)

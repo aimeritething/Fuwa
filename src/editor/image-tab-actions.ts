@@ -1,7 +1,7 @@
 import { openLocalFile } from '@/platform/url'
 
 /**
- * The Image Tab's hand-off. Fuwa shows a picture and never edits it, so the
+ * The Image Tab's hand-off. Plumo shows a picture and never edits it, so the
  * path row's job is to get the file to an app that can: Open ↗ through the
  * carried open-externally command, which the Rust boundary confines to the
  * given root. It is not a manifest command; it exists only here. Copy path is

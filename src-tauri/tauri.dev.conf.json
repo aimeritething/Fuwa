@@ -1,4 +1,4 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "identifier": "com.aimerite.fuwa.dev"
+  "identifier": "com.aimerite.plumo.dev"
 }

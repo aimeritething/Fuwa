@@ -7,7 +7,7 @@ const ENTRIES: CommandMenuEntry[] = [
   { kind: 'command', id: 'file-save', name: 'Save', detail: 'File', shortcut: '⌘S', enabled: false },
   { kind: 'command', id: 'view-toggle-sidebar', name: 'Toggle Sidebar', detail: 'View', shortcut: '⌘[' },
   { kind: 'command', id: 'edit-toggle-raw-editor', name: 'Toggle Rich/Raw', detail: 'View', shortcut: '⌘\\' },
-  { kind: 'document', id: '/Notes/Projects/Fuwa.md', name: 'Fuwa.md', detail: 'Notes › Projects' },
+  { kind: 'document', id: '/Notes/Projects/Plumo.md', name: 'Plumo.md', detail: 'Notes › Projects' },
   { kind: 'document', id: '/Notes/Welcome.md', name: 'Welcome.md', detail: 'Notes' },
   { kind: 'image', id: '/Notes/Attachments/lake.png', name: 'lake.png', detail: 'Notes › Attachments' },
 ]
@@ -64,10 +64,10 @@ describe('CommandMenu', () => {
     expect(rowNames()).toEqual(['Toggle Sidebar', 'Toggle Rich/Raw'])
     expect(within(rows()[0]).getByTestId('command-menu-row-name').querySelector('mark')).toHaveTextContent('Tog')
 
-    fireEvent.change(input(), { target: { value: 'fuwa' } })
-    const [fuwa] = rows()
-    expect(within(fuwa).getByTestId('command-menu-row-type')).toHaveTextContent('Document')
-    expect(within(fuwa).getByTestId('command-menu-row-detail')).toHaveTextContent('Notes › Projects')
+    fireEvent.change(input(), { target: { value: 'plumo' } })
+    const [plumo] = rows()
+    expect(within(plumo).getByTestId('command-menu-row-type')).toHaveTextContent('Document')
+    expect(within(plumo).getByTestId('command-menu-row-detail')).toHaveTextContent('Notes › Projects')
 
     fireEvent.change(input(), { target: { value: 'lake' } })
     expect(within(rows()[0]).getByTestId('command-menu-row-type')).toHaveTextContent('Image')
@@ -76,7 +76,7 @@ describe('CommandMenu', () => {
   it('Quick Open mode lists files only and never a command', () => {
     renderMenu({ mode: 'files' })
     expect(screen.getByTestId('command-menu')).toHaveAttribute('data-mode', 'files')
-    expect(rowNames()).toEqual(['Fuwa.md', 'lake.png', 'Welcome.md'])
+    expect(rowNames()).toEqual(['lake.png', 'Plumo.md', 'Welcome.md'])
 
     fireEvent.change(input(), { target: { value: 'tog' } })
     expect(screen.queryAllByTestId('command-menu-row')).toEqual([])
@@ -121,13 +121,14 @@ describe('CommandMenu', () => {
 
   it('↵ opens the selected file, ⌘↵ opens a Document in Raw and an Image file plainly', () => {
     const { props } = renderMenu({ mode: 'files' })
+    fireEvent.keyDown(input(), { key: 'ArrowDown' })
     fireEvent.keyDown(input(), { key: 'Enter' })
-    expect(props.onOpenFile).toHaveBeenLastCalledWith('/Notes/Projects/Fuwa.md', { raw: false })
+    expect(props.onOpenFile).toHaveBeenLastCalledWith('/Notes/Projects/Plumo.md', { raw: false })
 
     fireEvent.keyDown(input(), { key: 'Enter', metaKey: true })
-    expect(props.onOpenFile).toHaveBeenLastCalledWith('/Notes/Projects/Fuwa.md', { raw: true })
+    expect(props.onOpenFile).toHaveBeenLastCalledWith('/Notes/Projects/Plumo.md', { raw: true })
 
-    fireEvent.keyDown(input(), { key: 'ArrowDown' })
+    fireEvent.keyDown(input(), { key: 'ArrowUp' })
     fireEvent.keyDown(input(), { key: 'Enter', metaKey: true })
     expect(props.onOpenFile).toHaveBeenLastCalledWith('/Notes/Attachments/lake.png', { raw: false })
   })

@@ -32,7 +32,7 @@ notes/
   journal/
     2026-09.md
   projects/
-    fuwa.md
+    plumo.md
     garden.md
   attachments/
     garden-plan.png

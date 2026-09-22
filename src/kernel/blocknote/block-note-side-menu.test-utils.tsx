@@ -328,7 +328,7 @@ export function placeEditorInScrollArea(scrollTop: number) {
 }
 
 export function collapsedSectionStyleText() {
-  return Array.from(document.head.querySelectorAll('style[data-fuwa-collapsed-sections]'))
+  return Array.from(document.head.querySelectorAll('style[data-plumo-collapsed-sections]'))
     .map((styleElement) => styleElement.textContent ?? '')
     .join('\n')
 }
@@ -464,7 +464,7 @@ export function cleanupSideMenuTest() {
   cleanup()
   document.elementsFromPoint = originalElementsFromPoint
   document.body.innerHTML = ''
-  document.head.querySelectorAll('style[data-fuwa-collapsed-sections]')
+  document.head.querySelectorAll('style[data-plumo-collapsed-sections]')
     .forEach((styleElement) => {
       styleElement.remove()
     })

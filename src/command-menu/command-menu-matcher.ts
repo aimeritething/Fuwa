@@ -1,6 +1,6 @@
 /**
  * The Command Menu's matcher: pure ranking over the
- * rows the palette can show. New Fuwa code. Names only: a Document matches by its file name, an Image file by
+ * rows the palette can show. New Plumo code. Names only: a Document matches by its file name, an Image file by
  * its file name, a command by its menu label. Contents and parent paths are
  * never searched.
  *

@@ -32,15 +32,15 @@ test('Quick Open finds a Document by name, shows files only, and ↵ opens it', 
   await expect(input(page)).toBeFocused()
   // Every file in the Folder, by name, and not one command. The style catalog's
   // files are listed too; what they are called is not this spec's business.
-  await expect(rowNames(page).filter({ hasText: /^(Fuwa\.md|lake\.png|Reading list\.md|Welcome\.md)$/ })).toHaveCount(4)
+  await expect(rowNames(page).filter({ hasText: /^(Plumo\.md|lake\.png|Reading list\.md|Welcome\.md)$/ })).toHaveCount(4)
   await expect(page.getByTestId('command-menu-row-type').filter({ hasText: 'Command' })).toHaveCount(0)
 
-  await page.keyboard.type('fuw')
+  await page.keyboard.type('plu')
 
   const row = rows(page).first()
   await expect(rows(page)).toHaveCount(1)
-  await expect(row.getByTestId('command-menu-row-name')).toHaveText('Fuwa.md')
-  await expect(row.locator('mark')).toHaveText('Fuw')
+  await expect(row.getByTestId('command-menu-row-name')).toHaveText('Plumo.md')
+  await expect(row.locator('mark')).toHaveText('Plu')
   await expect(row.getByTestId('command-menu-row-detail')).toHaveText('Notes › Projects')
   await expect(row.getByTestId('command-menu-row-type')).toHaveText('Document')
   await expect(page.getByTestId('command-menu-footer')).toHaveText('↵ open · ⌘↵ open in Raw · esc close')
@@ -49,7 +49,7 @@ test('Quick Open finds a Document by name, shows files only, and ↵ opens it', 
   await page.keyboard.press('Enter')
 
   await expect(palette(page)).toHaveCount(0)
-  await expect(page.locator('.bn-editor h1')).toHaveText('Fuwa')
+  await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   await expect(page.getByRole('radio', { name: 'Rich' })).toBeChecked()
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -106,7 +106,7 @@ test('⌘↵ opens a Document in Raw, and plainly opens an Image file', async ({
   await openFolder(page)
 
   await page.keyboard.press('Meta+k')
-  await page.keyboard.type('fuwa')
+  await page.keyboard.type('plumo')
   await page.keyboard.press('Meta+Enter')
 
   await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible()
@@ -187,7 +187,7 @@ test('⌘F opens find in Rich mode and in Raw mode', async ({ page }) => {
   await expect(richFind).toBeFocused()
   await page.keyboard.type('welcome')
   await expect(page.getByTestId('rich-editor-find-count')).toHaveText('1 / 1')
-  await expect(page.locator('.bn-editor .fuwa-rich-find-match--active')).toHaveText('Welcome')
+  await expect(page.locator('.bn-editor .plumo-rich-find-match--active')).toHaveText('Welcome')
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('rich-editor-find-bar')).toHaveCount(0)
 

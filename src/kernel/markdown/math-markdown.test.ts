@@ -29,7 +29,7 @@ describe('math markdown round-trip', () => {
   it('keeps math placeholder payloads inert for Markdown parsing', () => {
     const preprocessed = preProcessMathMarkdown({ markdown: 'Spacing math $x + y ~ z$ stays math.' })
 
-    expect(preprocessed).toContain('@@FUWA_MATH_INLINE:')
+    expect(preprocessed).toContain('@@PLUMO_MATH_INLINE:')
     expect(preprocessed).not.toContain('~@@')
   })
 
@@ -38,7 +38,7 @@ describe('math markdown round-trip', () => {
       markdown: 'Compute $2+2$, inspect $x_i$, simplify $2x$, and render $\\frac{a}{b}$.',
     })
 
-    expect(preprocessed.match(/@@FUWA_MATH_INLINE:/g)).toHaveLength(4)
+    expect(preprocessed.match(/@@PLUMO_MATH_INLINE:/g)).toHaveLength(4)
   })
 
   it('keeps finance suffix amounts literal even when they are compact', () => {

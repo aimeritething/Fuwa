@@ -9,7 +9,7 @@ import { clampEditorFindIndex, findEditorMatches, type EditorFindOptions } from 
 /**
  * Find in the current Document, Rich mode (⌘F works in both modes). Raw
  * mode has the kernel's CodeMirror find bar; Rich mode has nothing
- * carried, so this is new Fuwa code: the matcher walks the ProseMirror
+ * carried, so this is new Plumo code: the matcher walks the ProseMirror
  * document one textblock at a time and a plugin decorates the matches. The
  * query semantics (case, regex, the safe-regex guard) are the Raw bar's, from
  * `editorFind`, so both surfaces read a query the same way.
@@ -38,10 +38,10 @@ export interface RichFindResult {
   error: string | null
 }
 
-export const richFindPluginKey = new PluginKey<RichFindPluginState>('fuwaRichEditorFind')
+export const richFindPluginKey = new PluginKey<RichFindPluginState>('plumoRichEditorFind')
 
-export const RICH_FIND_MATCH_CLASS = 'fuwa-rich-find-match'
-export const RICH_FIND_ACTIVE_MATCH_CLASS = 'fuwa-rich-find-match--active'
+export const RICH_FIND_MATCH_CLASS = 'plumo-rich-find-match'
+export const RICH_FIND_ACTIVE_MATCH_CLASS = 'plumo-rich-find-match--active'
 
 /**
  * Stands in for an inline node that is not text (an image, an inline math
@@ -171,6 +171,6 @@ export function createRichEditorFindPlugin(): Plugin<RichFindPluginState> {
 
 /** The BlockNote extension that mounts the plugin into the Rich editor. */
 export const createRichEditorFindExtension = createExtension(() => ({
-  key: 'fuwaRichEditorFind',
+  key: 'plumoRichEditorFind',
   prosemirrorPlugins: [createRichEditorFindPlugin()],
 }))

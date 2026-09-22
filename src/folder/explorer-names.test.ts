@@ -18,7 +18,7 @@ function listed(path: string, kind: ListedFile['kind']): ListedFile {
 const TREE = buildExplorerTree(FOLDER, [
   listed('Welcome.md', 'note'),
   listed('Projects', 'folder'),
-  listed('Projects/Fuwa.md', 'note'),
+  listed('Projects/Plumo.md', 'note'),
   listed('Projects/lake.png', 'image'),
 ])
 
@@ -32,7 +32,7 @@ describe('creationParentPath', () => {
   })
 
   it('puts a new Document in the parent of a selected Document', () => {
-    expect(creationParentPath(TREE, `${FOLDER}/Projects/Fuwa.md`)).toBe(`${FOLDER}/Projects`)
+    expect(creationParentPath(TREE, `${FOLDER}/Projects/Plumo.md`)).toBe(`${FOLDER}/Projects`)
   })
 
   it('puts a new Document in the parent of a selected Image file', () => {
@@ -73,11 +73,11 @@ describe('nextAvailableName', () => {
 
 describe('siblingNames', () => {
   it('lists the names beside a path, leaving the path itself out', () => {
-    expect(siblingNames(TREE, `${FOLDER}/Projects/Fuwa.md`)).toEqual(['lake.png'])
+    expect(siblingNames(TREE, `${FOLDER}/Projects/Plumo.md`)).toEqual(['lake.png'])
   })
 
   it('lists every name in a folder when nothing is excluded', () => {
-    expect(siblingNames(TREE, `${FOLDER}/Projects`, { of: 'children' }).sort()).toEqual(['Fuwa.md', 'lake.png'])
+    expect(siblingNames(TREE, `${FOLDER}/Projects`, { of: 'children' }).sort()).toEqual(['Plumo.md', 'lake.png'])
   })
 })
 

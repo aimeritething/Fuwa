@@ -60,7 +60,7 @@ Look at cell padding, the header row, borders, how wide tables scroll, and how l
 | Document | Related |
 | --- | --- |
 | [[Welcome]] | [[Reading list]] |
-| [[Projects/Fuwa\|Fuwa]] | [[Welcome\|the welcome note]] |
+| [[Projects/Plumo\|Plumo]] | [[Welcome\|the welcome note]] |
 
 ## Empty cells
 

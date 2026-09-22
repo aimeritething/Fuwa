@@ -87,7 +87,7 @@ describe('SingleEditorView interactions', () => {
     mockOpenLocalFile.mockClear()
     document.documentElement.removeAttribute('data-theme')
     document.documentElement.classList.remove('dark')
-    delete window.__fuwaTest
+    delete window.__plumoTest
   })
 
   it('copies selected fenced code text without markdown escape backslashes', async () => {

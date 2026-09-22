@@ -1,5 +1,5 @@
 const TOOLTIP_RECOVERY_BOUNDARY_NAME = 'TooltipBoundary'
-const RECOVERED_TOOLTIP_ERROR_MARK = '__fuwaRecoveredTooltipError'
+const RECOVERED_TOOLTIP_ERROR_MARK = '__plumoRecoveredTooltipError'
 
 type MarkedRecoveredTooltipError = Error & {
   [RECOVERED_TOOLTIP_ERROR_MARK]?: true
