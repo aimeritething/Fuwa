@@ -29,7 +29,7 @@ export function EmptyCard({ hasFolder, sidebarCollapsed, onShowSidebar }: EmptyC
           {hints.map(([keys, action], index) => (
             <span key={keys} className="flex gap-5.5">
               {index > 0 && <span aria-hidden="true">·</span>}
-              <span data-testid="empty-hint"><b className="mr-1.5 font-normal text-text-secondary">{keys}</b>{action}</span>
+              <span className="text-text-tertiary" data-testid="empty-hint"><b className="mr-1.5 font-normal text-text-secondary">{keys}</b>{action}</span>
             </span>
           ))}
         </div>

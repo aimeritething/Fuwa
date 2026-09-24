@@ -3,7 +3,8 @@ import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // The shape of the token contract, read from the stylesheets as text. Colour
-// values are not asserted here; the appearance baseline holds those.
+// values are asserted only for the neutral theme's fixed points (no indigo, the
+// accent, the link blue, the faces); the appearance baseline holds the rest.
 
 const SRC = join(process.cwd(), 'src')
 const appCss = readFileSync(join(SRC, 'index.css'), 'utf8')
@@ -102,5 +103,23 @@ describe('literal colours', () => {
       const hit = text.match(literal)
       expect(hit ? `${name}: ${hit[0]}` : null).toBeNull()
     }
+  })
+})
+
+describe('the neutral theme', () => {
+  it('has no indigo: the accent is near-black in light, and blue is only the link', () => {
+    expect(appCss).not.toMatch(/#6d78d5|#5e69d1|#5e6ad2/i)
+    expect(light['--accent-base']).toBe('#171717')
+    expect(light['--text-link']).toBe('#2563eb')
+    const blue = Object.entries(light).filter(([, value]) => /#2563eb/i.test(value)).map(([name]) => name)
+    expect(blue).toEqual(['--text-link'])
+  })
+
+  it('sets both the UI and the Document in the system face, with JetBrains Mono for code and no Inter', () => {
+    const bridge = declarations(bridgeBlock.body)
+    expect(bridge['--font-sans']).toMatch(/^system-ui,/)
+    expect(bridge['--font-mono']).toMatch(/^'JetBrains Mono Variable'/)
+    expect(appCss).toMatch(/--editor-font-family:\s*var\(--font-sans\);/)
+    expect(appCss).not.toMatch(/'Inter|fontsource-variable\/inter/)
   })
 })
