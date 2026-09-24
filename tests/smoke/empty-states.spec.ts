@@ -28,7 +28,7 @@ test('a fresh install shows the No-Folder state: the near-black button, the one 
   await expect(page.getByTestId('empty-hint')).toHaveCSS('font-family', /^system-ui/)
   await expect(page.getByTestId('empty-hint').locator('kbd')).toHaveCSS('font-family', /JetBrains Mono/)
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect(page.getByTestId('pinned')).toHaveCount(0)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
@@ -42,7 +42,7 @@ test('clicking Open Folder ⌘O opens the dialog, and the Folder-open-no-Tab sta
 
   await expect(page.getByRole('tree')).toBeVisible()
   await expect(page.getByTestId('explorer-no-folder')).toHaveCount(0)
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect(page.getByTestId('pinned')).toHaveCount(0)
   expect(await hints(page)).toEqual(['⌘NNew document', '⌘PQuick Open'])
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
   expect(errors.pageErrors).toEqual([])
