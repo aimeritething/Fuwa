@@ -112,6 +112,8 @@ test('⌘↵ opens a Document in Raw, and plainly opens an Image file', async ({
   await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible()
   await expect(page.getByRole('radio', { name: 'Raw' })).toBeChecked()
   await expect(page.locator('.bn-editor')).toHaveCount(0)
+  // The palette stays mounted through its exit animation; ⌘P before it has gone would reopen it with "plumo" still typed.
+  await expect(palette(page)).toHaveCount(0)
 
   await page.keyboard.press('Meta+p')
   await page.keyboard.type('lake')
