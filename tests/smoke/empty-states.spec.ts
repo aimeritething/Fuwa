@@ -12,7 +12,7 @@ const GONE_FOLDER = '/Users/plumo/Documents/Gone'
 
 const hints = (page: Page) => page.getByTestId('empty-hint').allTextContents()
 
-test('a fresh install shows the No-Folder state: the indigo button, the one hint, no tab bar and no path row', async ({ page }) => {
+test('a fresh install shows the No-Folder state: the near-black button, the one hint, no tab bar and no path row', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
 
@@ -21,7 +21,7 @@ test('a fresh install shows the No-Folder state: the indigo button, the one hint
   await expect(block).toContainText('or drop a .md file onto the window')
   const button = page.getByRole('button', { name: 'Open Folder ⌘O' })
   await expect(button).toBeVisible()
-  await expect(button).toHaveCSS('background-color', 'rgb(94, 105, 209)')
+  await expect(button).toHaveCSS('background-color', 'rgb(23, 23, 23)')
   await expect(page.getByTestId('explorer-folder-missing')).toHaveCount(0)
   await expect(page.getByTestId('editor-empty-state')).toContainText('Plumo')
   expect(await hints(page)).toEqual(['⌘Oopen folder'])
