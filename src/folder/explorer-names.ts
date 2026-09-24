@@ -50,7 +50,7 @@ function findNode(root: ExplorerNode, path: string): ExplorerNode | null {
 
 /**
  * Where a new Document or folder lands, one rule for ⌘N, the header "+" and
- * the context menu: a folder or the root row takes it inside, a Document or
+ * the context menu: a folder (or the Folder itself) takes it inside, a Document or
  * Image file row takes it into its parent, and nothing selected means the
  * Folder root.
  */

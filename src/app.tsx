@@ -98,7 +98,7 @@ export default function App() {
     restoreOpenEditors,
   } = useNoteTabs(folder, folderState.listsFile)
   const appearance = useAppearance()
-  const { sidebar, toggle: toggleSidebar, collapse: collapseSidebar, setWidth: setSidebarWidth, toggleSection: toggleSidebarSection, restore: restoreSidebar } = useSidebar()
+  const { sidebar, toggle: toggleSidebar, collapse: collapseSidebar, setWidth: setSidebarWidth, toggleSection: toggleSidebarSection, openSection: openSidebarSection, restore: restoreSidebar } = useSidebar()
   const pinned = usePinned(folder, folderState.files)
   const { restored } = useSession({
     folder,
@@ -291,6 +291,8 @@ export default function App() {
     openExplorerFile(path)
   }, [openExplorerFile, selectExplorerRow])
   const onTogglePinnedSection = useCallback(() => toggleSidebarSection('pinned'), [toggleSidebarSection])
+  const onToggleExplorerSection = useCallback(() => toggleSidebarSection('explorer'), [toggleSidebarSection])
+  const onOpenExplorerSection = useCallback(() => openSidebarSection('explorer'), [openSidebarSection])
 
   // Held here, above the sidebar, because collapsing the sidebar unmounts the Explorer.
   const explorerMemory = useExplorerMemory(folder)
@@ -504,6 +506,9 @@ export default function App() {
           onOpenFolder={onOpenFolder}
           error={folderState.error}
           pins={pinned}
+          collapsed={sidebar.collapsedSections?.includes('explorer') ?? false}
+          onToggleCollapsed={onToggleExplorerSection}
+          onExpand={onOpenExplorerSection}
         />
       </Sidebar>
       )}

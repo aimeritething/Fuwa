@@ -11,7 +11,7 @@ async function openFolder(page: Page) {
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), MOCK_FOLDER)
   await page.keyboard.press('Meta+o')
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}`)).toBeVisible()
+  await expect(page.getByTestId('explorer-toggle')).toHaveAttribute('title', MOCK_FOLDER)
 }
 
 function folderPaths(page: Page): Promise<string[]> {
@@ -112,6 +112,19 @@ test('dragging a Document onto a folder moves it, and its Tab follows without a 
   // and it is still the selected row.
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Welcome.md`).locator('..'))
     .toHaveAttribute('aria-selected', 'true')
+})
+
+test("dragging a Document onto the Folder's name moves it to the top level", async ({ page }) => {
+  await openFolder(page)
+  await page.getByRole('button', { name: 'Expand Projects' }).click()
+
+  await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`)
+    .dragTo(page.getByTestId('explorer-header'))
+
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Plumo.md`)).toBeVisible()
+  const paths = await folderPaths(page)
+  expect(paths).toContain(`${MOCK_FOLDER}/Plumo.md`)
+  expect(paths).not.toContain(`${MOCK_FOLDER}/Projects/Plumo.md`)
 })
 
 test('a name the folder already holds refuses the move and says so', async ({ page }) => {

@@ -13,7 +13,7 @@ describe('parseSession', () => {
       openEditors: [{ path: A, mode: 'rich' }, { path: '/Users/x/notes/cover.png' }],
       activePath: A,
       theme: 'dark',
-      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned'] },
+      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned', 'explorer'] },
       pinned: { '/Users/x/notes': [C, A, '/Users/x/notes/cover.png'], '/Users/x/work': ['/Users/x/work/plan.md'] },
       window: { x: 0, y: 0, width: 1200, height: 800 },
     }
@@ -24,7 +24,7 @@ describe('parseSession', () => {
       openEditors: [{ path: A, mode: 'rich' }, { path: '/Users/x/notes/cover.png' }],
       activePath: A,
       theme: 'dark',
-      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned'] },
+      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned', 'explorer'] },
       pinned: { '/Users/x/notes': [C, A, '/Users/x/notes/cover.png'], '/Users/x/work': ['/Users/x/work/plan.md'] },
     })
   })

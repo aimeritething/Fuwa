@@ -47,10 +47,13 @@ interface HarnessProps {
   /** False stands in for the collapsed sidebar: the Explorer is unmounted, what holds its memory is not. */
   shown?: boolean
   pins?: ExplorerPins
+  collapsed?: boolean
+  onToggleCollapsed?: () => void
+  onExpand?: () => void
 }
 
 /** The Explorer under what App gives it: its memory, held above the sidebar. */
-function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree = TREE, shown = true, pins }: HarnessProps) {
+function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree = TREE, shown = true, pins, ...fold }: HarnessProps) {
   const memory = useExplorerMemory(folder)
   if (!shown) return null
   return (
@@ -64,12 +67,13 @@ function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree 
       onCloseFolder={vi.fn()}
       onOpenFolder={vi.fn()}
       pins={pins}
+      {...fold}
     />
   )
 }
 
-function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn(), pins?: ExplorerPins) {
-  const view = render(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} pins={pins} />)
+function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn(), pins?: ExplorerPins, fold: Pick<HarnessProps, 'collapsed' | 'onToggleCollapsed' | 'onExpand'> = {}) {
+  const view = render(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} pins={pins} {...fold} />)
   const rerender = (props: Partial<HarnessProps>) => view.rerender(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} pins={pins} {...props} />)
   return { onOpenFile, rerender }
 }
@@ -88,8 +92,10 @@ describe('the empty states', () => {
     return { onOpenFolder }
   }
 
-  it('with no Folder open says so under Explorer, with the Open Folder button and the drop hint', () => {
+  it('with no Folder open says so, with the Open Folder button and the drop hint, and no Explorer label', () => {
     const { onOpenFolder } = renderWithoutFolder()
+
+    expect(screen.getByTestId('explorer')).not.toHaveTextContent(/Explorer/)
 
     const block = screen.getByTestId('explorer-no-folder')
     expect(block).toHaveTextContent('No folder open')
@@ -125,6 +131,9 @@ describe('the empty states', () => {
     expect(screen.queryByTestId('explorer-no-documents')).toBeNull()
   })
 })
+
+const viewport = () => screen.getByRole('tree').querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement
+const isExpanded = (name: string) => screen.getByRole('treeitem', { name }).getAttribute('aria-expanded') === 'true'
 
 /** Radix opens a context menu from a right-click on its trigger. */
 function rightClick(element: Element) {
@@ -174,13 +183,16 @@ describe('the context menu', () => {
     ])
   })
 
-  it('gives the root row no rename and no trash', async () => {
-    renderExplorer(stubActions())
+  it("gives the header the Folder's own items, with no rename and no trash", async () => {
+    const actions = stubActions()
+    renderExplorer(actions)
 
-    rightClick(screen.getByTestId(`explorer-row:${FOLDER}`))
+    rightClick(screen.getByTestId('explorer-header'))
 
     const menu = await screen.findByTestId('explorer-menu:root')
     expect(menuLabels(menu)).toEqual(['New Document', 'New Folder', 'Reveal in Finder', 'Copy Path'])
+    fireEvent.click(within(menu).getByText('Copy Path'))
+    await waitFor(() => expect(actions.copyPath).toHaveBeenCalledWith(FOLDER))
   })
 
   it('gives the area below the tree the two creation items, at the Folder root', async () => {
@@ -340,6 +352,63 @@ describe('the inline rename input', () => {
   })
 })
 
+describe('the header', () => {
+  it("is the Folder's name, and the Folder is not a row in the tree", () => {
+    renderExplorer(stubActions())
+
+    expect(screen.getByTestId('explorer-toggle')).toHaveTextContent('Notes')
+    expect(screen.getByTestId('explorer')).not.toHaveTextContent(/Explorer/)
+    expect(screen.queryByTestId(`explorer-row:${FOLDER}`)).toBeNull()
+    const tree = screen.getByRole('tree')
+    expect(within(tree).getAllByRole('treeitem').map((item) => [item.getAttribute('aria-label'), item.getAttribute('aria-level')]))
+      .toEqual([['Projects', '1'], ['Welcome.md', '1']])
+  })
+
+  it('starts the top level at the first indent, with its folders shut', () => {
+    renderExplorer(stubActions())
+
+    expect(screen.getByTestId(`explorer-row:${FOLDER}/Projects`)).toHaveStyle({ paddingLeft: '8px' })
+    expect(isExpanded('Projects')).toBe(false)
+    fireEvent.click(screen.getByLabelText('Expand Projects'))
+    expect(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Plumo.md`)).toHaveStyle({ paddingLeft: '22px' })
+  })
+
+  it('folds the whole tree away from the name, and shows only the header while folded', () => {
+    const onToggleCollapsed = vi.fn()
+    const { rerender } = renderExplorer(stubActions(), vi.fn(), undefined, { onToggleCollapsed })
+    const toggle = screen.getByTestId('explorer-toggle')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(toggle)
+    expect(onToggleCollapsed).toHaveBeenCalledTimes(1)
+
+    rerender({ collapsed: true, onToggleCollapsed })
+    expect(screen.queryByRole('tree')).toBeNull()
+    expect(screen.getByTestId('explorer-toggle')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByTestId('explorer-new-document')).toBeInTheDocument()
+  })
+
+  it('opens a folded tree when a row enters rename, and not for a selection alone', () => {
+    const onExpand = vi.fn()
+    const { rerender } = renderExplorer(stubActions({ selected: `${FOLDER}/Welcome.md` }), vi.fn(), undefined, { collapsed: true, onExpand })
+    expect(onExpand).not.toHaveBeenCalled()
+
+    const editing = { path: `${FOLDER}/Untitled.md`, kind: 'note' as const, stem: 'Untitled', extension: '.md' }
+    rerender({ actions: stubActions({ editing }), collapsed: true, onExpand })
+    expect(onExpand).toHaveBeenCalled()
+  })
+
+  it('opens and shuts a top-level folder from the keyboard', () => {
+    renderExplorer(stubActions())
+    const row = screen.getByTestId(`explorer-row:${FOLDER}/Projects`)
+
+    fireEvent.keyDown(row, { key: 'ArrowRight' })
+    expect(isExpanded('Projects')).toBe(true)
+    fireEvent.keyDown(row, { key: 'ArrowLeft' })
+    expect(isExpanded('Projects')).toBe(false)
+  })
+})
+
 describe('the header actions', () => {
   it('makes a new Document where the selection points', () => {
     const actions = stubActions()
@@ -374,7 +443,7 @@ function dataTransfer(readable = true) {
   }
 }
 
-/** The tree opens with only the root expanded, so nested rows are revealed first. */
+/** The tree opens with every folder shut, so nested rows are revealed first. */
 function expandProjects() {
   fireEvent.click(screen.getByLabelText('Expand Projects'))
 }
@@ -405,14 +474,13 @@ describe('Move to Trash', () => {
 })
 
 describe('drag-and-drop', () => {
-  it('lets a Document and an Image file be dragged, and never a folder or the root', () => {
+  it('lets a Document and an Image file be dragged, and never a folder', () => {
     renderExplorer(stubActions())
     expandProjects()
 
     expect(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`)).toHaveAttribute('draggable', 'true')
     expect(screen.getByTestId(`explorer-row:${FOLDER}/Projects/lake.png`)).toHaveAttribute('draggable', 'true')
     expect(screen.getByTestId(`explorer-row:${FOLDER}/Projects`)).not.toHaveAttribute('draggable', 'true')
-    expect(screen.getByTestId(`explorer-row:${FOLDER}`)).not.toHaveAttribute('draggable', 'true')
   })
 
   it('moves the dragged file into the folder row it is dropped on', () => {
@@ -430,14 +498,31 @@ describe('drag-and-drop', () => {
     expect(target).not.toHaveAttribute('data-drop-target')
   })
 
-  it('moves it to the Folder root when the root row takes the drop', () => {
+  it.each(['explorer-header', 'explorer-empty-area'])('moves it to the Folder\'s top level when %s takes the drop', (testId) => {
     const moveInto = vi.fn()
     renderExplorer(stubActions({ moveInto }))
     expandProjects()
     const transfer = dataTransfer()
 
     fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Plumo.md`), { dataTransfer: transfer })
-    fireEvent.drop(screen.getByTestId(`explorer-row:${FOLDER}`), { dataTransfer: transfer })
+    fireEvent.dragOver(screen.getByTestId(testId), { dataTransfer: transfer })
+    // The header marks the drop wherever over the top level the file is.
+    expect(screen.getByTestId('explorer-header')).toHaveAttribute('data-drop-target')
+    fireEvent.drop(screen.getByTestId(testId), { dataTransfer: transfer })
+
+    expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Projects/Plumo.md`, FOLDER)
+    expect(screen.getByTestId('explorer-header')).not.toHaveAttribute('data-drop-target')
+  })
+
+  it('takes the top-level drop on the header while the tree is folded', () => {
+    const moveInto = vi.fn()
+    const { rerender } = renderExplorer(stubActions({ moveInto }))
+    expandProjects()
+    const transfer = dataTransfer()
+    fireEvent.dragStart(screen.getByTestId(`explorer-row:${FOLDER}/Projects/Plumo.md`), { dataTransfer: transfer })
+
+    rerender({ collapsed: true })
+    fireEvent.drop(screen.getByTestId('explorer-header'), { dataTransfer: transfer })
 
     expect(moveInto).toHaveBeenCalledWith(`${FOLDER}/Projects/Plumo.md`, FOLDER)
   })
@@ -472,8 +557,6 @@ describe('drag-and-drop', () => {
   })
 })
 
-const viewport = () => screen.getByRole('tree').querySelector('[data-slot="scroll-area-viewport"]') as HTMLElement
-const isExpanded = (name: string) => screen.getByRole('treeitem', { name }).getAttribute('aria-expanded') === 'true'
 
 describe('collapsing and expanding the sidebar', () => {
   it('keeps the folders that were opened and the scroll position', () => {

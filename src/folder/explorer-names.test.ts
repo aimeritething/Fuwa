@@ -27,7 +27,7 @@ describe('creationParentPath', () => {
     expect(creationParentPath(TREE, `${FOLDER}/Projects`)).toBe(`${FOLDER}/Projects`)
   })
 
-  it('puts a new Document inside the Folder root when the root row is selected', () => {
+  it('puts a new Document inside the Folder root when the Folder itself is selected', () => {
     expect(creationParentPath(TREE, FOLDER)).toBe(FOLDER)
   })
 

@@ -10,7 +10,7 @@ async function openFolder(page: Page, path = MOCK_FOLDER) {
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), path)
   await page.keyboard.press('Meta+o')
-  await expect(page.getByTestId(`explorer-row:${path}`)).toBeVisible()
+  await expect(page.getByTestId('explorer-toggle')).toHaveAttribute('title', path)
 }
 
 function renameInput(page: Page) {
@@ -85,7 +85,7 @@ test('a committed rename re-sorts the row and moves the Tab with it', async ({ p
 
   const explorer = page.getByTestId('explorer')
   await expect(explorer.locator('[data-testid^="explorer-row:"]'))
-    .toHaveText(['Notes', 'Attachments', 'Projects', 'Style catalog', 'Aardvark.md', 'Reading list.md'])
+    .toHaveText(['Attachments', 'Projects', 'Style catalog', 'Aardvark.md', 'Reading list.md'])
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('aria-label', 'Aardvark.md')
   await expect(page.getByRole('tab', { selected: true })).toHaveAttribute('title', `${MOCK_FOLDER}/Aardvark.md`)
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
