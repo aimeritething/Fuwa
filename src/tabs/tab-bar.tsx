@@ -64,7 +64,7 @@ function TabPill({ path, filename, active, onActivate, onClose }: TabPillProps) 
   const isImage = isImageFilePath(path)
   return (
     <div
-      className="group flex h-7 max-w-55 min-w-0 flex-initial cursor-default items-center gap-1.75 rounded-md pr-1.5 pl-2.5 text-sm whitespace-nowrap text-text-secondary outline-none hover:bg-tab-hover hover:text-text-heading aria-selected:bg-tab-active aria-selected:text-text-heading aria-selected:shadow-raised focus-visible:focus-ring"
+      className="group flex h-7 max-w-55 min-w-0 flex-initial cursor-default items-center gap-1.75 rounded-md pr-1.5 pl-2.5 text-sm whitespace-nowrap text-text-secondary outline-none hover:bg-tab-hover hover:text-text-heading aria-selected:bg-tab-active aria-selected:text-text-heading focus-visible:focus-ring"
       role="tab"
       aria-selected={active}
       aria-label={filename}
