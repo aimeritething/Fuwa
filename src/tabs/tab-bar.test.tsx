@@ -73,12 +73,13 @@ describe('TabBar', () => {
     expect(within(screen.getByRole('tab', { name: 'Welcome.md' })).queryByTestId('tab-parent')).toBeNull()
   })
 
-  it('shows a Tab\'s × only under the pointer, the selected Tab\'s too', () => {
+  it('lays a Tab\'s × out after the name only under the pointer, the selected Tab\'s too', () => {
     render(<TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} />)
 
     const close = screen.getByRole('button', { name: 'Close a.md' })
-    expect(close).toHaveClass('opacity-0', 'group-hover:opacity-100')
-    expect(close.className).not.toContain('group-aria-selected:opacity-100')
+    expect(close).toHaveClass('hidden', 'group-hover:flex')
+    expect(close.className).not.toMatch(/absolute|group-aria-selected/)
+    expect(screen.getByRole('tab', { name: 'a.md' }).lastElementChild).toBe(close)
   })
 
   it('with the sidebar collapsed, seats the traffic lights and the sidebar icon before the first tab', () => {

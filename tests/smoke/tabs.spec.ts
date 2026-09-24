@@ -134,7 +134,7 @@ test('two open Tabs with the same name each show their parent folder, and a thir
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('the "…" menu hands the Document to Finder and to its default app, and the "+" is ⌘N', async ({ page }) => {
+test('the "…" menu hands the Document to Finder and to its default app, its Find focuses the find bar, and the "+" is ⌘N', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
   await page.evaluate((folder) => window.__plumoMockVault?.queueDialogSelection([folder]), MOCK_FOLDER)
@@ -152,6 +152,20 @@ test('the "…" menu hands the Document to Finder and to its default app, and th
   await page.getByRole('button', { name: 'More', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Open in Default App' }).click()
   await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.openedExternallyPath())).toBe(WELCOME_PATH)
+
+  // Find leaves the focus in the find bar it opened, not on "…", in either mode.
+  for (const mode of ['rich', 'raw'] as const) {
+    if (mode === 'raw') await page.getByTestId('tab-mode-raw').click()
+    await page.getByRole('button', { name: 'More', exact: true }).click()
+    await page.getByRole('menuitem', { name: /^Find/ }).click()
+    // The menu hands focus back as it finishes closing, after the find bar took it.
+    await expect(page.getByTestId('tab-more-menu')).toHaveCount(0)
+    const findInput = page.getByTestId(`${mode}-editor-find-input`)
+    await expect(findInput).toBeFocused()
+    await page.keyboard.type('xyz')
+    await expect(findInput).toHaveValue('xyz')
+    await page.keyboard.press('Escape')
+  }
 
   await page.getByTestId('tab-bar-new-document').click()
   await expect(page.getByRole('tab')).toHaveCount(2)

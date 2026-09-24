@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Code, DotsThree, LinkSimple, TextAa, type Icon } from '@phosphor-icons/react'
 import { APP_COMMAND_DEFINITIONS, APP_COMMAND_IDS, type AppCommandId } from '@/shell/app-command-catalog'
 import type { EditorMode } from '@/types'
@@ -156,9 +156,13 @@ function ModeControl({ mode }: { mode: TabMode }) {
 /**
  * "…": Pin or Unpin, Reveal in Finder, Open in Default App, then Find and
  * Close Tab with their shortcuts. Every item is a manifest command, so the
- * menu bar and the Command Menu hold the same ones.
+ * menu bar and the Command Menu hold the same ones. Closing the menu hands
+ * focus back to "…", except after Find: the find bar has just focused its
+ * input, and the search is typed there.
  */
 function DocumentMenu({ menu }: { menu: DocumentMenuActions }) {
+  const findChosen = useRef(false)
+  const onFind = menu.onFind
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -166,12 +170,28 @@ function DocumentMenu({ menu }: { menu: DocumentMenuActions }) {
           <DotsThree size={16} weight="bold" aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-50" data-testid="tab-more-menu">
+      <DropdownMenuContent
+        align="end"
+        className="min-w-50"
+        data-testid="tab-more-menu"
+        onCloseAutoFocus={(event) => {
+          if (!findChosen.current) return
+          findChosen.current = false
+          event.preventDefault()
+        }}
+      >
         <MenuItem label={menu.pinned ? 'Unpin' : 'Pin'} onSelect={menu.onTogglePin} />
         <MenuItem label="Reveal in Finder" onSelect={menu.onRevealInFinder} />
         <MenuItem label="Open in Default App" onSelect={menu.onOpenInDefaultApp} />
         <DropdownMenuSeparator />
-        <MenuItem label="Find" shortcut={FIND_SHORTCUT} onSelect={menu.onFind} />
+        <MenuItem
+          label="Find"
+          shortcut={FIND_SHORTCUT}
+          onSelect={onFind && (() => {
+            findChosen.current = true
+            onFind()
+          })}
+        />
         <MenuItem label="Close Tab" shortcut={CLOSE_TAB_SHORTCUT} onSelect={menu.onCloseTab} />
       </DropdownMenuContent>
     </DropdownMenu>
