@@ -86,6 +86,7 @@ export interface MockVaultCommands {
   delete_note: { args: { path: string; vaultPath: string }; result: string }
   delete_vault_folder: { args: { vaultPath: string; folderPath: string }; result: string }
   reveal_path_in_file_manager: { args: { path: string }; result: void }
+  open_vault_file_external: { args: { path: string; vaultPath?: string }; result: void }
   copy_text_to_clipboard: { args: { text: string }; result: void }
 }
 
@@ -101,8 +102,9 @@ export interface MockVault {
   writeImage(path: string, image: MockVaultImage): void
   /** What the asset protocol would serve for an Image file, or null when there is no such picture. */
   assetUrl(path: string): string | null
-  /** The last path handed to Reveal in Finder, and the last text put on the clipboard. */
+  /** The last path handed to Reveal in Finder, to Open in Default App, and the last text put on the clipboard. */
   revealedPath(): string | null
+  openedExternallyPath(): string | null
   clipboardText(): string | null
   removeFile(path: string): void
   /** Move a file or a whole folder without going through a command: Finder's stand-in. */
@@ -256,6 +258,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
   let dialogSelections: string[] = []
   let readOnlyPaths = new Set<string>()
   let revealed: string | null = null
+  let openedExternally: string | null = null
   let clipboard: string | null = null
   const calls: MockVaultCall[] = []
 
@@ -278,6 +281,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     dialogSelections = []
     readOnlyPaths = new Set()
     revealed = null
+    openedExternally = null
     clipboard = null
     calls.length = 0
   }
@@ -456,6 +460,12 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
         revealed = requireInsideVault(args?.path)
         return undefined
       }
+      case 'open_vault_file_external': {
+        const path = requireInsideVault(args?.path)
+        if (!files.has(path)) throw new Error(FILE_DOES_NOT_EXIST_ERROR)
+        openedExternally = path
+        return undefined
+      }
       case 'copy_text_to_clipboard': {
         clipboard = String(args?.text ?? '')
         return undefined
@@ -486,6 +496,7 @@ export function createMockVault(seed: MockVaultFile[] = DEFAULT_MOCK_VAULT_FILES
     },
     watchedPath: () => watched,
     revealedPath: () => revealed,
+    openedExternallyPath: () => openedExternally,
     clipboardText: () => clipboard,
     queuePendingOpen: (paths) => {
       pendingOpen = [...pendingOpen, ...paths]

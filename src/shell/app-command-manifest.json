@@ -96,6 +96,21 @@
         "requiresManualNativeAcceleratorQa": true
       }
     },
+    "fileTogglePin": {
+      "id": "file-toggle-pin",
+      "route": { "kind": "handler", "handler": "onTogglePin" },
+      "menuOwned": true
+    },
+    "fileRevealInFinder": {
+      "id": "file-reveal-in-finder",
+      "route": { "kind": "handler", "handler": "onRevealInFinder" },
+      "menuOwned": true
+    },
+    "fileOpenInDefaultApp": {
+      "id": "file-open-in-default-app",
+      "route": { "kind": "handler", "handler": "onOpenInDefaultApp" },
+      "menuOwned": true
+    },
     "editUndo": {
       "id": "edit-undo",
       "route": { "kind": "handler", "handler": "onUndo" },
@@ -408,6 +423,10 @@
         { "kind": "separator" },
         { "kind": "command", "command": "fileSave", "label": "Save" },
         { "kind": "separator" },
+        { "kind": "command", "command": "fileTogglePin", "label": "Pin/Unpin" },
+        { "kind": "command", "command": "fileRevealInFinder", "label": "Reveal in Finder" },
+        { "kind": "command", "command": "fileOpenInDefaultApp", "label": "Open in Default App" },
+        { "kind": "separator" },
         { "kind": "command", "command": "fileCloseTab", "label": "Close Tab" }
       ]
     },
@@ -465,7 +484,10 @@
     ],
     "tabDependent": [
       { "command": "fileCloseTab" },
-      { "command": "editCopyPath" }
+      { "command": "editCopyPath" },
+      { "command": "fileTogglePin" },
+      { "command": "fileRevealInFinder" },
+      { "command": "fileOpenInDefaultApp" }
     ],
     "vaultDependent": [
       { "command": "fileNewNote" },

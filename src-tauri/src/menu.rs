@@ -467,7 +467,8 @@ pub fn set_note_items_enabled(app_handle: &AppHandle, enabled: bool) {
 /// Tab is greyed with zero Tabs while ⌘W itself still reaches the renderer,
 /// which closes the window, because a disabled item's accelerator is not
 /// consumed by the menu. An Image Tab counts, unlike for the note-dependent
-/// group.
+/// group. Copy Path, Pin/Unpin, Reveal in Finder and Open in Default App act
+/// on the active Tab's file, so they follow it too.
 pub fn set_tab_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, TAB_DEPENDENT_GROUP, enabled);
 }
@@ -598,7 +599,13 @@ mod tests {
         );
         assert_eq!(
             menu_state_group_ids(TAB_DEPENDENT_GROUP),
-            ["file-close-tab", "edit-copy-path"]
+            [
+                "file-close-tab",
+                "edit-copy-path",
+                "file-toggle-pin",
+                "file-reveal-in-finder",
+                "file-open-in-default-app"
+            ]
         );
         assert_eq!(
             menu_state_group_ids(VAULT_DEPENDENT_GROUP),
@@ -624,6 +631,38 @@ mod tests {
             menu_item_by_id("file-close-vault").accelerator(manifest()),
             None
         );
+    }
+
+    #[test]
+    fn file_menu_holds_the_active_tabs_file_commands_above_close_tab() {
+        let file_menu = manifest_section("File").expect("file menu exists");
+        let items: Vec<_> = file_menu
+            .items
+            .iter()
+            .map(|item| (item.menu_item_id(manifest()), item.label("macos")))
+            .collect();
+
+        assert_eq!(
+            &items[items.len() - 5..],
+            [
+                (Some("file-toggle-pin"), Some("Pin/Unpin")),
+                (Some("file-reveal-in-finder"), Some("Reveal in Finder")),
+                (
+                    Some("file-open-in-default-app"),
+                    Some("Open in Default App")
+                ),
+                (None, None),
+                (Some("file-close-tab"), Some("Close Tab")),
+            ]
+        );
+        for id in [
+            "file-toggle-pin",
+            "file-reveal-in-finder",
+            "file-open-in-default-app",
+        ] {
+            assert_eq!(menu_item_by_id(id).accelerator(manifest()), None);
+            assert_eq!(emitted_menu_event_id(id), Some(id));
+        }
     }
 
     #[test]

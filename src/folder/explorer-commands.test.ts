@@ -7,7 +7,7 @@ vi.mock('@/platform/tauri', () => ({
   mockInvoke: (command: string, args?: Record<string, unknown>) => tauri.invoke(command, args),
 }))
 
-const { moveFileToFolder, moveFileToTrash, moveFolderToTrash, renameFile } = await import('./explorer-commands')
+const { moveFileToFolder, moveFileToTrash, moveFolderToTrash, openPathInDefaultApp, renameFile } = await import('./explorer-commands')
 
 const FOLDER = '/Notes'
 
@@ -76,5 +76,13 @@ describe('the commands Rust takes as one struct', () => {
     expect(lastCall()).toEqual(['rename_vault_file', {
       vaultPath: FOLDER, oldPath: `${FOLDER}/a.md`, newStem: 'b',
     }])
+  })
+})
+
+describe('Open in Default App', () => {
+  it('sends the file with the root the Rust side confines it to', async () => {
+    await openPathInDefaultApp(`${FOLDER}/lake.png`, FOLDER)
+
+    expect(lastCall()).toEqual(['open_vault_file_external', { path: `${FOLDER}/lake.png`, vaultPath: FOLDER }])
   })
 })

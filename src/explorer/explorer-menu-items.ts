@@ -3,8 +3,9 @@
  * table is data so the menu component stays a renderer and the order is
  * checked by a test rather than by eye.
  *
- * Reveal in Finder and Copy Path live only here: they are not manifest
- * commands and never reach the Command Menu.
+ * Reveal in Finder and Copy Path here act on the row the menu was opened on.
+ * The manifest commands of the same names (File and Edit menus, the Command
+ * Menu) act on the active Tab instead.
  */
 
 export type ExplorerMenuAction =

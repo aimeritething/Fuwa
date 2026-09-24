@@ -11,7 +11,8 @@ describe('commandMenuCommandEntries', () => {
   it('lists every native menu command in menu order, and nothing that has no menu item', () => {
     const entries = commandMenuCommandEntries(EVERYTHING)
     expect(entries.map((entry) => entry.name)).toEqual([
-      'New Document', 'Open Folder…', 'Open Document…', 'Close Folder', 'Quick Open', 'Save', 'Close Tab',
+      'New Document', 'Open Folder…', 'Open Document…', 'Close Folder', 'Quick Open', 'Save',
+      'Pin/Unpin', 'Reveal in Finder', 'Open in Default App', 'Close Tab',
       'Undo', 'Redo', 'Paste without Formatting', 'Find', 'Copy Path',
       'Toggle Sidebar', 'Toggle Rich/Raw', 'Appearance: System', 'Appearance: Dark', 'Appearance: Light',
       'Zoom In', 'Zoom Out', 'Actual Size',
@@ -37,7 +38,7 @@ describe('commandMenuCommandEntries', () => {
 
   it('greys the state groups: no Document, no Tab, no Folder', () => {
     const entries = byId(NOTHING)
-    for (const id of ['file-save', 'edit-toggle-raw-editor', 'edit-find-in-note', 'file-close-tab', 'edit-copy-path', 'file-new-note', 'file-quick-open', 'file-close-vault']) {
+    for (const id of ['file-save', 'edit-toggle-raw-editor', 'edit-find-in-note', 'file-close-tab', 'edit-copy-path', 'file-toggle-pin', 'file-reveal-in-finder', 'file-open-in-default-app', 'file-new-note', 'file-quick-open', 'file-close-vault']) {
       expect(entries.get(id)?.enabled, id).toBe(false)
     }
     for (const id of ['file-open-vault', 'file-open-note', 'view-toggle-sidebar', 'app-quit', 'edit-undo']) {
@@ -45,9 +46,11 @@ describe('commandMenuCommandEntries', () => {
     }
   })
 
-  it('keeps Close Tab and Copy Path live over an Image Tab, where Save and Find are greyed', () => {
+  it('keeps Close Tab, Copy Path and the file hand-offs live over an Image Tab, where Save and Find are greyed', () => {
     const entries = byId({ hasDocument: false, hasFolder: true, hasTab: true })
     expect(entries.get('file-close-tab')?.enabled).toBe(true)
+    expect(entries.get('file-reveal-in-finder')).toMatchObject({ enabled: true, detail: 'File', shortcut: undefined })
+    expect(entries.get('file-open-in-default-app')).toMatchObject({ enabled: true, detail: 'File', shortcut: undefined })
     expect(entries.get('edit-copy-path')).toMatchObject({ enabled: true, detail: 'Edit', shortcut: expect.stringMatching(/,$/) })
     expect(entries.get('file-save')?.enabled).toBe(false)
     expect(entries.get('edit-find-in-note')?.enabled).toBe(false)
