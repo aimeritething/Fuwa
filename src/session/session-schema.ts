@@ -25,8 +25,8 @@ export interface SessionEditor {
   mode?: SessionEditorMode
 }
 
-/** A sidebar section that folds away under its label. */
-export type SidebarSection = 'pinned'
+/** A sidebar section that folds away under its label (the Explorer's is the Folder's name). */
+export type SidebarSection = 'pinned' | 'explorer'
 
 export interface SessionSidebar {
   collapsed: boolean
@@ -63,7 +63,7 @@ export function clampSidebarWidth(width: number): number {
 }
 
 const EDITOR_MODES = new Set<SessionEditorMode>(['rich', 'raw'])
-const SIDEBAR_SECTIONS = new Set<string>(['pinned'] satisfies SidebarSection[])
+const SIDEBAR_SECTIONS = new Set<string>(['pinned', 'explorer'] satisfies SidebarSection[])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

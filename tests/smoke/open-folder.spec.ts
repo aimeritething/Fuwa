@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors } from './harness'
+import { MOCK_FOLDER, openDocumentThroughDialog, storedSession, watchForErrors } from './harness'
 
 async function openFolder(page: import('@playwright/test').Page, path: string) {
   await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), path)
@@ -13,7 +13,10 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   await openFolder(page, MOCK_FOLDER)
   const explorer = page.getByTestId('explorer')
   const rows = explorer.locator('[data-testid^="explorer-row:"]')
-  await expect(rows).toHaveText(['Notes', 'Attachments', 'Projects', 'Style catalog', 'Reading list.md', 'Welcome.md'])
+  // The Folder heads the Explorer by name; it is not a row, and "Explorer" is nowhere.
+  await expect(page.getByTestId('explorer-toggle')).toHaveText('Notes')
+  await expect(page.getByTestId('sidebar')).not.toContainText('Explorer')
+  await expect(rows).toHaveText(['Attachments', 'Projects', 'Style catalog', 'Reading list.md', 'Welcome.md'])
   await explorer.getByRole('button', { name: 'Expand Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
@@ -32,6 +35,26 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   expect(errors.consoleErrors).toEqual([])
 })
 
+test("the Folder's name folds the whole tree away, and it stays folded after a relaunch", async ({ page }) => {
+  const errors = watchForErrors(page)
+  await page.goto('/')
+  await openFolder(page, MOCK_FOLDER)
+  const toggle = page.getByTestId('explorer-toggle')
+  await expect(page.getByRole('tree')).toBeVisible()
+
+  await toggle.click()
+  await expect(page.getByRole('tree')).toHaveCount(0)
+  await expect.poll(() => storedSession(page)).toMatchObject({ sidebar: { collapsedSections: ['explorer'] } })
+
+  await page.reload()
+  await expect(page.getByTestId('explorer-toggle')).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('tree')).toHaveCount(0)
+  await page.getByTestId('explorer-toggle').click()
+  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toBeVisible()
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
 test('switching and closing Folder flushes edits and closes every Tab', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
@@ -41,7 +64,7 @@ test('switching and closing Folder flushes edits and closes every Tab', async ({
   await page.keyboard.press('End')
   await page.keyboard.type(' Folder switch keeps this edit.')
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
-  await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects`)).toBeVisible()
+  await expect(page.getByTestId('explorer-toggle')).toHaveText('Projects')
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
   const saved = await page.evaluate((path) => window.__plumoMockVault?.files().find((file) => file.path === path)?.content, `${MOCK_FOLDER}/Welcome.md`)
   expect(saved).toContain('Folder switch keeps this edit.')

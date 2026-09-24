@@ -44,7 +44,7 @@ export function ExplorerHeaderActions(props: ExplorerHeaderActionsProps) {
   const { onNewDocument, onNewFolder, onCollapseAll, onReveal, onCloseFolder } = props
 
   return (
-    <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover/explorer:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100">
+    <div className="flex flex-none items-center gap-0.5 opacity-0 transition-opacity duration-150 ease-out group-hover/explorer:opacity-100 focus-within:opacity-100 has-data-[state=open]:opacity-100">
       <HeaderAction data-testid="explorer-new-document" title="New Document" aria-label="New Document" onClick={onNewDocument} {...OPENS_A_TAB_PROPS}>
         <Plus size={12} aria-hidden="true" />
       </HeaderAction>

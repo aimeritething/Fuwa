@@ -18,7 +18,7 @@ export type ExplorerMenuAction =
   | 'reveal'
   | 'copyPath'
 
-/** A row the menu can act on, plus the empty area below the tree. */
+/** A row the menu can act on, the Folder itself (its header) and the empty area below the tree. */
 export type ExplorerMenuTargetKind = 'note' | 'image' | 'folder' | 'root' | 'empty'
 
 export type ExplorerMenuEntry =

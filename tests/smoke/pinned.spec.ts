@@ -18,7 +18,7 @@ const pinnedRow = (page: Page, path: string) => page.getByTestId(`pinned-row:${p
 async function openFolder(page: Page, path: string) {
   await page.evaluate((chosen) => window.__plumoMockVault?.queueDialogSelection([chosen]), path)
   await page.keyboard.press('Meta+o')
-  await expect(explorerRow(page, path)).toBeVisible()
+  await expect(page.getByTestId('explorer-toggle')).toHaveAttribute('title', path)
 }
 
 async function pinFromExplorer(page: Page, path: string) {

@@ -65,7 +65,7 @@ export interface ExplorerActions {
   cancelRename: () => void
   /** Move to Trash: no confirmation, and every Tab at or under the row closes. */
   trash: (path: string, kind: ExplorerRowKind) => void
-  /** A dragged Document or Image file dropped on a folder row or the root row. */
+  /** A dragged Document or Image file dropped on a folder row, or on the header or empty area (the Folder's top level). */
   moveInto: (path: string, destination: string) => void
   reveal: (path: string) => void
   copyPath: (path: string) => void
@@ -223,7 +223,7 @@ export function useExplorerActions(options: Options): ExplorerActions {
   }, [folder, refresh, startRename, tree])
 
   // One placement rule for ⌘N, the header "+" and the context menu: a folder
-  // or the root row takes it inside, a file row takes it into its parent, and
+  // (or the Folder itself) takes it inside, a file row takes it into its parent, and
   // nothing selected means the Folder root.
   const createDocument = useCallback(() => {
     if (tree) createDocumentIn(creationParentPath(tree, selected))

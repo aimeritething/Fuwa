@@ -21,7 +21,7 @@ describe('explorerMenuEntries', () => {
     ])
   })
 
-  it('gives the root row no rename and no trash', () => {
+  it('gives the Folder itself (the header) no rename and no trash', () => {
     expect(labels('root')).toEqual(['New Document', 'New Folder', '─', 'Reveal in Finder', 'Copy Path'])
   })
 

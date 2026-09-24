@@ -49,6 +49,20 @@ describe('useSidebar', () => {
     expect(result.current.sidebar).toEqual({ collapsed: false, width: 300, collapsedSections: ['pinned'] })
   })
 
+  it('folds the Explorer apart from Pinned, and opens it without touching an open one', () => {
+    const { result } = renderHook(() => useSidebar())
+
+    act(() => result.current.toggleSection('pinned'))
+    act(() => result.current.toggleSection('explorer'))
+    expect(result.current.sidebar.collapsedSections).toEqual(['pinned', 'explorer'])
+
+    act(() => result.current.openSection('explorer'))
+    expect(result.current.sidebar.collapsedSections).toEqual(['pinned'])
+    const before = result.current.sidebar
+    act(() => result.current.openSection('explorer'))
+    expect(result.current.sidebar).toBe(before)
+  })
+
   it('keeps the same state object when nothing changes, so nothing downstream re-renders', () => {
     const { result } = renderHook(() => useSidebar())
     const before = result.current.sidebar
