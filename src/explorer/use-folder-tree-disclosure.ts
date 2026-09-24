@@ -34,7 +34,7 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
 
   const toggleFolder = useCallback((key: string) => {
     setManualExpanded((current) => {
-      const defaultExpanded = key.endsWith('::') || key === ''
+      const defaultExpanded = key.endsWith('::')
       const next = { ...current }
       Reflect.set(next, key, !((Reflect.get(current, key) as boolean | undefined) ?? defaultExpanded))
       return next

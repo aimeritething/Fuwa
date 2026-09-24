@@ -398,6 +398,30 @@ describe('the header', () => {
     expect(onExpand).toHaveBeenCalled()
   })
 
+  it('gives up an open rename when the tree folds, so the fold holds', () => {
+    const editing = { path: `${FOLDER}/Welcome.md`, kind: 'note' as const, stem: 'Welcome', extension: '.md' }
+    const actions = stubActions({ editing, error: 'A Document named Reading list.md already exists' })
+    const onToggleCollapsed = vi.fn()
+    renderExplorer(actions, vi.fn(), undefined, { onToggleCollapsed })
+
+    fireEvent.click(screen.getByTestId('explorer-toggle'))
+
+    expect(actions.cancelRename).toHaveBeenCalledTimes(1)
+    expect(onToggleCollapsed).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves the rename alone when the tree only opens', () => {
+    const editing = { path: `${FOLDER}/Welcome.md`, kind: 'note' as const, stem: 'Welcome', extension: '.md' }
+    const actions = stubActions({ editing })
+    const onToggleCollapsed = vi.fn()
+    renderExplorer(actions, vi.fn(), undefined, { collapsed: true, onToggleCollapsed })
+
+    fireEvent.click(screen.getByTestId('explorer-toggle'))
+
+    expect(actions.cancelRename).not.toHaveBeenCalled()
+    expect(onToggleCollapsed).toHaveBeenCalledTimes(1)
+  })
+
   it('opens and shuts a top-level folder from the keyboard', () => {
     renderExplorer(stubActions())
     const row = screen.getByTestId(`explorer-row:${FOLDER}/Projects`)

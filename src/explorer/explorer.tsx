@@ -204,6 +204,15 @@ function ExplorerBody(props: LoadedProps) {
     if (editingPath && collapsed) onExpand?.()
   }, [collapsed, editingPath, onExpand])
 
+  // Folding away an open rename gives it up first, as Escape would: a rename
+  // holds the tree open, so it would otherwise undo the fold at once and come
+  // back with the typed name gone.
+  const { editing, cancelRename } = actions
+  const handleToggleCollapsed = useCallback(() => {
+    if (!collapsed && editing) cancelRename()
+    onToggleCollapsed?.()
+  }, [cancelRename, collapsed, editing, onToggleCollapsed])
+
   useRememberedScroll(treeRef, memory.view, !collapsed)
   useRowBroughtIntoView({
     treeRef, folder, tree, expanded, expandFolder, collapsed,
@@ -218,7 +227,7 @@ function ExplorerBody(props: LoadedProps) {
         folder={folder}
         name={tree.name}
         collapsed={collapsed}
-        onToggleCollapsed={onToggleCollapsed ?? noop}
+        onToggleCollapsed={handleToggleCollapsed}
         treeId={treeId}
         actions={actions}
         onCollapseAll={handleCollapseAll}
@@ -243,8 +252,6 @@ function ExplorerBody(props: LoadedProps) {
     </>
   )
 }
-
-function noop() {}
 
 interface EmptyAreaProps {
   actions: ExplorerActions
