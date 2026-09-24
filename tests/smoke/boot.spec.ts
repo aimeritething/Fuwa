@@ -14,7 +14,7 @@ test('boots to the empty window with the Folder fixture installed', async ({ pag
 
   await expect(page).toHaveTitle('Plumo')
   await expect(page.locator('#root > *').first()).toBeVisible()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
 
   const fixture = await page.evaluate(async () => {
     const vault: MockVault | undefined = window.__plumoMockVault

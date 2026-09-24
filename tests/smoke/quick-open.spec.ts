@@ -55,7 +55,7 @@ test('Quick Open finds a Document by name, shows files only, and ↵ opens it', 
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('⌘K opens the palette at its geometry, lists every command with its shortcut in Inter, and matches commands and files together', async ({ page }) => {
+test('⌘K opens the palette at its geometry, lists every command with its shortcut in the system face, and matches commands and files together', async ({ page }) => {
   await openFolder(page)
 
   await page.keyboard.press('Meta+k')
@@ -80,7 +80,7 @@ test('⌘K opens the palette at its geometry, lists every command with its short
   // Playwright's Desktop Chrome profile is not a Mac to the renderer, which then spells the chord Ctrl+[.
   const sidebarRow = rows(page).filter({ has: page.getByText('Toggle Sidebar', { exact: true }) })
   await expect(sidebarRow.getByTestId('command-menu-row-shortcut')).toHaveText(/^(⌘|Ctrl\+)\[$/)
-  await expect(sidebarRow.getByTestId('command-menu-row-shortcut')).toHaveCSS('font-family', /Inter/)
+  await expect(sidebarRow.getByTestId('command-menu-row-shortcut')).toHaveCSS('font-family', /^system-ui/)
   await expect(sidebarRow.getByTestId('command-menu-row-shortcut')).toHaveCSS('font-size', '11px')
   await expect(sidebarRow.getByTestId('command-menu-row-shortcut')).toHaveCSS('font-weight', '500')
 

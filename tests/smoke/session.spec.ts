@@ -37,7 +37,7 @@ test('quit and relaunch restores the Tabs in order and the active Tab, and the f
     folder: null,
     openEditors: [{ path: WELCOME_PATH, mode: 'rich' }, { path: PLUMO_PATH, mode: 'rich' }],
     activePath: WELCOME_PATH,
-    theme: 'dark',
+    theme: 'light',
     // A Document opened with no Folder collapses the sidebar.
     sidebar: { collapsed: true, width: 260 },
   })
