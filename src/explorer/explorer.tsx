@@ -61,27 +61,25 @@ export const Explorer = memo(function Explorer(props: ExplorerProps) {
 
 /**
  * The No-Folder state, identical on first launch: what to do
- * next, as a button and the drop hint. A restore that lost its Folder names
- * it above the button until any Folder is opened.
+ * next, as a button and the drop hint, straight under the sidebar's top row.
+ * A restore that lost its Folder names it above the button until any Folder
+ * is opened.
  */
 function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder: () => void }) {
   return (
-    <section className="mt-3 flex min-h-0 flex-col" data-testid="explorer">
-      <SidebarLabel className="justify-between">Explorer</SidebarLabel>
-      <div className="flex cursor-default flex-col gap-2 px-2 pt-2.5 pb-2" data-testid="explorer-no-folder">
-        <h4 className="text-sm leading-normal font-medium text-text-heading">No folder open</h4>
-        <p className="mb-0.5 text-xs leading-normal font-normal text-text-tertiary">Plumo reads Markdown from one folder at a time. Open one to browse it here.</p>
+    <section className="flex min-h-0 flex-col pt-1" data-testid="explorer">
+      <div className="flex cursor-default flex-col items-start px-2 pt-1" data-testid="explorer-no-folder">
+        <h4 className="text-sm leading-5 font-medium text-text-heading">No folder open</h4>
+        <p className="pt-1 text-sm leading-5 font-normal text-text-tertiary">Plumo reads Markdown from one folder at a time. Open one to browse it here.</p>
         {error && (
-          <p className="mb-0.5 font-mono text-2xs leading-normal font-normal text-chroma-red-text wrap-anywhere" role="status" data-testid="explorer-folder-missing">
+          <p className="pt-2 font-mono text-2xs leading-normal font-normal text-chroma-red-text wrap-anywhere" role="status" data-testid="explorer-folder-missing">
             {error}
           </p>
         )}
-        <div>
-          <Button type="button" aria-label="Open Folder ⌘O" onClick={onOpenFolder} data-testid="explorer-open-folder">
-            Open Folder<Kbd className="bg-text-inverse/12 text-text-inverse/80">⌘O</Kbd>
-          </Button>
-        </div>
-        <p className="mt-0.5 text-xs leading-normal font-normal text-text-muted">
+        <Button type="button" className="mt-3.5 h-7.5 rounded-lg pr-2 pl-3" aria-label="Open Folder ⌘O" onClick={onOpenFolder} data-testid="explorer-open-folder">
+          Open Folder<Kbd className="bg-text-inverse/12 px-1.25 font-normal text-text-inverse/80">⌘O</Kbd>
+        </Button>
+        <p className="flex items-center gap-1 pt-3 text-xs leading-4 font-normal text-text-muted">
           or drop a <code className="font-mono text-2xs">.md</code> file onto the window
         </p>
       </div>

@@ -37,7 +37,7 @@ test('three Documents give three Tabs and three Open Editors rows, with the acti
   expect(await rowParents(page)).toEqual(['Notes', 'Notes', 'Projects'])
   await expect(activeTab(page)).toHaveText('Plumo.md')
   await expect(activeRow(page)).toHaveText('Plumo.md')
-  await expect(page.getByTestId('tab-bar')).toHaveCSS('height', '44px')
+  await expect(page.getByTestId('tab-bar')).toHaveCSS('height', '52px')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
@@ -109,6 +109,52 @@ test('⌘W closes the active Tab, and at zero Tabs the tab bar and Open Editors 
   // One more ⌘W would close the window in Tauri; here there is none to close.
   await page.keyboard.press('Meta+w')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
+test('two open Tabs with the same name each show their parent folder, and a third name shows none', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await page.goto('/')
+  await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Style catalog/Chinese/Everything.md`)
+  await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Style catalog/English/Everything.md`)
+  await openDocumentThroughDialog(page, WELCOME_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
+
+  expect(await page.getByRole('tab').getByTestId('tab-parent').allTextContents()).toEqual(['Chinese', 'English'])
+  await expect(page.getByRole('tab', { name: 'Everything.md, Chinese' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Everything.md, English' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Welcome.md' }).getByTestId('tab-parent')).toHaveCount(0)
+
+  // Closing one leaves the other's name its own again.
+  await page.getByRole('tab', { name: 'Everything.md, Chinese' }).hover()
+  await page.getByRole('button', { name: 'Close Everything.md' }).first().click()
+  await expect(page.getByRole('tab').getByTestId('tab-parent')).toHaveCount(0)
+  expect(errors.pageErrors).toEqual([])
+  expect(errors.consoleErrors).toEqual([])
+})
+
+test('the "…" menu hands the Document to Finder and to its default app, and the "+" is ⌘N', async ({ page }) => {
+  const errors = watchForErrors(page)
+  await page.goto('/')
+  await page.evaluate((folder) => window.__plumoMockVault?.queueDialogSelection([folder]), MOCK_FOLDER)
+  await page.keyboard.press('Meta+o')
+  await expect(page.getByRole('tree')).toBeVisible()
+  await openDocumentThroughDialog(page, WELCOME_PATH)
+  await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
+
+  await page.getByRole('button', { name: 'More', exact: true }).click()
+  expect(await page.getByTestId('tab-more-menu').getByRole('menuitem').allTextContents()).toEqual([
+    'Pin', 'Reveal in Finder', 'Open in Default App', 'Find⌘F', 'Close Tab⌘W',
+  ])
+  await page.getByRole('menuitem', { name: 'Reveal in Finder' }).click()
+  await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.revealedPath())).toBe(WELCOME_PATH)
+  await page.getByRole('button', { name: 'More', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Open in Default App' }).click()
+  await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.openedExternallyPath())).toBe(WELCOME_PATH)
+
+  await page.getByTestId('tab-bar-new-document').click()
+  await expect(page.getByRole('tab')).toHaveCount(2)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })

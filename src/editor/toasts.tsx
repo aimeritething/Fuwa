@@ -21,7 +21,7 @@ export function showRefusalToast(message: string): void {
   toast(message, { id: message, icon: warningIcon() })
 }
 
-/** Copy path (⌘⇧,, Edit menu, the path row's link button): the absolute path onto the clipboard. */
+/** Copy path (⌘⇧,, Edit menu, the tab bar's link button): the absolute path onto the clipboard. */
 export function copyPathWithToast(path: string): void {
   copyLocalPath(path).then(
     () => toast('Copied path to clipboard', { id: COPY_PATH_TOAST_ID, icon: <Copy size={16} aria-hidden="true" /> }),

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { clampSidebarWidth } from '@/session/session-schema'
-import { SidebarToggle } from './sidebar-toggle'
+import { SidebarToggle, TrafficLightsRoom } from './sidebar-toggle'
 
 const KEYBOARD_RESIZE_STEP = 16
 
@@ -12,11 +12,12 @@ interface SidebarProps {
 }
 
 /**
- * The sidebar: directly on the canvas, no border, no
- * surface of its own. Its 44px top row keeps the traffic lights at one y in
- * both states, drags the window, and carries the collapse icon at its right
- * end. The groups (Open Editors, the Explorer) stack below it. Its right
- * edge resizes it; the width reaches the Session once the drag ends.
+ * The sidebar: the left of the window's two panes, on its own ground, with a
+ * 1px line between it and the editor. Its 52px top row is the tab bar's
+ * height, so the traffic lights sit at one y in both states; it drags the
+ * window and carries the collapse icon right of the lights. The groups (Open
+ * Editors, the Explorer) stack below it. Its right edge resizes it; the width
+ * (the line included) reaches the Session once the drag ends.
  */
 export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarProps) {
   const { liveWidth, resizerProps } = useEdgeResize(width, onWidthChange)
@@ -24,14 +25,15 @@ export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarPro
 
   return (
     <aside
-      className="relative flex min-h-0 flex-none flex-col px-2 pb-2 text-sm leading-normal font-medium text-text-secondary select-none data-resizing:cursor-col-resize"
+      className="relative flex min-h-0 flex-none flex-col border-r border-border-default bg-surface-app px-3 pb-2 text-sm leading-normal font-medium text-text-secondary select-none data-resizing:cursor-col-resize"
       data-testid="sidebar"
       data-resizing={liveWidth !== null || undefined}
       style={{ width: liveWidth ?? width }}
       onClickCapture={onClickCapture}
     >
-      {/* The traffic lights' row; the whole row drags the window, the icon at its end does not. */}
-      <div className="-mx-2 mb-0.5 flex h-11 flex-none items-center justify-end pr-2" data-testid="sidebar-top" data-tauri-drag-region>
+      {/* The traffic lights' row; the whole row drags the window, the icon after the lights does not. */}
+      <div className="-mx-3 mb-1 flex h-13 flex-none items-center gap-3" data-testid="sidebar-top" data-tauri-drag-region>
+        <TrafficLightsRoom />
         <SidebarToggle collapsed={false} onToggle={onToggle} />
       </div>
       {children}
