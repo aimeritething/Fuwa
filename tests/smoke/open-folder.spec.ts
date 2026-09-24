@@ -21,7 +21,7 @@ test('Open Folder shows a sorted Explorer, opens Documents, follows Tabs and res
   await explorer.getByRole('button', { name: 'Collapse Projects' }).click()
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
-  await page.getByTestId(`open-editor:${MOCK_FOLDER}/Projects/Plumo.md`).click()
+  await page.getByTestId(`tab:${MOCK_FOLDER}/Projects/Plumo.md`).click()
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects/Plumo.md`).locator('..')).toHaveAttribute('aria-selected', 'true')
   await page.getByTestId(`explorer-row:${MOCK_FOLDER}/Attachments`).click()
   await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
@@ -42,7 +42,7 @@ test('switching and closing Folder flushes edits and closes every Tab', async ({
   await page.keyboard.type(' Folder switch keeps this edit.')
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Projects`)).toBeVisible()
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect(page.getByTestId('tab-bar')).toHaveCount(0)
   const saved = await page.evaluate((path) => window.__plumoMockVault?.files().find((file) => file.path === path)?.content, `${MOCK_FOLDER}/Welcome.md`)
   expect(saved).toContain('Folder switch keeps this edit.')
   await page.evaluate(() => window.__plumoTest?.dispatchBrowserMenuCommand?.('file-close-vault'))
@@ -82,13 +82,16 @@ test('external changes reload clean Documents, preserve pending edits, and refre
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('outside Documents show their dimmed parent, stay out of Explorer, and reload externally', async ({ page }) => {
+test('outside Documents stay out of the Explorer and the Pinned list, and reload externally', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await openFolder(page, `${MOCK_FOLDER}/Projects`)
   await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Welcome.md`)
   await expect(page.getByRole('tab', { selected: true })).toHaveAttribute('title', `${MOCK_FOLDER}/Welcome.md`)
-  await expect(page.getByTestId(`open-editor:${MOCK_FOLDER}/Welcome.md`).getByTestId('open-editor-parent')).toHaveText('Notes')
+  // Pin/Unpin is greyed in the "…": only a file in the Folder can be pinned.
+  await page.getByTestId('tab-more').click()
+  await expect(page.getByRole('menuitem', { name: 'Pin', exact: true })).toHaveAttribute('data-disabled')
+  await page.keyboard.press('Escape')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Welcome.md`)).toHaveCount(0)
   await page.evaluate((path) => {
     window.__plumoMockVault?.writeNote(path, '# Outside changed\n')

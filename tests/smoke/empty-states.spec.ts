@@ -94,8 +94,8 @@ test('a relaunch whose Folder is gone says so above the button, writes folder: n
   expect(missingBox.y + missingBox.height).toBeLessThanOrEqual(buttonBox.y)
   await expect(page.getByRole('tab', { name: 'Welcome.md' })).toBeVisible()
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
-  // Open Editors above the Explorer, the Document's parent dimmed after its name.
-  await expect(page.getByTestId(`open-editor:${WELCOME_PATH}`).getByTestId('open-editor-parent')).toHaveText('Notes')
+  // With no Folder there is nothing to pin: the sidebar holds the No-Folder block alone.
+  await expect(page.getByTestId('pinned')).toHaveCount(0)
   await expect.poll(() => storedSession(page)).toMatchObject({ folder: null, openEditors: [{ path: WELCOME_PATH, mode: 'rich' }] })
 
   // The line stays until any Folder is opened.
@@ -105,7 +105,7 @@ test('a relaunch whose Folder is gone says so above the button, writes folder: n
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('the Tabs of a Folder-less window open into a collapsed sidebar, which holds Open Editors over the No-Folder block once shown', async ({ page }) => {
+test('the Tabs of a Folder-less window open into a collapsed sidebar, which holds the No-Folder block alone once shown', async ({ page }) => {
   await page.goto('/')
   await openDocumentThroughDialog(page, WELCOME_PATH)
 
@@ -113,10 +113,7 @@ test('the Tabs of a Folder-less window open into a collapsed sidebar, which hold
   await page.keyboard.press('Meta+BracketLeft')
 
   const sidebar = page.getByTestId('sidebar')
-  const openEditors = page.getByTestId('open-editors')
-  const explorer = page.getByTestId('explorer-no-folder')
-  await expect(openEditors).toBeVisible()
-  await expect(explorer).toBeVisible()
-  expect((await openEditors.boundingBox())!.y).toBeLessThan((await explorer.boundingBox())!.y)
-  await expect(sidebar.getByRole('option')).toHaveCount(1)
+  await expect(page.getByTestId('explorer-no-folder')).toBeVisible()
+  await expect(sidebar.getByRole('option')).toHaveCount(0)
+  await expect(page.getByTestId('pinned')).toHaveCount(0)
 })
