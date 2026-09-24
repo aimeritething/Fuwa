@@ -115,9 +115,18 @@ export async function renameFolderDirectory(params: {
     : noteRootForPath(params.path)
 }
 
-/** Reveal in Finder. Context-menu only; never a manifest command. */
+/** Reveal in Finder: the Explorer's context menu on a row, and the File menu's command on the active Tab. */
 export function revealPath(path: string): Promise<void> {
   return command<void>('reveal_path_in_file_manager', { path })
+}
+
+/**
+ * Open in Default App: the file handed to the app macOS opens it with. The
+ * Rust side refuses a path outside `root`, the Tab's boundary root (its
+ * Folder, or a lone Document's own directory).
+ */
+export function openPathInDefaultApp(path: string, root: string): Promise<void> {
+  return command<void>('open_vault_file_external', { path, vaultPath: root })
 }
 
 /** Copy Path: the absolute path, onto the system clipboard. */

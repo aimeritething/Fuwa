@@ -43,6 +43,12 @@ export interface AppCommandHandlers {
   onToggleRawEditor?: () => void
   /** ⌘⇧,: the active Tab's absolute path onto the clipboard; disabled with no Tab. */
   onCopyPath?: () => void
+  /** Pin/Unpin (File menu, the tab bar's "…"): the active Tab's file in the Pinned list. */
+  onTogglePin?: () => void
+  /** Reveal in Finder (File menu, the tab bar's "…"): the active Tab's file, selected in Finder. */
+  onRevealInFinder?: () => void
+  /** Open in Default App (File menu, the tab bar's "…"): the active Tab's file, handed to the app macOS opens it with. */
+  onOpenInDefaultApp?: () => void
   onAppearanceSystem?: () => void
   onAppearanceDark?: () => void
   onAppearanceLight?: () => void
@@ -80,6 +86,9 @@ type SimpleHandlerKey = keyof Pick<
   | 'onToggleSidebar'
   | 'onToggleRawEditor'
   | 'onCopyPath'
+  | 'onTogglePin'
+  | 'onRevealInFinder'
+  | 'onOpenInDefaultApp'
   | 'onAppearanceSystem'
   | 'onAppearanceDark'
   | 'onAppearanceLight'
@@ -118,6 +127,9 @@ const SIMPLE_HANDLER_EXECUTORS: readonly [SimpleHandlerKey, SimpleHandlerExecuto
   ['onToggleSidebar', (handlers) => handlers.onToggleSidebar?.()],
   ['onToggleRawEditor', (handlers) => handlers.onToggleRawEditor?.()],
   ['onCopyPath', (handlers) => handlers.onCopyPath?.()],
+  ['onTogglePin', (handlers) => handlers.onTogglePin?.()],
+  ['onRevealInFinder', (handlers) => handlers.onRevealInFinder?.()],
+  ['onOpenInDefaultApp', (handlers) => handlers.onOpenInDefaultApp?.()],
   ['onAppearanceSystem', (handlers) => handlers.onAppearanceSystem?.()],
   ['onAppearanceDark', (handlers) => handlers.onAppearanceDark?.()],
   ['onAppearanceLight', (handlers) => handlers.onAppearanceLight?.()],

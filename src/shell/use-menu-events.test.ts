@@ -61,6 +61,19 @@ describe('useMenuEvents', () => {
     delete window.__plumoTest
   })
 
+  it('runs the active Tab file commands from their File menu items, and nothing without a handler', () => {
+    const handlers = makeHandlers({ hasTab: true, onTogglePin: vi.fn(), onRevealInFinder: vi.fn(), onOpenInDefaultApp: vi.fn() })
+
+    dispatchMenuEvent('file-toggle-pin', handlers)
+    dispatchMenuEvent('file-reveal-in-finder', handlers)
+    dispatchMenuEvent('file-open-in-default-app', handlers)
+
+    expect(handlers.onTogglePin).toHaveBeenCalledTimes(1)
+    expect(handlers.onRevealInFinder).toHaveBeenCalledTimes(1)
+    expect(handlers.onOpenInDefaultApp).toHaveBeenCalledTimes(1)
+    expect(() => dispatchMenuEvent('file-toggle-pin', makeHandlers())).not.toThrow()
+  })
+
   it('dispatches a native menu event id to its command handler', () => {
     const handlers = makeHandlers()
 
