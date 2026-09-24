@@ -40,6 +40,7 @@ test('quit and relaunch restores the Tabs in order and the active Tab, and the f
     theme: 'light',
     // A Document opened with no Folder collapses the sidebar.
     sidebar: { collapsed: true, width: 260 },
+    pinned: {},
   })
 
   await page.reload()
@@ -88,7 +89,7 @@ test('a Session with an unknown version is ignored and rewritten', async ({ page
   await page.reload()
 
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect(page.getByTestId('tab-bar')).toHaveCount(0)
   await expect.poll(() => storedSession(page)).toMatchObject({ version: 1, openEditors: [], activePath: null })
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -104,7 +105,7 @@ test('an empty Session restores to the empty state without error', async ({ page
   await page.reload()
 
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect(page.getByTestId('tab-bar')).toHaveCount(0)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })

@@ -1,42 +1,30 @@
 import { expect, test, type Page } from '@playwright/test'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
-// Several Documents open as Tabs and Open Editors rows, the successor rule on
-// close, positional navigation and ⌘W. With no Folder open every Tab is
-// out-of-Folder, so each row carries its dimmed parent after the name; the
-// name assertions here read the name span rather than the whole row. Opening
-// a Document with no Folder collapses the sidebar, so the rows are read after
-// ⌘[ brings it back.
+// Several Documents open as Tabs, the successor rule on close, positional
+// navigation and ⌘W.
 
 const READING_LIST_PATH = `${MOCK_FOLDER}/Reading list.md`
 const PLUMO_PATH = `${MOCK_FOLDER}/Projects/Plumo.md`
 
 const tabNames = (page: Page) => page.getByRole('tab').allTextContents()
-const rowNames = (page: Page) => page.getByRole('option').getByTestId('open-editor-name').allTextContents()
-const rowParents = (page: Page) => page.getByRole('option').getByTestId('open-editor-parent').allTextContents()
 const activeTab = (page: Page) => page.getByRole('tab', { selected: true })
-const activeRow = (page: Page) => page.getByRole('option', { selected: true }).getByTestId('open-editor-name')
 
 async function openThree(page: Page) {
   await page.goto('/')
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
+  await expect(page.getByTestId('tab-bar')).toHaveCount(0)
   await openDocumentThroughDialog(page, WELCOME_PATH)
   await openDocumentThroughDialog(page, READING_LIST_PATH)
   await openDocumentThroughDialog(page, PLUMO_PATH)
   await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
-  await page.keyboard.press('Meta+BracketLeft')
-  await expect(page.getByTestId('sidebar')).toBeVisible()
 }
 
-test('three Documents give three Tabs and three Open Editors rows, with the active pair matching', async ({ page }) => {
+test('three Documents give three Tabs, the last one active', async ({ page }) => {
   const errors = watchForErrors(page)
   await openThree(page)
 
   expect(await tabNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Plumo.md'])
-  expect(await rowNames(page)).toEqual(['Welcome.md', 'Reading list.md', 'Plumo.md'])
-  expect(await rowParents(page)).toEqual(['Notes', 'Notes', 'Projects'])
   await expect(activeTab(page)).toHaveText('Plumo.md')
-  await expect(activeRow(page)).toHaveText('Plumo.md')
   await expect(page.getByTestId('tab-bar')).toHaveCSS('height', '52px')
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -64,12 +52,11 @@ test('closing the middle Tab activates the one to its right, closing the last th
   await expect(activeTab(page)).toHaveText('Plumo.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
 
-  await page.getByRole('option', { name: 'Plumo.md' }).hover()
-  await page.getByRole('option', { name: 'Plumo.md' }).getByRole('button', { name: 'Close Plumo.md' }).click()
+  await page.getByRole('tab', { name: 'Plumo.md' }).hover()
+  await page.getByRole('tab', { name: 'Plumo.md' }).getByRole('button', { name: 'Close Plumo.md' }).click()
 
   expect(await tabNames(page)).toEqual(['Welcome.md'])
   await expect(activeTab(page)).toHaveText('Welcome.md')
-  await expect(activeRow(page)).toHaveText('Welcome.md')
 })
 
 test('⌘⇧[ and ⌘⇧] cycle positionally and ⌘2 activates the second Tab', async ({ page }) => {
@@ -87,11 +74,10 @@ test('⌘⇧[ and ⌘⇧] cycle positionally and ⌘2 activates the second Tab',
 
   await page.keyboard.press('Meta+2')
   await expect(activeTab(page)).toHaveText('Reading list.md')
-  await expect(activeRow(page)).toHaveText('Reading list.md')
   await expect(page.locator('.bn-editor h1')).toHaveText('Reading list')
 })
 
-test('⌘W closes the active Tab, and at zero Tabs the tab bar and Open Editors leave the DOM', async ({ page }) => {
+test('⌘W closes the active Tab, and at zero Tabs the tab bar leaves the DOM', async ({ page }) => {
   const errors = watchForErrors(page)
   await openThree(page)
 
@@ -103,7 +89,6 @@ test('⌘W closes the active Tab, and at zero Tabs the tab bar and Open Editors 
   await page.keyboard.press('Meta+w')
 
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
-  await expect(page.getByTestId('open-editors')).toHaveCount(0)
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
 
   // One more ⌘W would close the window in Tauri; here there is none to close.
