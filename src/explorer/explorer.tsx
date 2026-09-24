@@ -69,8 +69,8 @@ function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder
     <section className="mt-3 flex min-h-0 flex-col" data-testid="explorer">
       <SidebarLabel className="justify-between">Explorer</SidebarLabel>
       <div className="flex cursor-default flex-col gap-2 px-2 pt-2.5 pb-2" data-testid="explorer-no-folder">
-        <h4 className="text-sm leading-normal font-medium text-text-primary">No folder open</h4>
-        <p className="mb-0.5 text-xs leading-normal font-normal text-text-secondary">Plumo reads Markdown from one folder at a time. Open one to browse it here.</p>
+        <h4 className="text-sm leading-normal font-medium text-text-heading">No folder open</h4>
+        <p className="mb-0.5 text-xs leading-normal font-normal text-text-tertiary">Plumo reads Markdown from one folder at a time. Open one to browse it here.</p>
         {error && (
           <p className="mb-0.5 font-mono text-2xs leading-normal font-normal text-chroma-red-text wrap-anywhere" role="status" data-testid="explorer-folder-missing">
             {error}
@@ -78,7 +78,7 @@ function NoFolder({ error, onOpenFolder }: { error?: string | null; onOpenFolder
         )}
         <div>
           <Button type="button" aria-label="Open Folder ⌘O" onClick={onOpenFolder} data-testid="explorer-open-folder">
-            Open Folder<Kbd>⌘O</Kbd>
+            Open Folder<Kbd className="bg-text-inverse/12 text-text-inverse/80">⌘O</Kbd>
           </Button>
         </div>
         <p className="mt-0.5 text-xs leading-normal font-normal text-text-muted">
@@ -344,7 +344,7 @@ function ExplorerRow(props: RowProps) {
           <SidebarRow
             className={cn(
               'mb-px [[aria-selected=true]>&]:bg-sidebar-row-active [[aria-selected=true]>&]:text-text-heading',
-              'data-drop-target:bg-sidebar-row-active data-drop-target:text-text-heading data-drop-target:ring-1 data-drop-target:ring-state-focus-ring data-drop-target:ring-inset',
+              'data-drop-target:bg-sidebar-row-active data-drop-target:text-text-heading data-drop-target:ring-1 data-drop-target:ring-accent-base data-drop-target:ring-inset',
               // WebKit will not start an HTML5 drag from inside `user-select: none` (the whole shell) without this.
               !isFolder && '[-webkit-user-drag:element]',
             )}

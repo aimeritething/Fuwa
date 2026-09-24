@@ -151,7 +151,7 @@
   [data-plumo-text-direction="rtl"]:is(blockquote),
   [data-plumo-text-direction="rtl"] blockquote {
     border-left-width: 0;
-    border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
+    border-inline-start: var(--blockquote-border-left-width) solid var(--border-default);
     padding-inline-start: var(--blockquote-padding-left);
   }
 
@@ -443,7 +443,7 @@
 
   /* Blockquote: a 4px rounded bar, the text colour unchanged. */
   [data-content-type="quote"] blockquote {
-    border-inline-start: var(--blockquote-border-left-width) solid var(--border-strong);
+    border-inline-start: var(--blockquote-border-left-width) solid var(--border-default);
     border-start-start-radius: var(--radius-sm);
     border-end-start-radius: var(--radius-sm);
     padding-inline-start: var(--blockquote-padding-left);
