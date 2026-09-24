@@ -56,7 +56,7 @@ describe('useTabCommands', () => {
     expect(order).toEqual(['settle', 'settle', 'settle', 'settle', 'adjacent -1', 'adjacent 1', 'jump 1', 'jump 8'])
   })
 
-  it('activates and closes a Tab from the tab bar and Open Editors the same way', async () => {
+  it('activates and closes a Tab from the tab bar after settling', async () => {
     const { commands, order } = renderCommands('/n/a.md')
 
     await act(async () => {
