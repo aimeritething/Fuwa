@@ -15,6 +15,8 @@ export interface MenuEventHandlers extends AppCommandHandlers {
   hasFolder: boolean
   /** Whether any Tab is open, an Image Tab included; Close Tab's menu item follows it. */
   hasTab: boolean
+  /** Whether the active Tab's file can be pinned: a Document or an Image file in the Folder. Pin/Unpin follows it. */
+  canPin?: boolean
 }
 
 declare global {
@@ -32,6 +34,7 @@ interface MenuStatePayload {
   hasActiveNote: boolean
   hasVault: boolean
   hasTab: boolean
+  canPin: boolean
 }
 
 function readCustomEventDetail(event: Event): string | null {
@@ -141,7 +144,8 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
   const hasActiveNote = handlers.activeDocumentPath !== null
   const hasVault = handlers.hasFolder
   const hasTab = handlers.hasTab
-  const menuState = useMemo(() => ({ hasActiveNote, hasVault, hasTab }), [hasActiveNote, hasTab, hasVault])
+  const canPin = handlers.canPin ?? false
+  const menuState = useMemo(() => ({ hasActiveNote, hasVault, hasTab, canPin }), [canPin, hasActiveNote, hasTab, hasVault])
 
   useEffect(() => {
     ref.current = handlers

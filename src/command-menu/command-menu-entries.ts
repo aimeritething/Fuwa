@@ -25,6 +25,8 @@ export interface CommandMenuState {
   hasFolder: boolean
   /** Any Tab is open, an Image Tab included: Close Tab. */
   hasTab: boolean
+  /** The active Tab's file can be pinned or unpinned: a Document or an Image file in the Folder. */
+  canPin: boolean
 }
 
 const APP_MENU_LABEL = 'Plumo'
@@ -35,6 +37,7 @@ function groupEnabled(commandId: string, state: CommandMenuState): boolean {
   if (APP_COMMAND_MENU_STATE_GROUPS.noteDependent.includes(commandId)) return state.hasDocument
   if (APP_COMMAND_MENU_STATE_GROUPS.tabDependent.includes(commandId)) return state.hasTab
   if (APP_COMMAND_MENU_STATE_GROUPS.vaultDependent.includes(commandId)) return state.hasFolder
+  if (APP_COMMAND_MENU_STATE_GROUPS.pinnableDependent.includes(commandId)) return state.canPin
   return true
 }
 

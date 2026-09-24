@@ -7,8 +7,8 @@ function labels(target: Parameters<typeof explorerMenuEntries>[0]): string[] {
 }
 
 describe('explorerMenuEntries', () => {
-  it('gives a Document rename, trash and the system hand-offs', () => {
-    expect(labels('note')).toEqual(['Rename…', 'Move to Trash', '─', 'Reveal in Finder', 'Copy Path'])
+  it('gives a Document Pin, rename, trash and the system hand-offs', () => {
+    expect(labels('note')).toEqual(['Pin', '─', 'Rename…', 'Move to Trash', '─', 'Reveal in Finder', 'Copy Path'])
   })
 
   it('gives an Image file the same items as a Document', () => {

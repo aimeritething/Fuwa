@@ -1,6 +1,7 @@
 import { ContextMenuContent, ContextMenuItem, ContextMenuSeparator } from '@/ui/context-menu'
 import {
   EXPLORER_MENU_LABELS,
+  EXPLORER_UNPIN_LABEL,
   explorerMenuEntries,
   type ExplorerMenuAction,
   type ExplorerMenuTargetKind,
@@ -14,10 +15,12 @@ import {
 
 interface ExplorerContextMenuProps {
   target: ExplorerMenuTargetKind
+  /** Whether the row is pinned, which names its Pin item Unpin. */
+  pinned?: boolean
   onAction: (action: ExplorerMenuAction) => void
 }
 
-export function ExplorerContextMenu({ target, onAction }: ExplorerContextMenuProps) {
+export function ExplorerContextMenu({ target, pinned = false, onAction }: ExplorerContextMenuProps) {
   return (
     <ContextMenuContent data-testid={`explorer-menu:${target}`}>
       {explorerMenuEntries(target).map((entry, index) => (
@@ -25,7 +28,7 @@ export function ExplorerContextMenu({ target, onAction }: ExplorerContextMenuPro
           ? <ContextMenuSeparator key={`separator-${index}`} />
           : (
             <ContextMenuItem key={entry.action} onSelect={() => onAction(entry.action)}>
-              {EXPLORER_MENU_LABELS[entry.action]}
+              {entry.action === 'pin' && pinned ? EXPLORER_UNPIN_LABEL : EXPLORER_MENU_LABELS[entry.action]}
             </ContextMenuItem>
           )
       ))}

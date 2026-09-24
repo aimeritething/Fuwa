@@ -13,7 +13,8 @@ describe('parseSession', () => {
       openEditors: [{ path: A, mode: 'rich' }, { path: '/Users/x/notes/cover.png' }],
       activePath: A,
       theme: 'dark',
-      sidebar: { collapsed: false, width: 260 },
+      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned'] },
+      pinned: { '/Users/x/notes': [C, A, '/Users/x/notes/cover.png'], '/Users/x/work': ['/Users/x/work/plan.md'] },
       window: { x: 0, y: 0, width: 1200, height: 800 },
     }
 
@@ -23,8 +24,25 @@ describe('parseSession', () => {
       openEditors: [{ path: A, mode: 'rich' }, { path: '/Users/x/notes/cover.png' }],
       activePath: A,
       theme: 'dark',
-      sidebar: { collapsed: false, width: 260 },
+      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned'] },
+      pinned: { '/Users/x/notes': [C, A, '/Users/x/notes/cover.png'], '/Users/x/work': ['/Users/x/work/plan.md'] },
     })
+  })
+
+  it('keeps only well-formed pins: string paths inside their own Folder, each once', () => {
+    const parsed = parseSession({
+      version: 1,
+      sidebar: { collapsed: false, width: 260, collapsedSections: ['pinned', 'pinned', 'outline', 3] },
+      pinned: {
+        '/Users/x/notes': [A, 42, A, '/Users/y/elsewhere.md', '/Users/x/notes', B],
+        '/Users/x/empty': [],
+        '/Users/x/broken': 'a.md',
+      },
+    })
+
+    expect(parsed?.pinned).toEqual({ '/Users/x/notes': [A, B] })
+    expect(parsed?.sidebar.collapsedSections).toEqual(['pinned'])
+    expect(parseSession({ version: 1, pinned: ['a.md'] })?.pinned).toEqual({})
   })
 
   it('ignores a Session with an unknown version', () => {
@@ -54,6 +72,7 @@ describe('parseSession', () => {
       activePath: null,
       theme: 'light',
       sidebar: { collapsed: false, width: 260 },
+      pinned: {},
     })
   })
 })
@@ -113,6 +132,7 @@ describe('sessionForOpenEditors', () => {
       activePath: A,
       theme: 'light',
       sidebar: { collapsed: false, width: 260 },
+      pinned: {},
     })
   })
 
@@ -137,6 +157,15 @@ describe('sessionForOpenEditors', () => {
 
     expect(session.folder).toBe('/Users/x/notes')
     expect(session.sidebar).toEqual({ collapsed: true, width: 320 })
+  })
+
+  it('writes the folded sections and every Folder\'s Pinned list it is given', () => {
+    const pinned = { '/Users/x/notes': [B, A], '/Users/x/work': ['/Users/x/work/plan.md'] }
+    const session = sessionForOpenEditors([], null, 'dark', '/Users/x/notes', { collapsed: false, width: 260, collapsedSections: ['pinned'] }, pinned)
+
+    expect(session.sidebar).toEqual({ collapsed: false, width: 260, collapsedSections: ['pinned'] })
+    expect(session.pinned).toEqual(pinned)
+    expect(parseSession(JSON.parse(JSON.stringify(session)))).toEqual(session)
   })
 })
 

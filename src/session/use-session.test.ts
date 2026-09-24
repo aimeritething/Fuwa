@@ -79,8 +79,33 @@ describe('useSession', () => {
         activePath: null,
         theme: 'dark',
         sidebar: { collapsed: false, width: 260 },
+        pinned: {},
       },
     ]))
+  })
+
+  it('restores the Pinned lists before the Folder, and writes them back whenever they change', async () => {
+    const pinned = { '/n': [B, A] }
+    answerWith({ ...STORED_SESSION, folder: '/n', pinned })
+    const order: string[] = []
+    const restorePinned = vi.fn(() => { order.push('pinned') })
+    const restoreFolder = vi.fn(async (folder: string | null) => { order.push('folder'); return folder })
+    const restoreOpenEditors = vi.fn().mockResolvedValue(undefined)
+
+    const { result, rerender } = renderHook(
+      (props: { pinned: Record<string, string[]> }) => useSession({
+        tabs: [], activeTabPath: null, theme: 'dark', restoreOpenEditors, restoreTheme, restoreFolder,
+        sidebar: DEFAULT_SESSION_SIDEBAR, restoreSidebar, restorePinned, ...props,
+      }),
+      { initialProps: { pinned } },
+    )
+
+    await waitFor(() => expect(result.current.restored).toBe(true))
+    expect(restorePinned).toHaveBeenCalledWith(pinned)
+    expect(order).toEqual(['pinned', 'folder'])
+
+    rerender({ pinned: { '/n': [A, B] } })
+    await waitFor(() => expect(sessionWrites().at(-1)).toMatchObject({ pinned: { '/n': [A, B] } }))
   })
 
   it('writes the open Tabs in order and the active Tab whenever they change, but not before the restore', async () => {

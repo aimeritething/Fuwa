@@ -15,8 +15,8 @@ interface SidebarProps {
  * The sidebar: the left of the window's two panes, on its own ground, with a
  * 1px line between it and the editor. Its 52px top row is the tab bar's
  * height, so the traffic lights sit at one y in both states; it drags the
- * window and carries the collapse icon right of the lights. The groups (Open
- * Editors, the Explorer) stack below it. Its right edge resizes it; the width
+ * window and carries the collapse icon right of the lights. The groups (Pinned,
+ * the Explorer) stack below it. Its right edge resizes it; the width
  * (the line included) reaches the Session once the drag ends.
  */
 export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarProps) {
@@ -53,9 +53,10 @@ export function Sidebar({ width, onWidthChange, onToggle, children }: SidebarPro
 
 /**
  * A double-click that opens a Tab is one open. By the second click the
- * sidebar has moved under the pointer, so that click would land on another
- * row, or on the Explorer's "+". It is dropped, wherever it lands. A second
- * click after anything else (a folder's arrow, a close button) goes through.
+ * sidebar may have moved under the pointer (a new Document's row appearing,
+ * its folder opening), so that click could land on another row, or make a
+ * second Document from the Explorer's "+". It is dropped, wherever it lands.
+ * A second click after anything else (a folder's arrow) goes through.
  */
 function useOneOpenPerDoubleClick() {
   const openedTab = useRef(false)

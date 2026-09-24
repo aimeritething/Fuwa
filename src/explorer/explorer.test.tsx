@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Explorer } from './explorer'
+import { Explorer, type ExplorerPins } from './explorer'
 import { useExplorerMemory } from './use-explorer-memory'
 import { buildExplorerTree, type ListedFile } from '@/folder/explorer'
 import type { ExplorerActions } from './use-explorer-actions'
@@ -46,10 +46,11 @@ interface HarnessProps {
   tree?: ReturnType<typeof buildExplorerTree>
   /** False stands in for the collapsed sidebar: the Explorer is unmounted, what holds its memory is not. */
   shown?: boolean
+  pins?: ExplorerPins
 }
 
 /** The Explorer under what App gives it: its memory, held above the sidebar. */
-function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree = TREE, shown = true }: HarnessProps) {
+function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree = TREE, shown = true, pins }: HarnessProps) {
   const memory = useExplorerMemory(folder)
   if (!shown) return null
   return (
@@ -62,13 +63,14 @@ function ExplorerHarness({ actions, onOpenFile = vi.fn(), folder = FOLDER, tree 
       memory={memory}
       onCloseFolder={vi.fn()}
       onOpenFolder={vi.fn()}
+      pins={pins}
     />
   )
 }
 
-function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn()) {
-  const view = render(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} />)
-  const rerender = (props: Partial<HarnessProps>) => view.rerender(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} {...props} />)
+function renderExplorer(actions: ExplorerActions, onOpenFile = vi.fn(), pins?: ExplorerPins) {
+  const view = render(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} pins={pins} />)
+  const rerender = (props: Partial<HarnessProps>) => view.rerender(<ExplorerHarness actions={actions} onOpenFile={onOpenFile} pins={pins} {...props} />)
   return { onOpenFile, rerender }
 }
 
@@ -140,8 +142,25 @@ describe('the context menu', () => {
     rightClick(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`))
 
     const menu = await screen.findByTestId('explorer-menu:note')
-    expect(menuLabels(menu)).toEqual(['Rename…', 'Move to Trash', 'Reveal in Finder', 'Copy Path'])
+    expect(menuLabels(menu)).toEqual(['Pin', 'Rename…', 'Move to Trash', 'Reveal in Finder', 'Copy Path'])
     expect(within(menu).getByText('Move to Trash')).not.toHaveAttribute('data-disabled')
+  })
+
+  it('pins the row it was opened on, and names the item Unpin on a pinned row', async () => {
+    const pins = { isPinned: (path: string) => path === `${FOLDER}/Welcome.md`, toggle: vi.fn() }
+    renderExplorer(stubActions(), vi.fn(), pins)
+
+    fireEvent.click(screen.getByLabelText('Expand Projects'))
+    rightClick(screen.getByTestId(`explorer-row:${FOLDER}/Projects/lake.png`))
+    const imageMenu = await screen.findByTestId('explorer-menu:image')
+    expect(menuLabels(imageMenu)[0]).toBe('Pin')
+    fireEvent.click(within(imageMenu).getByText('Pin'))
+    await waitFor(() => expect(pins.toggle).toHaveBeenCalledWith(`${FOLDER}/Projects/lake.png`))
+    await waitFor(() => expect(screen.queryByTestId('explorer-menu:image')).toBeNull())
+
+    rightClick(screen.getByTestId(`explorer-row:${FOLDER}/Welcome.md`))
+    const noteMenu = await screen.findByTestId('explorer-menu:note')
+    expect(menuLabels(noteMenu)[0]).toBe('Unpin')
   })
 
   it('gives a folder the creation items as well', async () => {

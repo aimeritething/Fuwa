@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useState } from 'react'
-import { clampSidebarWidth, DEFAULT_SESSION_SIDEBAR, type SessionSidebar } from '@/session/session-schema'
+import { clampSidebarWidth, DEFAULT_SESSION_SIDEBAR, type SessionSidebar, type SidebarSection } from '@/session/session-schema'
 
 /**
- * The sidebar's two persisted facts: whether it is collapsed
- * and how wide it is when shown. Both live in the Session's `sidebar` and
- * come back on restore. Only the end states are held here; the transition
+ * The sidebar's persisted facts: whether it is collapsed, how wide it is when
+ * shown, and which of its sections (Pinned) are folded away under their
+ * label. All live in the Session's `sidebar` and come back on restore. Only the end states are held here; the transition
  * between them is the stylesheet's.
  */
 export function useSidebar() {
@@ -26,9 +26,19 @@ export function useSidebar() {
     })
   }, [])
 
-  const restore = useCallback((restored: SessionSidebar) => {
-    setSidebar({ collapsed: restored.collapsed, width: clampSidebarWidth(restored.width) })
+  /** A section's label: folds the section away, or opens it again. */
+  const toggleSection = useCallback((section: SidebarSection) => {
+    setSidebar((prev) => {
+      const folded = prev.collapsedSections ?? []
+      const collapsedSections = folded.includes(section) ? folded.filter((each) => each !== section) : [...folded, section]
+      return { ...prev, collapsedSections }
+    })
   }, [])
 
-  return useMemo(() => ({ sidebar, toggle, collapse, setWidth, restore }), [collapse, restore, setWidth, sidebar, toggle])
+  const restore = useCallback((restored: SessionSidebar) => {
+    const { collapsed, width, collapsedSections } = restored
+    setSidebar({ collapsed, width: clampSidebarWidth(width), ...(collapsedSections?.length ? { collapsedSections } : {}) })
+  }, [])
+
+  return useMemo(() => ({ sidebar, toggle, collapse, setWidth, toggleSection, restore }), [collapse, restore, setWidth, sidebar, toggle, toggleSection])
 }

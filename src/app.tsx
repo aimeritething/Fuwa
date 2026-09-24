@@ -2,7 +2,8 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import type { Tab } from './types'
 import { CommandMenu } from '@/command-menu/command-menu'
 import { Editor, type TabCommands } from '@/editor/editor'
-import { OpenEditors } from '@/tabs/open-editors'
+import { Pinned } from '@/pinned/pinned'
+import { usePinned } from '@/pinned/use-pinned'
 import { Explorer } from '@/explorer/explorer'
 import { useFolder, pickFolderToOpen } from '@/folder/use-folder'
 import { useExplorerActions } from '@/explorer/use-explorer-actions'
@@ -97,7 +98,8 @@ export default function App() {
     restoreOpenEditors,
   } = useNoteTabs(folder, folderState.listsFile)
   const appearance = useAppearance()
-  const { sidebar, toggle: toggleSidebar, collapse: collapseSidebar, setWidth: setSidebarWidth, restore: restoreSidebar } = useSidebar()
+  const { sidebar, toggle: toggleSidebar, collapse: collapseSidebar, setWidth: setSidebarWidth, toggleSection: toggleSidebarSection, restore: restoreSidebar } = useSidebar()
+  const pinned = usePinned(folder, folderState.files)
   const { restored } = useSession({
     folder,
     restoreFolder: folderState.restoreFolder,
@@ -108,6 +110,8 @@ export default function App() {
     restoreTheme: appearance.restoreTheme,
     sidebar,
     restoreSidebar,
+    pinned: pinned.lists,
+    restorePinned: pinned.restore,
   })
   useThemeMode(appearance.themeMode, restored)
   const flushPendingEditorContentRef = useRef<((path: string) => void) | null>(null)
@@ -250,6 +254,15 @@ export default function App() {
     void openNotesSettled({ openNote, paths: [path], settleActiveNote: settleAndRecord })
   }, [openNote, settleAndRecord])
 
+  // A rename or move made in Plumo carries the Tabs and the pins along. A
+  // change made in Finder is the watcher's, and moves Tabs only: the listing
+  // no longer holding a pinned file is what unpins it (CONTEXT.md, Pinned).
+  const { retarget: retargetPins } = pinned
+  const retargetTabsAndPins = useCallback((oldPath: string, newPath: string) => {
+    retargetTabs(oldPath, newPath)
+    retargetPins(oldPath, newPath)
+  }, [retargetPins, retargetTabs])
+
   // The Explorer's write operations. The tree is built here because
   // the placement rule behind ⌘N reads the selected row, and ⌘N is an app
   // command rather than the Explorer's own.
@@ -264,11 +277,20 @@ export default function App() {
     refresh: folderState.refresh,
     openNote: openExplorerFile,
     settleActiveDocument: settleAndRecord,
-    retargetTabs,
+    retargetTabs: retargetTabsAndPins,
     settleTabsUnder,
     dropTabsUnder,
     showToast: showRefusalToast,
   })
+
+  // A Pinned row opens its file as its Explorer row would, and selects that
+  // row, so the file the Tab shows is marked in both sections.
+  const { select: selectExplorerRow } = explorerActions
+  const openPinnedFile = useCallback((path: string) => {
+    selectExplorerRow(path)
+    openExplorerFile(path)
+  }, [openExplorerFile, selectExplorerRow])
+  const onTogglePinnedSection = useCallback(() => toggleSidebarSection('pinned'), [toggleSidebarSection])
 
   // Held here, above the sidebar, because collapsing the sidebar unmounts the Explorer.
   const explorerMemory = useExplorerMemory(folder)
@@ -364,12 +386,22 @@ export default function App() {
   const onOpenInDefaultApp = useCallback(() => {
     if (activeTabPath) openTabFileInDefaultApp(activeTabPath, folder)
   }, [activeTabPath, folder])
-  // Pin/Unpin has its menu item and its place in the "…" menu, but no Pinned
-  // list to act on yet: with no handler it does nothing, like a disabled item.
+  // Pin/Unpin (File menu, the "…" menu, the Command Menu) acts on the active
+  // Tab's file, which must be a Document or an Image file in the Folder; any
+  // other Tab leaves it greyed, as a pinned file that has just left the
+  // Folder is unpinned already.
+  const activeTabPinned = activeTabPath !== null && pinned.isPinned(activeTabPath)
+  const canPinActiveTab = activeTabPath !== null && (activeTabPinned || pinned.canPin(activeTabPath))
+  const { toggle: togglePin } = pinned
+  const onTogglePin = useCallback(() => {
+    if (activeTabPath) togglePin(activeTabPath)
+  }, [activeTabPath, togglePin])
   const tabFileCommands = useMemo<TabCommands>(() => ({
+    pinned: activeTabPinned,
+    onTogglePin: canPinActiveTab ? onTogglePin : undefined,
     onRevealInFinder: activeTabPath ? onRevealInFinder : undefined,
     onOpenInDefaultApp: activeTabPath ? onOpenInDefaultApp : undefined,
-  }), [activeTabPath, onOpenInDefaultApp, onRevealInFinder])
+  }), [activeTabPath, activeTabPinned, canPinActiveTab, onOpenInDefaultApp, onRevealInFinder, onTogglePin])
 
   // Paste without Formatting (⌘⇧V, Edit menu): the clipboard's text, read
   // through the carried Rust clipboard module in Tauri, inserted as plain
@@ -392,6 +424,7 @@ export default function App() {
     activeDocumentPath,
     hasFolder,
     hasTab,
+    canPin: canPinActiveTab,
     onOpenNote,
     onOpenVault: onOpenFolder,
     onCloseVault: onCloseFolder,
@@ -411,16 +444,16 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onCopyPath, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, tabFileCommands, toggleSidebar])
+  }), [activeDocumentPath, appearance.handlers, canPinActiveTab, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onCopyPath, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, tabFileCommands, toggleSidebar])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
 
   // The palette's rows: every menu-bar command with its enable state, and the
   // Folder's Documents and Image files by name (CONTEXT.md, Command Menu).
   const commandMenuEntries = useMemo(() => [
-    ...commandMenuCommandEntries({ hasDocument: activeDocumentPath !== null, hasFolder, hasTab }),
+    ...commandMenuCommandEntries({ hasDocument: activeDocumentPath !== null, hasFolder, hasTab, canPin: canPinActiveTab }),
     ...commandMenuFileEntries(folderState.files, folder),
-  ], [activeDocumentPath, folder, folderState.files, hasFolder, hasTab])
+  ], [activeDocumentPath, canPinActiveTab, folder, folderState.files, hasFolder, hasTab])
   // A command row runs the same handler its menu item and shortcut would.
   const runCommandMenuCommand = useCallback((id: string) => {
     closeCommandMenu()
@@ -451,12 +484,14 @@ export default function App() {
     <div className="flex h-full w-full bg-surface-app text-text-primary data-restoring:invisible" data-testid="shell" data-restoring={!(restored && finderOpenSettled) || undefined}>
       {!sidebar.collapsed && (
       <Sidebar width={sidebar.width} onWidthChange={setSidebarWidth} onToggle={toggleSidebar}>
-        <OpenEditors
-          folder={folder}
-          tabs={tabs}
+        <Pinned
+          paths={pinned.paths}
           activeTabPath={activeTabPath}
-          onActivate={tabCommands.activateTabSettled}
-          onClose={tabCommands.closeTabSettled}
+          collapsed={sidebar.collapsedSections?.includes('pinned') ?? false}
+          onToggleCollapsed={onTogglePinnedSection}
+          onOpen={openPinnedFile}
+          onUnpin={togglePin}
+          onMove={pinned.move}
         />
         <Explorer
           folder={folder}
@@ -468,6 +503,7 @@ export default function App() {
           onCloseFolder={onCloseFolder}
           onOpenFolder={onOpenFolder}
           error={folderState.error}
+          pins={pinned}
         />
       </Sidebar>
       )}
