@@ -18,6 +18,7 @@ const APP_NAME: &str = "Plumo";
 const NOTE_DEPENDENT_GROUP: &str = "noteDependent";
 const TAB_DEPENDENT_GROUP: &str = "tabDependent";
 const VAULT_DEPENDENT_GROUP: &str = "vaultDependent";
+const PINNABLE_DEPENDENT_GROUP: &str = "pinnableDependent";
 
 type MenuResult = Result<Submenu<tauri::Wry>, Box<dyn Error>>;
 type AppSubmenuBuilder<'a> = SubmenuBuilder<'a, tauri::Wry, App>;
@@ -467,8 +468,8 @@ pub fn set_note_items_enabled(app_handle: &AppHandle, enabled: bool) {
 /// Tab is greyed with zero Tabs while ⌘W itself still reaches the renderer,
 /// which closes the window, because a disabled item's accelerator is not
 /// consumed by the menu. An Image Tab counts, unlike for the note-dependent
-/// group. Copy Path, Pin/Unpin, Reveal in Finder and Open in Default App act
-/// on the active Tab's file, so they follow it too.
+/// group. Copy Path, Reveal in Finder and Open in Default App act on the
+/// active Tab's file, so they follow it too.
 pub fn set_tab_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, TAB_DEPENDENT_GROUP, enabled);
 }
@@ -476,6 +477,12 @@ pub fn set_tab_items_enabled(app_handle: &AppHandle, enabled: bool) {
 /// Enable or disable menu items that depend on having an open vault.
 pub fn set_vault_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_menu_state_group_enabled(app_handle, VAULT_DEPENDENT_GROUP, enabled);
+}
+
+/// Enable or disable Pin/Unpin: only a Document or an Image file in the open
+/// Folder can be pinned, so a Tab outside it, or no Tab, greys the item.
+pub fn set_pinnable_items_enabled(app_handle: &AppHandle, enabled: bool) {
+    set_menu_state_group_enabled(app_handle, PINNABLE_DEPENDENT_GROUP, enabled);
 }
 
 #[cfg(test)]
@@ -582,12 +589,13 @@ mod tests {
     }
 
     #[test]
-    fn state_groups_are_note_tab_and_vault_dependent() {
+    fn state_groups_are_note_tab_vault_and_pinnable_dependent() {
         let groups: Vec<_> = manifest().menu_state_groups.keys().cloned().collect();
         assert_eq!(
             groups,
             [
                 NOTE_DEPENDENT_GROUP,
+                PINNABLE_DEPENDENT_GROUP,
                 TAB_DEPENDENT_GROUP,
                 VAULT_DEPENDENT_GROUP
             ]
@@ -602,7 +610,6 @@ mod tests {
             [
                 "file-close-tab",
                 "edit-copy-path",
-                "file-toggle-pin",
                 "file-reveal-in-finder",
                 "file-open-in-default-app"
             ]
@@ -610,6 +617,10 @@ mod tests {
         assert_eq!(
             menu_state_group_ids(VAULT_DEPENDENT_GROUP),
             ["file-new-note", "file-quick-open", "file-close-vault"]
+        );
+        assert_eq!(
+            menu_state_group_ids(PINNABLE_DEPENDENT_GROUP),
+            ["file-toggle-pin"]
         );
     }
 

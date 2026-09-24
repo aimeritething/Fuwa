@@ -19,7 +19,7 @@ export type TabCommandHandlers = Required<
 
 export interface TabCommands {
   handlers: TabCommandHandlers
-  /** The tab bar's and Open Editors' click paths. */
+  /** The tab bar's click paths. */
   activateTabSettled: (path: string) => void
   closeTabSettled: (path: string) => void
 }

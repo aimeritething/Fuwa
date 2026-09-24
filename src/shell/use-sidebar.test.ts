@@ -37,6 +37,18 @@ describe('useSidebar', () => {
     expect(result.current.sidebar).toEqual({ collapsed: true, width: 480 })
   })
 
+  it('folds a section away and back, and a restore brings the folded sections back', () => {
+    const { result } = renderHook(() => useSidebar())
+
+    act(() => result.current.toggleSection('pinned'))
+    expect(result.current.sidebar.collapsedSections).toEqual(['pinned'])
+    act(() => result.current.toggleSection('pinned'))
+    expect(result.current.sidebar.collapsedSections).toEqual([])
+
+    act(() => result.current.restore({ collapsed: false, width: 300, collapsedSections: ['pinned'] }))
+    expect(result.current.sidebar).toEqual({ collapsed: false, width: 300, collapsedSections: ['pinned'] })
+  })
+
   it('keeps the same state object when nothing changes, so nothing downstream re-renders', () => {
     const { result } = renderHook(() => useSidebar())
     const before = result.current.sidebar

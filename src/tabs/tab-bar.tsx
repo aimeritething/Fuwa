@@ -121,11 +121,7 @@ function TabPill({ path, filename, parentHint, active, onActivate, onClose }: Ta
       {isImage && <Image size={13} className="flex-none text-text-secondary" aria-hidden="true" />}
       <span className="min-w-0 truncate" data-testid="tab-name">{filename}</span>
       {parentHint && <span className="min-w-0 flex-initial truncate text-text-muted" data-testid="tab-parent">{parentHint}</span>}
-      <CloseAffordance
-        name={filename}
-        onClose={() => onClose(path)}
-        hoverOnly
-      />
+      <CloseAffordance name={filename} onClose={() => onClose(path)} />
     </div>
   )
 }

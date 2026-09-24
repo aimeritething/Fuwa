@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn'
 
 /**
  * The sidebar's row vocabulary, shared by the groups the sidebar stacks
- * (Open Editors, the Explorer): the quiet 24px label above a group, the 28px
+ * (Pinned, the Explorer): the quiet 24px label above a group, the 28px
  * row with its 8px radius, and the row's icon and name. A row's selected state
  * is its `aria-selected`; the icon reads it through the row's `group`. The
  * Explorer's rows carry their `aria-selected` on the `treeitem` above them,
@@ -62,8 +62,9 @@ export function SidebarRowName({ className, ...props }: ComponentProps<'span'>) 
 }
 
 /**
- * On a control whose click opens a Tab. That click adds a row to Open
- * Editors, which moves everything below it, this control included. The sidebar
- * drops the second click of a double-click that starts on one.
+ * On a control whose click opens a Tab. The sidebar drops the second click of
+ * a double-click that starts on one, so a double-click is one open: one Tab,
+ * or one new Document from the Explorer's "+", however the sidebar has
+ * shifted under the pointer in between (a folder opening to show the new row).
  */
 export const OPENS_A_TAB_PROPS = { 'data-opens-tab': '' } as const

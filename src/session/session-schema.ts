@@ -1,6 +1,7 @@
 import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '@/shell/theme-mode'
 import type { EditorMode } from '@/types'
 import { isImageFilePath } from '@/tabs/image-file'
+import { parsePinnedLists, type PinnedLists } from '@/pinned/pinned-list'
 
 /**
  * The Session file: one `session.json` in the app's config
@@ -8,8 +9,10 @@ import { isImageFilePath } from '@/tabs/image-file'
  * owns the file itself and the `window` frame, which it merges in when it
  * writes; the renderer sends everything else and never reads `window` back.
  *
- * `folder` roots the Explorer; `sidebar` is whether it is collapsed and how
- * wide it is when shown; `theme` is the View → Appearance choice.
+ * `folder` roots the Explorer; `sidebar` is whether it is collapsed, how
+ * wide it is when shown and which of its sections are folded away; `theme` is
+ * the View → Appearance choice; `pinned` is each Folder's Pinned list, keyed by
+ * the Folder's path, so a Folder opened again gets its pins back.
  */
 
 export const SESSION_VERSION = 1
@@ -22,9 +25,14 @@ export interface SessionEditor {
   mode?: SessionEditorMode
 }
 
+/** A sidebar section that folds away under its label. */
+export type SidebarSection = 'pinned'
+
 export interface SessionSidebar {
   collapsed: boolean
   width: number
+  /** The sections folded away; one left out is open. */
+  collapsedSections?: readonly SidebarSection[]
 }
 
 export interface Session {
@@ -35,6 +43,8 @@ export interface Session {
   activePath: string | null
   theme: ThemeMode
   sidebar: SessionSidebar
+  /** Each Folder's pinned paths, in order; a Folder with none has no key. */
+  pinned: PinnedLists
 }
 
 export interface RestoredOpenEditors {
@@ -53,6 +63,7 @@ export function clampSidebarWidth(width: number): number {
 }
 
 const EDITOR_MODES = new Set<SessionEditorMode>(['rich', 'raw'])
+const SIDEBAR_SECTIONS = new Set<string>(['pinned'] satisfies SidebarSection[])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -71,12 +82,19 @@ function parseEditors(value: unknown): SessionEditor[] {
   return value.map(parseEditor).filter((editor): editor is SessionEditor => editor !== null)
 }
 
+function parseCollapsedSections(value: unknown): SidebarSection[] {
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((section): section is SidebarSection => typeof section === 'string' && SIDEBAR_SECTIONS.has(section)))]
+}
+
 function parseSidebar(value: unknown): SessionSidebar {
   if (!isRecord(value)) return DEFAULT_SESSION_SIDEBAR
-  return {
+  const sidebar: SessionSidebar = {
     collapsed: typeof value.collapsed === 'boolean' ? value.collapsed : DEFAULT_SESSION_SIDEBAR.collapsed,
     width: typeof value.width === 'number' && Number.isFinite(value.width) ? clampSidebarWidth(value.width) : DEFAULT_SESSION_SIDEBAR.width,
   }
+  const collapsedSections = parseCollapsedSections(value.collapsedSections)
+  return collapsedSections.length > 0 ? { ...sidebar, collapsedSections } : sidebar
 }
 
 function parseNullableString(value: unknown): string | null {
@@ -97,6 +115,7 @@ export function parseSession(raw: unknown): Session | null {
     activePath: parseNullableString(raw.activePath),
     theme: normalizeThemeMode(raw.theme) ?? DEFAULT_THEME_MODE,
     sidebar: parseSidebar(raw.sidebar),
+    pinned: parsePinnedLists(raw.pinned),
   }
 }
 
@@ -138,7 +157,7 @@ export interface OpenEditorInput {
 
 /**
  * The Session for the open Tabs, each Document with its Rich or Raw mode,
- * the chosen appearance and the sidebar state. An Image file entry
+ * the chosen appearance, the sidebar state and every Folder's Pinned list. An Image file entry
  * carries no `mode`: its kind comes from the extension. A Document with no
  * mode named is written as Rich, the default for a freshly opened one.
  */
@@ -148,13 +167,16 @@ export function sessionForOpenEditors(
   theme: ThemeMode,
   folder: string | null = null,
   sidebar: SessionSidebar = DEFAULT_SESSION_SIDEBAR,
+  pinned: PinnedLists = {},
 ): Session {
+  const { collapsed, width, collapsedSections = [] } = sidebar
   return {
     version: SESSION_VERSION,
     folder,
     openEditors: openEditors.map(({ path, mode }) => (isImageFilePath(path) ? { path } : { path, mode: mode ?? 'rich' })),
     activePath,
     theme,
-    sidebar,
+    sidebar: collapsedSections.length > 0 ? { collapsed, width, collapsedSections } : { collapsed, width },
+    pinned,
   }
 }

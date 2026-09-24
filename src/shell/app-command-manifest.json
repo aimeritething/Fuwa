@@ -485,7 +485,6 @@
     "tabDependent": [
       { "command": "fileCloseTab" },
       { "command": "editCopyPath" },
-      { "command": "fileTogglePin" },
       { "command": "fileRevealInFinder" },
       { "command": "fileOpenInDefaultApp" }
     ],
@@ -493,6 +492,9 @@
       { "command": "fileNewNote" },
       { "command": "fileQuickOpen" },
       { "command": "fileCloseVault" }
+    ],
+    "pinnableDependent": [
+      { "command": "fileTogglePin" }
     ]
   }
 }

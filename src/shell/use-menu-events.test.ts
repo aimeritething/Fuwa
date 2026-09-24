@@ -149,12 +149,12 @@ describe('useMenuEvents', () => {
       )
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
+      expect(runtime.invoke).toHaveBeenCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false, canPin: false } })
 
       rerender({ activeDocumentPath: '/n/a.md' })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true, hasVault: false, hasTab: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: true, hasVault: false, hasTab: false, canPin: false } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
 
       // Save, Toggle Rich/Raw and Find in Document go back to disabled over an
@@ -162,7 +162,7 @@ describe('useMenuEvents', () => {
       rerender({ activeDocumentPath: null })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false, canPin: false } })
     })
 
     // New Document, Quick Open and Close Folder follow the open Folder;
@@ -174,12 +174,12 @@ describe('useMenuEvents', () => {
       )
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: false, canPin: false } })
 
       rerender({ hasFolder: true })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: true, hasTab: false } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: true, hasTab: false, canPin: false } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
     })
 
@@ -195,8 +195,23 @@ describe('useMenuEvents', () => {
       rerender({ hasTab: true })
       await flushMicrotasks()
 
-      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: true } })
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: true, canPin: false } })
       expect(runtime.invoke).toHaveBeenCalledTimes(2)
+    })
+
+    // Pin/Unpin follows whether the active Tab's file is in the Folder, not
+    // merely whether a Tab is open.
+    it('keeps Pin/Unpin in step with whether the active Tab can be pinned', async () => {
+      const { rerender } = renderHook(
+        ({ canPin }: { canPin: boolean }) => useMenuEvents(makeHandlers({ hasTab: true, canPin })),
+        { initialProps: { canPin: false } },
+      )
+      await flushMicrotasks()
+
+      rerender({ canPin: true })
+      await flushMicrotasks()
+
+      expect(runtime.invoke).toHaveBeenLastCalledWith('update_menu_state', { state: { hasActiveNote: false, hasVault: false, hasTab: true, canPin: true } })
     })
   })
 })

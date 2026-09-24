@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { commandMenuCommandEntries, commandMenuFileEntries, type CommandMenuState } from './command-menu-entries'
 import type { ListedFile } from '@/folder/explorer'
 
-const EVERYTHING: CommandMenuState = { hasDocument: true, hasFolder: true, hasTab: true }
-const NOTHING: CommandMenuState = { hasDocument: false, hasFolder: false, hasTab: false }
+const EVERYTHING: CommandMenuState = { hasDocument: true, hasFolder: true, hasTab: true, canPin: true }
+const NOTHING: CommandMenuState = { hasDocument: false, hasFolder: false, hasTab: false, canPin: false }
 
 const byId = (state: CommandMenuState) => new Map(commandMenuCommandEntries(state).map((entry) => [entry.id, entry]))
 
@@ -47,13 +47,24 @@ describe('commandMenuCommandEntries', () => {
   })
 
   it('keeps Close Tab, Copy Path and the file hand-offs live over an Image Tab, where Save and Find are greyed', () => {
-    const entries = byId({ hasDocument: false, hasFolder: true, hasTab: true })
+    const entries = byId({ hasDocument: false, hasFolder: true, hasTab: true, canPin: true })
     expect(entries.get('file-close-tab')?.enabled).toBe(true)
+    expect(entries.get('file-toggle-pin')?.enabled).toBe(true)
     expect(entries.get('file-reveal-in-finder')).toMatchObject({ enabled: true, detail: 'File', shortcut: undefined })
     expect(entries.get('file-open-in-default-app')).toMatchObject({ enabled: true, detail: 'File', shortcut: undefined })
     expect(entries.get('edit-copy-path')).toMatchObject({ enabled: true, detail: 'Edit', shortcut: expect.stringMatching(/,$/) })
     expect(entries.get('file-save')?.enabled).toBe(false)
     expect(entries.get('edit-find-in-note')?.enabled).toBe(false)
+  })
+})
+
+describe('Pin/Unpin in the Command Menu', () => {
+  it('follows whether the active Tab can be pinned, not merely whether a Tab is open', () => {
+    const outsideFolder = byId({ hasDocument: true, hasFolder: true, hasTab: true, canPin: false })
+    expect(outsideFolder.get('file-toggle-pin')?.enabled).toBe(false)
+    expect(outsideFolder.get('file-reveal-in-finder')?.enabled).toBe(true)
+
+    expect(byId(EVERYTHING).get('file-toggle-pin')).toMatchObject({ enabled: true, detail: 'File', name: 'Pin/Unpin' })
   })
 })
 

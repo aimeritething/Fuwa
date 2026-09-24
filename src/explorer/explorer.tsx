@@ -37,6 +37,14 @@ interface ExplorerProps {
   onOpenFolder: () => void
   /** "Folder not found: <path>", from a restore that lost its Folder or an Open Folder that would not list. */
   error?: string | null
+  /** Pin/Unpin from a Document's or an Image file's context menu. */
+  pins?: ExplorerPins
+}
+
+/** What the Explorer's context menu needs of the Pinned list. */
+export interface ExplorerPins {
+  isPinned: (path: string) => boolean
+  toggle: (path: string) => void
 }
 
 type LoadedProps = ExplorerProps & { folder: string; tree: ExplorerNode }
@@ -235,9 +243,10 @@ interface RowProps extends LoadedProps {
   onToggle: (path: string) => void
 }
 
-function useRowMenuAction(node: ExplorerNode, actions: ExplorerActions) {
+function useRowMenuAction(node: ExplorerNode, actions: ExplorerActions, pins: ExplorerPins | undefined) {
   return useCallback((action: ExplorerMenuAction) => {
     switch (action) {
+      case 'pin': return pins?.toggle(node.path)
       case 'newDocument': return actions.createDocumentIn(node.path)
       case 'newFolder': return actions.createFolderIn(node.path)
       case 'rename': return actions.startRename(node.path, node.kind)
@@ -245,7 +254,7 @@ function useRowMenuAction(node: ExplorerNode, actions: ExplorerActions) {
       case 'copyPath': return actions.copyPath(node.path)
       case 'trash': return actions.trash(node.path, node.kind)
     }
-  }, [actions, node.kind, node.path])
+  }, [actions, node.kind, node.path, pins])
 }
 
 /**
@@ -287,14 +296,14 @@ function useRowDragAndDrop(node: ExplorerNode, isFolder: boolean, actions: Explo
 }
 
 function ExplorerRow(props: RowProps) {
-  const { node, folder, depth, expanded, onToggle, onOpenFile, actions } = props
+  const { node, folder, depth, expanded, onToggle, onOpenFile, actions, pins } = props
   const isFolder = node.kind === 'folder'
   const isRoot = node.path === folder
   const relative = isRoot ? '' : node.path.slice(folder.length + 1)
   const isExpanded = expanded[relative] ?? depth === 0
   const selected = actions.selected === node.path
   const Icon = EXPLORER_ROW_ICONS[node.kind]
-  const onMenuAction = useRowMenuAction(node, actions)
+  const onMenuAction = useRowMenuAction(node, actions, pins)
   const target: ExplorerMenuTargetKind = isRoot ? 'root' : node.kind
   const editing = actions.editing?.path === node.path ? actions.editing : null
   const { dragProps, dropProps, isDropTarget } = useRowDragAndDrop(node, isFolder, actions)
@@ -362,7 +371,7 @@ function ExplorerRow(props: RowProps) {
             <SidebarRowName>{node.name}</SidebarRowName>
           </SidebarRow>
         </ContextMenuTrigger>
-        <ExplorerContextMenu target={target} onAction={onMenuAction} />
+        <ExplorerContextMenu target={target} pinned={!isFolder && (pins?.isPinned(node.path) ?? false)} onAction={onMenuAction} />
       </ContextMenu>
       {children}
     </div>

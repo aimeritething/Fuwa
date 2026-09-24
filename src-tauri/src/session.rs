@@ -3,7 +3,9 @@
 //!
 //! The Rust side owns the file. The renderer hands over its part of the
 //! Session (`update_session`) whenever it changes and reads the file back once
-//! at launch (`read_session`); this module merges the window frame in, writes
+//! at launch (`read_session`). That part includes each Folder's Pinned list,
+//! keyed by the Folder's path, which is why it lives here rather than in the
+//! Folder; this module merges the window frame in, writes
 //! the file atomically (temp file + rename) about 500 ms after the last change
 //! from either side, and flushes it once more when the window closes and when
 //! the app exits.
@@ -120,6 +122,7 @@ fn default_session() -> Value {
         "activePath": null,
         "theme": "light",
         "sidebar": { "collapsed": false, "width": 260 },
+        "pinned": {},
     })
 }
 
@@ -374,6 +377,7 @@ mod tests {
                 "activePath": null,
                 "theme": "light",
                 "sidebar": { "collapsed": false, "width": 260 },
+                "pinned": {},
                 "window": { "x": 0, "y": 0, "width": 1200, "height": 800 },
             })
         );
@@ -475,6 +479,69 @@ mod tests {
 
         assert_eq!(state.window(), None);
         assert_eq!(state.merged()["openEditors"], json!([]));
+    }
+
+    fn session_with_pins() -> Value {
+        let mut session = renderer_session();
+        session["folder"] = json!("/Users/x/notes");
+        session["sidebar"]["collapsedSections"] = json!(["pinned"]);
+        session["pinned"] = json!({
+            "/Users/x/notes": [
+                "/Users/x/notes/c.md",
+                "/Users/x/notes/a.md",
+                "/Users/x/notes/images/lake.png",
+            ],
+            "/Users/x/work": ["/Users/x/work/plan.md"],
+        });
+        session
+    }
+
+    #[test]
+    fn each_folders_pinned_list_survives_a_relaunch_in_order() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(SESSION_FILE_NAME);
+        let state = SessionState::load(path.clone());
+        state.update_renderer(session_with_pins());
+        state.update_window(frame(1, 2, 1200, 800));
+        state.flush().unwrap();
+
+        // A relaunch seeds from the file; a window move before the renderer
+        // reports writes the pins back untouched.
+        let relaunched = SessionState::load(path.clone());
+        relaunched.update_window(frame(3, 4, 1200, 800));
+        relaunched.flush().unwrap();
+
+        let written = read_session_file(&path).unwrap();
+        assert_eq!(written["pinned"], session_with_pins()["pinned"]);
+        assert_eq!(
+            written["pinned"]["/Users/x/notes"],
+            json!([
+                "/Users/x/notes/c.md",
+                "/Users/x/notes/a.md",
+                "/Users/x/notes/images/lake.png",
+            ])
+        );
+        assert_eq!(written["sidebar"]["collapsedSections"], json!(["pinned"]));
+        assert_eq!(written["window"]["x"], 3);
+    }
+
+    #[test]
+    fn a_folder_change_keeps_the_other_folders_pins() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(SESSION_FILE_NAME);
+        let state = SessionState::load(path.clone());
+        state.update_renderer(session_with_pins());
+
+        // The renderer switches to the other Folder and hands over its whole
+        // part again: both lists ride along, only `folder` changes.
+        let mut switched = session_with_pins();
+        switched["folder"] = json!("/Users/x/work");
+        state.update_renderer(switched);
+        state.flush().unwrap();
+
+        let written = read_session_file(&path).unwrap();
+        assert_eq!(written["folder"], "/Users/x/work");
+        assert_eq!(written["pinned"], session_with_pins()["pinned"]);
     }
 
     #[test]
