@@ -374,7 +374,7 @@ function ExplorerRow(props: RowProps) {
         <ContextMenuTrigger asChild>
           <SidebarRow
             className={cn(
-              'mb-px [[aria-selected=true]>&]:bg-sidebar-row-active [[aria-selected=true]>&]:text-text-heading',
+              'mb-0.5 [[aria-selected=true]>&]:bg-sidebar-row-active [[aria-selected=true]>&]:text-text-heading',
               'data-drop-target:bg-sidebar-row-active data-drop-target:text-text-heading data-drop-target:ring-1 data-drop-target:ring-accent-base data-drop-target:ring-inset',
               // WebKit will not start an HTML5 drag from inside `user-select: none` (the whole shell) without this.
               !isFolder && '[-webkit-user-drag:element]',
