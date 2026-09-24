@@ -13,7 +13,8 @@ Outside Tauri every command goes to the in-memory Folder fixture in
 `rename_vault_file`, `rename_vault_folder`, `move_note_to_folder`, `delete_note`,
 `delete_vault_folder`), the watcher (`start_vault_watcher`, `stop_vault_watcher`), the
 Finder-open buffer (`take_pending_open`), the Session (`read_session`, `update_session`),
-`reveal_path_in_file_manager`, `copy_text_to_clipboard` and `quit_app` from memory, and
+`reveal_path_in_file_manager`, `open_vault_file_external`, `copy_text_to_clipboard` and
+`quit_app` from memory, and
 rejects anything else. Argument and result shapes follow the Rust commands. Add a case to the
 fixture's `answer` switch when a spec needs a command it does not answer yet.
 
@@ -45,8 +46,9 @@ A spec reaches the fixture as `window.__plumoMockVault`:
   would; an empty list lifts it.
 - `seedSession(session)` plants the Session file the next page load restores. The fixture
   keeps it in localStorage, so a reload stands in for a relaunch.
-- `calls` is the log of every command the app invoked, with its arguments; `revealedPath()`
-  and `clipboardText()` are what Reveal in Finder and Copy last received; `assetUrl(path)` is
+- `calls` is the log of every command the app invoked, with its arguments; `revealedPath()`,
+  `openedExternallyPath()` and `clipboardText()` are what Reveal in Finder, Open in Default
+  App and Copy last received; `assetUrl(path)` is
   what the asset protocol would serve for an Image file.
 
 Shared helpers (opening the welcome Document, driving the dialogs, reading the saved

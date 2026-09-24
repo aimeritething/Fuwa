@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test'
 import type { MockVault } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, openDocumentThroughDialog, watchForErrors, WELCOME_PATH } from './harness'
 
-// File → Open Document… (⌘⇧O) renders the chosen Document in Rich mode inside
-// the card. The system dialog has no browser equivalent, so the spec queues
+// File → Open Document… (⌘⇧O) renders the chosen Document in Rich mode in
+// the editor pane. The system dialog has no browser equivalent, so the spec queues
 // the "chosen" path on the Folder fixture.
 
 test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ page }) => {
@@ -31,7 +31,7 @@ test('⌘⇧O opens the chosen Document and renders it in Rich mode', async ({ p
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('a cancelled dialog leaves the empty card in place', async ({ page }) => {
+test('a cancelled dialog leaves the empty state in place', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()

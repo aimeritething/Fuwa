@@ -98,14 +98,15 @@ interface TabPillProps {
 
 /**
  * One tab: 30px, 6px radius, 12px in from either side. The selected one is
- * told apart by its fill alone. Its × appears only under the pointer, over
- * the Tab's right end, so a Tab is as wide with it as without.
+ * told apart by its fill alone. Its × appears only under the pointer, after
+ * the name, and the Tab grows by its width, so it never covers the name or
+ * the parent folder that tells two same-name Tabs apart.
  */
 function TabPill({ path, filename, parentHint, active, onActivate, onClose }: TabPillProps) {
   const isImage = isImageFilePath(path)
   return (
     <div
-      className="group relative flex h-7.5 max-w-55 min-w-0 flex-initial cursor-default items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-text-secondary outline-none hover:bg-tab-hover hover:text-text-heading aria-selected:bg-tab-active aria-selected:text-text-heading focus-visible:focus-ring"
+      className="group flex h-7.5 max-w-55 min-w-0 flex-initial cursor-default items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap text-text-secondary outline-none hover:bg-tab-hover hover:text-text-heading aria-selected:bg-tab-active aria-selected:text-text-heading focus-visible:focus-ring"
       role="tab"
       aria-selected={active}
       aria-label={parentHint ? `${filename}, ${parentHint}` : filename}
@@ -124,7 +125,6 @@ function TabPill({ path, filename, parentHint, active, onActivate, onClose }: Ta
         name={filename}
         onClose={() => onClose(path)}
         hoverOnly
-        className="absolute right-1.5 bg-tab-hover group-aria-selected:bg-tab-active group-aria-selected:hover:bg-control-tertiary-hover"
       />
     </div>
   )

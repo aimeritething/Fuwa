@@ -6,7 +6,11 @@ interface CloseAffordanceProps {
   /** The name of the thing that closes, for the accessible label. */
   name: string
   onClose: () => void
-  /** Shown only while its row is hovered (a Tab), rather than also while its row is selected (an Open Editors row). */
+  /**
+   * A Tab's ×: out of the layout until its Tab is hovered, then laid out after
+   * the name, so the Tab grows to make room rather than covering the name. An
+   * Open Editors row's × instead keeps its place and fades in on hover or selection.
+   */
   hoverOnly?: boolean
   className?: string
 }
@@ -27,8 +31,8 @@ export function CloseAffordance({ name, onClose, hoverOnly = false, className }:
     <button
       type="button"
       className={cn(
-        'flex size-4.5 flex-none cursor-default items-center justify-center rounded-sm border-0 bg-transparent p-0 text-text-secondary opacity-0 group-hover:opacity-100 hover:bg-control-tertiary-hover hover:text-text-heading',
-        !hoverOnly && 'group-aria-selected:opacity-100',
+        'size-4.5 flex-none cursor-default items-center justify-center rounded-sm border-0 bg-transparent p-0 text-text-secondary hover:bg-control-tertiary-hover hover:text-text-heading',
+        hoverOnly ? 'hidden group-hover:flex' : 'flex opacity-0 group-hover:opacity-100 group-aria-selected:opacity-100',
         className,
       )}
       aria-label={`Close ${name}`}

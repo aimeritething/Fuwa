@@ -38,7 +38,7 @@ async function openSample(page: Page) {
   await expect(page.locator('.bn-editor h1')).toHaveText('Title')
 }
 
-test('first launch is light: the sidebar, the card and the body text sample to the neutral values', async ({ page }) => {
+test('first launch is light: the sidebar, the editor pane and the body text sample to the neutral values', async ({ page }) => {
   const errors = watchForErrors(page)
   await openWelcome(page)
 

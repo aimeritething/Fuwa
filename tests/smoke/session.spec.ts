@@ -94,7 +94,7 @@ test('a Session with an unknown version is ignored and rewritten', async ({ page
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('an empty Session restores to the empty card without error', async ({ page }) => {
+test('an empty Session restores to the empty state without error', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
   await openDocumentThroughDialog(page, WELCOME_PATH)

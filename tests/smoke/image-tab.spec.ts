@@ -3,9 +3,9 @@ import { expect, test, type Page } from '@playwright/test'
 import type { MockVault, MockVaultImage } from '../../src/platform/mock/vault-fixture'
 import { MOCK_FOLDER, watchForErrors } from './harness'
 
-// An Image file opens as a real Tab, fitted to the card, with its
-// dimensions and size in the path row and two buttons that hand the file to a
-// proper image app. Outside Tauri there is no asset protocol, so the fixture
+// An Image file opens as a real Tab, fitted to the editor pane, with its
+// dimensions and size in the tab bar beside Open ↗, which hands the file to a
+// proper image app, and Copy path. Outside Tauri there is no asset protocol, so the fixture
 // serves each picture as an SVG data URL of the seeded natural size; that is
 // also what lets this spec plant a `<script>` an `<img>` must never run.
 
