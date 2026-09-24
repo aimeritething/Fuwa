@@ -12,7 +12,7 @@ const GONE_FOLDER = '/Users/plumo/Documents/Gone'
 
 const hints = (page: Page) => page.getByTestId('empty-hint').allTextContents()
 
-test('a fresh install shows the No-Folder state: the near-black button, the one hint, no tab bar and no path row', async ({ page }) => {
+test('a fresh install shows the No-Folder state: the near-black button, the one hint, no tab bar', async ({ page }) => {
   const errors = watchForErrors(page)
   await page.goto('/')
 
@@ -24,11 +24,10 @@ test('a fresh install shows the No-Folder state: the near-black button, the one 
   await expect(button).toHaveCSS('background-color', 'rgb(23, 23, 23)')
   await expect(page.getByTestId('explorer-folder-missing')).toHaveCount(0)
   await expect(page.getByTestId('editor-empty-state')).toContainText('Plumo')
-  expect(await hints(page)).toEqual(['⌘Oopen folder'])
+  expect(await hints(page)).toEqual(['⌘OOpen Folder'])
   await expect(page.getByTestId('empty-hint')).toHaveCSS('font-family', /^system-ui/)
-  await expect(page.getByTestId('empty-hint').locator('b')).toHaveCSS('font-family', /JetBrains Mono/)
+  await expect(page.getByTestId('empty-hint').locator('kbd')).toHaveCSS('font-family', /JetBrains Mono/)
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
-  await expect(page.getByTestId('path-row')).toHaveCount(0)
   await expect(page.getByTestId('open-editors')).toHaveCount(0)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
@@ -44,9 +43,8 @@ test('clicking Open Folder ⌘O opens the dialog, and the Folder-open-no-Tab sta
   await expect(page.getByRole('tree')).toBeVisible()
   await expect(page.getByTestId('explorer-no-folder')).toHaveCount(0)
   await expect(page.getByTestId('open-editors')).toHaveCount(0)
-  expect(await hints(page)).toEqual(['⌘Nnew document', '⌘Pquick open'])
+  expect(await hints(page)).toEqual(['⌘NNew document', '⌘PQuick Open'])
   await expect(page.getByTestId('tab-bar')).toHaveCount(0)
-  await expect(page.getByTestId('path-row')).toHaveCount(0)
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })

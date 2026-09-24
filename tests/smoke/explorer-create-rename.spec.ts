@@ -87,7 +87,7 @@ test('a committed rename re-sorts the row and moves the Tab with it', async ({ p
   await expect(explorer.locator('[data-testid^="explorer-row:"]'))
     .toHaveText(['Notes', 'Attachments', 'Projects', 'Style catalog', 'Aardvark.md', 'Reading list.md'])
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Aardvark.md`)).toHaveAttribute('aria-label', 'Aardvark.md')
-  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Aardvark.md')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAttribute('title', `${MOCK_FOLDER}/Aardvark.md`)
   await expect(page.locator('.bn-editor h1')).toHaveText('Welcome')
   await expect(page.getByTestId(`explorer-row:${MOCK_FOLDER}/Aardvark.md`).locator('..')).toHaveAttribute('aria-selected', 'true')
 })
@@ -142,7 +142,7 @@ test('renaming a folder retargets every Tab beneath it', async ({ page }) => {
   await page.keyboard.press('Enter')
 
   await expect(page.getByTestId(`tab:${MOCK_FOLDER}/Work/Plumo.md`)).toBeVisible()
-  await expect(page.getByTestId('path-row-crumb')).toHaveText('Notes › Work › Plumo.md')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAttribute('title', `${MOCK_FOLDER}/Work/Plumo.md`)
   await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
   // The folder is what was renamed, so the folder row keeps the selection —
   // not the Document that moved with it.

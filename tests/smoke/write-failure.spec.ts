@@ -55,6 +55,11 @@ test('a refused Autosave shows the error bar with the path and two buttons, and 
   await expect(errorBar(page)).toContainText(`Couldn't save to ${WELCOME_PATH}`)
   await expect(errorBar(page)).toContainText('Permission denied')
   expect(await buttonNames(errorBar(page))).toEqual(['Retry', 'Discard changes'])
+  // Straight under the tab bar, above the Document.
+  const tabBarBox = (await page.getByTestId('tab-bar').boundingBox())!
+  const barBox = (await errorBar(page).boundingBox())!
+  expect(barBox.y).toBeGreaterThanOrEqual(tabBarBox.y + tabBarBox.height)
+  expect(barBox.y + barBox.height).toBeLessThanOrEqual((await page.locator('.bn-editor h1').boundingBox())!.y)
   await expect(page.locator('.bn-editor')).toContainText('Blocked.')
   expect(written).toContain('First.')
   expect(written).not.toContain('Blocked.')

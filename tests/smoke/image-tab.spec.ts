@@ -54,11 +54,15 @@ test('an Image file opens as a Tab with its picture, dimensions, size and two ha
 
   await expect(activeTab(page)).toHaveText('lake.png')
   await expect(page.getByTestId(`open-editor:${LAKE}`)).toBeVisible()
-  await expect(page.getByTestId('path-row')).toContainText('Notes › Attachments › lake.png')
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('1920 × 1080 · 240 KB')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAttribute('title', LAKE)
+  await expect(page.getByTestId('image-meta')).toHaveText('1920 × 1080 · 240 KB')
   await expect(page.getByRole('button', { name: 'Open ↗' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Copy path' })).toBeVisible()
   await expect(page.locator('.bn-editor')).toHaveCount(0)
+
+  // Open ↗ is Open in Default App.
+  await page.getByRole('button', { name: 'Open ↗' }).click()
+  await expect.poll(() => page.evaluate(() => window.__plumoMockVault?.openedExternallyPath())).toBe(LAKE)
 
   // Clicking it again activates the Tab it already has.
   await openInExplorer(page, LAKE)
@@ -84,7 +88,7 @@ test('a large picture is scaled down to fit and a small one is left at its own s
   await addImage(page, SMALL, { width: 200, height: 150, fileSize: 9_000 })
 
   await openInExplorer(page, WIDE)
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('4000 × 2250 · 3.8 MB')
+  await expect(page.getByTestId('image-meta')).toHaveText('4000 × 2250 · 3.8 MB')
   const view = await page.getByTestId('image-view').boundingBox()
   const wide = await imageInTab(page).boundingBox()
   expect(wide!.width).toBeLessThanOrEqual(view!.width)
@@ -92,7 +96,7 @@ test('a large picture is scaled down to fit and a small one is left at its own s
   expect(await page.getByTestId('image-view').evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true)
 
   await openInExplorer(page, SMALL)
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('200 × 150 · 8.8 KB')
+  await expect(page.getByTestId('image-meta')).toHaveText('200 × 150 · 8.8 KB')
   const small = await imageInTab(page).boundingBox()
   expect(small!.width).toBe(200)
   expect(small!.height).toBe(150)
@@ -111,7 +115,7 @@ test('an SVG carrying a script renders without running it', async ({ page }) => 
   await openInExplorer(page, SCRIPTED)
 
   await expect(imageInTab(page)).toBeVisible()
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('320 × 240 · 1 KB')
+  await expect(page.getByTestId('image-meta')).toHaveText('320 × 240 · 1 KB')
   expect(await page.evaluate(() => Reflect.get(window, '__svgScriptRan'))).toBeUndefined()
   expect(errors.pageErrors).toEqual([])
 })
@@ -134,12 +138,12 @@ test('an Image Tab is never written: ⌘S does nothing and ⌘W closes it under 
 test('a picture overwritten in another app refreshes in its Tab', async ({ page }) => {
   await openFolder(page)
   await openInExplorer(page, LAKE)
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('1920 × 1080 · 240 KB')
+  await expect(page.getByTestId('image-meta')).toHaveText('1920 × 1080 · 240 KB')
   const before = await imageInTab(page).getAttribute('src')
 
   await addImage(page, LAKE, { width: 800, height: 600, fileSize: 120_000, fill: '#c03535' })
 
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('800 × 600 · 117.2 KB')
+  await expect(page.getByTestId('image-meta')).toHaveText('800 × 600 · 117.2 KB')
   const afterResize = await imageInTab(page).getAttribute('src')
   expect(afterResize).not.toBe(before)
 
@@ -148,7 +152,7 @@ test('a picture overwritten in another app refreshes in its Tab', async ({ page 
   await addImage(page, LAKE, { width: 800, height: 600, fileSize: 120_000, fill: '#2f8f4f' })
 
   await expect.poll(() => imageInTab(page).getAttribute('src')).not.toBe(afterResize)
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('800 × 600 · 117.2 KB')
+  await expect(page.getByTestId('image-meta')).toHaveText('800 × 600 · 117.2 KB')
 })
 
 test('relaunch restores an Image Tab from an entry with no mode, and tolerates a hand-edited one', async ({ page }) => {
@@ -167,7 +171,7 @@ test('relaunch restores an Image Tab from an entry with no mode, and tolerates a
 
   await expect(page.getByRole('tab')).toHaveCount(2)
   await expect(activeTab(page)).toHaveText('lake.png')
-  await expect(page.getByTestId('path-row-image-meta')).toHaveText('1920 × 1080 · 240 KB')
+  await expect(page.getByTestId('image-meta')).toHaveText('1920 × 1080 · 240 KB')
   await expect(page.getByTestId(`explorer-row:${LAKE}`).locator('..')).toHaveAttribute('aria-selected', 'true')
 
   await page.evaluate((seed) => window.__plumoMockVault?.seedSession(seed), {

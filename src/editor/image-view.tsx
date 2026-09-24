@@ -5,7 +5,7 @@ import { FilePreviewFallback, FilePreviewImage } from './file-preview'
 
 /**
  * An Image Tab's body. The picture sits in the middle of the
- * card, padded to the prose column, scaled down to fit and never scaled up:
+ * editor pane, padded to the prose column, scaled down to fit and never scaled up:
  * there is no zoom and nothing to scroll. It is shown, never edited, so the
  * view has no editor under it and mounts no drop intake (ADR-0006).
  *

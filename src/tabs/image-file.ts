@@ -6,7 +6,7 @@ import { noteEntryForPath } from '@/folder/note-entry'
  * What an Image file is to the shell (CONTEXT.md): a file Plumo shows and never
  * edits. `@/folder/file-preview.ts` holds the extension list the Explorer, the drop
  * intake and the Rust scanner all share; this module is the Tab's side of it —
- * the entry an Image Tab carries and the two strings its path row shows.
+ * the entry an Image Tab carries and the two strings its tab bar controls show.
  */
 
 export interface ImageNaturalSize {
@@ -81,7 +81,7 @@ export function imageFetchVersion(file: { modifiedAt: number | null; fileSize: n
 }
 
 /**
- * The path row's right-hand line for an Image Tab, `1920 × 1080 · 240 KB`.
+ * The tab bar's line for an Image Tab, `1920 × 1080 · 240 KB`.
  * The dimensions are the natural size the browser reports once the image has
  * loaded, so there is nothing to show before that and the slot stays empty.
  */

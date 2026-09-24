@@ -3,28 +3,35 @@ import {
   MOCK_FOLDER, openDocumentThroughDialog, openFolderThroughDialog, openWelcome, storedSession, watchForErrors, WELCOME_PATH,
 } from './harness'
 
-// The collapsed ("Flush") layout, ⌘[ and View → Toggle Sidebar,
+// The two panes and the collapsed layout, ⌘[ and View → Toggle Sidebar,
 // collapse on a lone Document, and the sidebar state's place in the Session.
 
 const sidebar = (page: Page) => page.getByTestId('sidebar')
-const card = (page: Page) => page.getByTestId('editor-card')
+const pane = (page: Page) => page.getByTestId('editor-pane')
+
+/** The editor pane edge to edge: no margin, radius or shadow, and nothing left of it. */
+async function expectPaneFlush(page: Page) {
+  await expect(pane(page)).toHaveCSS('margin', '0px')
+  await expect(pane(page)).toHaveCSS('border-top-left-radius', '0px')
+  await expect(pane(page)).toHaveCSS('box-shadow', 'none')
+}
 
 async function expectFlush(page: Page) {
   await expect(sidebar(page)).toHaveCount(0)
-  await expect(card(page)).toHaveCSS('margin', '0px')
-  await expect(card(page)).toHaveCSS('border-top-left-radius', '0px')
-  await expect(card(page)).toHaveCSS('box-shadow', 'none')
+  await expectPaneFlush(page)
+  expect((await pane(page).boundingBox())!.x).toBe(0)
 }
 
 async function expectExpanded(page: Page) {
   await expect(sidebar(page)).toBeVisible()
-  await expect(card(page)).toHaveCSS('margin', '8px 8px 8px 0px')
-  await expect(card(page)).toHaveCSS('border-top-left-radius', '12px')
-  await expect(card(page)).not.toHaveCSS('box-shadow', 'none')
+  await expect(sidebar(page)).toHaveCSS('border-right', '1px solid rgb(229, 229, 229)')
+  await expectPaneFlush(page)
+  const sidebarBox = (await sidebar(page).boundingBox())!
+  expect((await pane(page).boundingBox())!.x).toBe(sidebarBox.x + sidebarBox.width)
   await expect(page.getByTestId('collapsed-chrome')).toHaveCount(0)
 }
 
-test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows the traffic lights in the tab bar', async ({ page }) => {
+test('⌘[ toggles; collapsed, the editor is flush and the sidebar icon follows the traffic lights in the tab bar', async ({ page }) => {
   const errors = watchForErrors(page)
   await openWelcome(page)
 
@@ -40,8 +47,10 @@ test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows th
   const tabBox = (await page.getByRole('tab', { name: 'Welcome.md' }).boundingBox())!
   expect(lightsBox.x).toBe(0)
   expect(lightsBox.x + lightsBox.width).toBeLessThanOrEqual(showBox.x)
-  expect(showBox.x + showBox.width).toBeLessThanOrEqual(tabBox.x)
-  await expect(tabBar).toHaveCSS('height', '44px')
+  // The icon sits at x 82 in both states; the first Tab follows at 120.
+  expect(showBox.x).toBe(82)
+  expect(tabBox.x).toBe(120)
+  await expect(tabBar).toHaveCSS('height', '52px')
   expect((await tabBar.boundingBox())!.y).toBe(0)
 
   await show.hover()
@@ -54,10 +63,12 @@ test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows th
   await expectExpanded(page)
   // The sidebar's top row is the tab bar's height, so the traffic lights keep one y in both states.
   const top = sidebar(page).getByTestId('sidebar-top')
-  await expect(top).toHaveCSS('height', '44px')
+  await expect(top).toHaveCSS('height', '52px')
   expect((await top.boundingBox())!.y).toBe(0)
-  expect((await tabBar.boundingBox())!.y).toBe(8)
-  await expect(sidebar(page).getByRole('button', { name: 'Hide sidebar' })).toBeVisible()
+  expect((await tabBar.boundingBox())!.y).toBe(0)
+  const hide = sidebar(page).getByRole('button', { name: 'Hide sidebar' })
+  await expect(hide).toBeVisible()
+  expect((await hide.boundingBox())!.x).toBe(82)
 
   await page.keyboard.press('Meta+BracketLeft')
   await expectFlush(page)
@@ -79,7 +90,7 @@ test('⌘[ toggles; collapsed, the card is flush and the sidebar icon follows th
   expect(errors.consoleErrors).toEqual([])
 })
 
-test('the empty card keeps the way back while collapsed', async ({ page }) => {
+test('the empty editor keeps the way back while collapsed', async ({ page }) => {
   await openWelcome(page)
   await expectFlush(page)
 
@@ -87,7 +98,7 @@ test('the empty card keeps the way back while collapsed', async ({ page }) => {
 
   await expect(page.getByTestId('editor-empty-state')).toBeVisible()
   await expectFlush(page)
-  await card(page).getByRole('button', { name: 'Show sidebar' }).click()
+  await pane(page).getByRole('button', { name: 'Show sidebar' }).click()
   await expectExpanded(page)
 })
 

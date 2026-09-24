@@ -46,7 +46,7 @@ test('first launch is light: the sidebar, the card and the body text sample to t
   await page.keyboard.press('Meta+BracketLeft') // a lone Document collapsed the sidebar
   await expect(page.getByTestId('sidebar')).toHaveCSS('color', 'rgb(77, 77, 77)')
   await expect(page.getByTestId('shell')).toHaveCSS('background-color', 'rgb(250, 250, 250)')
-  await expect(page.getByTestId('editor-card')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await expect(page.getByTestId('editor-pane')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
   await expect(page.locator('.bn-editor')).toHaveCSS('color', 'rgb(23, 23, 23)')
   await expect(page.locator('.bn-editor h1')).toHaveCSS('color', 'rgb(10, 10, 10)')
   expect(errors.pageErrors).toEqual([])
@@ -93,7 +93,7 @@ test('View → Appearance → Dark switches the document, persists in the Sessio
 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(page.getByTestId('shell')).toHaveCSS('background-color', 'rgb(10, 10, 10)')
-  await expect(page.getByTestId('editor-card')).toHaveCSS('background-color', 'rgb(23, 23, 23)')
+  await expect(page.getByTestId('editor-pane')).toHaveCSS('background-color', 'rgb(23, 23, 23)')
   await expect(page.locator('.bn-editor')).toHaveCSS('color', 'rgb(229, 229, 229)')
   await expect(page.locator('.bn-editor h1')).toHaveCSS('color', 'rgb(250, 250, 250)')
   await expect.poll(() => storedSession(page)).toMatchObject({ version: 1, theme: 'dark' })

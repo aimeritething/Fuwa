@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import type { Tab } from './types'
 import { CommandMenu } from '@/command-menu/command-menu'
-import { Editor } from '@/editor/editor'
+import { Editor, type TabCommands } from '@/editor/editor'
 import { OpenEditors } from '@/tabs/open-editors'
 import { Explorer } from '@/explorer/explorer'
 import { useFolder, pickFolderToOpen } from '@/folder/use-folder'
@@ -28,6 +28,7 @@ import { useSession } from '@/session/use-session'
 import { useSidebar } from '@/shell/use-sidebar'
 import { copyPathWithToast, showRefusalToast } from '@/editor/toasts'
 import { useTabCommands } from '@/tabs/use-tab-commands'
+import { openTabFileInDefaultApp, revealTabFile } from '@/tabs/tab-file-actions'
 import { useThemeMode } from '@/shell/use-theme-mode'
 import { useWriteFailureRecord, useWriteFailures } from '@/editor/use-write-failures'
 import { closeAppWindow, exitApp } from '@/platform/app-window'
@@ -317,7 +318,7 @@ export default function App() {
 
   /**
    * Opening a Document with no Folder open collapses the sidebar: there is
-   * nothing to browse, so the card takes the window. With a Folder open the
+   * nothing to browse, so the editor takes the window. With a Folder open the
    * sidebar stays as it is. File → Open Document… and a `.md` dropped on the
    * window both open this way; the Explorer's rows cannot, there being no
    * Folder to click in.
@@ -349,11 +350,26 @@ export default function App() {
   const onToggleRawEditor = useCallback(() => rawToggleRef.current?.(), [])
   // Find (⌘F, Edit menu) follows the same rule: no Document, no handler.
   const onFindInNote = useCallback(() => findRef.current?.(), [])
-  // Copy path (⌘⇧,, Edit menu, the path row's link button) works on any Tab,
+  // Copy path (⌘⇧,, Edit menu, the tab bar's link button) works on any Tab,
   // an Image Tab included, so it goes with no Tab rather than no Document.
   const onCopyPath = useCallback(() => {
     if (activeTabPath) copyPathWithToast(activeTabPath)
   }, [activeTabPath])
+  // Reveal in Finder and Open in Default App (File menu, the tab bar's "…",
+  // an Image Tab's Open ↗) hand the active Tab's file to macOS, and go with
+  // the Tab the same way.
+  const onRevealInFinder = useCallback(() => {
+    if (activeTabPath) revealTabFile(activeTabPath)
+  }, [activeTabPath])
+  const onOpenInDefaultApp = useCallback(() => {
+    if (activeTabPath) openTabFileInDefaultApp(activeTabPath, folder)
+  }, [activeTabPath, folder])
+  // Pin/Unpin has its menu item and its place in the "…" menu, but no Pinned
+  // list to act on yet: with no handler it does nothing, like a disabled item.
+  const tabFileCommands = useMemo<TabCommands>(() => ({
+    onRevealInFinder: activeTabPath ? onRevealInFinder : undefined,
+    onOpenInDefaultApp: activeTabPath ? onOpenInDefaultApp : undefined,
+  }), [activeTabPath, onOpenInDefaultApp, onRevealInFinder])
 
   // Paste without Formatting (⌘⇧V, Edit menu): the clipboard's text, read
   // through the carried Rust clipboard module in Tauri, inserted as plain
@@ -385,6 +401,7 @@ export default function App() {
     onToggleRawEditor: activeDocumentPath ? onToggleRawEditor : undefined,
     onFindInNote: activeDocumentPath ? onFindInNote : undefined,
     onCopyPath: hasTab ? onCopyPath : undefined,
+    ...tabFileCommands,
     ...tabCommands.handlers,
     ...appearance.handlers,
     onCreateNote: explorerActions.createDocument,
@@ -394,7 +411,7 @@ export default function App() {
     onZoomIn: noop,
     onZoomOut: noop,
     onZoomReset: noop,
-  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onCopyPath, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, toggleSidebar])
+  }), [activeDocumentPath, appearance.handlers, explorerActions.createDocument, hasFolder, hasTab, onCloseFolder, onCopyPath, onFindInNote, onOpenFolder, onOpenNote, onPastePlainText, onSave, onToggleRawEditor, openCommandMenu, openQuickOpen, quit, tabCommands, tabFileCommands, toggleSidebar])
   useAppKeyboard(handlers)
   useMenuEvents(handlers)
 
@@ -470,6 +487,8 @@ export default function App() {
         onSetTabMode={setTabMode}
         onActivateTab={tabCommands.activateTabSettled}
         onCloseTab={tabCommands.closeTabSettled}
+        onNewDocument={hasFolder ? explorerActions.createDocument : undefined}
+        tabCommands={tabFileCommands}
         writeFailure={writeFailures.failureFor(activeTabPath)}
         onRetryWrite={retry}
         onDiscardWrite={discard}

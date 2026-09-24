@@ -96,7 +96,7 @@ test('opening another Document first writes the pending edits of the current one
   await openDocumentThroughDialog(page, `${MOCK_FOLDER}/Projects/Plumo.md`)
 
   await expect(page.locator('.bn-editor h1')).toHaveText('Plumo')
-  await expect(page.getByTestId('path-row')).toContainText('Plumo.md')
+  await expect(page.getByRole('tab', { selected: true })).toHaveText('Plumo.md')
   await expect.poll(() => savedContent(page, WELCOME_PATH)).toContain('Pending.')
   const [call] = await saveCalls(page)
   expect(call.args).toMatchObject({ path: WELCOME_PATH, vaultPath: MOCK_FOLDER })

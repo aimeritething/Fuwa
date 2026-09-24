@@ -7,7 +7,6 @@ import { RUNTIME_STYLE_NONCE } from '@/platform/runtime-style-nonce'
 import type { EditorMode, Tab } from '@/types'
 import type { ThemeMode } from '@/shell/theme-mode'
 import type { ListedFile } from '@/folder/explorer'
-import { documentRoot } from '@/folder/explorer'
 import { documentFrontmatter } from '@/kernel/markdown/frontmatter-status'
 import { activeTabPaths, imageFetchVersion, imageMetadataLabel, type ImageNaturalSize } from '@/tabs/image-file'
 import { noteRootForPath } from '@/folder/note-entry'
@@ -21,10 +20,9 @@ import { uploadEditorImage } from './editor-image-upload'
 import { schema } from '@/kernel/blocknote/editor-schema'
 import { createImeCompositionKeyGuardExtension } from '@/kernel/blocknote/ime-composition-key-guard-extension'
 import { createMarkdownHighlightShortcutExtension } from '@/kernel/blocknote/markdown-highlight-shortcut-extension'
-import { openImageExternally } from './image-tab-actions'
-import { EmptyCard } from './empty-card'
+import { EmptyEditor } from './empty-editor'
 import { ImageView } from './image-view'
-import { PathRow, type PathRowMode } from './path-row'
+import { DocumentTabActions, ImageTabActions, type DocumentMenuActions, type TabMode } from './tab-actions'
 import { RawEditorView } from './raw-editor-view'
 import type { RawEditorFindRequest } from './raw-editor-find-types'
 import { RichEditorFindBar } from './rich-editor-find-bar'
@@ -51,8 +49,9 @@ import { WriteFailureBar } from './write-failure-bar'
 /**
  * Plumo's editor shell (rewritten, not copied). It creates the
  * BlockNote editor with the kernel's schema and extensions, hands the open
- * Document to the kernel's tab-swap machinery, and draws the floating card
- * around it. Everything it mounts comes from the kernel.
+ * Document to the kernel's tab-swap machinery, and lays out the editor pane
+ * around it: the tab bar, the error bar, the surface. Everything it mounts
+ * comes from the kernel.
  */
 
 const RICH_EDITOR_BIDI_DOM_ATTRIBUTES = {
@@ -69,14 +68,12 @@ const RICH_UNAVAILABLE_REASON = 'Fix the frontmatter to use Rich mode'
 type FlushPendingContentRef = MutableRefObject<((path: string) => void) | null>
 
 /**
- * The floating card on the canvas: 12px radius, a hairline ring under the
- * card's shadow, 8px off the canvas edge. Collapsed ("Flush") it goes
- * edge-to-edge with no margin, no radius and no ring, and its top row seats
- * the traffic lights. The ring and the shadow share one `box-shadow`, so the
- * collapsed card writes the property itself: `shadow-none` would leave a
- * list of empty shadows where the sidebar spec reads `none`.
+ * The editor pane: the right of the window's two panes, the editor's white
+ * ground reaching the window's edges with no margin, radius or shadow. The
+ * sidebar's line divides the two; collapsed, nothing is left of it and the
+ * pane takes the window, its tab bar seating the traffic lights.
  */
-const CARD_CLASS = 'relative my-2 mr-2 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-card shadow-card ring-(length:--hairline) ring-border-default data-collapsed:m-0 data-collapsed:rounded-none data-collapsed:[box-shadow:none]'
+const PANE_CLASS = 'relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-card'
 /**
  * The scroll context around the Rich surface, the find bar sticky at its top.
  * `overflow-anchor` is off so a side menu appearing near the viewport edge
@@ -113,17 +110,29 @@ export interface EditorProps {
   /** The tab bar's clicks. */
   onActivateTab: (path: string) => void
   onCloseTab: (path: string) => void
+  /** The tab bar's "+": New Document, ⌘N. Left out with no Folder open, which leaves no "+". */
+  onNewDocument?: () => void
+  /** The active Tab's File-menu commands, which the tab bar's "…" and an Image Tab's Open ↗ run too. */
+  tabCommands?: TabCommands
   /** The active Document's refused write, if its last write failed; the error bar's reason to exist. */
   writeFailure: WriteFailure | null
   onRetryWrite: (path: string) => void
   onDiscardWrite: (path: string) => void
-  /** Copy path (⌘⇧,), the same handler the app command runs; the path row's link button calls it. */
+  /** Copy path (⌘⇧,), the same handler the app command runs; the tab bar's link button calls it. */
   onCopyPath?: () => void
-  /** The View → Appearance choice, which the toasts at the card's bottom-right follow. */
+  /** The View → Appearance choice, which the toasts at the pane's bottom-right follow. */
   themeMode: ThemeMode
-  /** Collapsed, the card goes edge-to-edge and its top row seats the traffic lights and the sidebar icon. */
+  /** Collapsed, the pane's tab bar seats the traffic lights and the sidebar icon. */
   sidebarCollapsed: boolean
   onShowSidebar: () => void
+}
+
+/** The File menu's commands on the active Tab's file; one left out is greyed in the "…" menu. */
+export interface TabCommands {
+  pinned?: boolean
+  onTogglePin?: () => void
+  onRevealInFinder?: () => void
+  onOpenInDefaultApp?: () => void
 }
 
 function useLatestRef<T>(value: T): MutableRefObject<T> {
@@ -203,7 +212,7 @@ function useRawModeRuntime(options: {
   flushPendingEditorChangeRef: MutableRefObject<(() => boolean) | null>
 }) {
   const { editor, tabs, activeTab, activeTabPath, vaultPath, onRawContentChange, onSetTabMode, flushPendingEditorChangeRef } = options
-  const tabMode = useMemo(() => ({ mode: activeTab?.mode ?? null, setMode: onSetTabMode }), [activeTab?.mode, onSetTabMode])
+  const tabModeState = useMemo(() => ({ mode: activeTab?.mode ?? null, setMode: onSetTabMode }), [activeTab?.mode, onSetTabMode])
   const {
     rawMode,
     handleToggleRaw,
@@ -211,7 +220,7 @@ function useRawModeRuntime(options: {
     pendingRawExitContent,
     setPendingRawExitContent,
     rawModeContentOverride,
-  } = useRawModeWithFlush(editor, activeTabPath, activeTab?.content ?? null, onRawContentChange, vaultPath, flushPendingEditorChangeRef, tabMode)
+  } = useRawModeWithFlush(editor, activeTabPath, activeTab?.content ?? null, onRawContentChange, vaultPath, flushPendingEditorChangeRef, tabModeState)
 
   // Raw edits are handed to the rich editor's swap before the Tab state has
   // them; once it does, the hand-over is cleared (derived, not effected).
@@ -226,7 +235,7 @@ function useRawModeRuntime(options: {
     void handleToggleRaw()
   }, [handleToggleRaw, rawMode, richUnavailable])
 
-  const pathRowMode = useMemo<PathRowMode>(() => ({
+  const tabMode = useMemo<TabMode>(() => ({
     value: rawMode ? 'raw' : 'rich',
     onChange: (mode) => {
       if ((mode === 'raw') !== rawMode) toggleRaw()
@@ -234,7 +243,7 @@ function useRawModeRuntime(options: {
     richDisabledReason: richUnavailable ? RICH_UNAVAILABLE_REASON : null,
   }), [rawMode, richUnavailable, toggleRaw])
 
-  return { rawMode, toggleRaw, rawLatestContentRef, rawModeContent, tabsForEditorSwap, pathRowMode }
+  return { rawMode, toggleRaw, rawLatestContentRef, rawModeContent, tabsForEditorSwap, tabMode }
 }
 
 /**
@@ -269,7 +278,7 @@ function useEditorRuntime(props: EditorProps) {
   useRegisteredRef(hasPendingEditorContentRef, hasPendingEditorContent)
   useEditorFocus(editor, editorMountedRef)
   useRegisteredRef(props.rawToggleRef, raw.toggleRaw)
-  const findRequest = useFindRequests(activeTabPath, raw.rawMode, props.findRef)
+  const { request: findRequest, requestFind } = useFindRequests(activeTabPath, raw.rawMode, props.findRef)
 
   useRegisterEditorContentFlushes({
     activeTab,
@@ -281,7 +290,7 @@ function useEditorRuntime(props: EditorProps) {
     flushPendingRawContentRef,
   })
 
-  return { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest }
+  return { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest, requestFind }
 }
 
 /**
@@ -296,7 +305,7 @@ function useFindRequests(
   activeTabPath: string | null,
   rawMode: boolean,
   findRef: MutableRefObject<(() => void) | null> | undefined,
-): RawEditorFindRequest | null {
+): { request: RawEditorFindRequest | null; requestFind: () => void } {
   const surface = `${activeTabPath ?? ''}\n${rawMode ? 'raw' : 'rich'}`
   const [request, setRequest] = useState<{ surface: string; value: RawEditorFindRequest } | null>(null)
   const sequence = useRef(0)
@@ -306,11 +315,11 @@ function useFindRequests(
     setRequest({ surface, value: { id: sequence.current, path: activeTabPath, replace: false } })
   }, [activeTabPath, surface])
   useRegisteredRef(findRef, requestFind)
-  return request !== null && request.surface === surface ? request.value : null
+  return { request: request !== null && request.surface === surface ? request.value : null, requestFind }
 }
 
 /**
- * The picture's natural size, which the path row's `1920 × 1080` half comes
+ * The picture's natural size, which the tab bar's `1920 × 1080` half comes
  * from. There is none until the image has loaded, and none again the moment
  * the Tab or the file behind it changes — which is what `shownPicture`, the
  * path and fetch version together, identifies.
@@ -359,88 +368,93 @@ function EditorFindScope({
 }
 
 /**
- * An Image Tab's path row and body. The Folder listing is
- * where the byte size comes from and what says the file has changed on disk,
- * so a picture overwritten in another app is fetched again the moment the
- * watcher refreshes the Folder. There is no save state, no Rich/Raw and no
- * error bar: an Image Tab is never written.
+ * An Image Tab's picture, and the tab bar's controls for it. The Folder
+ * listing is where the byte size comes from and what says the file has
+ * changed on disk, so a picture overwritten in another app is fetched again
+ * the moment the watcher refreshes the Folder. There is no save state, no
+ * Rich/Raw and no error bar: an Image Tab is never written.
  */
-function ImageTab({ path, folder, imageFile, reloads, onCopyPath }: {
-  path: string
-  folder?: string | null
+function useImageTab({ path, imageFile, reloads, onOpenExternal, onCopyPath }: {
+  path: string | null
   imageFile?: ListedFile | null
   reloads: number
+  onOpenExternal: () => void
   onCopyPath?: () => void
 }) {
   const fileSize = imageFile?.fileSize ?? 0
   const version = imageFetchVersion(imageFile ?? null, reloads)
-  const { naturalSize, setNaturalSize } = useImageNaturalSize(`${path}@${version}`)
-  const root = documentRoot(path, folder)
+  const { naturalSize, setNaturalSize } = useImageNaturalSize(`${path ?? ''}@${version}`)
+  if (path === null) return null
   const filename = notePathFilename(path)
-  const openExternally = useCallback(() => openImageExternally(path, root), [path, root])
-
-  return (
-    <>
-      <PathRow
-        filename={filename}
-        path={path}
-        folder={folder}
-        image={{
-          metadata: imageMetadataLabel(naturalSize, fileSize),
-          onOpenExternal: openExternally,
-        }}
-        onCopyPath={onCopyPath}
-      />
+  return {
+    actions: <ImageTabActions metadata={imageMetadataLabel(naturalSize, fileSize)} onOpenExternal={onOpenExternal} onCopyPath={onCopyPath} />,
+    body: (
       <div className="flex min-h-0 min-w-0 flex-1">
         <ImageView
           path={path}
           filename={filename}
           version={version}
           onNaturalSize={setNaturalSize}
-          onOpenExternal={openExternally}
+          onOpenExternal={onOpenExternal}
         />
       </div>
-    </>
-  )
+    ),
+  }
 }
 
 export const Editor = memo(function Editor(props: EditorProps) {
-  const { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest } = useEditorRuntime(props)
+  const { editor, activeTab, handleEditorChange, imageTabPath, raw, findRequest, requestFind } = useEditorRuntime(props)
   const {
     tabs, activeTabPath, vaultPath, onActivateTab, onCloseTab, writeFailure, onRetryWrite, onDiscardWrite,
-    sidebarCollapsed, onShowSidebar,
+    sidebarCollapsed, onShowSidebar, tabCommands,
   } = props
   const openTab = tabs.find((tab) => tab.entry.path === activeTabPath) ?? null
-  const collapsed = sidebarCollapsed || undefined
+  const imageTab = useImageTab({
+    path: imageTabPath,
+    imageFile: props.imageFile,
+    reloads: openTab?.reloads ?? 0,
+    onOpenExternal: tabCommands?.onOpenInDefaultApp ?? noop,
+    onCopyPath: props.onCopyPath,
+  })
+  const activeDocumentPath = activeTab?.entry.path ?? null
+  const documentMenu = useMemo<DocumentMenuActions>(() => ({
+    ...tabCommands,
+    onFind: requestFind,
+    onCloseTab: activeDocumentPath ? () => onCloseTab(activeDocumentPath) : undefined,
+  }), [activeDocumentPath, onCloseTab, requestFind, tabCommands])
 
   if (!openTab) {
     return (
-      <div className={CARD_CLASS} data-testid="editor-card" data-collapsed={collapsed}>
+      <div className={PANE_CLASS} data-testid="editor-pane">
         <EditorToaster theme={props.themeMode} />
-        <EmptyCard hasFolder={Boolean(props.folder)} sidebarCollapsed={sidebarCollapsed} onShowSidebar={onShowSidebar} />
+        <EmptyEditor hasFolder={Boolean(props.folder)} sidebarCollapsed={sidebarCollapsed} onShowSidebar={onShowSidebar} />
       </div>
     )
   }
 
+  const actions = imageTab?.actions ?? (activeTab && (
+    <DocumentTabActions mode={raw.tabMode} onCopyPath={props.onCopyPath} menu={documentMenu} />
+  ))
+
   return (
-    <div className={CARD_CLASS} data-testid="editor-card" data-collapsed={collapsed}>
-      {/* First in both of the card's shapes, so closing the last Tab keeps the toaster and its toasts mounted. */}
+    <div className={PANE_CLASS} data-testid="editor-pane">
+      {/* First in both of the pane's shapes, so closing the last Tab keeps the toaster and its toasts mounted. */}
       <EditorToaster theme={props.themeMode} />
       <TabBar
         tabs={tabs}
         activeTabPath={activeTabPath}
         onActivate={onActivateTab}
         onClose={onCloseTab}
+        onNewDocument={props.onNewDocument}
+        actions={actions}
         sidebarCollapsed={sidebarCollapsed}
         onShowSidebar={onShowSidebar}
       />
       {/* The two bodies are exclusive: an Image Tab leaves the runtime with no active Document. */}
-      {imageTabPath !== null && (
-        <ImageTab path={imageTabPath} folder={props.folder} imageFile={props.imageFile} reloads={openTab.reloads ?? 0} onCopyPath={props.onCopyPath} />
-      )}
+      {imageTab?.body}
       {activeTab && (
         <>
-          <PathRow filename={activeTab.entry.filename} path={activeTab.entry.path} folder={props.folder} mode={raw.pathRowMode} onCopyPath={props.onCopyPath} />
+          {/* Straight under the tab bar, above whichever surface is showing. */}
           {writeFailure && (
             <WriteFailureBar
               path={writeFailure.path}

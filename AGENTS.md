@@ -11,8 +11,8 @@ Documents in a Folder on disk. Names follow the glossary in `CONTEXT.md`; read t
 
 - `kernel/` — the Kernel: BlockNote (`blocknote/`), the Markdown round-trip (`markdown/`),
   the open-time pipeline (`resolve/`), CodeMirror (`raw/`).
-- `editor/` — the editing surface: the floating card, path row, Rich / Raw views, Autosave,
-  Write failure, toasts. Utility classes only; no CSS file.
+- `editor/` — the editing surface: the editor pane and its tab bar controls, Rich / Raw
+  views, Autosave, Write failure, toasts. Utility classes only; no CSS file.
 - `folder/` — disk: the watcher, asset scope, the Rust command wrappers. `explorer/`
   imports `folder/`, never the reverse.
 - `shell/` — sidebar, theme, shortcuts, menu events. `app-command-manifest.json` is also

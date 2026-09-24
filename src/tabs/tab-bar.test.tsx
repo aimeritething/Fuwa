@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Tab } from '@/types'
 import { noteEntryForPath } from '@/folder/note-entry'
@@ -34,6 +34,51 @@ describe('TabBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close b.md' }))
     expect(onClose).toHaveBeenCalledWith('/n/b.md')
     expect(onActivate).toHaveBeenCalledTimes(1)
+  })
+
+  it('ends the Tabs with a "+" that runs New Document, and leaves it out with no handler', () => {
+    const onNewDocument = vi.fn()
+    const { rerender } = render(
+      <TooltipProvider><TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} onNewDocument={onNewDocument} /></TooltipProvider>,
+    )
+
+    const plus = screen.getByRole('button', { name: 'New Document' })
+    expect(screen.getByRole('tab', { name: 'c.md' }).compareDocumentPosition(plus) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(plus)
+    expect(onNewDocument).toHaveBeenCalledTimes(1)
+
+    rerender(<TooltipProvider><TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} /></TooltipProvider>)
+    expect(screen.queryByRole('button', { name: 'New Document' })).toBeNull()
+  })
+
+  it('puts the active Tab controls at the row end, after the "+"', () => {
+    render(
+      <TooltipProvider>
+        <TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} onNewDocument={vi.fn()} actions={<button type="button">Copy path</button>} />
+      </TooltipProvider>,
+    )
+
+    const slot = screen.getByTestId('tab-bar-actions')
+    expect(slot).toContainElement(screen.getByRole('button', { name: 'Copy path' }))
+    expect(screen.getByRole('button', { name: 'New Document' }).compareDocumentPosition(slot) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('adds the parent folder to two Tabs of the same name, and to no other', () => {
+    const same = [tab('/n/Chinese/Everything.md'), tab('/n/Welcome.md'), tab('/n/English/Everything.md')]
+    render(<TabBar tabs={same} activeTabPath="/n/Welcome.md" onActivate={vi.fn()} onClose={vi.fn()} />)
+
+    expect(screen.getAllByTestId('tab-parent').map((hint) => hint.textContent)).toEqual(['Chinese', 'English'])
+    expect(screen.getByRole('tab', { name: 'Everything.md, Chinese' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Everything.md, English' })).toBeInTheDocument()
+    expect(within(screen.getByRole('tab', { name: 'Welcome.md' })).queryByTestId('tab-parent')).toBeNull()
+  })
+
+  it('shows a Tab\'s × only under the pointer, the selected Tab\'s too', () => {
+    render(<TabBar tabs={tabs} activeTabPath="/n/a.md" onActivate={vi.fn()} onClose={vi.fn()} />)
+
+    const close = screen.getByRole('button', { name: 'Close a.md' })
+    expect(close).toHaveClass('opacity-0', 'group-hover:opacity-100')
+    expect(close.className).not.toContain('group-aria-selected:opacity-100')
   })
 
   it('with the sidebar collapsed, seats the traffic lights and the sidebar icon before the first tab', () => {

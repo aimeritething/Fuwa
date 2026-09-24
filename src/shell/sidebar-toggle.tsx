@@ -10,11 +10,12 @@ interface SidebarToggleProps {
 }
 
 /**
- * The sidebar's one affordance: the same glyph collapses the
- * sidebar from its top row and brings it back from the tab bar. A 24px ghost
- * icon button; both rows it sits on drag the window, the button does not. Its
- * tooltip carries the shortcut as a chip, `Show sidebar ⌘[`, because the
- * collapsed window has nothing else to say how to get the sidebar back.
+ * The sidebar's one affordance, in one place in both states: right of the
+ * traffic lights, on the sidebar's top row while it is shown and on the tab
+ * bar while it is collapsed. A 24px ghost icon button; both rows it sits on
+ * drag the window, the button does not. Its tooltip carries the shortcut as a
+ * chip, `Show sidebar ⌘[`, because the collapsed window has nothing else to
+ * say how to get the sidebar back.
  */
 export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
   const label = collapsed ? 'Show sidebar' : 'Hide sidebar'
@@ -33,16 +34,25 @@ export function SidebarToggle({ collapsed, onToggle }: SidebarToggleProps) {
 }
 
 /**
- * What the card's top row gains when the sidebar is collapsed and the card
- * goes edge-to-edge: the traffic lights, which macOS draws at the window's
- * top-left whatever the DOM holds, need their room (x 13, three 12px lights
- * 8px apart: 71px), and the sidebar icon sits right after them, before the
- * first tab.
+ * The room macOS draws the traffic lights in, whatever the DOM holds:
+ * `trafficLightPosition` in tauri.conf.json sets them 13px in and centres
+ * them on the 52px top row (y 28 puts their centre at 26), and the three
+ * lights end by x 73. The room is 70px and the sidebar icon follows 12px
+ * later, at x 82, in both states.
+ */
+export function TrafficLightsRoom() {
+  return <span className="w-17.5 flex-none" data-testid="traffic-lights" aria-hidden="true" />
+}
+
+/**
+ * What the tab bar starts with while the sidebar is collapsed and the editor
+ * goes to the window's left edge: the traffic lights' room and the sidebar
+ * icon, then the first Tab 14px after it.
  */
 export function CollapsedChrome({ onShowSidebar }: { onShowSidebar: () => void }) {
   return (
-    <div className="mr-2 flex h-full flex-none items-center" data-testid="collapsed-chrome">
-      <span className="w-17.75 flex-none" data-testid="traffic-lights" aria-hidden="true" />
+    <div className="mr-2.5 flex h-full flex-none items-center gap-3" data-testid="collapsed-chrome">
+      <TrafficLightsRoom />
       <SidebarToggle collapsed onToggle={onShowSidebar} />
     </div>
   )
