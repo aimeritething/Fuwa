@@ -15,7 +15,7 @@ import { cn } from '@/lib/cn'
 export function SidebarLabel({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
-      className={cn('flex h-6 flex-none cursor-default items-center px-2 text-xs text-text-secondary', className)}
+      className={cn('flex h-6 flex-none cursor-default items-center px-2 text-xs text-text-tertiary', className)}
       {...props}
     />
   )
