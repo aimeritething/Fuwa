@@ -114,7 +114,7 @@ test('a Document using every dialect feature renders in Rich mode without consol
   // The inert wikilink spec shows the target as plain text; the brackets survive in the Markdown.
   await expect(editor).toContainText('Wiki link text stays as text.')
 
-  // The prose column: theme.json's 680px + 2 × 56px padding on .bn-editor.
+  // The prose column: --editor-max-width's 760px less 2 × 56px padding on .bn-editor, the design's 648px.
   const column = await editor.evaluate((element) => {
     const style = getComputedStyle(element)
     return {
@@ -122,7 +122,7 @@ test('a Document using every dialect feature renders in Rich mode without consol
       padding: style.paddingLeft,
     }
   })
-  expect(column).toEqual({ textWidth: 680, padding: '56px' })
+  expect(column).toEqual({ textWidth: 648, padding: '56px' })
   expect(errors.pageErrors).toEqual([])
   expect(errors.consoleErrors).toEqual([])
 })
