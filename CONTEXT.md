@@ -1,6 +1,6 @@
 # Plumo
 
-A small desktop app for viewing and editing Markdown files. Open a `.md` directly, or open a folder and browse it from the sidebar. The visual language follows Linear.
+A small desktop app for viewing and editing Markdown files. Open a `.md` directly, or open a folder and browse it from the sidebar.
 
 ## Language
 
@@ -51,14 +51,15 @@ _Avoid_: Save error, unsaved changes, dirty
 ### Shell
 
 **Explorer**:
-The sidebar section that shows the Folder as a tree of Documents, sub-folders, and Image files. Any other file is not shown.
+The sidebar section that shows the Folder as a tree of Documents, sub-folders, and Image files. Any other file is not shown. It is headed by the Folder's name; the Folder itself is not a row in the tree, and the word "Explorer" does not appear in the UI.
 _Avoid_: File tree, folder tree, sidebar (the Explorer is one section of the sidebar)
 
-**Open Editors**:
-The sidebar section listing every Document and Image file currently open, including Documents outside the Folder. Mirrors the tab bar.
+**Pinned**:
+The sidebar section above the Explorer that lists the Documents and Image files the user chose to keep at hand. Pin and Unpin add and remove one. A sub-folder cannot be pinned, nor a file outside the Folder. Each Folder has its own Pinned list, kept in the order the user gives it. A pinned file follows a rename or move made in Plumo; when it leaves the Folder or disappears from disk, it is unpinned.
+_Avoid_: Favorites, bookmarks, starred
 
 **Tab**:
-One entry in the tab bar above the editor; one Tab per open Document or Image file. Clicking a Document or an Image file in the Explorer always opens a real Tab (there are no preview tabs). An Image file's Tab shows the picture, fitted to the card; it has no Rich or Raw mode.
+One entry in the tab bar above the editor; one Tab per open Document or Image file. Clicking a Document or an Image file in the Explorer always opens a real Tab (there are no preview tabs). When two open Tabs share a file name, each also shows its parent folder's name. An Image file's Tab shows the picture, fitted to the space beside the sidebar; it has no Rich or Raw mode.
 
 **Command Menu**:
 The Cmd+K palette that lists Plumo's commands and, as you type, fuzzy-matches commands, Document names, and Image file names. Every command in the native menu bar appears here and nothing else does.
@@ -69,4 +70,4 @@ The Command Menu's search-only mode, opened with Cmd+P: it fuzzy-matches Documen
 _Avoid_: Search, file picker
 
 **Session**:
-The state Plumo restores on launch: the Folder, the Open Editors (each Document with its Rich or Raw mode), the active Tab, theme, sidebar state, and window geometry. Stored in the app's own config directory, never in the Folder.
+The state Plumo restores on launch: the Folder, the open Tabs (with each Document's Rich or Raw mode), the active Tab, theme, sidebar state (its width, and which sections are collapsed), and window geometry. It also keeps each Folder's Pinned list, so a Folder opened again gets its pins back. Stored in the app's own config directory, never in the Folder.
