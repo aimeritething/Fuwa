@@ -4,18 +4,18 @@ import { cn } from '@/lib/cn'
 
 /**
  * The sidebar's row vocabulary, shared by the groups the sidebar stacks
- * (Pinned, the Explorer): the quiet 24px label above a group, the 28px
+ * (Pinned, the Explorer): the quiet 28px label above a group, the 30px
  * row with its 8px radius, and the row's icon and name. A row's selected state
  * is its `aria-selected`; the icon reads it through the row's `group`. The
  * Explorer's rows carry their `aria-selected` on the `treeitem` above them,
  * so they read it with `in-aria-selected:` instead.
  */
 
-/** The label above a group: 24px, 12px type, no interaction. */
+/** The label above a group: 28px, 12px type, no interaction. */
 export function SidebarLabel({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
-      className={cn('flex h-6 flex-none cursor-default items-center px-2 text-xs text-text-tertiary', className)}
+      className={cn('flex h-7 flex-none cursor-default items-center px-2 text-xs text-text-tertiary', className)}
       {...props}
     />
   )
@@ -32,7 +32,7 @@ export function SidebarRow({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       className={cn(
-        'group flex h-7 cursor-default items-center gap-1.5 rounded-lg pr-1.5 pl-2 whitespace-nowrap text-text-secondary outline-none',
+        'group flex h-7.5 cursor-default items-center gap-1.5 rounded-lg pr-1.5 pl-2 whitespace-nowrap text-text-secondary outline-none',
         'hover:bg-sidebar-row-hover hover:text-text-heading',
         'data-[state=open]:bg-sidebar-row-hover data-[state=open]:text-text-heading',
         'aria-selected:bg-sidebar-row-active aria-selected:text-text-heading',

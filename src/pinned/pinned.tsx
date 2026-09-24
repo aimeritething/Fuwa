@@ -43,7 +43,7 @@ export const Pinned = memo(function Pinned({ paths, activeTabPath, collapsed, on
 
   const Caret = collapsed ? CaretRight : CaretDown
   return (
-    <section className="group/pinned flex flex-none flex-col pt-0.5" data-testid="pinned">
+    <section className="group/pinned flex flex-none flex-col gap-0.5 pt-0.5" data-testid="pinned">
       <SidebarLabel>
         <button
           type="button"
@@ -62,7 +62,7 @@ export const Pinned = memo(function Pinned({ paths, activeTabPath, collapsed, on
         </button>
       </SidebarLabel>
       {!collapsed && (
-        <div className="flex flex-col gap-px" role="listbox" aria-label={LABEL} {...listDropProps}>
+        <div className="flex flex-col gap-0.5" role="listbox" aria-label={LABEL} {...listDropProps}>
           {paths.map((path, index) => (
             <PinnedRow
               key={path}

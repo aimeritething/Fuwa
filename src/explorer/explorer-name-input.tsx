@@ -38,7 +38,7 @@ export function ExplorerNameInput(props: ExplorerNameInputProps) {
   // The row's indent and the message's are runtime numbers, so they stay inline.
   return (
     <div>
-      <SidebarRow className="mb-px" style={{ paddingLeft: explorerRowIndent(depth) }}>
+      <SidebarRow className="mb-0.5" style={{ paddingLeft: explorerRowIndent(depth) }}>
         <ExplorerDisclosureSlot />
         <SidebarRowIcon icon={Icon} />
         <input
